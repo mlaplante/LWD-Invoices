@@ -3,10 +3,5 @@
   command = "prisma migrate deploy && next build"
   publish = ".next"
 
-[build.environment]
-  # Tells @t3-oss/env-nextjs to skip validation during CI builds
-  # (all real vars are configured in Netlify UI → Site configuration → Environment variables)
-  SKIP_ENV_VALIDATION = "1"
-
 [[plugins]]
   package = "@netlify/plugin-nextjs"
