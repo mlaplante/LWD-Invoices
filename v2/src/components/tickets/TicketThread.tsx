@@ -45,7 +45,7 @@ export function TicketThread({ ticket }: Props) {
           rows={4}
         />
         <Button
-          onClick={() => reply.mutate({ ticketId: ticket.id, body })}
+          onClick={() => reply.mutate({ ticketId: ticket.id, body: body.trim() })}
           disabled={!body.trim() || reply.isPending}
         >
           Reply
