@@ -20,9 +20,7 @@ const EMPTY = { name: "", description: "", rate: "", unit: "" };
 
 export function ItemManager({ initialItems }: Props) {
   const utils = trpc.useUtils();
-  const { data: items = initialItems } = trpc.items.list.useQuery(undefined, {
-    initialData: initialItems,
-  });
+  const { data: items = initialItems } = trpc.items.list.useQuery(undefined);
 
   const createMutation = trpc.items.create.useMutation({
     onSuccess: () => { void utils.items.list.invalidate(); setAdding(false); setForm(EMPTY); },
