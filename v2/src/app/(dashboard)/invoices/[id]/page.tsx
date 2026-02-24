@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { RecordPaymentButton } from "@/components/invoices/RecordPaymentButton";
+import { SendInvoiceButton } from "@/components/invoices/SendInvoiceButton";
 import { InvoiceComments } from "@/components/invoices/InvoiceComments";
 import { RecurringInvoiceDialog } from "@/components/invoices/RecurringInvoiceDialog";
 import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { ArrowLeft, Download, ExternalLink, Pencil, Send } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Status badge config ───────────────────────────────────────────────────────
@@ -115,12 +116,7 @@ export default async function InvoiceDetailPage({
             </Button>
           )}
           {invoice.status === "DRAFT" && (
-            <form action={`/api/invoices/${invoice.id}/send`} method="POST">
-              <Button size="sm" type="submit">
-                <Send className="w-3.5 h-3.5 mr-1.5" />
-                Send
-              </Button>
-            </form>
+            <SendInvoiceButton invoiceId={invoice.id} />
           )}
           <Button asChild variant="outline" size="sm">
             <a

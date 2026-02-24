@@ -10,8 +10,10 @@ import {
 } from "../services/tax-calculator";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { logAudit } from "../services/audit";
+import { notifyOrgAdmins } from "../services/notifications";
 import { Resend } from "resend";
 import { env } from "@/lib/env";
+import { headers } from "next/headers";
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
 
@@ -423,6 +425,14 @@ export const invoicesRouter = router({
         data: { status: newStatus, lastSent: new Date() },
       });
 
+      // Derive app URL from request headers (works correctly on Netlify)
+      const hdrs = await headers();
+      const host = hdrs.get("host") ?? "localhost:3000";
+      const proto =
+        hdrs.get("x-forwarded-proto") ??
+        (host.startsWith("localhost") ? "http" : "https");
+      const appUrl = `${proto}://${host}`;
+
       if (invoice.client.email) {
         try {
           const { render } = await import("@react-email/render");
@@ -436,7 +446,7 @@ export const invoicesRouter = router({
               currencySymbol: invoice.currency.symbol,
               dueDate: invoice.dueDate?.toLocaleDateString() ?? null,
               orgName: invoice.organization.name,
-              portalLink: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/portal/${invoice.client.portalToken}`,
+              portalLink: `${appUrl}/portal/${invoice.client.portalToken}`,
             })
           );
 
@@ -451,14 +461,22 @@ export const invoicesRouter = router({
         }
       }
 
-      await logAudit({
-        action: "SENT",
-        entityType: "Invoice",
-        entityId: invoice.id,
-        entityLabel: invoice.number,
-        organizationId: invoice.organization.id,
-        userId: ctx.userId,
-      }).catch(() => {});
+      await Promise.all([
+        logAudit({
+          action: "SENT",
+          entityType: "Invoice",
+          entityId: invoice.id,
+          entityLabel: invoice.number,
+          organizationId: invoice.organization.id,
+          userId: ctx.userId,
+        }).catch(() => {}),
+        notifyOrgAdmins(invoice.organization.id, {
+          type: "INVOICE_SENT",
+          title: "Invoice sent",
+          body: `Invoice #${invoice.number} sent to ${invoice.client.name}`,
+          link: `/invoices/${invoice.id}`,
+        }).catch(() => {}),
+      ]);
 
       return updated;
     }),
