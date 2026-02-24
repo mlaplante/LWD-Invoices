@@ -24,6 +24,7 @@ const navItems = [
   { href: "/settings", label: "Settings" },
   { href: "/settings/projects", label: "Project Settings" },
   { href: "/reports", label: "Reports" },
+  { href: "/tickets", label: "Tickets" },
 ];
 
 export default function DashboardLayout({
