@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pancake
+
+A modern invoicing and business management SaaS — rebuilt from a legacy PHP application as a full-stack Next.js app.
+
+## What it does
+
+Pancake helps freelancers and small agencies manage their business operations:
+
+- **Invoicing** — Create, send, and manage invoices with line items, compound tax support, partial payments, and PDF generation
+- **Client Portal** — Shareable, token-based portal where clients can view invoices, pay online, and approve estimates
+- **Projects & Time Tracking** — Track projects, log time entries, and bill hours directly to invoices with configurable rounding intervals
+- **Recurring Invoices** — Schedule automatic invoice generation (daily, weekly, monthly, yearly) via background jobs
+- **Payments** — Stripe and PayPal gateway integration with webhook-based status updates
+- **Expenses & Reports** — Track expenses and generate revenue/payment/unpaid reports
+- **Support Tickets** — Internal ticket system with threaded discussions
+- **Credit Notes** — Issue credits against invoices
+- **Attachments** — File uploads via Vercel Blob storage
+- **Audit Log** — Organization-scoped activity log for all mutations
+- **REST API v1** — Bearer-token authenticated API for external integrations
+- **Multi-tenancy** — Full organization isolation via Clerk; users can belong to multiple orgs
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| Auth | Clerk (multi-tenant orgs) |
+| API | tRPC v11 |
+| Database | PostgreSQL + Prisma 7 |
+| Styling | Tailwind CSS v4 + shadcn/ui |
+| Email | Resend + React Email |
+| PDF | @react-pdf/renderer |
+| Payments | Stripe, PayPal |
+| Background Jobs | Inngest |
+| File Storage | Vercel Blob |
+| Validation | Zod 4 |
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- PostgreSQL database
+- Clerk account (for auth)
+
+### Setup
 
 ```bash
+cp .env.example .env
+# Fill in required env vars (see .env.example for details)
+
+npm install
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Required Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `CLERK_SECRET_KEY` | Clerk secret key |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `RESEND_API_KEY` | Resend API key for email |
+| `GATEWAY_ENCRYPTION_KEY` | 64-char hex key for encrypting payment gateway credentials |
+| `NEXT_PUBLIC_APP_URL` | Public URL of the app |
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Optional: `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY` (recurring invoices), `BLOB_READ_WRITE_TOKEN` (file attachments), `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`.
