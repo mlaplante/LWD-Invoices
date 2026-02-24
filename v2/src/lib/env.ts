@@ -12,6 +12,8 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    INNGEST_SIGNING_KEY: z.string().min(1).optional(),
+    INNGEST_EVENT_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
@@ -27,6 +29,8 @@ export const env = createEnv({
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     GATEWAY_ENCRYPTION_KEY: process.env.GATEWAY_ENCRYPTION_KEY,
     NODE_ENV: process.env.NODE_ENV,
+    INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
+    INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
