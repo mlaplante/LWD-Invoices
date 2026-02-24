@@ -1,6 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
-import { RecurringFrequency } from "@/generated/prisma";
+import { Prisma, RecurringFrequency } from "@/generated/prisma";
 
 export function computeNextRunAt(
   from: Date,
@@ -60,9 +60,23 @@ export const processRecurringInvoices = inngest.createFunction(
   },
 );
 
-async function generateRecurringInvoice(
-  rec: Awaited<ReturnType<typeof db.recurringInvoice.findMany>>[0],
-) {
+const recurringInvoiceWithRelations = Prisma.validator<Prisma.RecurringInvoiceDefaultArgs>()({
+  include: {
+    invoice: {
+      include: {
+        lines: { include: { taxes: true } },
+        currency: true,
+      },
+    },
+    organization: true,
+  },
+});
+
+type RecurringInvoiceWithRelations = Prisma.RecurringInvoiceGetPayload<
+  typeof recurringInvoiceWithRelations
+>;
+
+async function generateRecurringInvoice(rec: RecurringInvoiceWithRelations) {
   const template = rec.invoice;
 
   const newInvoice = await db.$transaction(async (tx) => {

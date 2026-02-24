@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RecordPaymentButton } from "@/components/invoices/RecordPaymentButton";
 import { InvoiceComments } from "@/components/invoices/InvoiceComments";
+import { RecurringInvoiceDialog } from "@/components/invoices/RecurringInvoiceDialog";
 import type { InvoiceStatus } from "@/generated/prisma";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
@@ -133,6 +134,9 @@ export default async function InvoiceDetailPage({
                 </a>
               </Button>
             )}
+
+          {/* Recurring */}
+          <RecurringInvoiceDialog invoiceId={invoice.id} />
 
           {/* Portal link */}
           <CopyPortalLinkButton portalLink={portalLink} />

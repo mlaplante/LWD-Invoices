@@ -19,6 +19,7 @@ import { expensesRouter } from "./expenses";
 import { expenseCategoriesRouter } from "./expenseCategories";
 import { expenseSuppliersRouter } from "./expenseSuppliers";
 import { timesheetsRouter } from "./timesheets";
+import { recurringInvoicesRouter } from "./recurringInvoices";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -41,6 +42,7 @@ export const appRouter = router({
   expenseCategories: expenseCategoriesRouter,
   expenseSuppliers: expenseSuppliersRouter,
   timesheets: timesheetsRouter,
+  recurringInvoices: recurringInvoicesRouter,
 });
 
 export type AppRouter = typeof appRouter;
