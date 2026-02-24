@@ -2,6 +2,8 @@ import { api } from "@/trpc/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { RecordPaymentButton } from "@/components/invoices/RecordPaymentButton";
+import { InvoiceComments } from "@/components/invoices/InvoiceComments";
 import type { InvoiceStatus } from "@/generated/prisma";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
@@ -34,6 +36,8 @@ function formatDate(d: Date | null | undefined): string {
   });
 }
 
+const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
+
 export default async function InvoiceDetailPage({
   params,
 }: {
@@ -50,6 +54,10 @@ export default async function InvoiceDetailPage({
   const sym = invoice.currency.symbol;
   const symPos = invoice.currency.symbolPosition;
   const f = (n: Parameters<typeof fmt>[0]) => fmt(n, sym, symPos);
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const portalLink = `${appUrl}/portal/${invoice.portalToken}`;
+  const isPayable = PAYABLE_STATUSES.includes(invoice.status);
 
   return (
     <div className="space-y-6">
@@ -112,7 +120,6 @@ export default async function InvoiceDetailPage({
               </a>
             </Button>
           )}
-          {/* PDF available for all statuses */}
           {invoice.status !== "SENT" &&
             invoice.status !== "PAID" &&
             invoice.status !== "PARTIALLY_PAID" && (
@@ -126,6 +133,17 @@ export default async function InvoiceDetailPage({
                 </a>
               </Button>
             )}
+
+          {/* Portal link */}
+          <CopyPortalLinkButton portalLink={portalLink} />
+
+          {/* Record payment */}
+          {isPayable && (
+            <RecordPaymentButton
+              invoiceId={invoice.id}
+              invoiceTotal={Number(invoice.total)}
+            />
+          )}
         </div>
       </div>
 
@@ -302,6 +320,22 @@ export default async function InvoiceDetailPage({
           </div>
         </div>
       )}
+
+      {/* Comments */}
+      <InvoiceComments invoiceId={invoice.id} />
     </div>
+  );
+}
+
+// Small client component just for the copy button
+function CopyPortalLinkButton({ portalLink }: { portalLink: string }) {
+  // This is a server component file, so this must be a separate client component.
+  // For simplicity, render as a regular anchor that opens the portal.
+  return (
+    <Button asChild variant="outline" size="sm">
+      <a href={portalLink} target="_blank" rel="noreferrer">
+        Portal Link ↗
+      </a>
+    </Button>
   );
 }

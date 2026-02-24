@@ -430,6 +430,7 @@ export const invoicesRouter = router({
         transactionId: z.string().optional(),
         notes: z.string().optional(),
         paidAt: z.coerce.date().default(() => new Date()),
+        gatewayFee: z.number().min(0).default(0),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -443,6 +444,7 @@ export const invoicesRouter = router({
         await tx.payment.create({
           data: {
             amount: input.amount,
+            gatewayFee: input.gatewayFee,
             method: input.method,
             transactionId: input.transactionId,
             notes: input.notes,

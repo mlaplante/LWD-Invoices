@@ -14,6 +14,15 @@ enum UserRole {
   STAFF
 }
 
+enum GatewayType {
+  STRIPE
+  PAYPAL
+  BANK_TRANSFER
+  CASH
+  CHECK
+  MONEY_ORDER
+}
+
 enum InvoiceType {
   SIMPLE
   DETAILED
@@ -64,6 +73,8 @@ model Organization {
   invoices        Invoice[]
   partialPayments PartialPayment[]
   payments        Payment[]
+  gateways        GatewaySetting[]
+  comments        Comment[]
 }
 
 model User {
@@ -182,9 +193,13 @@ model Invoice {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  portalToken          String   @unique @default(cuid())
+  portalPassphraseHash String?
+
   lines           InvoiceLine[]
   partialPayments PartialPayment[]
   payments        Payment[]
+  comments        Comment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -257,12 +272,47 @@ model PartialPayment {
 }
 
 model Payment {
-  id            String   @id @default(cuid())
-  amount        Decimal  @db.Decimal(20, 10)
-  method        String
-  transactionId String?
-  notes         String?
-  paidAt        DateTime @default(now())
+  id              String   @id @default(cuid())
+  amount          Decimal  @db.Decimal(20, 10)
+  gatewayFee      Decimal  @default(0) @db.Decimal(20, 10)
+  surchargeAmount Decimal  @default(0) @db.Decimal(20, 10)
+  method          String
+  transactionId   String?
+  notes           String?
+  paidAt          DateTime @default(now())
+
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model GatewaySetting {
+  id          String      @id @default(cuid())
+  gatewayType GatewayType
+  isEnabled   Boolean     @default(false)
+  configJson  String
+  surcharge   Decimal     @default(0) @db.Decimal(5, 2)
+  label       String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, gatewayType])
+}
+
+model Comment {
+  id             String   @id @default(cuid())
+  body           String
+  isPrivate      Boolean  @default(false)
+  authorUserId   String?
+  authorClientId String?
+  authorName     String?
 
   invoiceId      String
   invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)

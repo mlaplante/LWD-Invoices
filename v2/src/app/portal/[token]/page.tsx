@@ -1,0 +1,248 @@
+import { db } from "@/server/db";
+import { notFound } from "next/navigation";
+import { PaymentButtons } from "@/components/portal/PaymentButtons";
+import { PortalComments } from "@/components/portal/PortalComments";
+import type { InvoiceStatus } from "@/generated/prisma";
+
+const STATUS_COLORS: Record<InvoiceStatus, string> = {
+  DRAFT: "bg-gray-100 text-gray-700",
+  SENT: "bg-blue-100 text-blue-700",
+  PARTIALLY_PAID: "bg-yellow-100 text-yellow-700",
+  PAID: "bg-green-100 text-green-700",
+  OVERDUE: "bg-red-100 text-red-700",
+  ACCEPTED: "bg-emerald-100 text-emerald-700",
+  REJECTED: "bg-rose-100 text-rose-700",
+};
+
+function fmt(
+  n: number | { toNumber(): number },
+  symbol: string,
+  pos: string
+): string {
+  const val = typeof n === "object" ? n.toNumber() : n;
+  return pos === "before" ? `${symbol}${val.toFixed(2)}` : `${val.toFixed(2)}${symbol}`;
+}
+
+function formatDate(d: Date | null | undefined): string {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
+
+export default async function PortalInvoicePage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
+
+  const invoice = await db.invoice.findUnique({
+    where: { portalToken: token },
+    include: {
+      client: true,
+      currency: true,
+      organization: true,
+      lines: {
+        include: { taxes: { include: { tax: true } } },
+        orderBy: { sort: "asc" },
+      },
+      payments: { orderBy: { paidAt: "asc" } },
+    },
+  });
+
+  if (!invoice) notFound();
+
+  const sym = invoice.currency.symbol;
+  const symPos = invoice.currency.symbolPosition;
+  const f = (n: Parameters<typeof fmt>[0]) => fmt(n, sym, symPos);
+
+  // Load enabled gateways (no secrets)
+  const gateways = await db.gatewaySetting.findMany({
+    where: { organizationId: invoice.organizationId, isEnabled: true },
+    select: { gatewayType: true, surcharge: true, label: true },
+  });
+
+  // Load public comments
+  const comments = await db.comment.findMany({
+    where: { invoiceId: invoice.id, isPrivate: false },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, body: true, authorName: true, createdAt: true },
+  });
+
+  const isPayable = PAYABLE_STATUSES.includes(invoice.status);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
+        {/* Org header */}
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900">{invoice.organization.name}</h1>
+        </div>
+
+        {/* Invoice card */}
+        <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+          {/* Invoice header */}
+          <div className="bg-blue-600 px-6 py-5 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-blue-200 text-sm uppercase tracking-wide">
+                  {invoice.type === "ESTIMATE" ? "Estimate" : "Invoice"}
+                </p>
+                <p className="text-3xl font-bold mt-1">#{invoice.number}</p>
+              </div>
+              <span
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLORS[invoice.status]}`}
+              >
+                {invoice.status.replace("_", " ")}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-6">
+            {/* Bill to + dates */}
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs uppercase text-gray-400 mb-1">Bill To</p>
+                <p className="font-semibold text-gray-900">{invoice.client.name}</p>
+                {invoice.client.email && (
+                  <p className="text-sm text-gray-500">{invoice.client.email}</p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-xs uppercase text-gray-400 mb-1">Invoice Date</p>
+                <p className="text-sm text-gray-900 mb-3">{formatDate(invoice.date)}</p>
+                {invoice.dueDate && (
+                  <>
+                    <p className="text-xs uppercase text-gray-400 mb-1">Due Date</p>
+                    <p className="text-sm text-gray-900">{formatDate(invoice.dueDate)}</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Line items */}
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs uppercase text-gray-400">
+                  <th className="pb-2 font-medium">Description</th>
+                  <th className="pb-2 text-right font-medium">Qty</th>
+                  <th className="pb-2 text-right font-medium">Rate</th>
+                  <th className="pb-2 text-right font-medium">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoice.lines.map((line) => (
+                  <tr key={line.id} className="border-b">
+                    <td className="py-3">
+                      <p className="font-medium text-gray-900">{line.name}</p>
+                      {line.description && (
+                        <p className="text-xs text-gray-500">{line.description}</p>
+                      )}
+                    </td>
+                    <td className="py-3 text-right text-gray-600">
+                      {Number(line.qty).toFixed(2)}
+                    </td>
+                    <td className="py-3 text-right text-gray-600">{f(line.rate)}</td>
+                    <td className="py-3 text-right font-medium text-gray-900">
+                      {f(line.subtotal)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Totals */}
+            <div className="flex justify-end">
+              <div className="w-60 space-y-1.5">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Subtotal</span>
+                  <span>{f(invoice.subtotal)}</span>
+                </div>
+                {Number(invoice.discountTotal) > 0 && (
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Discount</span>
+                    <span>-{f(invoice.discountTotal)}</span>
+                  </div>
+                )}
+                {Number(invoice.taxTotal) > 0 && (
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Tax</span>
+                    <span>{f(invoice.taxTotal)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t pt-2 text-base font-bold text-gray-900">
+                  <span>Total</span>
+                  <span>{f(invoice.total)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {invoice.notes && (
+              <div className="rounded bg-gray-50 p-4">
+                <p className="text-xs uppercase text-gray-400 mb-1">Notes</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Payment history */}
+        {invoice.payments.length > 0 && (
+          <div className="rounded-lg border bg-white shadow-sm p-6">
+            <h2 className="text-base font-semibold text-gray-900 mb-4">Payment History</h2>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs uppercase text-gray-400">
+                  <th className="pb-2 font-medium">Date</th>
+                  <th className="pb-2 font-medium">Method</th>
+                  <th className="pb-2 text-right font-medium">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoice.payments.map((p) => (
+                  <tr key={p.id} className="border-b last:border-0">
+                    <td className="py-2 text-gray-600">{formatDate(p.paidAt)}</td>
+                    <td className="py-2 capitalize text-gray-600">{p.method}</td>
+                    <td className="py-2 text-right font-medium text-gray-900">
+                      {f(p.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Payment buttons */}
+        {isPayable && gateways.length > 0 && (
+          <PaymentButtons
+            token={token}
+            gateways={gateways.map((g) => ({
+              gatewayType: g.gatewayType,
+              surcharge: g.surcharge.toNumber(),
+              label: g.label ?? null,
+            }))}
+            total={f(invoice.total)}
+          />
+        )}
+
+        {/* Comments */}
+        <PortalComments
+          token={token}
+          initialComments={comments.map((c) => ({
+            id: c.id,
+            body: c.body,
+            authorName: c.authorName ?? "Client",
+            createdAt: c.createdAt.toISOString(),
+          }))}
+        />
+      </div>
+    </div>
+  );
+}
