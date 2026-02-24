@@ -10,11 +10,15 @@ export const notificationsRouter = router({
         where: { id: ctx.orgId },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.notification.findMany({
-        where: { organizationId: org.id, userId: ctx.userId! },
-        orderBy: { createdAt: "desc" },
-        take: input.limit,
-      });
+      try {
+        return await ctx.db.notification.findMany({
+          where: { organizationId: org.id, userId: ctx.userId! },
+          orderBy: { createdAt: "desc" },
+          take: input.limit,
+        });
+      } catch {
+        return [];
+      }
     }),
 
   unreadCount: protectedProcedure.query(async ({ ctx }) => {
@@ -22,13 +26,17 @@ export const notificationsRouter = router({
       where: { id: ctx.orgId },
     });
     if (!org) throw new TRPCError({ code: "NOT_FOUND" });
-    return ctx.db.notification.count({
-      where: {
-        organizationId: org.id,
-        userId: ctx.userId!,
-        isRead: false,
-      },
-    });
+    try {
+      return await ctx.db.notification.count({
+        where: {
+          organizationId: org.id,
+          userId: ctx.userId!,
+          isRead: false,
+        },
+      });
+    } catch {
+      return 0;
+    }
   }),
 
   markRead: protectedProcedure
