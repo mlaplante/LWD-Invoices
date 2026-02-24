@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pancake",
+  title: "LaPlante Web Development Invoices",
   description: "Modern invoicing for freelancers and small teams",
 };
 

@@ -6,7 +6,7 @@ export default function OnboardingPage() {
       <div className="space-y-4 text-center">
         <h1 className="text-2xl font-bold">Create your workspace</h1>
         <p className="text-muted-foreground">
-          Set up an organization to get started with Pancake.
+          Set up an organization to get started with LWD Invoices.
         </p>
         <CreateOrganization afterCreateOrganizationUrl="/" />
       </div>

@@ -17,11 +17,11 @@ export default function DashboardLayout({
         <div className="flex items-center gap-2.5 px-1 mb-7">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
             <span className="text-primary-foreground text-sm font-black tracking-tight">
-              P
+              L
             </span>
           </div>
           <span className="font-extrabold text-[17px] text-foreground tracking-tight">
-            Pancake
+            LWD Invoices
           </span>
         </div>
 

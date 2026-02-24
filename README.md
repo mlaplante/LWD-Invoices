@@ -1,10 +1,10 @@
-# Pancake
+# LaPlante Web Development Invoices
 
 A modern invoicing and business management SaaS — rebuilt from a legacy PHP application as a full-stack Next.js app.
 
 ## What it does
 
-Pancake helps freelancers and small agencies manage their business operations:
+LWD Invoices helps freelancers and small agencies manage their business operations:
 
 - **Invoicing** — Create, send, and manage invoices with line items, compound tax support, partial payments, and PDF generation
 - **Client Portal** — Shareable, token-based portal where clients can view invoices, pay online, and approve estimates

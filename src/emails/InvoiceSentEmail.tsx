@@ -127,7 +127,7 @@ export function InvoiceSentEmail({
 
           <Hr style={{ borderColor: "#e5e7eb", margin: "24px 0" }} />
           <Text style={{ fontSize: 12, color: "#9ca3af" }}>
-            Sent by {orgName} · Powered by Pancake
+            Sent by {orgName} · Powered by LWD Invoices
           </Text>
         </Container>
       </Body>
