@@ -141,6 +141,11 @@ export const invoicesRouter = router({
   create: protectedProcedure
     .input(invoiceWriteSchema)
     .mutation(async ({ ctx, input }) => {
+      const org = await ctx.db.organization.findFirst({
+        where: { clerkId: ctx.orgId },
+      });
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
 
       const invoice = await ctx.db.$transaction(async (tx) => {
@@ -209,7 +214,7 @@ export const invoicesRouter = router({
         entityType: "Invoice",
         entityId: invoice.id,
         entityLabel: invoice.number,
-        organizationId: ctx.orgId,
+        organizationId: org.id,
         userId: ctx.userId,
       }).catch(() => {}); // non-critical, don't fail the mutation
 
@@ -219,6 +224,11 @@ export const invoicesRouter = router({
   update: protectedProcedure
     .input(z.object({ id: z.string() }).merge(invoiceWriteSchema.partial()))
     .mutation(async ({ ctx, input }) => {
+      const org = await ctx.db.organization.findFirst({
+        where: { clerkId: ctx.orgId },
+      });
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
       const existing = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
         select: { status: true },
@@ -237,7 +247,7 @@ export const invoicesRouter = router({
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
       const { id, lines, ...rest } = input;
 
-      return ctx.db.$transaction(async (tx) => {
+      const invoice = await ctx.db.$transaction(async (tx) => {
         if (lines !== undefined) {
           await tx.invoiceLine.deleteMany({ where: { invoiceId: id } });
 
@@ -295,6 +305,17 @@ export const invoicesRouter = router({
           include: fullInvoiceInclude,
         });
       });
+
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        entityLabel: invoice.number,
+        organizationId: org.id,
+        userId: ctx.userId,
+      }).catch(() => {}); // non-critical, don't fail the mutation
+
+      return invoice;
     }),
 
   duplicate: protectedProcedure
@@ -435,7 +456,7 @@ export const invoicesRouter = router({
         entityType: "Invoice",
         entityId: invoice.id,
         entityLabel: invoice.number,
-        organizationId: ctx.orgId,
+        organizationId: invoice.organization.id,
         userId: ctx.userId,
       }).catch(() => {});
 
