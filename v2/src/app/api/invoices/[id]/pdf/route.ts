@@ -1,7 +1,6 @@
 import { type NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
-import { generateInvoicePDF } from "@/server/services/invoice-pdf";
 
 export async function GET(
   _req: NextRequest,
@@ -31,6 +30,19 @@ export async function GET(
 
   if (!invoice) {
     return new Response("Not Found", { status: 404 });
+  }
+
+  // Lazy-load so any module-load failure is caught inside the handler
+  let generateInvoicePDF: (typeof import("@/server/services/invoice-pdf"))["generateInvoicePDF"];
+  try {
+    const mod = await import("@/server/services/invoice-pdf");
+    generateInvoicePDF = mod.generateInvoicePDF;
+  } catch (err) {
+    console.error("[PDF] Failed to load invoice-pdf module:", err);
+    return new Response(
+      `PDF module load failed: ${err instanceof Error ? err.message : String(err)}`,
+      { status: 500, headers: { "Content-Type": "text/plain" } }
+    );
   }
 
   let buffer: Buffer;
