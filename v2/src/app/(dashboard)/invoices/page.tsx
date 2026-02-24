@@ -2,16 +2,43 @@ import { api } from "@/trpc/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
+import { FileText } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-// Status badge colors
-const STATUS_COLORS: Record<InvoiceStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-700",
-  SENT: "bg-blue-100 text-blue-700",
-  PARTIALLY_PAID: "bg-yellow-100 text-yellow-700",
-  PAID: "bg-green-100 text-green-700",
-  OVERDUE: "bg-red-100 text-red-700",
-  ACCEPTED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-rose-100 text-rose-700",
+// ── Status badge ─────────────────────────────────────────────────────────────
+
+const STATUS_BADGE: Record<
+  InvoiceStatus,
+  { label: string; className: string }
+> = {
+  DRAFT: {
+    label: "Draft",
+    className: "bg-gray-100 text-gray-500",
+  },
+  SENT: {
+    label: "Unpaid",
+    className: "bg-amber-50 text-amber-600",
+  },
+  PARTIALLY_PAID: {
+    label: "Partial",
+    className: "bg-blue-50 text-blue-600",
+  },
+  PAID: {
+    label: "Paid",
+    className: "bg-primary/10 text-primary",
+  },
+  OVERDUE: {
+    label: "Overdue",
+    className: "bg-red-50 text-red-600",
+  },
+  ACCEPTED: {
+    label: "Accepted",
+    className: "bg-emerald-50 text-emerald-600",
+  },
+  REJECTED: {
+    label: "Rejected",
+    className: "bg-gray-100 text-gray-500",
+  },
 };
 
 const TYPE_LABELS: Record<InvoiceType, string> = {
@@ -21,9 +48,15 @@ const TYPE_LABELS: Record<InvoiceType, string> = {
   CREDIT_NOTE: "Credit Note",
 };
 
-function fmt(n: number | { toNumber(): number }, symbol: string, pos: string) {
+function fmt(
+  n: number | { toNumber(): number },
+  symbol: string,
+  pos: string
+): string {
   const val = typeof n === "object" ? n.toNumber() : n;
-  return pos === "before" ? `${symbol}${val.toFixed(2)}` : `${val.toFixed(2)}${symbol}`;
+  return pos === "before"
+    ? `${symbol}${val.toFixed(2)}`
+    : `${val.toFixed(2)}${symbol}`;
 }
 
 function formatDate(d: Date | null): string {
@@ -35,98 +68,190 @@ function formatDate(d: Date | null): string {
   });
 }
 
-export default async function InvoicesPage() {
+// ── Tab config ───────────────────────────────────────────────────────────────
+
+type Tab = "all" | "unpaid" | "pending" | "paid" | "archived";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "all", label: "All Invoices" },
+  { id: "unpaid", label: "Unpaid" },
+  { id: "pending", label: "Pending" },
+  { id: "paid", label: "Paid" },
+  { id: "archived", label: "Archived" },
+];
+
+const TAB_FILTERS: Record<
+  Tab,
+  { status?: InvoiceStatus[]; includeArchived: boolean }
+> = {
+  all: { includeArchived: false },
+  unpaid: { status: ["SENT", "OVERDUE"], includeArchived: false },
+  pending: { status: ["DRAFT", "PARTIALLY_PAID"], includeArchived: false },
+  paid: { status: ["PAID", "ACCEPTED"], includeArchived: false },
+  archived: { includeArchived: true },
+};
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab: rawTab } = await searchParams;
+  const activeTab: Tab =
+    rawTab && Object.keys(TAB_FILTERS).includes(rawTab)
+      ? (rawTab as Tab)
+      : "all";
+
+  const filter = TAB_FILTERS[activeTab];
+
   let invoices: Awaited<ReturnType<typeof api.invoices.list>> = [];
   try {
-    invoices = await api.invoices.list({ includeArchived: false });
+    invoices = await api.invoices.list(filter);
   } catch (err) {
     console.error("[InvoicesPage] list failed:", err);
-    throw err; // re-throw so error.tsx can render a friendly message
+    throw err;
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Page heading */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Invoices</h1>
-        <Button asChild>
-          <Link href="/invoices/new">New Invoice</Link>
+        <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
+        <Button asChild size="sm">
+          <Link href="/invoices/new">+ New Invoice</Link>
         </Button>
       </div>
 
+      {/* Filter tabs */}
+      <div className="flex items-center gap-1 border-b border-border">
+        {TABS.map((t) => (
+          <Link
+            key={t.id}
+            href={t.id === "all" ? "/invoices" : `/invoices?tab=${t.id}`}
+            className={cn(
+              "px-4 py-2.5 text-sm font-medium transition-colors relative",
+              activeTab === t.id
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t.label}
+            {activeTab === t.id && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+            )}
+          </Link>
+        ))}
+      </div>
+
+      {/* Invoice table */}
       {invoices.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-          <p className="text-lg font-medium">No invoices yet</p>
-          <p className="mt-1 text-sm">Create your first invoice to get started.</p>
-          <Button asChild className="mt-4">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
+            <FileText className="w-6 h-6 text-primary" />
+          </div>
+          <p className="font-semibold text-foreground">No invoices yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create your first invoice to get started.
+          </p>
+          <Button asChild className="mt-5" size="sm">
             <Link href="/invoices/new">Create Invoice</Link>
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Number</th>
-                <th className="px-4 py-3 text-left font-medium">Client</th>
-                <th className="px-4 py-3 text-left font-medium">Type</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-left font-medium">Date</th>
-                <th className="px-4 py-3 text-left font-medium">Due</th>
-                <th className="px-4 py-3 text-right font-medium">Total</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
+            <thead>
+              <tr className="border-b border-border">
+                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-2">
+                  Invoice
+                </th>
+                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Date
+                </th>
+                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Client
+                </th>
+                <th className="pb-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Amount
+                </th>
+                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-4">
+                  Status
+                </th>
+                <th className="pb-3" />
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-mono font-medium">
-                    <Link
-                      href={`/invoices/${inv.id}`}
-                      className="hover:underline"
-                    >
-                      #{inv.number}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{inv.client.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {TYPE_LABELS[inv.type]}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[inv.status]}`}
-                    >
-                      {inv.status.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatDate(inv.date)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatDate(inv.dueDate)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium">
-                    {fmt(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link
-                        href={`/invoices/${inv.id}`}
-                        className="text-xs text-blue-600 hover:underline"
+            <tbody className="divide-y divide-border/50">
+              {invoices.map((inv) => {
+                const badge = STATUS_BADGE[inv.status];
+                return (
+                  <tr
+                    key={inv.id}
+                    className="group hover:bg-accent/30 transition-colors"
+                  >
+                    {/* Invoice identity */}
+                    <td className="py-3.5 pl-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                          <FileText className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground leading-tight">
+                            {TYPE_LABELS[inv.type]} #{inv.number}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {inv.client.name}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Date */}
+                    <td className="py-3.5 text-muted-foreground">
+                      {formatDate(inv.date)}
+                    </td>
+
+                    {/* Client */}
+                    <td className="py-3.5 text-foreground/80">
+                      {inv.client.name}
+                    </td>
+
+                    {/* Amount */}
+                    <td className="py-3.5 text-right font-semibold text-foreground">
+                      {fmt(
+                        inv.total,
+                        inv.currency.symbol,
+                        inv.currency.symbolPosition
+                      )}
+                    </td>
+
+                    {/* Status badge */}
+                    <td className="py-3.5 pl-4">
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold",
+                          badge.className
+                        )}
                       >
-                        View
-                      </Link>
-                      <a
-                        href={`/api/invoices/${inv.id}/pdf`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-muted-foreground hover:underline"
-                      >
-                        PDF
-                      </a>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {badge.label}
+                      </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-3.5 pr-2">
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Link
+                          href={`/invoices/${inv.id}`}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                        >
+                          View
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
