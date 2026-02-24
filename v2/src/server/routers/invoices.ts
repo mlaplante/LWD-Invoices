@@ -508,7 +508,7 @@ export const invoicesRouter = router({
       });
       if (!inv) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.invoice.update({
-        where: { id: input.id },
+        where: { id: input.id, organizationId: org.id },
         data: { status: "ACCEPTED" },
       });
     }),
@@ -525,7 +525,7 @@ export const invoicesRouter = router({
       });
       if (!inv) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.invoice.update({
-        where: { id: input.id },
+        where: { id: input.id, organizationId: org.id },
         data: { status: "REJECTED" },
       });
     }),

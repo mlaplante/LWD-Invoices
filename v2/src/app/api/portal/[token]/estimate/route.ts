@@ -15,6 +15,10 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  if (invoice.status === "ACCEPTED" || invoice.status === "REJECTED") {
+    return NextResponse.json({ error: "Estimate already finalised" }, { status: 409 });
+  }
+
   const newStatus = body.action === "accept" ? "ACCEPTED" : "REJECTED";
   await db.invoice.update({ where: { id: invoice.id }, data: { status: newStatus } });
   return NextResponse.json({ status: newStatus });
