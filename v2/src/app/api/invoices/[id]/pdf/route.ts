@@ -33,7 +33,17 @@ export async function GET(
     return new Response("Not Found", { status: 404 });
   }
 
-  const buffer = await generateInvoicePDF(invoice);
+  let buffer: Buffer;
+  try {
+    buffer = await generateInvoicePDF(invoice);
+  } catch (err) {
+    console.error("[PDF] generateInvoicePDF failed:", err);
+    return new Response(
+      `PDF generation failed: ${err instanceof Error ? err.message : String(err)}`,
+      { status: 500, headers: { "Content-Type": "text/plain" } }
+    );
+  }
+
   // Copy into a clean ArrayBuffer to avoid SharedArrayBuffer ambiguity
   const arrayBuffer = buffer.buffer instanceof ArrayBuffer
     ? buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
