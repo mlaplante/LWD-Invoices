@@ -53,6 +53,12 @@ enum LineType {
   PERIOD_YEAR
 }
 
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
 // ─── Core Models ──────────────────────────────────────────────────────────────
 
 model Organization {
@@ -62,19 +68,30 @@ model Organization {
   slug              String?  @unique
   invoicePrefix     String   @default("INV")
   invoiceNextNumber Int      @default(1)
+  taskTimeInterval  Float    @default(0)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  users           User[]
-  clients         Client[]
-  currencies      Currency[]
-  taxes           Tax[]
-  items           Item[]
-  invoices        Invoice[]
-  partialPayments PartialPayment[]
-  payments        Payment[]
-  gateways        GatewaySetting[]
-  comments        Comment[]
+  users             User[]
+  clients           Client[]
+  currencies        Currency[]
+  taxes             Tax[]
+  items             Item[]
+  invoices          Invoice[]
+  partialPayments   PartialPayment[]
+  payments          Payment[]
+  gateways          GatewaySetting[]
+  comments          Comment[]
+  projects          Project[]
+  milestones        Milestone[]
+  tasks             ProjectTask[]
+  taskStatuses      TaskStatus[]
+  projectTemplates  ProjectTemplate[]
+  timeEntries       TimeEntry[]
+  timers            Timer[]
+  expenses          Expense[]
+  expenseCategories ExpenseCategory[]
+  expenseSuppliers  ExpenseSupplier[]
 }
 
 model User {
@@ -112,6 +129,7 @@ model Client {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invoices       Invoice[]
+  projects       Project[]
 }
 
 model Currency {
@@ -128,6 +146,7 @@ model Currency {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invoices       Invoice[]
+  projects       Project[]
 
   @@unique([organizationId, code])
 }
@@ -141,9 +160,10 @@ model Tax {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  organizationId  String
-  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId   String
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invoiceLineTaxes InvoiceLineTax[]
+  expenses         Expense[]
 }
 
 model Item {
@@ -320,4 +340,197 @@ model Comment {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+// ─── Project Models ───────────────────────────────────────────────────────────
+
+model TaskStatus {
+  id              String  @id @default(cuid())
+  title           String
+  backgroundColor String  @default("#e5e7eb")
+  fontColor       String  @default("#111827")
+  sortOrder       Int     @default(0)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks           ProjectTask[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id                  String        @id @default(cuid())
+  name                String
+  description         String?
+  status              ProjectStatus @default(ACTIVE)
+  dueDate             DateTime?
+  rate                Decimal       @default(0) @db.Decimal(20, 10)
+  projectedHours      Float         @default(0)
+  isFlatRate          Boolean       @default(false)
+  isViewable          Boolean       @default(false)
+  isTimesheetViewable Boolean       @default(false)
+  currencyId          String
+  currency            Currency      @relation(fields: [currencyId], references: [id])
+  clientId            String
+  client              Client        @relation(fields: [clientId], references: [id])
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  milestones          Milestone[]
+  tasks               ProjectTask[]
+  timeEntries         TimeEntry[]
+  expenses            Expense[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Milestone {
+  id             String    @id @default(cuid())
+  name           String
+  description    String?
+  color          String    @default("#3b82f6")
+  targetDate     DateTime?
+  sortOrder      Int       @default(0)
+  isViewable     Boolean   @default(false)
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks          ProjectTask[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectTask {
+  id                  String        @id @default(cuid())
+  name                String
+  notes               String?
+  sortOrder           Int           @default(0)
+  isCompleted         Boolean       @default(false)
+  isViewable          Boolean       @default(false)
+  isTimesheetViewable Boolean       @default(false)
+  isFlatRate          Boolean       @default(false)
+  projectedHours      Float         @default(0)
+  rate                Decimal       @default(0) @db.Decimal(20, 10)
+  dueDate             DateTime?
+  invoiceLineId       String?
+  assignedUserId      String?
+  parentId            String?
+  parent              ProjectTask?  @relation("TaskChildren", fields: [parentId], references: [id])
+  children            ProjectTask[] @relation("TaskChildren")
+  milestoneId         String?
+  milestone           Milestone?    @relation(fields: [milestoneId], references: [id])
+  taskStatusId        String?
+  taskStatus          TaskStatus?   @relation(fields: [taskStatusId], references: [id])
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  timeEntries         TimeEntry[]
+  timer               Timer?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectTemplate {
+  id             String  @id @default(cuid())
+  name           String
+  description    String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks          ProjectTemplateTask[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectTemplateTask {
+  id              String  @id @default(cuid())
+  name            String
+  notes           String?
+  sortOrder       Int     @default(0)
+  projectedHours  Float   @default(0)
+  rate            Decimal @default(0) @db.Decimal(20, 10)
+  parentSortOrder Int?
+  templateId      String
+  template        ProjectTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model TimeEntry {
+  id             String   @id @default(cuid())
+  date           DateTime @default(now())
+  startTime      String?
+  endTime        String?
+  minutes        Decimal  @db.Decimal(16, 8)
+  note           String?
+  invoiceLineId  String?
+  userId         String
+  taskId         String?
+  task           ProjectTask? @relation(fields: [taskId], references: [id])
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Timer {
+  id             String   @id @default(cuid())
+  startedAt      DateTime
+  lastModifiedAt DateTime
+  currentSeconds Int      @default(0)
+  isPaused       Boolean  @default(false)
+  isOver         Boolean  @default(false)
+  pausesJson     String   @default("[]")
+  userId         String
+  taskId         String   @unique
+  task           ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExpenseCategory {
+  id             String  @id @default(cuid())
+  name           String
+  description    String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expenses       Expense[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExpenseSupplier {
+  id             String  @id @default(cuid())
+  name           String
+  description    String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expenses       Expense[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Expense {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  qty            Int      @default(1)
+  rate           Decimal  @db.Decimal(20, 10)
+  dueDate        DateTime?
+  paymentDetails String?
+  invoiceLineId  String?
+  taxId          String?
+  tax            Tax?     @relation(fields: [taxId], references: [id])
+  categoryId     String?
+  category       ExpenseCategory? @relation(fields: [categoryId], references: [id])
+  supplierId     String?
+  supplier       ExpenseSupplier? @relation(fields: [supplierId], references: [id])
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

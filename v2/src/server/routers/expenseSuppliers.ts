@@ -1,0 +1,47 @@
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { router, protectedProcedure } from "../trpc";
+
+export const expenseSuppliersRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.expenseSupplier.findMany({
+      where: { organizationId: ctx.orgId },
+      orderBy: { name: "asc" },
+    });
+  }),
+
+  create: protectedProcedure
+    .input(z.object({ name: z.string().min(1), description: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.expenseSupplier.create({
+        data: { ...input, organizationId: ctx.orgId },
+      });
+    }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).optional(),
+        description: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      const existing = await ctx.db.expenseSupplier.findUnique({
+        where: { id, organizationId: ctx.orgId },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.expenseSupplier.update({ where: { id }, data });
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.expenseSupplier.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.expenseSupplier.delete({ where: { id: input.id } });
+    }),
+});

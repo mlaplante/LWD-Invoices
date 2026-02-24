@@ -1,0 +1,47 @@
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { router, protectedProcedure } from "../trpc";
+
+export const expenseCategoriesRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.expenseCategory.findMany({
+      where: { organizationId: ctx.orgId },
+      orderBy: { name: "asc" },
+    });
+  }),
+
+  create: protectedProcedure
+    .input(z.object({ name: z.string().min(1), description: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.expenseCategory.create({
+        data: { ...input, organizationId: ctx.orgId },
+      });
+    }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).optional(),
+        description: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      const existing = await ctx.db.expenseCategory.findUnique({
+        where: { id, organizationId: ctx.orgId },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.expenseCategory.update({ where: { id }, data });
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.expenseCategory.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.expenseCategory.delete({ where: { id: input.id } });
+    }),
+});
