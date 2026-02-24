@@ -174,7 +174,26 @@ export function CurrencyManager({ initialCurrencies }: Props) {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => { setError(null); createMutation.mutate(form, { onError: (e) => setError(e.message) }); }} disabled={createMutation.isPending}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setError(null);
+                createMutation.mutate(form, {
+                  onError: (e) => {
+                    const zodError = (e.data as { zodError?: { fieldErrors: Record<string, string[]> } } | undefined)?.zodError;
+                    if (zodError?.fieldErrors) {
+                      const msgs = Object.entries(zodError.fieldErrors)
+                        .map(([f, errs]) => `${f}: ${errs[0]}`)
+                        .join(", ");
+                      setError(msgs);
+                    } else {
+                      setError(e.message);
+                    }
+                  },
+                });
+              }}
+              disabled={createMutation.isPending || !form.code || !form.name || !form.symbol}
+            >
               {createMutation.isPending ? "Adding…" : "Add Currency"}
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setAdding(false); setForm(EMPTY); }}>Cancel</Button>
