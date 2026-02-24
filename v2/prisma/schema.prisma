@@ -7,19 +7,63 @@ datasource db {
   provider = "postgresql"
 }
 
-model Organization {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  name      String
-  slug      String?  @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ─── Enums ────────────────────────────────────────────────────────────────────
 
-  users      User[]
-  clients    Client[]
-  currencies Currency[]
-  taxes      Tax[]
-  items      Item[]
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+enum InvoiceType {
+  SIMPLE
+  DETAILED
+  ESTIMATE
+  CREDIT_NOTE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  ACCEPTED
+  REJECTED
+}
+
+enum LineType {
+  STANDARD
+  TIME_ENTRY
+  FLAT_RATE
+  EXPENSE
+  PERCENTAGE_DISCOUNT
+  FIXED_DISCOUNT
+  PERIOD_DAY
+  PERIOD_WEEK
+  PERIOD_MONTH
+  PERIOD_YEAR
+}
+
+// ─── Core Models ──────────────────────────────────────────────────────────────
+
+model Organization {
+  id                String   @id @default(cuid())
+  clerkId           String   @unique
+  name              String
+  slug              String?  @unique
+  invoicePrefix     String   @default("INV")
+  invoiceNextNumber Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  users           User[]
+  clients         Client[]
+  currencies      Currency[]
+  taxes           Tax[]
+  items           Item[]
+  invoices        Invoice[]
+  partialPayments PartialPayment[]
+  payments        Payment[]
 }
 
 model User {
@@ -34,11 +78,6 @@ model User {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-}
-
-enum UserRole {
-  ADMIN
-  STAFF
 }
 
 model Client {
@@ -61,6 +100,7 @@ model Client {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices       Invoice[]
 }
 
 model Currency {
@@ -76,32 +116,158 @@ model Currency {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices       Invoice[]
 
   @@unique([organizationId, code])
 }
 
 model Tax {
-  id             String   @id @default(cuid())
-  name           String
-  rate           Decimal  @db.Decimal(8, 4)
-  isCompound     Boolean  @default(false)
-  isDefault      Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id         String   @id @default(cuid())
+  name       String
+  rate       Decimal  @db.Decimal(8, 4)
+  isCompound Boolean  @default(false)
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceLineTaxes InvoiceLineTax[]
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  rate        Decimal? @db.Decimal(18, 6)
+  unit        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
-model Item {
-  id             String   @id @default(cuid())
-  name           String
-  description    String?
-  rate           Decimal? @db.Decimal(18, 6)
-  unit           String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+// ─── Invoice Models ───────────────────────────────────────────────────────────
 
+model Invoice {
+  id         String        @id @default(cuid())
+  number     String
+  type       InvoiceType   @default(DETAILED)
+  status     InvoiceStatus @default(DRAFT)
+  date       DateTime      @default(now())
+  dueDate    DateTime?
+  lastSent   DateTime?
+  lastViewed DateTime?
+
+  // Cached totals (recalculated on every save)
+  subtotal      Decimal @default(0) @db.Decimal(20, 10)
+  discountTotal Decimal @default(0) @db.Decimal(20, 10)
+  taxTotal      Decimal @default(0) @db.Decimal(20, 10)
+  total         Decimal @default(0) @db.Decimal(20, 10)
+
+  // Currency
+  currencyId   String
+  currency     Currency @relation(fields: [currencyId], references: [id])
+  exchangeRate Decimal  @default(1) @db.Decimal(10, 5)
+
+  // SIMPLE type only
+  simpleAmount Decimal? @db.Decimal(20, 10)
+
+  notes      String?
+  isArchived Boolean @default(false)
+
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id])
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  lines           InvoiceLine[]
+  partialPayments PartialPayment[]
+  payments        Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, number])
+}
+
+model InvoiceLine {
+  id                   String   @id @default(cuid())
+  sort                 Int      @default(0)
+  lineType             LineType @default(STANDARD)
+  name                 String
+  description          String?
+  qty                  Decimal  @default(1) @db.Decimal(10, 4)
+  rate                 Decimal  @default(0) @db.Decimal(20, 10)
+  period               Decimal? @db.Decimal(10, 2)
+  discount             Decimal  @default(0) @db.Decimal(20, 10)
+  discountIsPercentage Boolean  @default(false)
+
+  // Cached calculated values (recomputed on save)
+  subtotal Decimal @default(0) @db.Decimal(20, 10)
+  taxTotal Decimal @default(0) @db.Decimal(20, 10)
+  total    Decimal @default(0) @db.Decimal(20, 10)
+
+  // Source tracking (time entries, expenses, etc.)
+  sourceTable String?
+  sourceId    String?
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  taxes InvoiceLineTax[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InvoiceLineTax {
+  id        String  @id @default(cuid())
+  taxAmount Decimal @default(0) @db.Decimal(20, 10)
+
+  invoiceLineId String
+  invoiceLine   InvoiceLine @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
+  taxId         String
+  tax           Tax         @relation(fields: [taxId], references: [id])
+
+  @@unique([invoiceLineId, taxId])
+}
+
+model PartialPayment {
+  id            String    @id @default(cuid())
+  sortOrder     Int       @default(0)
+  amount        Decimal   @db.Decimal(20, 10)
+  isPercentage  Boolean   @default(false)
+  dueDate       DateTime?
+  notes         String?
+  isPaid        Boolean   @default(false)
+  paidAt        DateTime?
+  paymentMethod String?
+  transactionId String?
+  gatewayFee    Decimal   @default(0) @db.Decimal(20, 10)
+
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  amount        Decimal  @db.Decimal(20, 10)
+  method        String
+  transactionId String?
+  notes         String?
+  paidAt        DateTime @default(now())
+
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }

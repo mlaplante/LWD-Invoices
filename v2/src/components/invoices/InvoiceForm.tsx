@@ -1,0 +1,315 @@
+"use client";
+
+import React, { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { InvoiceType, type Client, type Currency, type Tax } from "@/generated/prisma";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LineItemEditor, type LineItemValue } from "./LineItemEditor";
+import { calculateInvoiceTotals, type TaxInput } from "@/server/services/tax-calculator";
+import { trpc } from "@/trpc/client";
+
+type InvoiceFormData = {
+  id?: string;
+  type: InvoiceType;
+  date: string;
+  dueDate?: string;
+  currencyId: string;
+  number?: string;
+  notes?: string;
+  clientId: string;
+  lines: LineItemValue[];
+};
+
+type Props = {
+  mode: "create" | "edit";
+  initialData?: Partial<InvoiceFormData>;
+  clients: Pick<Client, "id" | "name">[];
+  currencies: Pick<Currency, "id" | "code" | "symbol" | "symbolPosition">[];
+  taxes: Pick<Tax, "id" | "name" | "rate" | "isCompound">[];
+};
+
+const TYPE_LABELS: Record<InvoiceType, string> = {
+  [InvoiceType.DETAILED]: "Invoice (Detailed)",
+  [InvoiceType.SIMPLE]: "Invoice (Simple)",
+  [InvoiceType.ESTIMATE]: "Estimate",
+  [InvoiceType.CREDIT_NOTE]: "Credit Note",
+};
+
+export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: Props) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+
+  const defaultCurrency = currencies[0];
+
+  const [form, setForm] = useState<InvoiceFormData>({
+    type: InvoiceType.DETAILED,
+    date: new Date().toISOString().slice(0, 10),
+    dueDate: "",
+    currencyId: defaultCurrency?.id ?? "",
+    clientId: "",
+    notes: "",
+    lines: [],
+    ...initialData,
+  });
+
+  const activeCurrency =
+    currencies.find((c) => c.id === form.currencyId) ?? defaultCurrency;
+
+  const taxOptions = taxes.map((t) => ({
+    id: t.id,
+    name: t.name,
+    rate: Number(t.rate),
+    isCompound: t.isCompound,
+  }));
+
+  const taxInputs: TaxInput[] = taxOptions;
+
+  const invoiceTotals = calculateInvoiceTotals(
+    form.lines.map((l) => ({
+      qty: l.qty,
+      rate: l.rate,
+      period: l.period,
+      lineType: l.lineType,
+      discount: l.discount,
+      discountIsPercentage: l.discountIsPercentage,
+      taxIds: l.taxIds,
+    })),
+    taxInputs
+  );
+
+  const sym = activeCurrency?.symbol ?? "$";
+  const symPos = activeCurrency?.symbolPosition ?? "before";
+  const fmt = (n: number) =>
+    symPos === "before" ? `${sym}${n.toFixed(2)}` : `${n.toFixed(2)}${sym}`;
+
+  const createMutation = trpc.invoices.create.useMutation();
+  const updateMutation = trpc.invoices.update.useMutation();
+
+  function buildInput() {
+    return {
+      type: form.type,
+      date: new Date(form.date),
+      dueDate: form.dueDate ? new Date(form.dueDate) : undefined,
+      currencyId: form.currencyId,
+      clientId: form.clientId,
+      notes: form.notes || undefined,
+      lines: form.lines.map((l, idx) => ({
+        sort: idx,
+        lineType: l.lineType,
+        name: l.name,
+        description: l.description || undefined,
+        qty: l.qty,
+        rate: l.rate,
+        period: l.period,
+        discount: l.discount,
+        discountIsPercentage: l.discountIsPercentage,
+        taxIds: l.taxIds,
+        sourceTable: l.sourceTable,
+        sourceId: l.sourceId,
+      })),
+    };
+  }
+
+  function handleSave(andSend = false) {
+    startTransition(async () => {
+      if (mode === "create") {
+        const inv = await createMutation.mutateAsync(buildInput());
+        if (andSend) {
+          router.push(`/invoices/${inv.id}?send=1`);
+        } else {
+          router.push(`/invoices/${inv.id}`);
+        }
+      } else if (form.id) {
+        const inv = await updateMutation.mutateAsync({ id: form.id, ...buildInput() });
+        router.push(`/invoices/${inv.id}`);
+      }
+    });
+  }
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  return (
+    <div className="space-y-6">
+      {/* Header fields */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Client */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Client</label>
+          <Select
+            value={form.clientId}
+            onValueChange={(v: string) => setForm((f) => ({ ...f, clientId: v }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select client…" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Type */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Type</label>
+          <Select
+            value={form.type}
+            onValueChange={(v: string) =>
+              setForm((f) => ({ ...f, type: v as InvoiceType }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Date */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Date</label>
+          <Input
+            type="date"
+            value={form.date}
+            onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+          />
+        </div>
+
+        {/* Due Date */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Due Date</label>
+          <Input
+            type="date"
+            value={form.dueDate ?? ""}
+            onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
+          />
+        </div>
+
+        {/* Currency */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Currency</label>
+          <Select
+            value={form.currencyId}
+            onValueChange={(v: string) => setForm((f) => ({ ...f, currencyId: v }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {currencies.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.code} ({c.symbol})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Invoice number (edit only) */}
+        {form.number !== undefined && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Invoice Number</label>
+            <Input
+              value={form.number}
+              onChange={(e) => setForm((f) => ({ ...f, number: e.target.value }))}
+              placeholder="Auto-assigned"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Line Items */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Line Items</h3>
+        <LineItemEditor
+          lines={form.lines}
+          taxes={taxOptions}
+          currencySymbol={sym}
+          onChange={(lines) => setForm((f) => ({ ...f, lines }))}
+        />
+      </div>
+
+      {/* Notes */}
+      <div className="space-y-1">
+        <label className="text-sm font-medium">Notes</label>
+        <Textarea
+          value={form.notes ?? ""}
+          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+          placeholder="Payment terms, bank details, thank you message…"
+          rows={3}
+        />
+      </div>
+
+      {/* Totals panel */}
+      <div className="flex justify-end">
+        <div className="w-72 space-y-1.5 rounded-lg border p-4">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Subtotal</span>
+            <span>{fmt(invoiceTotals.subtotal)}</span>
+          </div>
+          {invoiceTotals.discountTotal > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Discount</span>
+              <span>-{fmt(invoiceTotals.discountTotal)}</span>
+            </div>
+          )}
+          {invoiceTotals.taxTotal > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Tax</span>
+              <span>{fmt(invoiceTotals.taxTotal)}</span>
+            </div>
+          )}
+          <div className="flex justify-between border-t pt-1.5 text-base font-bold">
+            <span>Total</span>
+            <span>{fmt(invoiceTotals.total)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.back()}
+          disabled={isSaving}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleSave(false)}
+          disabled={isSaving || !form.clientId}
+        >
+          {isSaving ? "Saving…" : "Save as Draft"}
+        </Button>
+        <Button
+          type="button"
+          onClick={() => handleSave(true)}
+          disabled={isSaving || !form.clientId}
+        >
+          {isSaving ? "Saving…" : "Save & Send"}
+        </Button>
+      </div>
+    </div>
+  );
+}
