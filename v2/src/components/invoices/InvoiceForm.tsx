@@ -285,6 +285,15 @@ export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: P
       </div>
 
       {/* Actions */}
+      {currencies.length === 0 && (
+        <p className="text-sm text-destructive">
+          You need to{" "}
+          <a href="/settings" className="underline">
+            add a currency in Settings
+          </a>{" "}
+          before creating invoices.
+        </p>
+      )}
       <div className="flex gap-2">
         <Button
           type="button"
@@ -298,14 +307,14 @@ export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: P
           type="button"
           variant="outline"
           onClick={() => handleSave(false)}
-          disabled={isSaving || !form.clientId}
+          disabled={isSaving || !form.clientId || !form.currencyId}
         >
           {isSaving ? "Saving…" : "Save as Draft"}
         </Button>
         <Button
           type="button"
           onClick={() => handleSave(true)}
-          disabled={isSaving || !form.clientId}
+          disabled={isSaving || !form.clientId || !form.currencyId}
         >
           {isSaving ? "Saving…" : "Save & Send"}
         </Button>
