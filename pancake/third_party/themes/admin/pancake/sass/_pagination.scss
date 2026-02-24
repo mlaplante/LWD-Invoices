@@ -1,0 +1,35 @@
+.pagination {
+  width: 100%;
+  text-align: left;
+  position: relative;
+  zoom: 1;
+  margin-top: 20px;
+  li {
+    margin:0 4px;
+    display:inline-block;
+    font-size: 12px !important;
+    font-weight:bold;
+    cursor: pointer;
+  }
+  
+  // Button styles
+  li.num a, li.next a, li.prev a {
+    color:#666;
+    cursor:pointer;
+    text-align:center;
+    background: #f9f9f9;
+    padding: 4px 5px;
+    border: 1px solid #d7d7d7;
+    @include border-radius(3px);
+    @include background(linear-gradient(top, #f9f9f9, #e8e8e8));
+  }
+  
+  li.num a:hover, li.next a:hover, li.prev a:hover, li.num strong {
+    color:#fff;
+    padding: 4px 5px;
+    background: #5db4d8;
+    border: 1px solid #5490b8;
+    @include background(linear-gradient(top, #5db4d8, #6da3c7));
+    @include border-radius(3px);
+  }
+}

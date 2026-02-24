@@ -1,0 +1,234 @@
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,ruby,section,summary,time,mark,audio,video {
+    border:0;
+    font-size:100%;
+    font:inherit;
+    vertical-align:baseline;
+    margin:0;
+    padding:0;
+}
+
+article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section {
+    display:block;
+}
+
+body {
+    color: rgb(54, 54, 54);
+    line-height:1;
+    background:#3d3d3d;
+    font-family:Lato,sans-serif;
+}
+
+.body {
+    display: inline-block;
+    width: 100%;
+    margin-top: -17px;
+    margin-bottom: -2px;
+}
+
+ol,ul {
+    list-style:none;
+}
+
+blockquote,q {
+    quotes:none;
+}
+
+table {
+    border-collapse:collapse;
+    border-spacing:0;
+}
+
+*,:before,:after {
+    -moz-box-sizing:border-box;
+    -webkit-box-sizing:border-box;
+    box-sizing:border-box;
+}
+
+div.timer-container, .selects-container {
+    background: rgb(236, 236, 236);
+    -webkit-border-radius:5px;
+    -ms-border-radius:5px;
+    -moz-border-radius:5px;
+    -o-border-radius:5px;
+    border-radius:5px;
+    overflow:hidden;
+    _overflow:visible;
+    zoom:1;
+}
+
+div.header {
+    background:#29abe2;
+    color:#fff;
+    display:block;
+    font-size:20px;
+    font-weight:900;
+    line-height:1;
+    text-transform:uppercase;
+    max-height: 40px;
+}
+
+div.header i {
+    background:#29abe2;
+    border-radius:50px;
+    float:left;
+    font-size:40px;
+    position:relative;
+    margin:0 5px;
+    padding:7.5px;
+}
+
+div.header h1 {
+    padding:8px;
+}
+
+section {
+    position:relative;
+    text-align:center;
+}
+
+section.timer {
+    clear:left;
+    float:left;
+    width:60%;
+    overflow:hidden;
+    _overflow:visible;
+    zoom:1;
+}
+
+section.timer div {
+    display:inline;
+    font-size:200px;
+    font-weight:900;
+    letter-spacing:-10px;
+}
+
+section.timer div.divider {
+    color:#acacac;
+}
+
+section.action {
+    float:right;
+    width:20%;
+}
+
+section.action a {
+    background:#acacac;
+    color:#fff;
+    display:block;
+    font-size:80px;
+    text-align:center;
+    padding:60px 15px;
+}
+
+section.action a:hover {
+    background:#95d17b;
+}
+
+section.action.stop a:hover {
+    background: #EC5F41;
+}
+
+blockquote:before,blockquote:after,q:before,q:after {
+    content:none;
+}
+
+.client-name, .project-name, .task-name {
+    white-space: nowrap;
+}
+
+select {
+    width: 20%;
+    vertical-align: 4px;
+}
+
+* {
+    -webkit-touch-callout: none; /* prevent callout to copy image, etc when tap to hold */
+    -webkit-text-size-adjust: none; /* prevent webkit from resizing text to fit */
+    -webkit-tap-highlight-color: rgba(0,0,0,0); /* make transparent link selection, adjust last value opacity 0 to 1.0 */
+    -webkit-user-select: none; /* prevent copy paste, to allow, change 'none' to 'text' */
+}
+
+@media (max-width: 767px) {
+
+    div.header {
+        max-height: none;
+    }
+    
+    select {
+        width: 200px;
+    }
+
+    .client-name, .project-name, .task-name {
+        display: inline-block;
+    }
+
+    div.header {
+        font-size:15px;
+    }
+
+    div.header i {
+        padding:5px;
+    }
+
+    section.timer div {
+        font-size:75px;
+        letter-spacing:-2px;
+    }
+
+    section.timer {
+        padding:7.5px 0;
+    }
+
+    section.action a {
+        font-size:30px;
+        padding:30px;
+    }
+
+    div.header i {
+        background:transparent;
+        font-size:36px;
+        margin:0;
+    }
+
+    section.timer {
+        float:none;
+        width:100%;
+        margin:15px 0;
+        padding:30px;
+    }
+
+    section.timer div {
+        font-size:60px;
+    }
+
+    section.action {
+        float:none;
+        width:100%;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+
+    section.timer div {
+        font-size:100px;
+        letter-spacing:-5px;
+    }
+
+    section.action a {
+        font-size:40px;
+        padding:37px 15px;
+    }
+}
+
+@media (min-width: 1025px) and (max-width: 1400px) {
+
+    section.timer div {
+        font-size:140px; // from 200 to 140
+        letter-spacing:-5px;
+    }
+
+    section.action a {
+        font-size:56px;
+        padding:42px 15px;
+    }
+}

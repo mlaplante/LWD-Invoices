@@ -1,0 +1,33 @@
+table {
+	border: 1px solid $babyBlueBorder !important;
+	border-collapse: collapse;
+	td, th {
+		border: 1px solid $babyBlueBorder !important;
+	}
+	th {
+		color: #666 !important;
+		font-size: 14px !important;
+		font-size: 1.4rem !important;
+	}
+	td {
+		color: #777 !important;
+	}
+	tr:hover {
+		td {
+			background: $babyBlue !important;
+		}
+	}
+	thead, tfoot {
+  		background: $babyBlue !important;
+  		border-bottom: 1px solid $babyBlueBorder !important;
+	}
+}
+
+
+
+// Responsive Tables
+@media only screen and (max-width: 608px) {
+  table {width: 150% !important;}
+  table table {width: 100% !important;}
+  .panel {padding: 20px 0 0;}
+}

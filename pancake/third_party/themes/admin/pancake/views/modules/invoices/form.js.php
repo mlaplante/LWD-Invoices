@@ -1,0 +1,10 @@
+time_entries = <?php echo json_encode((object) $time_entries_for_billing); ?>;
+expenses = <?php echo json_encode((object) $expenses_for_billing); ?>;
+projects_per_client = <?php echo json_encode((object) $projects_per_client) ?>;
+project_order_per_client = <?php echo json_encode((object) $project_order_per_client) ?>;
+invoice_unique_id = '<?php echo $unique_id; ?>';
+enabled_gateways_per_business_identity = <?php echo json_encode(Gateway::get_enabled_gateways_per_business_identity())?>;
+default_taxes_per_client = <?php echo json_encode($this->clients_taxes_m->get_default_per_client()); ?>;
+business_identity_per_client = <?php echo json_encode($this->clients_m->get_business_identity_per_client())?>;
+default_invoice_notes_per_business_identity = <?php echo json_encode($default_invoice_notes); ?>;
+default_tax_ids = <?php echo json_encode(array_values(Settings::get_default_tax_ids())); ?>;

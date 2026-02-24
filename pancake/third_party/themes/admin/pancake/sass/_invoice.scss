@@ -1,0 +1,524 @@
+.invoice-group {
+  margin-top: 16px;
+  padding-left: 14px;
+}
+
+/* invoice main body */
+
+@media only screen and (min-width: 768px) {
+
+    .invoice-container {
+
+        display:table;
+        position: relative;
+        width: 100%;
+
+        .invoice-body {
+            position: static !important;
+        }
+
+        .invoice-item {
+
+            display:table-row;
+
+            .fixed-bottom .three {min-height: 27px;}
+
+            .fixed-bottom {
+                margin-bottom: -10px;
+              }
+
+            &.proposal {
+                h4 {margin-bottom: 0;}
+            }
+
+            .invoice-outstanding {
+                padding: 0px;
+            }
+
+            & > .nine, & > .three {
+                display:table-cell;
+                float:none !important;
+                @include box-shadow($blueBoxShadow);
+            }
+
+            & > .three {
+                vertical-align:middle;
+            }
+
+        }
+
+    }
+
+}
+
+.invoice-body {
+  background: $firstGrey;
+  @include border-radius (4px 0px 0px 4px);
+  padding: 0 10px 15px 10px;
+  border: 1px solid $greyBorder;
+  margin-bottom: 0px;
+  min-height: 79px !important;
+  position: relative;
+
+  h4 {
+    margin-bottom: 30px;
+    font-size: 20px;
+    font-size: 2rem;
+  }
+}
+
+.invoice-banner {
+  display: block;
+  text-shadow: none;
+  color: white;
+  font-size: 16px;
+  padding: 6px 0 5px 2px;
+  line-height: 1;
+  margin-top: 14px;
+  max-width: 90%;
+  position: relative;
+  background: $iBlue;
+  a, a:visited {
+    color: $white;
+  }
+  &:before {
+      position: absolute;
+      top: 0;
+      left: -19px;
+      width: 20px;
+      height: 38px;
+      content: "";
+      background: url(../img/invoice-banners.png) 100% -302px no-repeat;
+  }
+  &:after {
+      position: absolute;
+      top: 0;
+      right: -16px;
+      width: 18px;
+      height: 28px;
+      content: "";
+      background: url(../img/invoice-banners.png) 0 -261px no-repeat;
+  }
+  &.paid {
+    background: $iGreen;
+    &:before {
+      background: url(../img/invoice-banners.png) 100% -41px no-repeat;
+    }
+    &:after {
+      background: url(../img/invoice-banners.png) 0 0 no-repeat;
+    }
+  }
+  &.unpaid {
+    background: $iOrange;
+    &:before {
+      background: url(../img/invoice-banners.png) 100% -215px no-repeat;
+    }
+    &:after {
+      background: url(../img/invoice-banners.png) 0 -174px no-repeat;
+    }
+  }
+  &.overdue {
+    background: $iRed;
+    &:before {
+      background: url(../img/invoice-banners.png) 100% -128px no-repeat;
+    }
+    &:after {
+      background: url(../img/invoice-banners.png) 0 -87px no-repeat;
+    }
+  }
+}
+
+
+
+/* invoice titles */
+.invoice-client, .invoice-company {
+  font-weight: 300;
+  margin-top: -10px;
+  line-height: 1;
+}
+
+
+/* Invoice buttons (preview, email, settings) */
+.invoice-buttons, .task-icons {
+  margin-top: 3px;
+  position: relative;
+}
+
+.invoice-buttons li, .task-icons li {
+  list-style: none;
+  float: left;
+  margin-right: 9px;
+  width: 22px;
+  height: 16px;
+  display: block;
+  z-index: 70;
+}
+
+.task-icons li {
+	margin-right: 0;
+}
+
+.invoice-buttons li a, .task-icons li a {
+  width: 23px;
+  height: 16px;
+  display: block;
+  text-indent: -999px;
+  white-space: nowrap;
+  overflow: hidden;
+  z-index: 70;
+}
+
+/* invoice buttons icons */
+// Pulls from _share.scss = edit there.
+.invoice-buttons {
+  .preview {@extend .g16.see;}
+  .preview:hover {@extend .g16.see:hover;}
+  .email {@extend .g16.email;}
+  .email:hover {@extend .g16.email:hover;}
+  .settings {@extend .g16.settings;}
+  .settings:hover {@extend .g16.settings:hover;}
+}
+
+/* invoice dropdown */
+.invoice-buttons li ul, .task-icons li ul {
+  opacity: 0;
+  z-index: 100;
+  margin-bottom: 50px;
+  position: relative;
+  visibility: hidden;
+  display: block;
+  @include border-radius($borderRadius);
+  -webkit-transition: all .3s .1s;
+     -moz-transition: all .3s .1s;
+       -o-transition: all .3s .1s;
+          transition: all .3s .1s;
+          transition-property: opacity, padding-left, padding-right, padding-top, padding-bottom, margin-bottom, margin-top, margin-left, margin-right, visibility;
+}
+
+.invoice-buttons li:hover ul, .task-icons li:hover ul {
+  opacity: 1;
+  visibility: visible;
+  padding-top: 20px;
+  margin-left: -18px;
+  margin-top: 0;
+  position: relative;
+  display: block;
+  z-index: 120;
+}
+
+.task-icons li:hover ul {
+	margin-left: -63px;
+	margin-top: 3px;
+}
+
+.task-icons li ul li {
+	width: 140px;
+}
+
+.task-icons li ul li {
+	margin-top: 4px;
+}
+
+.invoice-buttons li ul li, .task-icons li ul li {
+    padding: 0;
+    background: $darkGrey;
+    font-size: 13px;
+    text-shadow: none;
+    color: white;
+    height: auto;
+    min-width: 200px;
+    position: relative;
+    display: block;
+    z-index: 130;
+
+    > a {
+        padding: 5px 14px;
+    }
+
+    &:first-child > a {
+        padding-top: 10px;
+    }
+
+    &:last-child > a {
+        padding-bottom: 10px;
+    }
+}
+
+.task-icons li ul li {
+  @include border-radius($borderRadius);
+}
+
+.invoice-buttons li ul li:first-child {
+  @include border-radius(4px 4px 0px 0px);
+}
+
+.invoice-buttons li ul li:last-child {
+  @include border-radius(0px 0px 4px 4px);
+}
+
+.invoice-buttons li ul li a, .invoice-buttons li ul li a:visited,
+.task-icons li ul li a, .task-icons li ul li a:visited {
+  color: white;
+  display: block;
+  width: 100%;
+  height: auto;
+  text-indent:0;
+  white-space:normal;
+  overflow: visible;
+  z-index: 130;
+}
+
+.invoice-buttons li ul li a:hover, .invoice-buttons li ul li a:focus,
+.task-icons li ul li a:hover, .task-icons li ul li a:focus {
+  color: $lblue;
+}
+
+/* paid, due & unpaid */
+.invoice-due, .invoice-paid, .invoice-unpaid, .invoice-total, .invoice-details {font-size: 13px;}
+.invoice-details {font-weight: normal;color: #777;margin-top: 4px;;line-height: 1.4em;}
+.invoice-paid {color: #5ca03d;font-weight:bold;margin-right: 12px; }
+.invoice-unpaid {color: rgb(196, 74, 71);font-weight:bold;margin-right: 12px; }
+
+/* invoice total amount */
+.invoice-outstanding {
+  background: $secondGrey;
+  border: 1px solid $greyBorder;
+  margin-left: -16px;
+  @include border-radius(0px 4px 4px 0px);
+  padding: 10px 10px 4px 10px;
+  text-align: center;
+  font-size: 13px;
+  margin-bottom: 16px;
+  .total-amount {
+    font-size: 24px;
+    font-weight: 500;
+    color: $lblue;
+    display: block;
+    margin: 7px 0 3px;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .invoice-outstanding {
+    width: auto;
+    margin-top:-4px;
+    @include border-radius(0 0 4px 4px);
+  }
+  .invoice-item h4 {
+    display: block;
+    width: 100%;
+    overflow: auto;
+  }
+  .stamp {
+    bottom: 35%;
+    top: auto;
+  }
+}
+
+// Payment Plan
+.partial-inputs, .partial-labels {
+  .amount, .percent, .symbol, .due, .notes, .paid {
+    margin-left: 1%;
+    display: block;
+    float: left;
+  }
+  .amount {
+    width: 13%;
+  }
+  .percent {
+    width: 6%;
+  }
+  .symbol {
+    width: 6%;
+    margin-top: 1px;
+  }
+  .due {
+    width: 15%;
+  }
+  .notes {
+    width: 45%;
+  }
+    .paid {
+        width: 23%;
+
+        a {
+            display: inline-block;
+        }
+    }
+}
+
+@media screen and (max-width: 600px) {
+  .partial-inputs, .partial-labels {
+    .amount, .percent, .symbol, .due, .notes, .paid {
+      margin-left: 1%;
+      display: block;
+      float: left;
+    }
+    .amount {
+      width: 24%;
+    }
+    .percent {
+      width: 11%;
+    }
+    .symbol {
+      width: 11%;
+    }
+    .due {
+      width: 24%;
+    }
+    .notes {
+      width: 50%;
+    }
+    .paid {
+      width: 99%;
+      margin-bottom: 16px;
+      float: none;
+    }
+  }
+}
+
+#send_x_days_before {
+  width: 30px;
+  float: left;
+  margin-right: 10px;
+}
+
+.send_x_days_before_label {
+  font-weight: 400 !important;
+}
+
+#fee {
+  float: left !important;
+  text-align: left !important;
+  max-width: 200px !important;
+}
+
+.fee-label {
+  float: left;
+  margin-right: 10px;
+}
+
+.placeholded-input-container {
+  .placeholder {
+    float: left; margin-right: 10px;
+  }
+  .fee {
+    float: left;
+    text-align: left !important;
+    padding-left: 5px !important;
+  }
+}
+
+.sub-invoice-table {
+    margin: 0;
+    border: 0 !important;
+
+    .sel-item, .dropdown-arrow, input, textarea {
+        margin-bottom: 0;
+    }
+
+    td, th {
+        border: 0 !important;
+    }
+
+    tr {
+        background-color: transparent !important;
+    }
+
+    tr.description td {
+        padding-top: 0;
+    }
+
+    .multiselect-container {
+        margin-bottom: 0;
+    }
+
+}
+
+.discount-line-item {
+    .item_quantity, .item_name, .item_rate, .multiselect-container, .description {
+        display: none;
+    }
+}
+
+.flat-rate-line-item {
+  .item_quantity {
+    display: none;
+  }
+}
+
+.period-container {
+    display: none;
+    margin-top: 9px;
+    margin-bottom: 18px;
+
+    .item_period {
+        display: inline-block;
+        width: 10%;
+    }
+}
+
+.item-period_day, .item-period_week, .item-period_month, .item-period_year {
+    .period-container {
+        display: block;
+    }
+}
+
+#file-inputs {
+  list-style: none;
+}
+
+table table {
+    width: 100%;
+}
+
+.js-send-x-days-before, .js-has-auto-charge, .js-auto-charge {
+    display: none;
+}
+
+.activity-info {
+    list-style: none;
+    margin: 20px 0 10px;
+    li {
+        padding-left: 24px;
+        margin-bottom: 6px;
+    }
+    .viewed {
+        @extend .g16.see;
+        @include sprite-background-position($geomicons16-sprites, see, 0, 4px);
+        &:hover {
+           @extend .g16.see:hover;
+           @include sprite-background-position($geomicons16-sprites, see-hover, 0, 4px);
+        }
+    }
+    .sent {
+        @extend .g16.email;
+        @include sprite-background-position($geomicons16-sprites, email, 0, 4px);
+        &:hover {
+           @extend .g16.email:hover;
+           @include sprite-background-position($geomicons16-sprites, email-hover, 0, 4px);
+        }
+    }
+    .created {
+        @extend .g16.created;
+        @include sprite-background-position($geomicons16-sprites, created, 0px, 3px);
+        &:hover {
+           @extend .g16.created:hover;
+           @include sprite-background-position($geomicons16-sprites, created-hover, 0, 3px);
+        }
+    }
+    .paid {
+        @extend .g16.card;
+        @include sprite-background-position($geomicons16-sprites, card, 0px, 4px);
+        &:hover {
+           @extend .g16.card:hover;
+           @include sprite-background-position($geomicons16-sprites, card-hover, 0, 4px);
+        }
+    }
+}
+
+@media only screen and (max-width: 767px) {
+    .invoice-outstanding {
+        float: right !important;
+    }
+}

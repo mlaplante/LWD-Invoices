@@ -1,0 +1,36 @@
+{
+  "name": "payeezy/payeezy-php",
+  "type": "library",
+  "description": "Payeezy PHP Library",
+  "keywords": [
+    "payeezy",
+    "payment processing",
+    "api"
+  ],
+  "homepage": "https://developer.payeezy.com/",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "payeezy and contributors",
+      "homepage": "https://github.com/payeezy/payeezy-php/graphs/contributors"
+    }
+  ],
+  "require": {
+    "php": ">=5.2",
+    "ext-curl": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "~4.0",
+    "squizlabs/php_codesniffer": "~2.0"
+  },
+  "autoload": {
+    "psr-0": {
+      "Payeezy_": "src/"
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "2.x-dev"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+.user-form {
+    position: relative;
+    label {
+        opacity: 0; 
+        display: none;
+    }
+}
+
+.user-gravatar {
+    width: 100%; 
+    height: auto; 
+    max-height: 130px;
+    max-width: 130px;
+    background: #222;
+    @include border-radius($borderRadius);
+    display: block;
+}
+
+@media only screen and (max-width: 767px) {
+
+    .users-table, #view-entries {
+        max-width: 100%;
+        
+        .members-pic, .timesheet-icon {
+            float: none;
+            display: inline-block;
+        }
+
+        /* Force table to not be like tables anymore */
+        &, thead, tbody, th, td, tr { 
+            display: block; 
+        }
+
+        /* Hide table headers (but not display: none;, for accessibility) */
+        thead tr { 
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+        }
+        
+        tr { border: 1px solid #ccc; }
+
+        td { 
+            /* Behave  like a "row" */
+            border: none !important;
+            position: relative;
+            padding-left: 30%; 
+            width: 100%;
+            max-width: initial !important;
+            min-height: 36px;
+        }
+
+        td:before { 
+            /* Now like a table header */
+            position: absolute;
+            /* Top/left values mimic padding */
+            top: 9px;
+            left: 9px;
+            width: 20%; 
+            padding-right: 10px; 
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /*
+        Label the data
+        */
+        td:before { content: attr(data-title); }
+    }
+
+}

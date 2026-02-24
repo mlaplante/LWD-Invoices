@@ -1,0 +1,46 @@
+/* ================= */
+/* = Breakpoints   = */
+/* ================= */
+
+@mixin breakpoint($point) {
+	// iPad (Landscape)
+	@if $point == tablet-wide {
+		@media (max-width: 1024px) { @content; }
+	}
+	// iPad (Portrait)
+	@else if $point == tablet-narrow {
+		@media (max-width: 768px) { @content; }
+	}
+	@else if $point == narrow {
+		@media (max-width: 720px)  { @content; }
+	}
+	@else if $point == slim {
+		@media (max-width: 600px)  { @content; }
+	}
+	@else if $point == mobile-wide {
+		@media (max-width: 480px)  { @content; }
+	}
+	@else if $point == mobile-narrow {
+		@media (max-width: 320px)  { @content; }
+	}
+}
+// About -----
+//	This approach allows us to easily change breakpoints. Otherwise we'd
+//	repeatedly use something like this over and over again.
+//	@media screen and (max-width: 480px){ }
+
+// Options -----
+// @include breakpoint(tablet-wide){}
+// @include breakpoint(tablet-narrow){}
+// @include breakpoint(narrow){}
+// @include breakpoint(slim){}
+// @include breakpoint(mobile-wide){}
+// @include breakpoint(mobile-narrow){}
+
+// Usage -----
+//	a{
+//		color: red;
+// 	@include breakpoint(narrow){
+// 		color: blue;
+//		}
+// }

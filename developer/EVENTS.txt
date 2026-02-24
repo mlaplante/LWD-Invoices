@@ -1,0 +1,13 @@
+### Pancake Events
+===============
+
+## Controllers
+
+## Models
+# [invoices_m]
+* [event] invoice_number_generated - event fired after an invoice number has been generated.
+
+--- Missing details:
+
+* client_name_generated
+* pdf_filename_generated

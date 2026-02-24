@@ -1,0 +1,301 @@
+@import url(//fonts.googleapis.com/css?family=Arimo:400,700);
+
+/*
+	We can set a font here, though this font will not be carried over to the PDF, it's close and
+	honestly, when the client is viewing it online that's when we want to wow them. Once they print it
+	it's going into their records and not hung on the wall...
+
+	It's close enough :D
+*/
+
+* {
+	font-family: 'Arimo', sans-serif!important;
+}
+body {
+	background: #EAEAEA ;
+}
+
+/* We can target the PDF rendering using this class */
+.pdf_mode, .pdf {
+	background: #fff!important;
+}
+
+.invoice-payments #payment-plan-header {
+    border: 0;
+}
+
+.invoice-payments ol {
+    padding-left: 20px;
+}
+
+.detailed-layout #wrapper, .kitchen #wrapper {
+	background: #fff;
+	padding: 0 20px 20px 20px;
+	margin-top:70px;
+        margin-bottom: 20px;
+}
+
+#envelope {
+	padding-top: 20px!important;
+}
+
+
+/* Let's override the header bar */
+
+.detailed-layout #buttonBar, .kitchen #buttonBar {
+	height:50px;
+	width:100%;
+	display:block;
+	text-align:right;
+  	position:fixed;
+    z-index: 4;
+	top:0;
+	left:0;
+	background: #343843 ;
+	color: #fff;
+	font-size: 15px;
+	line-height: 21px;
+
+}
+
+.detailed-layout #buttonHolders, .kitchen #buttonHolders {
+	width:835px;
+	margin:0 auto;
+}
+
+
+
+.detailed-layout #buttonBar a, .kitchen #buttonBar a {
+
+	/* throw some overrides in there */
+
+	border: none;
+	box-shadow: none;
+	text-shadow: none;
+
+	/* End resets */
+
+	float:right;
+	margin:10px 0px 0 10px;
+	padding:5px 10px;
+	color:#fff;
+	text-decoration:none;
+
+  background: #656B79;
+
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  -ms-border-radius: 5px;
+  -o-border-radius: 5px;
+  border-radius: 5px;
+
+  color: #fff;
+  line-height: 1;
+  padding: 8px 12px 9px;
+  text-align: center;
+
+}
+
+.detailed-layout #buttonBar a:hover, .detailed-layout #buttonBar .button.active, .kitchen #buttonBar a:hover, .kitchen #buttonBar .button.active {
+
+	border: none!important;
+	box-shadow: none!important;
+	text-shadow: none;
+    background: #D54518;
+
+
+
+
+}
+
+.invoice .paidon {
+	color:#656B79;
+	float:left;
+	margin-left:5px;
+	margin-top:16px;
+}
+
+#buttonHolders .paidon {
+	color: white;
+}
+
+
+/* END Header bar */
+
+
+/* Adjust the header table stuff */
+
+#envelope td {
+	height:120px;
+}
+
+/* End header table stuff */
+
+/* Company Details */
+#company-info-holder {
+	padding-top: 0;
+	text-align:left;
+	vertical-align:top!important;
+}
+
+#company-info-holder h2.logo {
+	margin: 0px;
+	color: #656B79;
+}
+/* END Company Details */
+
+/* Adjust Invoice details stuff */
+#invoice-details-holder h2 {
+	color: #656B79;
+	font-weight: 700;
+}
+/* END Invoice details stuff */
+
+/* Line Items table */
+#content table thead th {
+    color: #656B79;
+    font-size: 14px;
+}
+
+#content table tr.invoice-desc-row, #content table tr.items-desc-row, p.comment-body {
+	background: #fff;
+    color: #888888!important;
+    font-size: 12px;
+    line-height: 18px;
+    margin: 0;
+}
+
+/* Let's drop that image from the line item row */
+#content table tr.invoice-desc-row img, #content table tr.items-desc-row img {
+	display:none !important;
+}
+
+#content tr td.column_1,
+#content tr td.column_5 {
+    text-indent: 5px;
+ 	color: #888888!important;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+#content table tr.border-top td div {
+    border-bottom: 1px solid #E6E6E6;
+    display: block;
+    height: 1px;
+    margin: 0 0 1px;
+}
+#content table tr.border-bottom td div {
+    border-top: none;
+    display: block;
+    height: 1px;
+    margin: 1px 0 0;
+}
+
+#content table tr.invoice-total {
+    background: none repeat scroll 0 0 #656B79;
+}
+
+#content .invoice-item-notes td {
+	padding-top:0;
+}
+
+
+#content tfoot {
+	border-top: 5px solid #656B79;
+}
+
+#content td.total-heading {
+}
+
+
+/* END Line items table */
+
+
+/* Client area */
+
+.comment-meta span {
+	color: #656B79;
+}
+
+.kitchen .content-header {
+	padding-top: 20px;
+}
+.kitchen .side_border {
+	margin-bottom:30px;
+}
+
+.kitchen h1 {
+	padding-top: 20px;
+}
+
+.kitchen .side_border h1 {
+	padding-top: 0px;
+	padding-right: 0;
+	margin-bottom: 0;
+	text-align: right
+}
+#content h2 {
+	color: #656B79;
+}
+
+h2#payment-plan-header {
+	color: #656B79!important;
+	border-bottom:1px solid #ccc;
+}
+
+.kitchen div h4 {
+	border-bottom:5px solid #ccc;
+}
+
+.kitchen div h4.account_totals {
+	border-bottom:none;
+}
+
+div.project-holder {
+	/*border: 1px solid #ccc;*/
+}
+
+.project-holder {
+	margin-bottom: 3em;
+}
+
+.project-holder a, .items-desc-row a, .button-comments {
+	border: none;
+	box-shadow: none;
+	text-shadow: none;
+	float: right;
+	display: inline-block;
+	margin: 0 0 0 10px;
+	color: #ffffff;
+	text-decoration: none;
+	background: #656b79;
+	border-radius: 5px;
+	line-height: 1;
+	padding: 4px 8px 5px;
+	text-align: center;
+	font-size: 12px;
+}
+
+.account_totals .button-comments {
+	margin-top: 6px;
+}
+
+.kitchen-table .items-desc-row a {
+	float: none;
+	margin: 0;
+}
+
+/* END Client area */
+
+
+.kitchen .logo {
+    margin-left: -35px;
+}
+
+.kitchen .button-bar-text {
+    color: white;
+}
+
+.re-icon {
+	font-family: 'RedactorFont' !important;
+}

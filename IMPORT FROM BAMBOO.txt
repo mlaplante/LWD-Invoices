@@ -1,0 +1,8 @@
+How to import data from Bamboo Invoices
+=======================================
+
+1. Download http://i.28hours.org/files/pancake_export.php.
+2. Place it in bamboo_system_files/application/controllers/pancake_export.php, in your Bamboo installation.
+3. Go to your-bamboo-installation-url/index.php/pancake_export. Click the link to download your export file.
+4. Go to your Pancake, into Settings > Import / Export, and import the file you got in the previous step. Leave the "What are you importing?" as "Invoices".
+5. That's it! Click "Import Now!" and everything will be imported into your Pancake without any further input from you.

@@ -1,0 +1,411 @@
+/* ===================== */
+/* = Project Overviews = */
+/* ===================== */
+
+.hideme{
+	display:none;
+}
+
+.milestone-legend {
+    display: inline-block; 
+    vertical-align: -4px; 
+    margin-right: 8px; 
+    width: 18px; 
+    height: 18px; 
+    border-radius: 4px;
+} 
+
+.task-title .completed {
+    text-decoration:line-through;
+}
+
+.task-title-add, .task-milestone-add, .task-assignee-add {
+    min-width: 200px;
+    
+    & .sel-item {
+        width: 100%;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+    }
+}
+
+.task-new {
+	margin-top: 3em;
+}
+
+.project-tasks {
+    
+    .sortable.task {
+        .empty {
+            margin-left: 15px;
+        }
+    }
+    
+    &.dragging .sortable {
+        min-height: 31px;
+        //background: lighten(#EEE, 10%) !important;
+        
+        &.milestone.not-has-tasks {
+            border-style: solid;
+            border-width: 0 0 0 5px;
+        }
+        
+    }
+    
+    .empty {
+        background:#C8EBFE !important;
+        outline:1px dashed #ccc !important;
+    }
+}
+
+.sortable-milestones {
+    .sortable-milestone {
+        cursor: move;
+    }
+    
+    .empty {
+        background:#C8EBFE !important;
+        outline:1px dashed #ccc !important;
+    }
+}
+
+.timer {
+    .play {
+        .fi-play {
+            display: inline;
+        }
+
+        .fi-pause {
+            display: none !important;
+        }
+    }
+
+    .pause {
+        .fi-pause {
+            display: inline;
+        }
+
+        .fi-play {
+            display: none !important;
+        }
+    }
+}
+
+.project-group-list{
+	.project{
+		margin: 0 0 25px;
+		header{
+			border-bottom: 1px dotted $secondGrey;
+			padding: 0 0 10px;
+			overflow: auto;
+			h3 a{
+				color: $darkGrey;
+				&:hover{
+					color: $pancakeBlue;
+				}
+			}
+		}
+	}
+	.project-tools{
+		float: right;
+		*{
+			vertical-align: top;
+		}
+		a,span{
+			display: inline-block;
+		}
+		span{
+			color: $darkGrey;
+			font-size: .85em;
+			margin: 3px 30px 0 0;
+			text-transform: uppercase;
+			&.completion{
+				font-weight: bold;
+			}
+			&.project-due-date{
+			}
+		}
+		a{
+			color: $secondGrey;
+			font-size: 2em;
+			margin-left: 5px;
+			&:hover{
+				color: $pancakeBlue;
+			}
+		}
+	}
+	h3.project-title{
+		margin: 0;
+	}
+	ol.project-tasks{
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		text-indent: 0;
+	}
+	li.task-item .the-task {
+		border:{
+			color: transparent;
+			style: solid;
+			width: 0 0 0 5px;
+		}
+		font-size: 1.2em;
+		line-height: 1em;
+		margin: 0;
+		overflow: auto;
+		padding: 0;
+		position: relative;
+		&:nth-of-type(even){
+			background: $secondGrey;
+		}
+		&.sub-the-task {
+			background: none;
+			//border-bottom: 1px solid white !important;
+			margin: 0 0 0 15px;
+		}
+		span{
+			//display: inline-block;
+			float: left;
+			font-size: inherit;
+			line-height: inherit;
+			margin: 0 5px 0 0;
+			padding: 8px 4px 6px;
+			vertical-align: baseline;
+			span{
+				padding: 0;
+			}
+			&.task-number{
+				cursor: move;
+				font-weight: bold;
+				text-align: right;
+				width: 3%;
+				color: lighten($pcGrey,40);
+			}
+			&.task-check{
+				text-align: center;
+				width: 3%;
+			}
+			&.task-title{
+				overflow: hidden;
+				width: 58%;
+				.task-tag {
+						margin-right: 1em;
+					}
+				label {
+					color: lighten($pcGrey, 5);
+					a {
+						color: lighten($pcGrey, 40)
+					}
+
+				}
+			}
+			&.task-milestone{
+				width: 19%;
+			}
+			&.task-timer{
+				text-align: center;
+				width: 15%;
+				.time{
+					font-weight: normal;
+					margin-right: 5px;
+				}
+				*{
+					display: none;
+				}
+			}
+			&.task-tools{
+				text-align: center;
+				width: 15%;
+				a{
+					color: lighten($pcGrey,40)!important;
+					margin-right: 5px;
+				}
+				*{
+					display: none;
+				}
+				
+			}
+			&.task-assignee{
+				float: right;
+				margin: 0;
+				padding: 4px;
+				width: auto;
+			}
+			&.task-notes{
+				display:none;
+				width: 100%;
+				z-index: 1000;
+			}
+
+			&.task-notes textarea {
+				display:none;
+				width: 100%;
+				background: #fff;
+				padding:10px;
+			}
+			label{
+				font-size: inherit;
+			}
+			input{
+				margin: 0 0 0 0;
+			}
+		}
+		&.hover{
+			//background: lighten($pancakeBlue,40);
+			span.task-timer,
+			span.task-tools{
+				text-indent: 0;
+
+				*{
+					display: inline;
+				}
+
+				
+			}
+			span.task-notes{
+				//display:block;
+				z-index: 1000;
+			}
+
+			span.task-notes textarea {
+				//display: block;
+				z-index: 1000;
+			}
+			@include breakpoint(tablet-wide){
+				span.task-timer{
+					clear: left;
+				}
+				span.task-timer,
+				span.task-tools{
+					margin: 0 0 0 45px;
+					padding: 0 0 10px;
+					width: auto;
+				}
+				
+			}
+		}
+		&.the-new-task{
+			span.task-title,
+			span.task-milestone{
+				padding: 4px;
+			}
+			span.task-number{
+				padding-top: 13px;
+			}
+		}
+	}
+	img.avatar{
+		width: 20px;
+		@include border-radius(24px);
+                vertical-align: -5px;
+	}
+}
+
+
+#project_container {
+  margin-bottom: 20px; 
+  position:relative;
+}
+
+.project-box {
+  width: 94%;
+  padding: 3%; 
+  background: $white;
+  border: 1px solid $babyBlueBorder;
+  border-bottom: 0;
+  @include border-radius(4px 4px 0px 0px);
+  h5, h5 a {
+    font-weight: 500;
+    word-wrap: break-word;
+    font-size: 19px;
+    text-shadow: none;
+    color: #444;
+    margin-top: 2px;
+  }
+  a:hover, .project-box h5 a:focus {
+    color: $lblue;
+  }
+  p {
+    font-size: 14px;
+    a, a:visited {
+      color: #777777;
+    }
+    a:hover, a:focus {
+      color: #333;
+    }
+  }
+}
+
+.project-footer {
+  border: 1px solid $babyBlueBorder;
+  background: $babyBlue;
+  padding: 2% 15% 2% 3%;
+  width: 92%;
+  position: relative;
+  margin-bottom: 26px;
+  font-size: 13px;
+  @include border-radius(0px 0px 4px 4px);
+  @include box-shadow(0px 1px 1px 0px $babyBlueBorder);
+  .percent {
+    position: absolute;
+    right: -16px;
+    bottom: -12px;
+    display: block;
+    line-height: 1;
+    padding: 24px 6px;
+    color: #fff; 
+    width: 62px;
+    text-align: center;
+    vertical-align: middle;
+    overflow: hidden;
+    font-weight: 600;
+    @include border-radius(50px);
+  }
+  .invoice-buttons {
+    float: right;
+    position: relative;
+  }
+}
+
+.users-table td {
+    vertical-align: middle;
+    padding: 5px 10px;
+}
+
+.users-table .members-pic {
+    width: 24px;
+    height: 24px;
+    float:left;
+}
+
+.client-image img {
+  background: #fff;
+  border: 1px solid lighten($pcGrey, 80)!important;
+  padding: 3px;
+  box-shadow: 0 0 6px lighten($pcGrey, 40)!important;
+  @include border-radius($borderRadius);
+}
+
+/* Move to shared */
+.members-pic {
+  background: $babyBlueBorder;
+  border: none;
+  width: 35px;
+  height: 35px;
+  margin-right: 3px;
+  @include border-radius($borderRadius);
+}
+
+.project-box .icon, .timesheet-icon {
+  display: block;
+  float: left;
+  width: 17px;
+  height: 16px;
+  text-indent: -999px;
+  white-space: nowrap;
+  overflow: hidden;
+  margin-top: 2px;
+  margin-right: 6px;
+}
+

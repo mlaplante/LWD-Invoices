@@ -1,0 +1,19 @@
+body, #header {
+    background-color: rgb(247, 239, 232);
+}
+
+.top-bar, .top-bar ul, .top-bar li, .top-bar ul li ul li.divider, .top-bar ul li.name, .top-bar section ul li, .top-bar section li ul li, .top-bar section ul li:hover, .top-bar .has-dropdown .dropdown .pancake-navigation-label, .top-bar .has-dropdown .dropdown .pancake-navigation-label-container:hover, .top-bar ul li.active {
+    background-color: white !important;
+}
+
+.top-bar section ul li:hover > a, .body-wrap .fixed .top-bar ul ul a:hover {
+    color: white !important;
+}
+
+.top-bar ul > li a:not(.button), .top-bar ul > li a:not(.button):hover, .top-bar section > ul > li:hover > a, #header .ttl {
+    color: rgb(122, 106, 83) !important;
+}
+
+.top-bar ul li.active {
+    background-color: #ebe7e1 !important;
+}

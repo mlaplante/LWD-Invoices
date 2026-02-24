@@ -1,0 +1,82 @@
+<!doctype HTML>
+<html>
+	<head>
+		<title>The Pancake Gateway System</title>
+		<style>
+		html {width:100%;text-align:center;}
+		body {font-family: 'Helvetica Neue', sans-serif;font-size: 1.25em;margin:auto;display:inline-block;text-align:left;width: 940px;padding:1em 0 2em 0;}
+		p, li {line-height: 1.4em;color: #666;}
+		a {text-decoration: none; color: rgba(0, 0, 255, 0.5); text-decoration: underline;}
+		code, pre {background: #ddd; padding: 0.5em;}
+		pre {line-height: 1.6em;}
+		</style>
+	</head>
+	<body>
+		<h1>The Pancake Gateway System</h1>
+		<p>@todo gateway variables</p>
+		<p>@todo generate_payment_form is AFTER client_fields were requested, so $this->get_client_field() can be used</p>
+		<p>@todo generate_payment_form can return false with $this->error() or array of $data if payment was completed then and there or string</p>
+		<h2>The basics</h2>
+		<p>A Pancake Gateway is simply a file that acts as the middle man between Pancake and any payment gateway, located in <code>system/pancake/modules/gateways/models</code>. To start a new gateway, create a file in that folder. Name it gatewayname_m.php (eg. paypal_m.php). Here's the basic structure of a gateway:</p>
+		<pre>&lt;?php
+class Gatewayname_m extends Gateway {
+	public $title = 'Gatewayname (as viewed by the admin on the settings page)';
+	public $frontend_title = 'Gateway name (as viewed by the client when paying)';
+
+	public function __construct() {
+		parent::__construct(__CLASS__);
+	}
+
+	public function generate_payment_form($unique_id, $item_name, $amount, $success,
+	$cancel, $notify, $currency_code, $invoice_number) {
+
+	}
+
+	public function process_cancel($unique_id) {
+
+	}
+
+	public function process_success($unique_id) {
+
+	}
+
+	public function process_notification($unique_id) {
+
+	}
+
+}
+?&gt;</pre>
+	<p>Fairly simple, right? Now, let me tell you a bit about what those functions do, and how you're supposed to handle them.</p>
+	<h3>__construct()</h3>
+	<p>This is where you can define what configuration fields you need for your gateway, and load necessary payment gateway code. PayPal, for example, needs the merchant account's email address, so this is how it looks like for PayPal:</p>
+	<pre>parent::__construct(__CLASS__);
+$this->fields = array('paypal_email' => 'PayPal Email');
+$this->load->library('paypal_lib');</pre>
+	<p><code>$this->fields</code> is just an array containing all your gateway's configuration fields, in a <code>field name => label</code> format. It's pretty simple. The third line simply loads code that helps us deal with PayPal. Your payment gateway might have an SDK, or a set of files that you should use, that help make integration easier. You should load those in <code>__construct()</code>, so you can access their functionality anywhere in your Pancake Gateway.</p>
+	<h3>generate_payment_form($unique_id, $item_name, $amount, $success,
+	$cancel, $notify, $currency_code, $invoice_number)</h3>
+	<p>This function is called when a client wants to pay using your gateway. You are given the partial payment's unique ID (not the same as an invoice's unique ID), the item name (eg. "Invoice #xxx"), the amount to pay, the URL to the success page, the cancel page and the payment notification page, the currency code (three-letter code, like EUR, GBP or USD), and the invoice number. This function is required to return a &lt;form&gt; with whatever hidden fields are necessary to send the user to the payment gateway, and a submit button. That's it. Nothing special. Pancake will then use some magic to automatically submit that form and thus redirect the user to the payment gateway.</p>
+	<h3>process_cancel($unique_id)</h3>
+	<p>This function is called when the gateway sends the user to the cancel URL (as set in generate_payment_form()). It is not required to return anything, it's just giving you a chance to do whatever processing you feel you have to.</p>
+	<h3>process_success($unique_id)</h3>
+	<p>This function is called when the gateway sends the user to the success URL (as set in generate_payment_form()). It is not required to return anything, but if it returns an array in the same format as process_notification() is expected to return, it'll use that as the payment notification. This is useful for gateways that don't send payment notifications, choosing instead to pass the payment information when the user is returning to the success URL.</p>
+	<h3>process_notification($unique_id)</h3>
+	<p>This function is called when the gateway calls the notification URL (as set in generate_payment_form()). It is required to return an array in the following format:</p>
+	<pre>return array(
+    'txn_id' => '', // the gateway transaction ID
+    'payment_gross' => 0, // the amount paid, rounded to 2 decimal places
+    'transaction_fee' => 0, // the fee charged by the gateway, rounded to 2 decimal places
+    'payment_date' => time(), // a UNIX timestamp for the payment date
+    'payment_status' => 'Completed', // One of: Completed/Pending/Refunded/Unpaid
+    'item_name' => '', // the item name (passed to the gateway in generate_payment_form())
+    'is_paid' => true, // true or false, depending on whether payment was successful or not
+);</pre>
+	<h3>Gateway::complete_payment($unique_id, $gateway, $data)</h3>
+	<p>In most cases, you should not have to call this function, but some gateways may send you payment notifications that contain the details of multiple transactions. In those situations, you might need to manually tell Pancake to process a payment. That's what this function is here for.</p>
+	<p>The <code>$unique_id</code> is the partial payment's unique ID (not the same as an invoice's unique ID). <code>$gateway</code> is the name of your gateway's file, without the extension (eg. gatewayname_m). <code>$data</code> is an array in the format that <code>process_notification()</code> is expected to return.</p>
+	<h2>That's it!</h2>
+	<p>Now you know pretty much everything there is to know about Pancake Payment Gateways. It couldn't be simpler, right? If you have any difficulties, feel free to <a href="https://www.pancakeapp.com/account/support/ticket/new">start a <strong>free</strong> support ticket</a>. If you didn't understand something, send an email to bruno@pancakeapp.com RIGHT NOW. I'll help you out. If you think I missed something, or that there's things that could be improved, you should email me at bruno@pancakeapp.com. If you've got ideas, suggestions, feedback of any kind, or if you just want to tell me that I'm awesome, feel free to email me, too. Just bear in mind that flattering me will not get you free beer. Kay, now that's out in the open. Anyway, go make some Pancake Gateways, now!</p>
+	<h2>P.S. (Oh, I forgot something.)</h2>
+	<p>If you think your gateway is cool, and you want to make sure it'll always work with Pancake, send its files to support@pancakeapp.com. We'll integrate it into the Pancake core, and keep it updated so it won't ever break.</p>
+		</body>
+</html>
