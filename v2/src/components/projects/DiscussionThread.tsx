@@ -12,12 +12,39 @@ interface Props {
   projectId: string;
 }
 
+function DiscussionReplyForm({ discussionId, projectId, utils }: { discussionId: string; projectId: string; utils: ReturnType<typeof trpc.useUtils> }) {
+  const [body, setBody] = useState("");
+  const reply = trpc.discussions.reply.useMutation({
+    onSuccess: () => {
+      utils.discussions.list.invalidate({ projectId });
+      setBody("");
+    },
+  });
+  return (
+    <div className="flex gap-2 mt-2">
+      <Textarea
+        className="text-sm"
+        placeholder="Write a reply..."
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        rows={2}
+      />
+      <Button
+        size="sm"
+        disabled={!body.trim() || reply.isPending}
+        onClick={() => reply.mutate({ discussionId, body: body.trim() })}
+      >
+        Reply
+      </Button>
+    </div>
+  );
+}
+
 export function DiscussionThread({ projectId }: Props) {
   const { data: discussions } = trpc.discussions.list.useQuery({ projectId });
   const [newSubject, setNewSubject] = useState("");
   const [newBody, setNewBody] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [replyBody, setReplyBody] = useState<Record<string, string>>({});
   const utils = trpc.useUtils();
 
   const create = trpc.discussions.create.useMutation({
@@ -25,13 +52,6 @@ export function DiscussionThread({ projectId }: Props) {
       utils.discussions.list.invalidate({ projectId });
       setNewSubject("");
       setNewBody("");
-    },
-  });
-
-  const reply = trpc.discussions.reply.useMutation({
-    onSuccess: (_, vars) => {
-      utils.discussions.list.invalidate({ projectId });
-      setReplyBody((prev) => ({ ...prev, [vars.discussionId]: "" }));
     },
   });
 
@@ -68,26 +88,7 @@ export function DiscussionThread({ projectId }: Props) {
                 </div>
               ))}
 
-              <div className="flex gap-2 mt-2">
-                <Textarea
-                  className="text-sm"
-                  placeholder="Write a reply..."
-                  value={replyBody[d.id] ?? ""}
-                  onChange={(e) =>
-                    setReplyBody((prev) => ({ ...prev, [d.id]: e.target.value }))
-                  }
-                  rows={2}
-                />
-                <Button
-                  size="sm"
-                  disabled={!replyBody[d.id]?.trim() || reply.isPending}
-                  onClick={() =>
-                    reply.mutate({ discussionId: d.id, body: replyBody[d.id] ?? "" })
-                  }
-                >
-                  Reply
-                </Button>
-              </div>
+              <DiscussionReplyForm discussionId={d.id} projectId={projectId} utils={utils} />
             </div>
           )}
         </div>
