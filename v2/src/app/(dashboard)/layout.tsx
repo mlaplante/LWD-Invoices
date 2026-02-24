@@ -13,18 +13,31 @@ import {
 import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
 import Link from "next/link";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import {
+  BarChart2,
+  LifeBuoy,
+  ClipboardList,
+  type LucideIcon,
+} from "lucide-react";
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon?: LucideIcon;
+};
+
+const navItems: NavItem[] = [
   { href: "/", label: "Dashboard" },
   { href: "/clients", label: "Clients" },
   { href: "/invoices", label: "Invoices" },
   { href: "/projects", label: "Projects" },
   { href: "/timesheets", label: "Timesheets" },
   { href: "/items", label: "Items" },
+  { href: "/reports", label: "Reports", icon: BarChart2 },
+  { href: "/tickets", label: "Tickets", icon: LifeBuoy },
   { href: "/settings", label: "Settings" },
   { href: "/settings/projects", label: "Project Settings" },
-  { href: "/reports", label: "Reports" },
-  { href: "/tickets", label: "Tickets" },
+  { href: "/settings/audit-log", label: "Activity Log", icon: ClipboardList },
 ];
 
 export default function DashboardLayout({
@@ -40,13 +53,19 @@ export default function DashboardLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild>
-                  <Link href={item.href}>{item.label}</Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild>
+                    <Link href={item.href}>
+                      {Icon && <Icon className="h-4 w-4" />}
+                      {item.label}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
