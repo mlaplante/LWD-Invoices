@@ -1,6 +1,7 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { RecordPaymentButton } from "@/components/invoices/RecordPaymentButton";
 import { InvoiceComments } from "@/components/invoices/InvoiceComments";
@@ -57,8 +58,10 @@ export default async function InvoiceDetailPage({
   const symPos = invoice.currency.symbolPosition;
   const f = (n: Parameters<typeof fmt>[0]) => fmt(n, sym, symPos);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const portalLink = `${appUrl}/portal/${invoice.portalToken}`;
+  const headersList = await headers();
+  const host = headersList.get("host") ?? "localhost:3000";
+  const proto = headersList.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const portalLink = `${proto}://${host}/portal/${invoice.portalToken}`;
   const isPayable = PAYABLE_STATUSES.includes(invoice.status);
 
   return (
