@@ -36,7 +36,13 @@ function formatDate(d: Date | null): string {
 }
 
 export default async function InvoicesPage() {
-  const invoices = await api.invoices.list({ includeArchived: false });
+  let invoices: Awaited<ReturnType<typeof api.invoices.list>> = [];
+  try {
+    invoices = await api.invoices.list({ includeArchived: false });
+  } catch (err) {
+    console.error("[InvoicesPage] list failed:", err);
+    throw err; // re-throw so error.tsx can render a friendly message
+  }
 
   return (
     <div className="space-y-4">
