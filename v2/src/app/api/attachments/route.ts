@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Validate context is a known enum value
-  const validContexts = ["INVOICE", "PROJECT", "CLIENT", "TICKET"];
-  if (!validContexts.includes(context)) {
+  const validContexts = new Set(Object.values(AttachmentContext));
+  if (!validContexts.has(context)) {
     return NextResponse.json({ error: "Invalid context" }, { status: 400 });
   }
 
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   const attachment = await db.attachment.create({
     data: {
-      filename: url,
+      filename: file.name,
       originalName: file.name,
       mimeType: file.type,
       size: file.size,
