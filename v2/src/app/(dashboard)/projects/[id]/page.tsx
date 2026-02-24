@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TaskList } from "@/components/projects/TaskList";
 import { TimeTab } from "@/components/projects/TimeTab";
 import { ExpensesTab } from "@/components/projects/ExpensesTab";
+import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -26,6 +27,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
     { key: "tasks", label: "Tasks" },
     { key: "time", label: "Time" },
     { key: "expenses", label: "Expenses" },
+    { key: "files", label: "Files" },
   ];
 
   return (
@@ -99,6 +101,11 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       {tab === "tasks" && <TaskList project={project} />}
       {tab === "time" && <TimeTab projectId={id} />}
       {tab === "expenses" && <ExpensesTab projectId={id} />}
+      {tab === "files" && (
+        <div className="rounded-lg border p-4">
+          <AttachmentPanel context="PROJECT" contextId={id} />
+        </div>
+      )}
     </div>
   );
 }

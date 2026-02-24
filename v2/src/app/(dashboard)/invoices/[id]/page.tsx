@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { RecordPaymentButton } from "@/components/invoices/RecordPaymentButton";
 import { InvoiceComments } from "@/components/invoices/InvoiceComments";
 import { RecurringInvoiceDialog } from "@/components/invoices/RecurringInvoiceDialog";
+import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
 import type { InvoiceStatus } from "@/generated/prisma";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
@@ -327,6 +328,11 @@ export default async function InvoiceDetailPage({
 
       {/* Comments */}
       <InvoiceComments invoiceId={invoice.id} />
+
+      {/* Attachments */}
+      <div className="rounded-lg border p-4">
+        <AttachmentPanel context="INVOICE" contextId={invoice.id} />
+      </div>
     </div>
   );
 }
