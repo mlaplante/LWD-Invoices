@@ -23,6 +23,7 @@ import { recurringInvoicesRouter } from "./recurringInvoices";
 import { reportsRouter } from "./reports";
 import { creditNotesRouter } from "./creditNotes";
 import { attachmentsRouter } from "./attachments";
+import { notificationsRouter } from "./notifications";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -49,6 +50,7 @@ export const appRouter = router({
   reports: reportsRouter,
   creditNotes: creditNotesRouter,
   attachments: attachmentsRouter,
+  notifications: notificationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

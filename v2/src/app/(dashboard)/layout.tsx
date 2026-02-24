@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
 import Link from "next/link";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -54,6 +55,9 @@ export default function DashboardLayout({
       <SidebarInset>
         <header className="flex h-14 items-center gap-2 border-b px-4">
           <SidebarTrigger />
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </SidebarInset>
