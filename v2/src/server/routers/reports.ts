@@ -107,7 +107,7 @@ export const reportsRouter = router({
           organizationId: org.id,
           ...(input.from ?? input.to
             ? {
-                dueDate: {
+                createdAt: {
                   ...(input.from ? { gte: input.from } : {}),
                   ...(input.to ? { lte: input.to } : {}),
                 },

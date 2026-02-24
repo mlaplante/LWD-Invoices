@@ -23,12 +23,12 @@ export default async function PaymentsReportPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total</span>
-                <span className="font-medium">${stats.total.toFixed(2)}</span>
+                <span className="font-medium">{stats.total.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Gateway fees</span>
                 <span className="font-medium text-destructive">
-                  -${stats.fees.toFixed(2)}
+                  -{stats.fees.toFixed(2)}
                 </span>
               </div>
             </CardContent>
