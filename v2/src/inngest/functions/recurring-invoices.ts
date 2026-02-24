@@ -127,30 +127,32 @@ async function generateRecurringInvoice(
       }
     }
 
+    // Update recurring config INSIDE transaction for atomicity
+    const maxReached =
+      rec.maxOccurrences !== null &&
+      rec.occurrenceCount + 1 >= rec.maxOccurrences;
+
+    await tx.recurringInvoice.update({
+      where: { id: rec.id },
+      data: {
+        occurrenceCount: { increment: 1 },
+        nextRunAt: computeNextRunAt(rec.nextRunAt, rec.frequency, rec.interval),
+        isActive: !maxReached,
+      },
+    });
+
+    // Audit log INSIDE transaction
+    await tx.auditLog.create({
+      data: {
+        action: "CREATED",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        entityLabel: invoice.number,
+        organizationId: rec.organizationId,
+      },
+    });
+
     return invoice;
-  });
-
-  const maxReached =
-    rec.maxOccurrences !== null &&
-    rec.occurrenceCount + 1 >= rec.maxOccurrences;
-
-  await db.recurringInvoice.update({
-    where: { id: rec.id },
-    data: {
-      occurrenceCount: { increment: 1 },
-      nextRunAt: computeNextRunAt(rec.nextRunAt, rec.frequency, rec.interval),
-      isActive: !maxReached,
-    },
-  });
-
-  await db.auditLog.create({
-    data: {
-      action: "CREATED",
-      entityType: "Invoice",
-      entityId: newInvoice.id,
-      entityLabel: newInvoice.number,
-      organizationId: rec.organizationId,
-    },
   });
 
   return newInvoice;
