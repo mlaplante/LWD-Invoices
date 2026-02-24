@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid context" }, { status: 400 });
   }
 
-  const org = await db.organization.findFirst({ where: { clerkId: orgId } });
+  const org = await db.organization.findUnique({ where: { id: orgId } });
   if (!org) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { url } = await uploadFile(

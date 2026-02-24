@@ -13,7 +13,7 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const org = await db.organization.findFirst({ where: { clerkId: orgId } });
+  const org = await db.organization.findUnique({ where: { id: orgId } });
   if (!org) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const attachment = await db.attachment.findFirst({

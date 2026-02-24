@@ -4,7 +4,7 @@ import { withV1Auth, paginationParams } from "../auth";
 
 export async function GET(req: NextRequest) {
   return withV1Auth(req, async ({ orgId }) => {
-    const org = await db.organization.findFirst({ where: { clerkId: orgId } });
+    const org = await db.organization.findUnique({ where: { id: orgId } });
     if (!org) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const { skip, take, page } = paginationParams(req);

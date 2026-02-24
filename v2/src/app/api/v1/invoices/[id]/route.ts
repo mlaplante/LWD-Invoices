@@ -8,7 +8,7 @@ export async function GET(
 ) {
   return withV1Auth(req, async ({ orgId }) => {
     const { id } = await params;
-    const org = await db.organization.findFirst({ where: { clerkId: orgId } });
+    const org = await db.organization.findUnique({ where: { id: orgId } });
     if (!org) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const invoice = await db.invoice.findFirst({
