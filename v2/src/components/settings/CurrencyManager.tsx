@@ -28,9 +28,7 @@ const EMPTY = {
 
 export function CurrencyManager({ initialCurrencies }: Props) {
   const utils = trpc.useUtils();
-  const { data: currencies = initialCurrencies } = trpc.currencies.list.useQuery(undefined, {
-    initialData: initialCurrencies,
-  });
+  const { data: currencies = initialCurrencies } = trpc.currencies.list.useQuery(undefined);
 
   const createMutation = trpc.currencies.create.useMutation({
     onSuccess: () => { void utils.currencies.list.invalidate(); setAdding(false); setForm(EMPTY); },

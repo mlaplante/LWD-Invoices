@@ -19,9 +19,7 @@ const EMPTY = { name: "", rate: 0, isCompound: false, isDefault: false };
 
 export function TaxManager({ initialTaxes }: Props) {
   const utils = trpc.useUtils();
-  const { data: taxes = initialTaxes } = trpc.taxes.list.useQuery(undefined, {
-    initialData: initialTaxes,
-  });
+  const { data: taxes = initialTaxes } = trpc.taxes.list.useQuery(undefined);
 
   const createMutation = trpc.taxes.create.useMutation({
     onSuccess: () => { void utils.taxes.list.invalidate(); setAdding(false); setForm(EMPTY); },
