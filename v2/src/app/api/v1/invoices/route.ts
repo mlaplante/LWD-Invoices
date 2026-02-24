@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
+import { InvoiceStatus } from "@/generated/prisma";
 import { withV1Auth, paginationParams } from "../auth";
 
 export async function GET(req: NextRequest) {
@@ -9,12 +10,19 @@ export async function GET(req: NextRequest) {
 
     const { skip, take, page } = paginationParams(req);
     const url = new URL(req.url);
-    const status = url.searchParams.get("status");
+    const statusParam = url.searchParams.get("status");
+    const status =
+      statusParam && Object.values(InvoiceStatus).includes(statusParam as InvoiceStatus)
+        ? (statusParam as InvoiceStatus)
+        : null;
+    if (statusParam && !status) {
+      return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
+    }
 
     const invoices = await db.invoice.findMany({
       where: {
         organizationId: org.id,
-        ...(status ? { status: status as never } : {}),
+        ...(status ? { status } : {}),
         isArchived: false,
       },
       include: { client: { select: { id: true, name: true, email: true } }, currency: true },

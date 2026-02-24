@@ -40,7 +40,9 @@ export async function withV1Auth(
 
 export function paginationParams(req: NextRequest) {
   const url = new URL(req.url);
-  const page = Math.max(1, Number(url.searchParams.get("page") ?? "1"));
-  const perPage = Math.min(Math.max(1, Number(url.searchParams.get("per_page") ?? "20")), 100);
+  const rawPage = parseInt(url.searchParams.get("page") ?? "1", 10);
+  const rawPerPage = parseInt(url.searchParams.get("per_page") ?? "20", 10);
+  const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+  const perPage = isNaN(rawPerPage) || rawPerPage < 1 ? 20 : Math.min(rawPerPage, 100);
   return { skip: (page - 1) * perPage, take: perPage, page };
 }

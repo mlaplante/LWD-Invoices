@@ -13,7 +13,22 @@ export async function GET(
 
     const client = await db.client.findFirst({
       where: { id, organizationId: org.id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        address: true,
+        city: true,
+        state: true,
+        zip: true,
+        country: true,
+        taxId: true,
+        notes: true,
+        isArchived: true,
+        createdAt: true,
+        updatedAt: true,
+        organizationId: true,
         invoices: {
           select: { id: true, number: true, status: true, total: true, createdAt: true },
           orderBy: { createdAt: "desc" },
