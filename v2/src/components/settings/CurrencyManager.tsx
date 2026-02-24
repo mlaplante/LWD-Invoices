@@ -21,7 +21,7 @@ const EMPTY = {
   code: "",
   name: "",
   symbol: "",
-  symbolPosition: "before" as const,
+  symbolPosition: "before" as "before" | "after",
   exchangeRate: 1,
   isDefault: false,
 };
