@@ -1,1 +1,0 @@
-<?php $under_maintenance = false;
