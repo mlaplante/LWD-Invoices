@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { RecordPaymentButton } from "@/components/invoices/RecordPaymentButton";
 import { SendInvoiceButton } from "@/components/invoices/SendInvoiceButton";
+import { ApplyCreditNoteDialog } from "@/components/invoices/ApplyCreditNoteDialog";
 import { InvoiceComments } from "@/components/invoices/InvoiceComments";
 import { RecurringInvoiceDialog } from "@/components/invoices/RecurringInvoiceDialog";
 import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
@@ -135,6 +136,12 @@ export default async function InvoiceDetailPage({
               <ExternalLink className="w-3 h-3 ml-1.5" />
             </a>
           </Button>
+          {invoice.type === "CREDIT_NOTE" ? null : (
+            <ApplyCreditNoteDialog
+              invoiceId={invoice.id}
+              clientId={invoice.client.id}
+            />
+          )}
           {isPayable && (
             <RecordPaymentButton
               invoiceId={invoice.id}

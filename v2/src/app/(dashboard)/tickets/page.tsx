@@ -1,67 +1,130 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Plus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
 
-const priorityColors = {
-  LOW: "secondary",
-  NORMAL: "outline",
-  HIGH: "default",
-  URGENT: "destructive",
-} as const;
+const PRIORITY_BADGE: Record<string, { label: string; className: string }> = {
+  LOW:    { label: "Low",    className: "bg-gray-100 text-gray-500" },
+  NORMAL: { label: "Normal", className: "bg-blue-50 text-blue-600" },
+  HIGH:   { label: "High",   className: "bg-amber-50 text-amber-600" },
+  URGENT: { label: "Urgent", className: "bg-red-50 text-red-600" },
+};
+
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  OPEN:        { label: "Open",        className: "bg-emerald-50 text-emerald-600" },
+  IN_PROGRESS: { label: "In Progress", className: "bg-blue-50 text-blue-600" },
+  CLOSED:      { label: "Closed",      className: "bg-gray-100 text-gray-500" },
+  RESOLVED:    { label: "Resolved",    className: "bg-primary/10 text-primary" },
+};
 
 export default async function TicketsPage() {
   const tickets = await api.tickets.list({});
 
+  const open = tickets.filter((t) => t.status === "OPEN").length;
+  const urgent = tickets.filter((t) => t.priority === "URGENT").length;
+
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Support Tickets</h1>
-        <Button asChild>
-          <Link href="/tickets/new">New Ticket</Link>
+        <h1 className="text-2xl font-bold tracking-tight">Support Tickets</h1>
+        <Button asChild size="sm">
+          <Link href="/tickets/new">
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            New Ticket
+          </Link>
         </Button>
       </div>
-      {tickets.length === 0 ? (
-        <div className="border rounded-lg p-12 text-center text-muted-foreground">
-          No tickets yet. <Link href="/tickets/new" className="underline">Create your first ticket.</Link>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <p className="text-xs text-muted-foreground font-medium">Total</p>
+          <p className="text-2xl font-bold mt-0.5 tabular-nums">{tickets.length}</p>
         </div>
-      ) : (
-        <div className="border rounded-lg overflow-hidden">
+        <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <p className="text-xs text-muted-foreground font-medium">Open</p>
+          <p className="text-2xl font-bold mt-0.5 tabular-nums">{open}</p>
+        </div>
+        <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <p className="text-xs text-muted-foreground font-medium">Urgent</p>
+          <p className="text-2xl font-bold mt-0.5 tabular-nums text-red-600">{urgent}</p>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border/50">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Tickets
+          </p>
+          <p className="text-base font-semibold mt-0.5">All Tickets</p>
+        </div>
+
+        {tickets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-sm text-muted-foreground">No tickets yet.</p>
+            <Link
+              href="/tickets/new"
+              className="mt-2 text-sm text-primary hover:underline"
+            >
+              Create your first ticket
+            </Link>
+          </div>
+        ) : (
           <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-3">#</th>
-                <th className="text-left p-3">Subject</th>
-                <th className="text-left p-3">Client</th>
-                <th className="text-left p-3">Status</th>
-                <th className="text-left p-3">Priority</th>
-                <th className="text-left p-3">Created</th>
+            <thead>
+              <tr className="border-b border-border/40">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">#</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Subject</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Client</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Priority</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Created</th>
               </tr>
             </thead>
-            <tbody>
-              {tickets.map((t) => (
-                <tr key={t.id} className="border-t hover:bg-muted/30">
-                  <td className="p-3 font-mono text-muted-foreground">#{t.number}</td>
-                  <td className="p-3">
-                    <Link href={`/tickets/${t.id}`} className="hover:underline font-medium">
-                      {t.subject}
-                    </Link>
-                  </td>
-                  <td className="p-3 text-muted-foreground">{t.client?.name ?? "—"}</td>
-                  <td className="p-3"><Badge variant="outline">{t.status}</Badge></td>
-                  <td className="p-3">
-                    <Badge variant={priorityColors[t.priority]}>{t.priority}</Badge>
-                  </td>
-                  <td className="p-3 text-muted-foreground">
-                    {formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-border/40">
+              {tickets.map((t) => {
+                const priority = PRIORITY_BADGE[t.priority] ?? { label: t.priority, className: "bg-gray-100 text-gray-500" };
+                const status = STATUS_BADGE[t.status] ?? { label: t.status, className: "bg-gray-100 text-gray-500" };
+                return (
+                  <tr key={t.id} className="hover:bg-accent/20 transition-colors">
+                    <td className="px-6 py-3.5 font-mono text-xs text-muted-foreground">
+                      #{t.number}
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Link
+                        href={`/tickets/${t.id}`}
+                        className="font-medium hover:text-primary transition-colors"
+                      >
+                        {t.subject}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-3.5 text-muted-foreground">
+                      {t.client?.name ?? "—"}
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className={cn("inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold", status.className)}>
+                        {status.label}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className={cn("inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold", priority.className)}>
+                        {priority.label}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-muted-foreground text-xs">
+                      {formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
