@@ -9,8 +9,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    // Use the direct (non-pooled) connection for migrations so prisma migrate deploy
-    // doesn't exhaust the session pool. Falls back to DATABASE_URL in local dev.
-    url: process.env["DIRECT_DATABASE_URL"] ?? process.env["DATABASE_URL"],
+    url: process.env["DATABASE_URL"],
   },
 });
