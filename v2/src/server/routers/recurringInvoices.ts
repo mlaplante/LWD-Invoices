@@ -18,8 +18,8 @@ export const recurringInvoicesRouter = router({
     .query(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.recurringInvoice.findUnique({
-        where: { invoiceId: input.invoiceId },
+      return ctx.db.recurringInvoice.findFirst({
+        where: { invoiceId: input.invoiceId, organizationId: org.id },
       });
     }),
 

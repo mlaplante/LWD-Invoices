@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,7 +53,15 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
   );
   const [autoSend, setAutoSend] = useState(false);
 
-  // Sync state when existing data loads
+  useEffect(() => {
+    if (existing) {
+      setFrequency(existing.frequency);
+      setInterval(existing.interval);
+      setStartDate(new Date(existing.startDate).toISOString().split("T")[0]);
+      setAutoSend(existing.autoSend);
+    }
+  }, [existing]);
+
   const isActive = existing?.isActive ?? false;
 
   function handleSubmit(e: React.FormEvent) {
