@@ -48,7 +48,7 @@ export function InvoiceComments({ invoiceId }: Props) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Comments</h2>
+      <h2 className="text-base font-semibold">Comments</h2>
 
       {(!comments || comments.length === 0) && (
         <p className="text-sm text-muted-foreground">No comments yet.</p>
@@ -95,7 +95,7 @@ export function InvoiceComments({ invoiceId }: Props) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border bg-card p-4">
+      <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-border/50 bg-card p-4">
         <p className="text-sm font-medium">Add a note</p>
 
         <div className="space-y-1.5">

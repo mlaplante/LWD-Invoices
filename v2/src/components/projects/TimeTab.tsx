@@ -52,7 +52,7 @@ export function TimeTab({ projectId }: Props) {
       </div>
 
       {showForm && (
-        <div className="rounded-lg border p-4">
+        <div className="rounded-2xl border border-border/50 p-4">
           <h3 className="font-medium mb-3">Log Time</h3>
           <TimeEntryForm
             projectId={projectId}
@@ -63,7 +63,7 @@ export function TimeTab({ projectId }: Props) {
       )}
 
       {showBill && project && (
-        <div className="rounded-lg border p-4">
+        <div className="rounded-2xl border border-border/50 p-4">
           <h3 className="font-medium mb-3">Bill Time to Invoice</h3>
           <BillToInvoiceDialog
             projectId={projectId}
@@ -81,7 +81,7 @@ export function TimeTab({ projectId }: Props) {
       ) : entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">No time entries yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-2xl border border-border/50">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/50">
               <tr>

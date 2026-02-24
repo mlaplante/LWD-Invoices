@@ -44,7 +44,7 @@ export function ExpensesTab({ projectId }: Props) {
       </div>
 
       {showForm && (
-        <div className="rounded-lg border p-4">
+        <div className="rounded-2xl border border-border/50 p-4">
           <h3 className="font-medium mb-3">Add Expense</h3>
           <ExpenseForm
             projectId={projectId}
@@ -57,7 +57,7 @@ export function ExpensesTab({ projectId }: Props) {
       )}
 
       {showBill && project && (
-        <div className="rounded-lg border p-4">
+        <div className="rounded-2xl border border-border/50 p-4">
           <h3 className="font-medium mb-3">Bill Expenses to Invoice</h3>
           <BillToInvoiceDialog
             projectId={projectId}
@@ -75,7 +75,7 @@ export function ExpensesTab({ projectId }: Props) {
       ) : expenses.length === 0 ? (
         <p className="text-sm text-muted-foreground">No expenses yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-2xl border border-border/50">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/50">
               <tr>

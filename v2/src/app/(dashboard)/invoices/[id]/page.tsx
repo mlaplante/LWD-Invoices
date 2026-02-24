@@ -392,7 +392,9 @@ export default async function InvoiceDetailPage({
       )}
 
       {/* ── Comments ─────────────────────────────────────────────── */}
-      <InvoiceComments invoiceId={invoice.id} />
+      <div className="rounded-2xl border border-border/50 p-5">
+        <InvoiceComments invoiceId={invoice.id} />
+      </div>
 
       {/* ── Attachments ──────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border/50 p-5">

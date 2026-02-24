@@ -123,7 +123,7 @@ export function GatewaySettingsForm() {
 
       {/* Stripe */}
       <TabsContent value="stripe">
-        <div className="rounded-lg border bg-card p-6 space-y-5 mt-4">
+        <div className="rounded-2xl border border-border/50 bg-card p-6 space-y-5 mt-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">Stripe</h3>
@@ -207,7 +207,7 @@ export function GatewaySettingsForm() {
 
       {/* PayPal */}
       <TabsContent value="paypal">
-        <div className="rounded-lg border bg-card p-6 space-y-5 mt-4">
+        <div className="rounded-2xl border border-border/50 bg-card p-6 space-y-5 mt-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">PayPal</h3>
@@ -298,7 +298,7 @@ export function GatewaySettingsForm() {
 
       {/* Bank Transfer */}
       <TabsContent value="bank">
-        <div className="rounded-lg border bg-card p-6 space-y-5 mt-4">
+        <div className="rounded-2xl border border-border/50 bg-card p-6 space-y-5 mt-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">Bank Transfer</h3>
@@ -342,7 +342,7 @@ export function GatewaySettingsForm() {
 
       {/* Cash */}
       <TabsContent value="cash">
-        <div className="rounded-lg border bg-card p-6 space-y-5 mt-4">
+        <div className="rounded-2xl border border-border/50 bg-card p-6 space-y-5 mt-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">Cash</h3>
