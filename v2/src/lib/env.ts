@@ -14,7 +14,8 @@ export const env = createEnv({
       .default("development"),
     INNGEST_SIGNING_KEY: z.string().min(1).optional(),
     INNGEST_EVENT_KEY: z.string().min(1).optional(),
-    BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
+    SUPABASE_URL: z.string().url(),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   },
   client: {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
@@ -32,7 +33,8 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
     INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
-    BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,

@@ -1,6 +1,6 @@
-import { put } from "@vercel/blob";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
+import { uploadLogo } from "@/lib/supabase-storage";
 import { NextResponse } from "next/server";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"];
@@ -19,22 +19,14 @@ export async function POST(req: Request) {
     if (file.size > MAX_SIZE)
       return NextResponse.json({ error: "File too large (max 2 MB)" }, { status: 400 });
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return NextResponse.json({ error: "Logo upload is not configured (missing BLOB_READ_WRITE_TOKEN)" }, { status: 503 });
-    }
-
-    const ext = file.name.split(".").pop() ?? "png";
-    const blob = await put(`logos/${orgId}/logo.${ext}`, file, {
-      access: "public",
-      allowOverwrite: true,
-    });
+    const url = await uploadLogo(orgId, file);
 
     await db.organization.update({
       where: { id: orgId },
-      data: { logoUrl: blob.url },
+      data: { logoUrl: url },
     });
 
-    return NextResponse.json({ url: blob.url });
+    return NextResponse.json({ url });
   } catch (err) {
     console.error("[logo upload]", err);
     const message = err instanceof Error ? err.message : "Upload failed";
