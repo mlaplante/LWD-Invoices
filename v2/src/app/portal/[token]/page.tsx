@@ -2,6 +2,7 @@ import { db } from "@/server/db";
 import { notFound } from "next/navigation";
 import { PaymentButtons } from "@/components/portal/PaymentButtons";
 import { PortalComments } from "@/components/portal/PortalComments";
+import { EstimateActions } from "@/components/portal/EstimateActions";
 import type { InvoiceStatus } from "@/generated/prisma";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
@@ -188,6 +189,15 @@ export default async function PortalInvoicePage({
                 <p className="text-xs uppercase text-gray-400 mb-1">Notes</p>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
               </div>
+            )}
+
+            {/* Estimate accept/decline */}
+            {invoice.type === "ESTIMATE" && (
+              <EstimateActions
+                invoiceId={invoice.id}
+                token={token}
+                currentStatus={invoice.status}
+              />
             )}
           </div>
         </div>

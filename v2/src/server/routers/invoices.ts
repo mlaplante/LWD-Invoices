@@ -495,4 +495,38 @@ export const invoicesRouter = router({
         });
       });
     }),
+
+  acceptEstimate: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const org = await ctx.db.organization.findFirst({
+        where: { clerkId: ctx.orgId },
+      });
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+      const inv = await ctx.db.invoice.findFirst({
+        where: { id: input.id, organizationId: org.id, type: "ESTIMATE" },
+      });
+      if (!inv) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.invoice.update({
+        where: { id: input.id },
+        data: { status: "ACCEPTED" },
+      });
+    }),
+
+  declineEstimate: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const org = await ctx.db.organization.findFirst({
+        where: { clerkId: ctx.orgId },
+      });
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+      const inv = await ctx.db.invoice.findFirst({
+        where: { id: input.id, organizationId: org.id, type: "ESTIMATE" },
+      });
+      if (!inv) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.invoice.update({
+        where: { id: input.id },
+        data: { status: "REJECTED" },
+      });
+    }),
 });
