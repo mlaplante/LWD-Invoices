@@ -63,11 +63,12 @@ const TABS: { id: Tab; label: string }[] = [
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
-  const { tab: rawTab } = await searchParams;
+  const { tab: rawTab, page: rawPage } = await searchParams;
   const activeTab: Tab =
     rawTab === "active" || rawTab === "completed" ? rawTab : "all";
+  const page = Math.max(1, parseInt(rawPage ?? "1", 10));
 
   const projects = await api.projects.list({ includeArchived: false });
 
@@ -77,6 +78,13 @@ export default async function ProjectsPage({
       : activeTab === "completed"
       ? projects.filter((p) => p.status === "COMPLETED")
       : projects;
+
+  const PAGE_SIZE = 25;
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const currentPage = Math.min(page, Math.max(totalPages, 1));
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const paginated = filtered.slice(start, start + PAGE_SIZE);
+  const tabParam = activeTab !== "all" ? `tab=${activeTab}&` : "";
 
   return (
     <div className="space-y-5">
@@ -148,7 +156,7 @@ export default async function ProjectsPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {filtered.map((p) => {
+              {paginated.map((p) => {
                 const badge = STATUS_BADGE[p.status];
                 return (
                   <tr
@@ -218,6 +226,35 @@ export default async function ProjectsPage({
               })}
             </tbody>
           </table>
+          {/* Pagination footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
+              <span>
+                Showing {start + 1}–{Math.min(start + PAGE_SIZE, filtered.length)} of {filtered.length}
+              </span>
+              <div className="flex items-center gap-1">
+                {currentPage > 1 && (
+                  <Link
+                    href={`/projects?${tabParam}page=${currentPage - 1}`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
+                  >
+                    Previous
+                  </Link>
+                )}
+                <span className="px-3 py-1.5 text-xs">
+                  Page {currentPage} of {totalPages}
+                </span>
+                {currentPage < totalPages && (
+                  <Link
+                    href={`/projects?${tabParam}page=${currentPage + 1}`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
+                  >
+                    Next
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

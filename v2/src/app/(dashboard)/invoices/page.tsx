@@ -91,18 +91,23 @@ const TAB_FILTERS: Record<
   archived: { includeArchived: true },
 };
 
+// ── Pagination ───────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 25;
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
-  const { tab: rawTab } = await searchParams;
+  const { tab: rawTab, page: rawPage } = await searchParams;
   const activeTab: Tab =
     rawTab && Object.keys(TAB_FILTERS).includes(rawTab)
       ? (rawTab as Tab)
       : "all";
+  const page = Math.max(1, parseInt(rawPage ?? "1", 10));
 
   const filter = TAB_FILTERS[activeTab];
 
@@ -113,6 +118,15 @@ export default async function InvoicesPage({
     console.error("[InvoicesPage] list failed:", err);
     throw err;
   }
+
+  const totalPages = Math.ceil(invoices.length / PAGE_SIZE);
+  const currentPage = Math.min(page, Math.max(totalPages, 1));
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const paginatedInvoices = invoices.slice(start, start + PAGE_SIZE);
+
+  // Build tab-aware page link
+  const tabParam = activeTab !== "all" ? `tab=${activeTab}&` : "";
+  const pageLink = (p: number) => `/invoices?${tabParam}page=${p}`;
 
   return (
     <div className="space-y-5">
@@ -183,7 +197,7 @@ export default async function InvoicesPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {invoices.map((inv) => {
+              {paginatedInvoices.map((inv) => {
                 const badge = STATUS_BADGE[inv.status];
                 return (
                   <tr
@@ -254,6 +268,35 @@ export default async function InvoicesPage({
               })}
             </tbody>
           </table>
+          {/* Pagination footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
+              <span>
+                Showing {start + 1}–{Math.min(start + PAGE_SIZE, invoices.length)} of {invoices.length}
+              </span>
+              <div className="flex items-center gap-1">
+                {currentPage > 1 && (
+                  <Link
+                    href={pageLink(currentPage - 1)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
+                  >
+                    Previous
+                  </Link>
+                )}
+                <span className="px-3 py-1.5 text-xs">
+                  Page {currentPage} of {totalPages}
+                </span>
+                {currentPage < totalPages && (
+                  <Link
+                    href={pageLink(currentPage + 1)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
+                  >
+                    Next
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

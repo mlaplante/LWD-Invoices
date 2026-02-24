@@ -1,3 +1,4 @@
+import { api } from "@/trpc/server";
 import Link from "next/link";
 import { FileText, CreditCard, Receipt, ChevronRight } from "lucide-react";
 
@@ -25,13 +26,141 @@ const reports = [
   },
 ];
 
-export default function ReportsPage() {
+// ── Revenue chart helpers ─────────────────────────────────────────────────────
+
+function getLast12Months(): string[] {
+  const months: string[] = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    );
+  }
+  return months;
+}
+
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function shortMonth(key: string): string {
+  const month = parseInt(key.split("-")[1], 10) - 1;
+  return MONTH_NAMES[month] ?? "";
+}
+
+function formatAmount(n: number): string {
+  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
+  return `$${n.toFixed(0)}`;
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+export default async function ReportsPage() {
+  const revenueData = await api.reports.revenueByMonth({});
+
+  const months = getLast12Months();
+  const values = months.map((m) => revenueData[m] ?? 0);
+  const max = Math.max(...values, 1);
+  const totalRevenue = values.reduce((s, v) => s + v, 0);
+  const avgRevenue = totalRevenue / 12;
+
+  const CHART_H = 80;
+  const BAR_W = 20;
+  const BAR_GAP = 6;
+  const totalW = months.length * (BAR_W + BAR_GAP) - BAR_GAP;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
       </div>
 
+      {/* Revenue chart card */}
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="px-6 pt-5 pb-4 border-b border-border/50 flex items-start justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Revenue
+            </p>
+            <p className="text-base font-semibold mt-0.5">Last 12 Months</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-xl font-bold tabular-nums">${totalRevenue.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="px-6 py-5">
+          {totalRevenue === 0 ? (
+            <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
+              No revenue recorded yet.
+            </div>
+          ) : (
+            <>
+              {/* Max label */}
+              <div className="flex items-end gap-0 mb-1">
+                <span className="text-[10px] text-muted-foreground w-10 shrink-0 text-right pr-2 pb-0.5">
+                  {formatAmount(max)}
+                </span>
+                {/* Chart */}
+                <div className="flex-1 overflow-x-auto">
+                  <svg
+                    width={totalW}
+                    height={CHART_H + 28}
+                    style={{ display: "block", minWidth: "100%" }}
+                    viewBox={`0 0 ${totalW} ${CHART_H + 28}`}
+                    preserveAspectRatio="none"
+                  >
+                    {/* Avg line */}
+                    {avgRevenue > 0 && (
+                      <line
+                        x1={0}
+                        y1={CHART_H - (avgRevenue / max) * CHART_H}
+                        x2={totalW}
+                        y2={CHART_H - (avgRevenue / max) * CHART_H}
+                        stroke="hsl(var(--border))"
+                        strokeWidth="1"
+                        strokeDasharray="3 3"
+                      />
+                    )}
+                    {months.map((m, i) => {
+                      const barH = Math.max((values[i] / max) * CHART_H, values[i] > 0 ? 2 : 0);
+                      const x = i * (BAR_W + BAR_GAP);
+                      const y = CHART_H - barH;
+                      const isCurrentMonth = i === months.length - 1;
+                      return (
+                        <g key={m}>
+                          <rect
+                            x={x}
+                            y={y}
+                            width={BAR_W}
+                            height={barH}
+                            rx={3}
+                            fill={isCurrentMonth ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.35)"}
+                          />
+                          <text
+                            x={x + BAR_W / 2}
+                            y={CHART_H + 18}
+                            textAnchor="middle"
+                            fontSize={9}
+                            fill="hsl(var(--muted-foreground))"
+                          >
+                            {shortMonth(m)}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 text-right">
+                Monthly avg: <span className="font-medium">${avgRevenue.toFixed(2)}</span>
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Nav cards */}
       <div className="grid gap-3 sm:grid-cols-3">
         {reports.map((r) => (
           <Link

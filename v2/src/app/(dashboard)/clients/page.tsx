@@ -28,8 +28,21 @@ function avatarColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 }
 
-export default async function ClientsPage() {
+const PAGE_SIZE = 25;
+
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const page = Math.max(1, parseInt(rawPage ?? "1", 10));
   const clients = await api.clients.list({ includeArchived: false });
+
+  const totalPages = Math.ceil(clients.length / PAGE_SIZE);
+  const currentPage = Math.min(page, Math.max(totalPages, 1));
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const paginated = clients.slice(start, start + PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -72,7 +85,7 @@ export default async function ClientsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {clients.map((client) => (
+              {paginated.map((client) => (
                 <tr
                   key={client.id}
                   className="group hover:bg-accent/30 transition-colors"
@@ -127,6 +140,35 @@ export default async function ClientsPage() {
               ))}
             </tbody>
           </table>
+          {/* Pagination footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
+              <span>
+                Showing {start + 1}–{Math.min(start + PAGE_SIZE, clients.length)} of {clients.length}
+              </span>
+              <div className="flex items-center gap-1">
+                {currentPage > 1 && (
+                  <Link
+                    href={`/clients?page=${currentPage - 1}`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
+                  >
+                    Previous
+                  </Link>
+                )}
+                <span className="px-3 py-1.5 text-xs">
+                  Page {currentPage} of {totalPages}
+                </span>
+                {currentPage < totalPages && (
+                  <Link
+                    href={`/clients?page=${currentPage + 1}`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
+                  >
+                    Next
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
