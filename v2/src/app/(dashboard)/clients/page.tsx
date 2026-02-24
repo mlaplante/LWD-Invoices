@@ -1,63 +1,127 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Users } from "lucide-react";
+
+// Generate consistent initials + color from a name
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+const AVATAR_COLORS = [
+  "bg-violet-100 text-violet-700",
+  "bg-blue-100 text-blue-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-amber-100 text-amber-700",
+  "bg-rose-100 text-rose-700",
+  "bg-cyan-100 text-cyan-700",
+  "bg-orange-100 text-orange-700",
+  "bg-indigo-100 text-indigo-700",
+];
+
+function avatarColor(name: string): string {
+  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+}
 
 export default async function ClientsPage() {
   const clients = await api.clients.list({ includeArchived: false });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Page heading */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Clients</h1>
-        <Button asChild>
-          <Link href="/clients/new">New Client</Link>
+        <h1 className="text-2xl font-bold tracking-tight">Clients</h1>
+        <Button asChild size="sm">
+          <Link href="/clients/new">+ New Client</Link>
         </Button>
       </div>
 
       {clients.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-          <p className="text-lg font-medium">No clients yet</p>
-          <p className="mt-1 text-sm">Add your first client to get started.</p>
-          <Button asChild className="mt-4">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
+            <Users className="w-6 h-6 text-primary" />
+          </div>
+          <p className="font-semibold text-foreground">No clients yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add your first client to get started.
+          </p>
+          <Button asChild className="mt-5" size="sm">
             <Link href="/clients/new">Add Client</Link>
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Name</th>
-                <th className="px-4 py-3 text-left font-medium">Email</th>
-                <th className="px-4 py-3 text-left font-medium">Phone</th>
-                <th className="px-4 py-3 text-left font-medium">City</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
+            <thead>
+              <tr className="border-b border-border">
+                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-2">
+                  Client
+                </th>
+                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Phone
+                </th>
+                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Location
+                </th>
+                <th className="pb-3" />
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-border/50">
               {clients.map((client) => (
-                <tr key={client.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-medium">
-                    <Link href={`/clients/${client.id}`} className="hover:underline">
-                      {client.name}
-                    </Link>
+                <tr
+                  key={client.id}
+                  className="group hover:bg-accent/30 transition-colors"
+                >
+                  {/* Avatar + name/email */}
+                  <td className="py-3.5 pl-2">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${avatarColor(client.name)}`}
+                      >
+                        {initials(client.name)}
+                      </div>
+                      <div>
+                        <Link
+                          href={`/clients/${client.id}`}
+                          className="font-semibold text-foreground hover:text-primary transition-colors leading-tight"
+                        >
+                          {client.name}
+                        </Link>
+                        {client.email && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {client.email}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {client.email ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+
+                  {/* Phone */}
+                  <td className="py-3.5 text-muted-foreground">
                     {client.phone ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {client.city ?? "—"}
+
+                  {/* Location */}
+                  <td className="py-3.5 text-muted-foreground">
+                    {[client.city, client.country].filter(Boolean).join(", ") ||
+                      "—"}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/clients/${client.id}`}
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      View
-                    </Link>
+
+                  {/* Actions */}
+                  <td className="py-3.5 pr-2">
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                      <Link
+                        href={`/clients/${client.id}`}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                      >
+                        View
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
