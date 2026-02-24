@@ -26,7 +26,7 @@ export const reportsRouter = router({
   unpaidInvoices: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.invoice.findMany({
         where: {
@@ -55,7 +55,7 @@ export const reportsRouter = router({
 
   overdueInvoices: protectedProcedure
     .query(async ({ ctx }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.invoice.findMany({
         where: {
@@ -71,7 +71,7 @@ export const reportsRouter = router({
   paymentsByGateway: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       const payments = await ctx.db.payment.findMany({
         where: {
@@ -100,7 +100,7 @@ export const reportsRouter = router({
   expenseBreakdown: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.expense.findMany({
         where: {
@@ -126,7 +126,7 @@ export const reportsRouter = router({
   revenueByMonth: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       const payments = await ctx.db.payment.findMany({
         where: {

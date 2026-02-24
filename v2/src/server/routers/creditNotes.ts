@@ -21,7 +21,7 @@ export const creditNotesRouter = router({
     .input(z.object({ clientId: z.string() }))
     .query(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.invoice.findMany({
@@ -48,7 +48,7 @@ export const creditNotesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 

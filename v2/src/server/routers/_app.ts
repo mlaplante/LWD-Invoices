@@ -1,4 +1,5 @@
 import { router } from "../trpc";
+import { organizationRouter } from "./organization";
 import { clientsRouter } from "./clients";
 import { currenciesRouter } from "./currencies";
 import { taxesRouter } from "./taxes";
@@ -29,6 +30,7 @@ import { ticketsRouter } from "./tickets";
 import { discussionsRouter } from "./discussions";
 
 export const appRouter = router({
+  organization: organizationRouter,
   clients: clientsRouter,
   currencies: currenciesRouter,
   taxes: taxesRouter,

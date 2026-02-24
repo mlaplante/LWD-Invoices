@@ -43,9 +43,14 @@ export async function POST(req: Request) {
   switch (event.type) {
     case "organization.created": {
       const org = event.data;
-      await db.organization.create({
-        data: {
-          clerkId: org.id,
+      await db.organization.upsert({
+        where: { id: org.id },
+        create: {
+          id: org.id,
+          name: org.name,
+          slug: org.slug ?? undefined,
+        },
+        update: {
           name: org.name,
           slug: org.slug ?? undefined,
         },
@@ -56,7 +61,7 @@ export async function POST(req: Request) {
     case "organization.updated": {
       const org = event.data;
       await db.organization.update({
-        where: { clerkId: org.id },
+        where: { id: org.id },
         data: {
           name: org.name,
           slug: org.slug ?? undefined,

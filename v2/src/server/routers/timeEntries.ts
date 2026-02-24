@@ -60,7 +60,7 @@ export const timeEntriesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
         select: { taskTimeInterval: true },
       });
       const rounded = roundMinutes(input.minutes, org?.taskTimeInterval ?? 0);

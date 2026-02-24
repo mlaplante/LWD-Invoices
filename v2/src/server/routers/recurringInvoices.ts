@@ -16,7 +16,7 @@ export const recurringInvoicesRouter = router({
   getForInvoice: protectedProcedure
     .input(z.object({ invoiceId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.recurringInvoice.findFirst({
         where: { invoiceId: input.invoiceId, organizationId: org.id },
@@ -26,7 +26,7 @@ export const recurringInvoicesRouter = router({
   upsert: protectedProcedure
     .input(z.object({ invoiceId: z.string(), data: recurringSchema }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
       // Verify invoice belongs to org
@@ -53,7 +53,7 @@ export const recurringInvoicesRouter = router({
   cancel: protectedProcedure
     .input(z.object({ invoiceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.recurringInvoice.updateMany({
         where: { invoiceId: input.invoiceId, organizationId: org.id },

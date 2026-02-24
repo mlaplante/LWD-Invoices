@@ -113,8 +113,7 @@ enum TicketStatus {
 // ─── Core Models ──────────────────────────────────────────────────────────────
 
 model Organization {
-  id                String   @id @default(cuid())
-  clerkId           String   @unique
+  id                String   @id
   name              String
   slug              String?  @unique
   invoicePrefix     String   @default("INV")

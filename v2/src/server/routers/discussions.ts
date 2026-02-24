@@ -6,7 +6,7 @@ export const discussionsRouter = router({
   list: protectedProcedure
     .input(z.object({ projectId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.discussion.findMany({
         where: { projectId: input.projectId, organizationId: org.id },
@@ -18,7 +18,7 @@ export const discussionsRouter = router({
   create: protectedProcedure
     .input(z.object({ projectId: z.string(), subject: z.string().min(1), body: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       // Verify project belongs to org
       const project = await ctx.db.project.findFirst({
@@ -41,7 +41,7 @@ export const discussionsRouter = router({
   reply: protectedProcedure
     .input(z.object({ discussionId: z.string(), body: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       // Verify discussion belongs to org
       const discussion = await ctx.db.discussion.findFirst({

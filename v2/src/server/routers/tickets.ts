@@ -10,7 +10,7 @@ export const ticketsRouter = router({
       clientId: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.ticket.findMany({
         where: {
@@ -26,7 +26,7 @@ export const ticketsRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       const ticket = await ctx.db.ticket.findFirst({
         where: { id: input.id, organizationId: org.id },
@@ -44,7 +44,7 @@ export const ticketsRouter = router({
       clientId: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
       const lastTicket = await ctx.db.ticket.findFirst({
@@ -84,7 +84,7 @@ export const ticketsRouter = router({
   reply: protectedProcedure
     .input(z.object({ ticketId: z.string(), body: z.string().min(1), isStaff: z.boolean().default(true) }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       // Verify ticket belongs to org before replying
       const ticket = await ctx.db.ticket.findFirst({
@@ -104,7 +104,7 @@ export const ticketsRouter = router({
   updateStatus: protectedProcedure
     .input(z.object({ id: z.string(), status: z.nativeEnum(TicketStatus) }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { clerkId: ctx.orgId } });
+      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       const result = await ctx.db.ticket.updateMany({
         where: { id: input.id, organizationId: org.id },

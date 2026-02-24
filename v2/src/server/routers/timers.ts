@@ -148,7 +148,7 @@ export const timersRouter = router({
       const rawMinutes = totalSeconds / 60;
 
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
         select: { taskTimeInterval: true },
       });
       const roundedMinutes = roundMinutes(rawMinutes, org?.taskTimeInterval ?? 0);

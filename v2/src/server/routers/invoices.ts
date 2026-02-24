@@ -142,7 +142,7 @@ export const invoicesRouter = router({
     .input(invoiceWriteSchema)
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -225,7 +225,7 @@ export const invoicesRouter = router({
     .input(z.object({ id: z.string() }).merge(invoiceWriteSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -542,7 +542,7 @@ export const invoicesRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       const inv = await ctx.db.invoice.findFirst({
@@ -559,7 +559,7 @@ export const invoicesRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       const inv = await ctx.db.invoice.findFirst({

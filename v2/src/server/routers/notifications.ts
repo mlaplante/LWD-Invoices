@@ -7,7 +7,7 @@ export const notificationsRouter = router({
     .input(z.object({ limit: z.number().int().max(50).default(20) }))
     .query(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.notification.findMany({
@@ -19,7 +19,7 @@ export const notificationsRouter = router({
 
   unreadCount: protectedProcedure.query(async ({ ctx }) => {
     const org = await ctx.db.organization.findFirst({
-      where: { clerkId: ctx.orgId },
+      where: { id: ctx.orgId },
     });
     if (!org) throw new TRPCError({ code: "NOT_FOUND" });
     return ctx.db.notification.count({
@@ -35,7 +35,7 @@ export const notificationsRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.notification.updateMany({
@@ -50,7 +50,7 @@ export const notificationsRouter = router({
 
   markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
     const org = await ctx.db.organization.findFirst({
-      where: { clerkId: ctx.orgId },
+      where: { id: ctx.orgId },
     });
     if (!org) throw new TRPCError({ code: "NOT_FOUND" });
     return ctx.db.notification.updateMany({

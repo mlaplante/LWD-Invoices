@@ -14,7 +14,7 @@ export const timesheetsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
         select: { taskTimeInterval: true },
       });
       const interval = org?.taskTimeInterval ?? 0;
@@ -68,7 +68,7 @@ export const timesheetsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
-        where: { clerkId: ctx.orgId },
+        where: { id: ctx.orgId },
         select: { taskTimeInterval: true },
       });
       const interval = org?.taskTimeInterval ?? 0;
