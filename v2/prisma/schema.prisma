@@ -59,6 +59,57 @@ enum ProjectStatus {
   ARCHIVED
 }
 
+enum RecurringFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum AttachmentContext {
+  INVOICE
+  PROJECT
+  CLIENT
+  TICKET
+}
+
+enum NotificationType {
+  INVOICE_SENT
+  INVOICE_VIEWED
+  INVOICE_PAID
+  INVOICE_OVERDUE
+  INVOICE_COMMENT
+  ESTIMATE_ACCEPTED
+  ESTIMATE_REJECTED
+  RECURRING_INVOICE_GENERATED
+  TICKET_CREATED
+  TICKET_REPLIED
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  STATUS_CHANGED
+  PAYMENT_RECEIVED
+  SENT
+  VIEWED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
 // ─── Core Models ──────────────────────────────────────────────────────────────
 
 model Organization {
@@ -89,9 +140,16 @@ model Organization {
   projectTemplates  ProjectTemplate[]
   timeEntries       TimeEntry[]
   timers            Timer[]
-  expenses          Expense[]
-  expenseCategories ExpenseCategory[]
-  expenseSuppliers  ExpenseSupplier[]
+  expenses                Expense[]
+  expenseCategories       ExpenseCategory[]
+  expenseSuppliers        ExpenseSupplier[]
+  recurringInvoices       RecurringInvoice[]
+  creditNoteApplications  CreditNoteApplication[]
+  attachments             Attachment[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  tickets                 Ticket[]
+  discussions             Discussion[]
 }
 
 model User {
@@ -130,6 +188,7 @@ model Client {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invoices       Invoice[]
   projects       Project[]
+  tickets        Ticket[]
 }
 
 model Currency {
@@ -220,6 +279,9 @@ model Invoice {
   partialPayments PartialPayment[]
   payments        Payment[]
   comments        Comment[]
+  recurringInvoice        RecurringInvoice?
+  creditNotesIssued       CreditNoteApplication[] @relation("CreditNoteSource")
+  creditNotesReceived     CreditNoteApplication[] @relation("CreditNoteTarget")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -378,6 +440,7 @@ model Project {
   tasks               ProjectTask[]
   timeEntries         TimeEntry[]
   expenses            Expense[]
+  discussions         Discussion[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -533,4 +596,165 @@ model Expense {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ─── Recurring Invoices ───────────────────────────────────────────────────────
+
+model RecurringInvoice {
+  id              String             @id @default(cuid())
+  frequency       RecurringFrequency
+  interval        Int                @default(1)
+  startDate       DateTime
+  nextRunAt       DateTime
+  endDate         DateTime?
+  maxOccurrences  Int?
+  occurrenceCount Int                @default(0)
+  isActive        Boolean            @default(true)
+  autoSend        Boolean            @default(false)
+
+  invoiceId      String       @unique
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Credit Note Applications ─────────────────────────────────────────────────
+
+model CreditNoteApplication {
+  id     String  @id @default(cuid())
+  amount Decimal @db.Decimal(20, 10)
+
+  creditNoteId   String
+  creditNote     Invoice      @relation("CreditNoteSource", fields: [creditNoteId], references: [id])
+  invoiceId      String
+  invoice        Invoice      @relation("CreditNoteTarget", fields: [invoiceId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── File Attachments ─────────────────────────────────────────────────────────
+
+model Attachment {
+  id           String            @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  storageUrl   String
+  context      AttachmentContext
+  contextId    String
+  uploadedById String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id     String           @id @default(cuid())
+  type   NotificationType
+  title  String
+  body   String
+  isRead Boolean          @default(false)
+  link   String?
+  userId String
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  entityType  String
+  entityId    String
+  entityLabel String?
+  diff        Json?
+  userId      String?
+  userLabel   String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Support Tickets ──────────────────────────────────────────────────────────
+
+model Ticket {
+  id       String         @id @default(cuid())
+  number   Int
+  subject  String
+  status   TicketStatus   @default(OPEN)
+  priority TicketPriority @default(NORMAL)
+
+  clientId     String?
+  client       Client?         @relation(fields: [clientId], references: [id])
+  assignedToId String?
+  messages     TicketMessage[]
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, number])
+}
+
+model TicketMessage {
+  id         String  @id @default(cuid())
+  body       String
+  isStaff    Boolean @default(true)
+  authorId   String?
+  authorName String?
+
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Project Discussions ──────────────────────────────────────────────────────
+
+model Discussion {
+  id         String  @id @default(cuid())
+  subject    String
+  body       String
+  isStaff    Boolean @default(true)
+  authorId   String?
+  authorName String?
+
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  replies        DiscussionReply[]
+
+  createdAt DateTime @default(now())
+}
+
+model DiscussionReply {
+  id         String  @id @default(cuid())
+  body       String
+  isStaff    Boolean @default(true)
+  authorId   String?
+  authorName String?
+
+  discussionId String
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }
