@@ -3,6 +3,7 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
@@ -45,7 +46,6 @@ const styles = StyleSheet.create({
   invoiceTitle: {
     fontSize: 22,
     fontFamily: "Helvetica-Bold",
-    color: "#2563eb",
     marginBottom: 4,
   },
   invoiceNumber: {
@@ -172,16 +172,24 @@ function InvoiceDocument({ invoice }: { invoice: FullInvoice }) {
     CREDIT_NOTE: "CREDIT NOTE",
   };
 
+  const brandColor = invoice.organization.brandColor ?? "#2563eb";
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <View>
+            {invoice.organization.logoUrl ? (
+              <Image
+                src={invoice.organization.logoUrl}
+                style={{ height: 40, maxWidth: 160, marginBottom: 4, objectFit: "contain" }}
+              />
+            ) : null}
             <Text style={styles.orgName}>{invoice.organization.name}</Text>
           </View>
           <View style={styles.invoiceMeta}>
-            <Text style={styles.invoiceTitle}>
+            <Text style={[styles.invoiceTitle, { color: brandColor }]}>
               {typeLabel[invoice.type] ?? "INVOICE"}
             </Text>
             <Text style={styles.invoiceNumber}>#{invoice.number}</Text>

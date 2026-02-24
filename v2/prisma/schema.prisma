@@ -116,6 +116,8 @@ model Organization {
   id                String   @id
   name              String
   slug              String?  @unique
+  logoUrl           String?
+  brandColor        String?  @default("#2563eb")
   invoicePrefix     String   @default("INV")
   invoiceNextNumber Int      @default(1)
   taskTimeInterval  Float    @default(0)

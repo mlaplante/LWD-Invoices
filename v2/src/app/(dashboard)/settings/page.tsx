@@ -1,6 +1,7 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { OrgSettingsForm } from "@/components/settings/OrgSettingsForm";
+import { BrandingForm } from "@/components/settings/BrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
 
@@ -39,6 +40,15 @@ export default async function SettingsPage() {
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Organization</h2>
         <OrgSettingsForm org={org} />
+      </section>
+
+      {/* Branding */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Branding</h2>
+          <p className="text-sm text-muted-foreground">Customize your brand color and logo on invoices and the client portal.</p>
+        </div>
+        <BrandingForm org={org} />
       </section>
 
       {/* Currencies */}

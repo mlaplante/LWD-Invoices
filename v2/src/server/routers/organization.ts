@@ -10,6 +10,8 @@ export const organizationRouter = router({
         id: true,
         name: true,
         slug: true,
+        logoUrl: true,
+        brandColor: true,
         invoicePrefix: true,
         invoiceNextNumber: true,
         taskTimeInterval: true,
@@ -23,6 +25,8 @@ export const organizationRouter = router({
     .input(
       z.object({
         name: z.string().min(1).optional(),
+        logoUrl: z.string().url().nullable().optional(),
+        brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
         invoicePrefix: z.string().min(1).max(10).optional(),
         invoiceNextNumber: z.number().int().positive().optional(),
         taskTimeInterval: z.number().min(0).optional(),

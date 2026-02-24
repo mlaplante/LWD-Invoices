@@ -77,21 +77,31 @@ export default async function PortalInvoicePage({
 
   const isPayable = PAYABLE_STATUSES.includes(invoice.status);
 
+  const brandColor = invoice.organization.brandColor ?? "#2563eb";
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
         {/* Org header */}
         <div className="text-center">
+          {invoice.organization.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={invoice.organization.logoUrl}
+              alt={invoice.organization.name}
+              className="mx-auto mb-3 h-12 w-auto max-w-[160px] object-contain"
+            />
+          )}
           <h1 className="text-2xl font-bold text-gray-900">{invoice.organization.name}</h1>
         </div>
 
         {/* Invoice card */}
         <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
           {/* Invoice header */}
-          <div className="bg-blue-600 px-6 py-5 text-white">
+          <div className="px-6 py-5 text-white" style={{ backgroundColor: brandColor }}>
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-blue-200 text-sm uppercase tracking-wide">
+                <p className="text-white/70 text-sm uppercase tracking-wide">
                   {invoice.type === "ESTIMATE" ? "Estimate" : "Invoice"}
                 </p>
                 <p className="text-3xl font-bold mt-1">#{invoice.number}</p>
