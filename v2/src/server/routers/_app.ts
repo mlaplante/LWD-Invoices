@@ -24,6 +24,7 @@ import { reportsRouter } from "./reports";
 import { creditNotesRouter } from "./creditNotes";
 import { attachmentsRouter } from "./attachments";
 import { notificationsRouter } from "./notifications";
+import { auditLogRouter } from "./auditLog";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -51,6 +52,7 @@ export const appRouter = router({
   creditNotes: creditNotesRouter,
   attachments: attachmentsRouter,
   notifications: notificationsRouter,
+  auditLog: auditLogRouter,
 });
 
 export type AppRouter = typeof appRouter;

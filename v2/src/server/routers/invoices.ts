@@ -9,6 +9,7 @@ import {
   type LineInput,
 } from "../services/tax-calculator";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
+import { logAudit } from "../services/audit";
 import { Resend } from "resend";
 import { env } from "@/lib/env";
 
@@ -142,7 +143,7 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
 
-      return ctx.db.$transaction(async (tx) => {
+      const invoice = await ctx.db.$transaction(async (tx) => {
         const txClient = tx as unknown as PrismaClient;
         const number = await generateInvoiceNumber(txClient, ctx.orgId);
 
@@ -202,6 +203,17 @@ export const invoicesRouter = router({
           include: fullInvoiceInclude,
         });
       });
+
+      await logAudit({
+        action: "CREATED",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        entityLabel: invoice.number,
+        organizationId: ctx.orgId,
+        userId: ctx.userId,
+      }).catch(() => {}); // non-critical, don't fail the mutation
+
+      return invoice;
     }),
 
   update: protectedProcedure
@@ -417,6 +429,15 @@ export const invoicesRouter = router({
           // Email failure is non-fatal
         }
       }
+
+      await logAudit({
+        action: "SENT",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        entityLabel: invoice.number,
+        organizationId: ctx.orgId,
+        userId: ctx.userId,
+      }).catch(() => {});
 
       return updated;
     }),
