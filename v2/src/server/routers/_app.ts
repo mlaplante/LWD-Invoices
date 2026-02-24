@@ -26,6 +26,7 @@ import { attachmentsRouter } from "./attachments";
 import { notificationsRouter } from "./notifications";
 import { auditLogRouter } from "./auditLog";
 import { ticketsRouter } from "./tickets";
+import { discussionsRouter } from "./discussions";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -55,6 +56,7 @@ export const appRouter = router({
   notifications: notificationsRouter,
   auditLog: auditLogRouter,
   tickets: ticketsRouter,
+  discussions: discussionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

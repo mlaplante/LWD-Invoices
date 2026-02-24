@@ -6,6 +6,7 @@ import { TaskList } from "@/components/projects/TaskList";
 import { TimeTab } from "@/components/projects/TimeTab";
 import { ExpensesTab } from "@/components/projects/ExpensesTab";
 import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
+import { DiscussionThread } from "@/components/projects/DiscussionThread";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -28,6 +29,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
     { key: "time", label: "Time" },
     { key: "expenses", label: "Expenses" },
     { key: "files", label: "Files" },
+    { key: "discussions", label: "Discussions" },
   ];
 
   return (
@@ -104,6 +106,11 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       {tab === "files" && (
         <div className="rounded-lg border p-4">
           <AttachmentPanel context="PROJECT" contextId={id} />
+        </div>
+      )}
+      {tab === "discussions" && (
+        <div className="rounded-lg border p-4">
+          <DiscussionThread projectId={project.id} />
         </div>
       )}
     </div>
