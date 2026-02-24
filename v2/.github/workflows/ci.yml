@@ -1,0 +1,28 @@
+name: CI (v2)
+on:
+  push:
+    branches: [main]
+    paths: ["v2/**"]
+  pull_request:
+    paths: ["v2/**"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: v2/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+        env:
+          SKIP_ENV_VALIDATION: "true"
+      - run: npm run build
+        env:
+          SKIP_ENV_VALIDATION: "true"
+      - run: npm run lint
