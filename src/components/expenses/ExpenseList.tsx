@@ -26,8 +26,9 @@ export function ExpenseList({ initialExpenses }: Props) {
     { initialData: initialExpenses }
   );
 
-  const seedMutation = trpc.expenseCategories.ensureDefaults.useMutation();
-  useEffect(() => { seedMutation.mutate(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const seedCategories = trpc.expenseCategories.ensureDefaults.useMutation();
+  const seedSuppliers = trpc.expenseSuppliers.ensureDefaults.useMutation();
+  useEffect(() => { seedCategories.mutate(); seedSuppliers.mutate(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteMutation = trpc.expenses.delete.useMutation({
     onSuccess: () => {

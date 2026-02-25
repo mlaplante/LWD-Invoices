@@ -71,10 +71,21 @@ export async function POST(req: Request) {
     data: { id: `org_${crypto.randomUUID()}`, name },
   });
 
-  // Seed default expense categories
-  await db.expenseCategory.createMany({
-    data: DEFAULT_EXPENSE_CATEGORIES.map((name) => ({ name, organizationId: org.id })),
-  });
+  const DEFAULT_EXPENSE_SUPPLIERS = [
+    "Amazon", "Apple", "Google", "Microsoft", "Shopify",
+    "Slack", "Stripe", "Zoom", "Dropbox", "FedEx",
+    "UPS", "USPS", "Staples", "Home Depot", "Other",
+  ];
+
+  // Seed default expense categories and suppliers
+  await Promise.all([
+    db.expenseCategory.createMany({
+      data: DEFAULT_EXPENSE_CATEGORIES.map((name) => ({ name, organizationId: org.id })),
+    }),
+    db.expenseSupplier.createMany({
+      data: DEFAULT_EXPENSE_SUPPLIERS.map((name) => ({ name, organizationId: org.id })),
+    }),
+  ]);
 
   // Upsert user record — handle case where supabaseId column doesn't exist yet
   try {
