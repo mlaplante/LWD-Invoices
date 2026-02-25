@@ -81,7 +81,7 @@ export async function GET(req: Request, { params }: Params) {
     const safeName = client.name.replace(/[^a-z0-9]/gi, "-").toLowerCase();
     const date = new Date().toISOString().split("T")[0];
 
-    return new Response(pdf.buffer as ArrayBuffer, {
+    return new Response(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="statement-${safeName}-${date}.pdf"`,
