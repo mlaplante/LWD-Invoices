@@ -228,7 +228,18 @@ export default async function InvoicesPage({
 
           {/* Desktop table with bulk actions */}
           <div className="hidden sm:block overflow-x-auto">
-            <InvoiceTableWithBulk invoices={paginatedInvoices} />
+            <InvoiceTableWithBulk
+              invoices={paginatedInvoices.map((inv) => ({
+                id: inv.id,
+                number: inv.number,
+                status: inv.status,
+                type: inv.type,
+                date: inv.date,
+                total: Number(inv.total),
+                currency: inv.currency,
+                client: { name: inv.client.name },
+              }))}
+            />
           </div>
 
           {/* Pagination footer */}

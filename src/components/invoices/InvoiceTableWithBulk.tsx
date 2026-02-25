@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -34,7 +33,7 @@ type Invoice = {
   status: InvoiceStatus;
   type: InvoiceType;
   date: Date | null;
-  total: number | { toNumber(): number };
+  total: number;
   currency: { symbol: string; symbolPosition: string };
   client: { name: string };
 };
@@ -43,9 +42,8 @@ type Props = {
   invoices: Invoice[];
 };
 
-function fmt(n: number | { toNumber(): number }, symbol: string, pos: string): string {
-  const val = typeof n === "object" ? n.toNumber() : n;
-  return pos === "before" ? `${symbol}${val.toFixed(2)}` : `${val.toFixed(2)}${symbol}`;
+function fmt(n: number, symbol: string, pos: string): string {
+  return pos === "before" ? `${symbol}${n.toFixed(2)}` : `${n.toFixed(2)}${symbol}`;
 }
 
 function formatDate(d: Date | null | undefined): string {
@@ -226,7 +224,7 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
                 <td className="py-3.5 pr-2">
                   <InvoiceRowActions
                     invoiceId={inv.id}
-                    invoiceTotal={typeof inv.total === "object" ? inv.total.toNumber() : inv.total}
+                    invoiceTotal={inv.total}
                     status={inv.status}
                     invoiceType={inv.type}
                   />
