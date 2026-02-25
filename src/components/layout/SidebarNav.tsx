@@ -10,6 +10,7 @@ import {
   FolderOpen,
   Clock,
   Package,
+  Wallet,
   BarChart2,
   LifeBuoy,
   Settings,
@@ -29,6 +30,7 @@ const primaryNav: NavItem[] = [
   { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/timesheets", label: "Timesheets", icon: Clock },
   { href: "/items", label: "Items", icon: Package },
+  { href: "/expenses", label: "Expenses", icon: Wallet },
 ];
 
 const secondaryNav: NavItem[] = [
