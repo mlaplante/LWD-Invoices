@@ -11,19 +11,22 @@ interface Props {
 export default async function EditExpensePage({ params }: Props) {
   const { id } = await params;
 
-  const [taxes, categories, suppliers, projects, allExpenses] = await Promise.all([
+  const [taxes, categories, suppliers, projects] = await Promise.all([
     api.taxes.list(),
     api.expenseCategories.list(),
     api.expenseSuppliers.list(),
     api.projects.list({}),
-    api.expenses.list({}),
   ]);
 
-  const expense = allExpenses.find((e) => e.id === id);
-  if (!expense) notFound();
+  let expense;
+  try {
+    expense = await api.expenses.getById({ id });
+  } catch {
+    notFound();
+  }
 
   const formatDate = (d: Date | null | undefined) =>
-    d ? new Date(d).toISOString().split("T")[0] : "";
+    d ? new Date(d).toISOString().split("T")[0] : undefined;
 
   return (
     <div className="space-y-5 max-w-2xl">

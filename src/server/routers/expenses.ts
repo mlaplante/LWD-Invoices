@@ -33,6 +33,22 @@ export const expensesRouter = router({
       });
     }),
 
+  getById: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const expense = await ctx.db.expense.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+        include: {
+          tax: true,
+          category: true,
+          supplier: true,
+          project: { select: { id: true, name: true } },
+        },
+      });
+      if (!expense) throw new TRPCError({ code: "NOT_FOUND" });
+      return expense;
+    }),
+
   create: protectedProcedure
     .input(
       z.object({
