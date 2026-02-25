@@ -26,7 +26,7 @@ export default function OnboardingPage() {
       body: JSON.stringify({ name: name.trim() }),
     });
 
-    if (!res.ok) {
+    if (!res.ok || res.redirected) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong. Please try again.");
       setLoading(false);

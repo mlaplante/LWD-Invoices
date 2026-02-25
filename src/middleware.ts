@@ -9,6 +9,7 @@ const PUBLIC_PATHS = [
   "/api/webhooks",
   "/api/trpc",
   "/api/inngest",
+  "/api/onboarding",
   "/auth/callback",
   "/auth/confirm",
 ];
