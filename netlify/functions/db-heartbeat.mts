@@ -19,6 +19,6 @@ export default async (_req: Request) => {
 };
 
 export const config: Config = {
-  // Every 5 minutes
-  schedule: "*/5 * * * *",
+  // Every 4 days at midnight UTC
+  schedule: "0 0 */4 * *",
 };
