@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface V1Context {
   orgId: string;
@@ -38,26 +39,20 @@ export async function withV1Auth(
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  // Validate token via Clerk's verify endpoint
-  const verifyRes = await fetch("https://api.clerk.com/v1/sessions/verify", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ token }),
-  });
+  // Validate token via Supabase admin client
+  const admin = createAdminClient();
+  const { data: { user }, error } = await admin.auth.getUser(token);
 
-  if (!verifyRes.ok) {
+  if (error || !user) {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
 
-  const session = (await verifyRes.json()) as { user_id: string; organization_id?: string };
-  if (!session.organization_id) {
+  const orgId = user.app_metadata?.organizationId as string | undefined;
+  if (!orgId) {
     return NextResponse.json({ error: "No organization context" }, { status: 401 });
   }
 
-  return handler({ orgId: session.organization_id, userId: session.user_id });
+  return handler({ orgId, userId: user.id });
 }
 
 export function paginationParams(req: NextRequest) {
