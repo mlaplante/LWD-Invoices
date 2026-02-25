@@ -34,7 +34,7 @@ export function DeleteInvoiceButton({ invoiceId }: { invoiceId: string }) {
         open={open}
         onOpenChange={setOpen}
         title="Delete Invoice?"
-        description="This draft invoice will be permanently deleted. This action cannot be undone."
+        description="This invoice will be permanently deleted along with its line items and payment records. This action cannot be undone."
         onConfirm={() => del.mutate({ id: invoiceId })}
         loading={del.isPending}
         destructive

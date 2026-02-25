@@ -406,10 +406,10 @@ export const invoicesRouter = router({
         select: { status: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
-      if (invoice.status !== InvoiceStatus.DRAFT) {
+      if (invoice.status === InvoiceStatus.PAID) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Only DRAFT invoices can be deleted.",
+          message: "Paid invoices cannot be deleted.",
         });
       }
       return ctx.db.invoice.delete({
