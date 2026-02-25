@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   "/portal(.*)",
   "/api/webhooks(.*)",
   "/api/trpc(.*)",
+  "/api/inngest(.*)",
 ]);
 
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
