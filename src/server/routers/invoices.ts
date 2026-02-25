@@ -575,26 +575,29 @@ export const invoicesRouter = router({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      return ctx.db.$transaction(async (tx) => {
-        await tx.partialPayment.update({
-          where: { id: input.partialPaymentId },
-          data: { isPaid: true, paidAt: new Date() },
-        });
+      return ctx.db.$transaction(
+        async (tx) => {
+          await tx.partialPayment.update({
+            where: { id: input.partialPaymentId },
+            data: { isPaid: true, paidAt: new Date() },
+          });
 
-        const allPartials = await tx.partialPayment.findMany({
-          where: { invoiceId: partial.invoiceId },
-          select: { isPaid: true },
-        });
+          const allPartials = await tx.partialPayment.findMany({
+            where: { invoiceId: partial.invoiceId },
+            select: { isPaid: true },
+          });
 
-        const allPaid = allPartials.every((p) => p.isPaid);
+          const allPaid = allPartials.every((p) => p.isPaid);
 
-        return tx.invoice.update({
-          where: { id: partial.invoiceId, organizationId: ctx.orgId },
-          data: {
-            status: allPaid ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID,
-          },
-        });
-      });
+          return tx.invoice.update({
+            where: { id: partial.invoiceId, organizationId: ctx.orgId },
+            data: {
+              status: allPaid ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID,
+            },
+          });
+        },
+        { isolationLevel: "Serializable" },
+      );
     }),
 
   acceptEstimate: protectedProcedure

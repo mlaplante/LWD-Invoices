@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ export function ApplyCreditNoteDialog({ invoiceId, clientId }: Props) {
   const [open, setOpen] = useState(false);
   const [selectedCreditNoteId, setSelectedCreditNoteId] = useState("");
   const [amount, setAmount] = useState("");
+  const router = useRouter();
 
   const { data: creditNotes } = trpc.creditNotes.listForClient.useQuery(
     { clientId },
@@ -41,6 +43,7 @@ export function ApplyCreditNoteDialog({ invoiceId, clientId }: Props) {
     onSuccess: () => {
       toast.success("Credit note applied");
       void utils.invoices.get.invalidate({ id: invoiceId });
+      router.refresh();
       setOpen(false);
       setSelectedCreditNoteId("");
       setAmount("");

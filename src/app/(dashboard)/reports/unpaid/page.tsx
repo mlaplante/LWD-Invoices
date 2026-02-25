@@ -14,7 +14,16 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
 export default async function UnpaidReportPage() {
   const invoices = await api.reports.unpaidInvoices({});
 
-  const totalOutstanding = invoices.reduce((sum, inv) => sum + Number(inv.total), 0);
+  // Group totals by currency to avoid mixing currency values
+  const totalsByCurrency: Record<string, { symbol: string; symbolPosition: string; total: number }> = {};
+  for (const inv of invoices) {
+    const key = inv.currency.code ?? inv.currency.symbol;
+    if (!totalsByCurrency[key]) {
+      totalsByCurrency[key] = { symbol: inv.currency.symbol, symbolPosition: inv.currency.symbolPosition, total: 0 };
+    }
+    totalsByCurrency[key].total += Number(inv.total);
+  }
+  const currencyTotals = Object.values(totalsByCurrency);
 
   return (
     <div className="space-y-5">
@@ -98,10 +107,18 @@ export default async function UnpaidReportPage() {
               })}
             </tbody>
             <tfoot className="border-t border-border bg-muted/20">
-              <tr>
-                <td colSpan={4} className="px-6 py-3 text-sm font-semibold text-right">Total Outstanding</td>
-                <td className="px-6 py-3 text-right font-bold tabular-nums">${totalOutstanding.toFixed(2)}</td>
-              </tr>
+              {currencyTotals.map((ct, i) => (
+                <tr key={i}>
+                  <td colSpan={4} className="px-6 py-3 text-sm font-semibold text-right">
+                    {i === 0 ? "Total Outstanding" : ""}
+                  </td>
+                  <td className="px-6 py-3 text-right font-bold tabular-nums">
+                    {ct.symbolPosition === "after"
+                      ? `${ct.total.toFixed(2)}${ct.symbol}`
+                      : `${ct.symbol}${ct.total.toFixed(2)}`}
+                  </td>
+                </tr>
+              ))}
             </tfoot>
           </table>
         )}

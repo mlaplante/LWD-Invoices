@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
 
 const clientSchema = z.object({
@@ -39,9 +40,11 @@ export const clientsRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      return ctx.db.client.findUniqueOrThrow({
+      const client = await ctx.db.client.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
       });
+      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+      return client;
     }),
 
   create: protectedProcedure
