@@ -13,6 +13,22 @@ import {
 } from "@/components/ui/select";
 import { Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
 import { calculateLineTotals, type TaxInput } from "@/server/services/tax-calculator";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export type LineItemValue = {
   id?: string; // undefined for new lines
@@ -99,9 +115,220 @@ function newLine(sort: number): LineItemValue {
   };
 }
 
+// ── Sortable line item ────────────────────────────────────────────────────────
+
+type SortableLineItemProps = {
+  line: LineItemValue;
+  index: number;
+  taxes: TaxOption[];
+  currencySymbol: string;
+  expandedDescriptions: Set<number>;
+  onUpdate: (index: number, patch: Partial<LineItemValue>) => void;
+  onRemove: (index: number) => void;
+  onToggleDescription: (index: number) => void;
+  onToggleTax: (index: number, taxId: string) => void;
+};
+
+function SortableLineItem({
+  line,
+  index,
+  taxes,
+  currencySymbol,
+  expandedDescriptions,
+  onUpdate,
+  onRemove,
+  onToggleDescription,
+  onToggleTax,
+}: SortableLineItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: line.sort });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const result = computeLineResult(line, taxes);
+  const isPeriodType = (lt: LineType) => PERIOD_TYPES.includes(lt);
+  const isDiscountType = (lt: LineType) =>
+    lt === LineType.PERCENTAGE_DISCOUNT || lt === LineType.FIXED_DISCOUNT;
+  const showPeriod = isPeriodType(line.lineType);
+  const isDiscount = isDiscountType(line.lineType);
+
+  return (
+    <div ref={setNodeRef} style={style} className="rounded-md border bg-card">
+      <div className="grid grid-cols-[24px_2fr_80px_120px_80px_80px_120px_100px_32px] gap-2 items-start p-2">
+        {/* Drag handle */}
+        <button
+          type="button"
+          className="mt-2 cursor-grab text-muted-foreground touch-none"
+          title="Drag to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+
+        {/* Name + type */}
+        <div className="space-y-1">
+          <div className="flex gap-1">
+            <Input
+              placeholder="Item name"
+              value={line.name}
+              onChange={(e) => onUpdate(index, { name: e.target.value })}
+              className="h-8 text-sm"
+            />
+            <Select
+              value={line.lineType}
+              onValueChange={(v: string) => onUpdate(index, { lineType: v as LineType })}
+            >
+              <SelectTrigger className="h-8 w-36 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(LINE_TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value} className="text-xs">
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              onClick={() => onToggleDescription(index)}
+              className="text-muted-foreground hover:text-foreground"
+              title="Toggle description"
+            >
+              {expandedDescriptions.has(index) ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+          {expandedDescriptions.has(index) && (
+            <Input
+              placeholder="Description (optional)"
+              value={line.description ?? ""}
+              onChange={(e) => onUpdate(index, { description: e.target.value })}
+              className="h-7 text-xs text-muted-foreground"
+            />
+          )}
+        </div>
+
+        {/* Qty */}
+        <Input
+          type="number"
+          min={0}
+          step="any"
+          value={line.qty}
+          onChange={(e) => onUpdate(index, { qty: Number(e.target.value) })}
+          className="h-8 text-right text-sm"
+          disabled={isDiscount}
+        />
+
+        {/* Rate */}
+        <Input
+          type="number"
+          min={0}
+          step="any"
+          value={line.rate}
+          onChange={(e) => onUpdate(index, { rate: Number(e.target.value) })}
+          className="h-8 text-right text-sm"
+        />
+
+        {/* Discount */}
+        <div className="flex gap-0.5">
+          <Input
+            type="number"
+            min={0}
+            step="any"
+            value={line.discount}
+            onChange={(e) => onUpdate(index, { discount: Number(e.target.value) })}
+            className="h-8 w-full text-right text-sm"
+            disabled={isDiscount}
+          />
+          <button
+            type="button"
+            onClick={() =>
+              onUpdate(index, { discountIsPercentage: !line.discountIsPercentage })
+            }
+            className="h-8 rounded border px-1 text-xs hover:bg-muted"
+            title={line.discountIsPercentage ? "Switch to fixed" : "Switch to %"}
+            disabled={isDiscount}
+          >
+            {line.discountIsPercentage ? "%" : "$"}
+          </button>
+        </div>
+
+        {/* Period */}
+        <Input
+          type="number"
+          min={0}
+          step="any"
+          value={line.period ?? ""}
+          onChange={(e) =>
+            onUpdate(index, {
+              period: e.target.value === "" ? undefined : Number(e.target.value),
+            })
+          }
+          className="h-8 text-right text-sm"
+          disabled={!showPeriod}
+          placeholder={showPeriod ? "1" : "—"}
+        />
+
+        {/* Tax multi-select */}
+        <div className="flex flex-wrap gap-1">
+          {taxes.map((tax) => (
+            <button
+              key={tax.id}
+              type="button"
+              onClick={() => onToggleTax(index, tax.id)}
+              className={`rounded px-1.5 py-0.5 text-xs border transition-colors ${
+                line.taxIds.includes(tax.id)
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:bg-muted"
+              }`}
+            >
+              {tax.name} {tax.rate}%
+            </button>
+          ))}
+        </div>
+
+        {/* Calculated total */}
+        <div className="text-right text-sm font-medium">
+          <div>{fmt(result.total, currencySymbol)}</div>
+          {result.taxTotal > 0 && (
+            <div className="text-xs text-muted-foreground">
+              tax: {fmt(result.taxTotal, currencySymbol)}
+            </div>
+          )}
+        </div>
+
+        {/* Delete */}
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          className="mt-1.5 text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main editor ───────────────────────────────────────────────────────────────
+
 export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props) {
   const [expandedDescriptions, setExpandedDescriptions] = React.useState<Set<number>>(
     new Set()
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   function updateLine(index: number, patch: Partial<LineItemValue>) {
@@ -134,9 +361,19 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
     updateLine(index, { taxIds });
   }
 
-  const isPeriodType = (lt: LineType) => PERIOD_TYPES.includes(lt);
-  const isDiscountType = (lt: LineType) =>
-    lt === LineType.PERCENTAGE_DISCOUNT || lt === LineType.FIXED_DISCOUNT;
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = lines.findIndex((l) => l.sort === active.id);
+    const newIndex = lines.findIndex((l) => l.sort === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = [...lines];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    onChange(reordered.map((l, i) => ({ ...l, sort: i })));
+  }
 
   return (
     <div className="space-y-2">
@@ -153,175 +390,31 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
         <span />
       </div>
 
-      {lines.map((line, i) => {
-        const result = computeLineResult(line, taxes);
-        const showPeriod = isPeriodType(line.lineType);
-        const isDiscount = isDiscountType(line.lineType);
-
-        return (
-          <div key={i} className="rounded-md border bg-card">
-            <div className="grid grid-cols-[24px_2fr_80px_120px_80px_80px_120px_100px_32px] gap-2 items-start p-2">
-              {/* Drag handle */}
-              <button
-                type="button"
-                className="mt-2 cursor-grab text-muted-foreground"
-                title="Drag to reorder"
-              >
-                <GripVertical className="h-4 w-4" />
-              </button>
-
-              {/* Name + type */}
-              <div className="space-y-1">
-                <div className="flex gap-1">
-                  <Input
-                    placeholder="Item name"
-                    value={line.name}
-                    onChange={(e) => updateLine(i, { name: e.target.value })}
-                    className="h-8 text-sm"
-                  />
-                  <Select
-                    value={line.lineType}
-                    onValueChange={(v: string) => updateLine(i, { lineType: v as LineType })}
-                  >
-                    <SelectTrigger className="h-8 w-36 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(LINE_TYPE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value} className="text-xs">
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <button
-                    type="button"
-                    onClick={() => toggleDescription(i)}
-                    className="text-muted-foreground hover:text-foreground"
-                    title="Toggle description"
-                  >
-                    {expandedDescriptions.has(i) ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                {expandedDescriptions.has(i) && (
-                  <Input
-                    placeholder="Description (optional)"
-                    value={line.description ?? ""}
-                    onChange={(e) => updateLine(i, { description: e.target.value })}
-                    className="h-7 text-xs text-muted-foreground"
-                  />
-                )}
-              </div>
-
-              {/* Qty */}
-              <Input
-                type="number"
-                min={0}
-                step="any"
-                value={line.qty}
-                onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
-                className="h-8 text-right text-sm"
-                disabled={isDiscount}
-              />
-
-              {/* Rate */}
-              <Input
-                type="number"
-                min={0}
-                step="any"
-                value={line.rate}
-                onChange={(e) => updateLine(i, { rate: Number(e.target.value) })}
-                className="h-8 text-right text-sm"
-              />
-
-              {/* Discount */}
-              <div className="flex gap-0.5">
-                <Input
-                  type="number"
-                  min={0}
-                  step="any"
-                  value={line.discount}
-                  onChange={(e) => updateLine(i, { discount: Number(e.target.value) })}
-                  className="h-8 w-full text-right text-sm"
-                  disabled={isDiscount}
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateLine(i, {
-                      discountIsPercentage: !line.discountIsPercentage,
-                    })
-                  }
-                  className="h-8 rounded border px-1 text-xs hover:bg-muted"
-                  title={
-                    line.discountIsPercentage ? "Switch to fixed" : "Switch to %"
-                  }
-                  disabled={isDiscount}
-                >
-                  {line.discountIsPercentage ? "%" : "$"}
-                </button>
-              </div>
-
-              {/* Period */}
-              <Input
-                type="number"
-                min={0}
-                step="any"
-                value={line.period ?? ""}
-                onChange={(e) =>
-                  updateLine(i, {
-                    period: e.target.value === "" ? undefined : Number(e.target.value),
-                  })
-                }
-                className="h-8 text-right text-sm"
-                disabled={!showPeriod}
-                placeholder={showPeriod ? "1" : "—"}
-              />
-
-              {/* Tax multi-select */}
-              <div className="flex flex-wrap gap-1">
-                {taxes.map((tax) => (
-                  <button
-                    key={tax.id}
-                    type="button"
-                    onClick={() => toggleTax(i, tax.id)}
-                    className={`rounded px-1.5 py-0.5 text-xs border transition-colors ${
-                      line.taxIds.includes(tax.id)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background text-muted-foreground border-border hover:bg-muted"
-                    }`}
-                  >
-                    {tax.name} {tax.rate}%
-                  </button>
-                ))}
-              </div>
-
-              {/* Calculated total */}
-              <div className="text-right text-sm font-medium">
-                <div>{fmt(result.total, currencySymbol)}</div>
-                {result.taxTotal > 0 && (
-                  <div className="text-xs text-muted-foreground">
-                    tax: {fmt(result.taxTotal, currencySymbol)}
-                  </div>
-                )}
-              </div>
-
-              {/* Delete */}
-              <button
-                type="button"
-                onClick={() => removeLine(i)}
-                className="mt-1.5 text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        );
-      })}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={lines.map((l) => l.sort)}
+          strategy={verticalListSortingStrategy}
+        >
+          {lines.map((line, i) => (
+            <SortableLineItem
+              key={line.sort}
+              line={line}
+              index={i}
+              taxes={taxes}
+              currencySymbol={currencySymbol}
+              expandedDescriptions={expandedDescriptions}
+              onUpdate={updateLine}
+              onRemove={removeLine}
+              onToggleDescription={toggleDescription}
+              onToggleTax={toggleTax}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
 
       <Button type="button" variant="outline" size="sm" onClick={addLine}>
         + Add Line Item

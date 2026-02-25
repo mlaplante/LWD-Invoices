@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 
 interface Props {
   invoiceId: string;
@@ -38,11 +39,13 @@ export function ApplyCreditNoteDialog({ invoiceId, clientId }: Props) {
 
   const apply = trpc.creditNotes.applyToInvoice.useMutation({
     onSuccess: () => {
+      toast.success("Credit note applied");
       void utils.invoices.get.invalidate({ id: invoiceId });
       setOpen(false);
       setSelectedCreditNoteId("");
       setAmount("");
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const availableCreditNotes = (creditNotes ?? []).filter((cn) => {

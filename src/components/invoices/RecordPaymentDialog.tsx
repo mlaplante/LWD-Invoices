@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 
 const METHODS = [
   { value: "cash", label: "Cash" },
@@ -56,10 +57,12 @@ export function RecordPaymentDialog({
 
   const markPaid = trpc.invoices.markPaid.useMutation({
     onSuccess: () => {
+      toast.success("Payment recorded");
       onOpenChange(false);
       onSuccess?.();
     },
     onError: (err) => {
+      toast.error(err.message);
       setError(err.message);
     },
   });

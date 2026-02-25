@@ -3,11 +3,16 @@
 import { trpc } from "@/trpc/client";
 import { RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function ResendInvoiceButton({ invoiceId }: { invoiceId: string }) {
   const router = useRouter();
   const send = trpc.invoices.send.useMutation({
-    onSuccess: () => router.refresh(),
+    onSuccess: () => {
+      toast.success("Invoice resent");
+      router.refresh();
+    },
+    onError: (err) => toast.error(err.message),
   });
 
   return (

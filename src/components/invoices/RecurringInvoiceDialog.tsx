@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RecurringFrequency } from "@/generated/prisma";
+import { toast } from "sonner";
 
 interface Props {
   invoiceId: string;
@@ -33,9 +34,11 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
 
   const upsert = trpc.recurringInvoices.upsert.useMutation({
     onSuccess: () => {
+      toast.success("Recurring schedule saved");
       void utils.recurringInvoices.getForInvoice.invalidate({ invoiceId });
       setOpen(false);
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const cancel = trpc.recurringInvoices.cancel.useMutation({

@@ -9,6 +9,9 @@ import { ApplyCreditNoteDialog } from "@/components/invoices/ApplyCreditNoteDial
 import { InvoiceComments } from "@/components/invoices/InvoiceComments";
 import { RecurringInvoiceDialog } from "@/components/invoices/RecurringInvoiceDialog";
 import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
+import { ArchiveInvoiceButton } from "@/components/invoices/ArchiveInvoiceButton";
+import { DeleteInvoiceButton } from "@/components/invoices/DeleteInvoiceButton";
+import { DuplicateInvoiceButton } from "@/components/invoices/DuplicateInvoiceButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -147,6 +150,11 @@ export default async function InvoiceDetailPage({
               invoiceId={invoice.id}
               invoiceTotal={Number(invoice.total)}
             />
+          )}
+          <DuplicateInvoiceButton invoiceId={invoice.id} />
+          <ArchiveInvoiceButton invoiceId={invoice.id} isArchived={invoice.isArchived} />
+          {invoice.status === "DRAFT" && (
+            <DeleteInvoiceButton invoiceId={invoice.id} />
           )}
         </div>
       </div>
@@ -297,8 +305,8 @@ export default async function InvoiceDetailPage({
 
         {/* Notes */}
         {invoice.notes && (
-          <div className="mx-8 mb-8 rounded-xl border border-red-200/50 bg-red-50/50 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-red-400 mb-1.5">
+          <div className="mx-8 mb-8 rounded-xl border border-border/50 bg-muted/40 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
               Notes
             </p>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">

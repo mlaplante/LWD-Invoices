@@ -105,6 +105,7 @@ export const invoicesRouter = router({
         includeArchived: z.boolean().default(false),
         dateFrom: z.coerce.date().optional(),
         dateTo: z.coerce.date().optional(),
+        search: z.string().optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -121,6 +122,14 @@ export const invoicesRouter = router({
                   ...(input.dateFrom ? { gte: input.dateFrom } : {}),
                   ...(input.dateTo ? { lte: input.dateTo } : {}),
                 },
+              }
+            : {}),
+          ...(input.search
+            ? {
+                OR: [
+                  { number: { contains: input.search, mode: "insensitive" } },
+                  { client: { name: { contains: input.search, mode: "insensitive" } } },
+                ],
               }
             : {}),
         },

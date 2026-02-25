@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { TRPCReactProvider } from "@/trpc/client";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -32,6 +33,7 @@ export default function RootLayout({
           className={`${jakartaSans.variable} ${geistMono.variable} antialiased`}
         >
           <TRPCReactProvider>{children}</TRPCReactProvider>
+          <Toaster richColors position="bottom-right" />
         </body>
       </html>
     </ClerkProvider>

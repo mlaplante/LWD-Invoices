@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ResendInvoiceButton } from "@/components/invoices/ResendInvoiceButton";
+import { InvoiceRowActions } from "@/components/invoices/InvoiceRowActions";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Suspense } from "react";
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 
@@ -101,9 +103,9 @@ const PAGE_SIZE = 25;
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; page?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string; search?: string }>;
 }) {
-  const { tab: rawTab, page: rawPage } = await searchParams;
+  const { tab: rawTab, page: rawPage, search } = await searchParams;
   const activeTab: Tab =
     rawTab && Object.keys(TAB_FILTERS).includes(rawTab)
       ? (rawTab as Tab)
@@ -114,7 +116,7 @@ export default async function InvoicesPage({
 
   let invoices: Awaited<ReturnType<typeof api.invoices.list>> = [];
   try {
-    invoices = await api.invoices.list(filter);
+    invoices = await api.invoices.list({ ...filter, search: search || undefined });
   } catch (err) {
     console.error("[InvoicesPage] list failed:", err);
     throw err;
@@ -132,11 +134,16 @@ export default async function InvoicesPage({
   return (
     <div className="space-y-5">
       {/* Page heading */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
-        <Button asChild size="sm">
-          <Link href="/invoices/new">+ New Invoice</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Suspense>
+            <SearchInput placeholder="Search invoices…" />
+          </Suspense>
+          <Button asChild size="sm">
+            <Link href="/invoices/new">+ New Invoice</Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filter tabs */}
@@ -175,103 +182,117 @@ export default async function InvoicesPage({
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-2">
-                  Invoice
-                </th>
-                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Date
-                </th>
-                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Client
-                </th>
-                <th className="pb-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Amount
-                </th>
-                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-4">
-                  Status
-                </th>
-                <th className="pb-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {paginatedInvoices.map((inv) => {
-                const badge = STATUS_BADGE[inv.status];
-                return (
-                  <tr
-                    key={inv.id}
-                    className="group hover:bg-accent/30 transition-colors"
-                  >
-                    {/* Invoice identity */}
-                    <td className="py-3.5 pl-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                          <FileText className="w-4 h-4 text-primary" />
+        <>
+          {/* Mobile card list */}
+          <div className="sm:hidden divide-y divide-border/50">
+            {paginatedInvoices.map((inv) => {
+              const badge = STATUS_BADGE[inv.status];
+              return (
+                <Link
+                  key={inv.id}
+                  href={`/invoices/${inv.id}`}
+                  className="flex items-center gap-3 py-3.5 px-2 hover:bg-accent/30 transition-colors"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm leading-tight truncate">
+                      {TYPE_LABELS[inv.type]} #{inv.number}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {inv.client.name} · {formatDate(inv.date)}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="font-semibold text-sm">
+                      {fmt(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
+                    </span>
+                    <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold", badge.className)}>
+                      {badge.label}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-2">
+                    Invoice
+                  </th>
+                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Date
+                  </th>
+                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Client
+                  </th>
+                  <th className="pb-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Amount
+                  </th>
+                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-4">
+                    Status
+                  </th>
+                  <th className="pb-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {paginatedInvoices.map((inv) => {
+                  const badge = STATUS_BADGE[inv.status];
+                  return (
+                    <tr
+                      key={inv.id}
+                      className="group hover:bg-accent/30 transition-colors"
+                    >
+                      {/* Invoice identity */}
+                      <td className="py-3.5 pl-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground leading-tight">
+                              {TYPE_LABELS[inv.type]} #{inv.number}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {inv.client.name}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-foreground leading-tight">
-                            {TYPE_LABELS[inv.type]} #{inv.number}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {inv.client.name}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
+                      </td>
+                      <td className="py-3.5 text-muted-foreground">
+                        {formatDate(inv.date)}
+                      </td>
+                      <td className="py-3.5 text-foreground/80">
+                        {inv.client.name}
+                      </td>
+                      <td className="py-3.5 text-right font-semibold text-foreground">
+                        {fmt(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
+                      </td>
+                      <td className="py-3.5 pl-4">
+                        <span className={cn("inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold", badge.className)}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="py-3.5 pr-2">
+                        <InvoiceRowActions
+                          invoiceId={inv.id}
+                          invoiceTotal={Number(inv.total)}
+                          status={inv.status}
+                          invoiceType={inv.type}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-                    {/* Date */}
-                    <td className="py-3.5 text-muted-foreground">
-                      {formatDate(inv.date)}
-                    </td>
-
-                    {/* Client */}
-                    <td className="py-3.5 text-foreground/80">
-                      {inv.client.name}
-                    </td>
-
-                    {/* Amount */}
-                    <td className="py-3.5 text-right font-semibold text-foreground">
-                      {fmt(
-                        inv.total,
-                        inv.currency.symbol,
-                        inv.currency.symbolPosition
-                      )}
-                    </td>
-
-                    {/* Status badge */}
-                    <td className="py-3.5 pl-4">
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold",
-                          badge.className
-                        )}
-                      >
-                        {badge.label}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 pr-2">
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link
-                          href={`/invoices/${inv.id}`}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-                        >
-                          View
-                        </Link>
-                        {(inv.status === "SENT" || inv.status === "OVERDUE" || inv.status === "PARTIALLY_PAID") && inv.type !== "ESTIMATE" && (
-                          <ResendInvoiceButton invoiceId={inv.id} />
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
           {/* Pagination footer */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
@@ -301,7 +322,7 @@ export default async function InvoicesPage({
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

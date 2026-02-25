@@ -17,12 +17,20 @@ const clientSchema = z.object({
 
 export const clientsRouter = router({
   list: protectedProcedure
-    .input(z.object({ includeArchived: z.boolean().default(false) }))
+    .input(z.object({ includeArchived: z.boolean().default(false), search: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.client.findMany({
         where: {
           organizationId: ctx.orgId,
           ...(input.includeArchived ? {} : { isArchived: false }),
+          ...(input.search
+            ? {
+                OR: [
+                  { name: { contains: input.search, mode: "insensitive" } },
+                  { email: { contains: input.search, mode: "insensitive" } },
+                ],
+              }
+            : {}),
         },
         orderBy: { name: "asc" },
       });
