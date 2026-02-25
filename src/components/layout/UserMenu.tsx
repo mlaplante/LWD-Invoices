@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { LogOut, User } from "lucide-react";
 
 interface UserMenuProps {
@@ -13,7 +14,11 @@ interface UserMenuProps {
 export function UserMenu({ email, firstName }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
+  const supabaseRef = useRef<SupabaseClient | null>(null);
+  function getSupabase() {
+    if (!supabaseRef.current) supabaseRef.current = createClient();
+    return supabaseRef.current;
+  }
 
   const initials = firstName
     ? firstName[0].toUpperCase()
@@ -22,7 +27,7 @@ export function UserMenu({ email, firstName }: UserMenuProps) {
       : "?";
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
+    await getSupabase().auth.signOut();
     router.push("/sign-in");
     router.refresh();
   }
