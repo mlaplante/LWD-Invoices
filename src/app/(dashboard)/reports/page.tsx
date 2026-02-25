@@ -32,9 +32,10 @@ function getLast12Months(): string[] {
   const months: string[] = [];
   const now = new Date();
   for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    // Use UTC to match groupByMonth() in reports.ts which also uses UTC
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
     months.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
     );
   }
   return months;

@@ -162,7 +162,7 @@ export default async function ClientsPage({
               <div className="flex items-center gap-1">
                 {currentPage > 1 && (
                   <Link
-                    href={`/clients?page=${currentPage - 1}`}
+                    href={`/clients?page=${currentPage - 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
                   >
                     Previous
@@ -173,7 +173,7 @@ export default async function ClientsPage({
                 </span>
                 {currentPage < totalPages && (
                   <Link
-                    href={`/clients?page=${currentPage + 1}`}
+                    href={`/clients?page=${currentPage + 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
                   >
                     Next

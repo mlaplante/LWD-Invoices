@@ -35,6 +35,7 @@ export const recurringInvoicesRouter = router({
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
+      const now = new Date();
       return ctx.db.recurringInvoice.upsert({
         where: { invoiceId: input.invoiceId },
         create: {
@@ -45,7 +46,9 @@ export const recurringInvoicesRouter = router({
         },
         update: {
           ...input.data,
-          nextRunAt: input.data.startDate,
+          // Only reset nextRunAt if startDate is in the future — otherwise
+          // keep the existing schedule to avoid re-firing an already-started run
+          ...(input.data.startDate > now ? { nextRunAt: input.data.startDate } : {}),
         },
       });
     }),

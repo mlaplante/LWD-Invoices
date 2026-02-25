@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { InvoiceType, type Client, type Currency, type Tax } from "@/generated/prisma";
+import { InvoiceType } from "@/generated/prisma";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,9 +33,9 @@ type InvoiceFormData = {
 type Props = {
   mode: "create" | "edit";
   initialData?: Partial<InvoiceFormData>;
-  clients: Pick<Client, "id" | "name">[];
-  currencies: Pick<Currency, "id" | "code" | "symbol" | "symbolPosition">[];
-  taxes: Pick<Tax, "id" | "name" | "rate" | "isCompound">[];
+  clients: { id: string; name: string }[];
+  currencies: { id: string; code: string; symbol: string; symbolPosition: string }[];
+  taxes: { id: string; name: string; rate: number; isCompound: boolean }[];
 };
 
 const TYPE_LABELS: Record<InvoiceType, string> = {
@@ -47,6 +48,7 @@ const TYPE_LABELS: Record<InvoiceType, string> = {
 export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const savingRef = useRef(false);
 
   const defaultCurrency = currencies[0];
 
@@ -120,17 +122,21 @@ export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: P
   }
 
   function handleSave(andSend = false) {
+    if (savingRef.current) return;
+    savingRef.current = true;
     startTransition(async () => {
-      if (mode === "create") {
-        const inv = await createMutation.mutateAsync(buildInput());
-        if (andSend) {
-          router.push(`/invoices/${inv.id}?send=1`);
-        } else {
+      try {
+        if (mode === "create") {
+          const inv = await createMutation.mutateAsync(buildInput());
+          router.push(andSend ? `/invoices/${inv.id}?send=1` : `/invoices/${inv.id}`);
+        } else if (form.id) {
+          const inv = await updateMutation.mutateAsync({ id: form.id, ...buildInput() });
           router.push(`/invoices/${inv.id}`);
         }
-      } else if (form.id) {
-        const inv = await updateMutation.mutateAsync({ id: form.id, ...buildInput() });
-        router.push(`/invoices/${inv.id}`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to save invoice");
+      } finally {
+        savingRef.current = false;
       }
     });
   }

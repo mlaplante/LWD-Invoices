@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import { LineType } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -325,6 +325,8 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
   const [expandedDescriptions, setExpandedDescriptions] = React.useState<Set<number>>(
     new Set()
   );
+  // Monotonically increasing counter ensures unique sort keys even after deletes
+  const sortCounter = useRef(lines.length);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -341,7 +343,7 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
   }
 
   function addLine() {
-    onChange([...lines, newLine(lines.length)]);
+    onChange([...lines, newLine(sortCounter.current++)]);
   }
 
   function toggleDescription(index: number) {
