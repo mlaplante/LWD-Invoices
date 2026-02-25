@@ -4,8 +4,7 @@ import { router, publicProcedure } from "../trpc";
 import { GatewayType, InvoiceStatus } from "@/generated/prisma";
 import { decryptJson } from "../services/encryption";
 import { getStripeClient, createCheckoutSession } from "../services/stripe";
-import { createPayPalOrder } from "../services/paypal";
-import type { StripeConfig, PayPalConfig } from "../services/gateway-config";
+import type { StripeConfig } from "../services/gateway-config";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.SENT,
@@ -119,47 +118,6 @@ export const portalRouter = router({
       });
 
       return { url };
-    }),
-
-  createPayPalOrder: publicProcedure
-    .input(z.object({ token: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const invoice = await getInvoiceByToken(ctx.db, input.token);
-
-      if (!PAYABLE_STATUSES.includes(invoice.status)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice is not payable" });
-      }
-
-      const gateway = await ctx.db.gatewaySetting.findUnique({
-        where: {
-          organizationId_gatewayType: {
-            organizationId: invoice.organizationId,
-            gatewayType: GatewayType.PAYPAL,
-          },
-        },
-      });
-      if (!gateway?.isEnabled) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "PayPal is not enabled" });
-      }
-
-      const config = decryptJson<PayPalConfig>(gateway.configJson);
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
-      const { orderId, approveUrl } = await createPayPalOrder({
-        config,
-        invoice: {
-          id: invoice.id,
-          number: invoice.number,
-          total: invoice.total,
-          currency: invoice.currency,
-          portalToken: invoice.portalToken,
-          organizationId: invoice.organizationId,
-        },
-        surcharge: gateway.surcharge.toNumber(),
-        appUrl,
-      });
-
-      return { orderId, approveUrl };
     }),
 
   addComment: publicProcedure

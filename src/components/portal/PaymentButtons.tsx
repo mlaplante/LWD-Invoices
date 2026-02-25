@@ -8,6 +8,7 @@ type Gateway = {
   gatewayType: GatewayType;
   surcharge: number;
   label: string | null;
+  paypalUrl?: string;
 };
 
 type Props = {
@@ -31,26 +32,10 @@ export function PaymentButtons({ token, gateways, total, orgName }: Props) {
     },
   });
 
-  const createPayPalOrder = trpc.portal.createPayPalOrder.useMutation({
-    onSuccess: ({ approveUrl }) => {
-      window.location.href = approveUrl;
-    },
-    onError: (err) => {
-      setError(err.message);
-      setLoading(null);
-    },
-  });
-
   const handleStripe = () => {
     setError("");
     setLoading("stripe");
     createStripeCheckout.mutate({ token });
-  };
-
-  const handlePayPal = () => {
-    setError("");
-    setLoading("paypal");
-    createPayPalOrder.mutate({ token });
   };
 
   const stripeGateway = gateways.find((g) => g.gatewayType === "STRIPE");
@@ -94,20 +79,17 @@ export function PaymentButtons({ token, gateways, total, orgName }: Props) {
           </button>
         )}
 
-        {paypalGateway && (
-          <button
-            onClick={handlePayPal}
-            disabled={loading !== null}
-            className="w-full flex items-center justify-center gap-2 rounded-md bg-yellow-400 px-4 py-3 text-sm font-medium text-yellow-900 hover:bg-yellow-500 disabled:opacity-60 transition-colors"
+        {paypalGateway?.paypalUrl && (
+          <a
+            href={paypalGateway.paypalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 rounded-md bg-yellow-400 px-4 py-3 text-sm font-medium text-yellow-900 hover:bg-yellow-500 transition-colors"
           >
-            {loading === "paypal" ? (
-              <span className="animate-spin">⋯</span>
-            ) : (
-              <span className="font-bold text-blue-700">Pay</span>
-            )}
+            <span className="font-bold text-blue-700">Pay</span>
             {paypalGateway.label ?? "Pay with PayPal"}
             {surchargeNote(paypalGateway)}
-          </button>
+          </a>
         )}
 
         {manualGateways.map((g) => (

@@ -25,10 +25,7 @@ export function GatewaySettingsForm() {
   const [stripeLabel, setStripeLabel] = useState("");
 
   // PayPal form state
-  const [ppClientId, setPpClientId] = useState("");
-  const [ppClientSecret, setPpClientSecret] = useState("");
-  const [ppWebhookId, setPpWebhookId] = useState("");
-  const [ppSandbox, setPpSandbox] = useState(true);
+  const [ppEmail, setPpEmail] = useState("");
   const [ppSurcharge, setPpSurcharge] = useState("0");
   const [ppLabel, setPpLabel] = useState("");
 
@@ -71,12 +68,7 @@ export function GatewaySettingsForm() {
         gatewayType: GatewayType.PAYPAL,
         surcharge: parseFloat(ppSurcharge) || 0,
         label: ppLabel || undefined,
-        config: {
-          clientId: ppClientId,
-          clientSecret: ppClientSecret,
-          webhookId: ppWebhookId,
-          sandbox: ppSandbox,
-        },
+        config: { email: ppEmail },
       },
       {
         onSuccess: () => setSaved((p) => ({ ...p, paypal: true })),
@@ -212,7 +204,7 @@ export function GatewaySettingsForm() {
             <div>
               <h3 className="font-semibold">PayPal</h3>
               <p className="text-sm text-muted-foreground">
-                Accept PayPal payments via Orders API v2.
+                Clients are sent to PayPal to pay using your email address. Payments must be recorded manually.
               </p>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -228,47 +220,22 @@ export function GatewaySettingsForm() {
 
           <form onSubmit={savePayPal} className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Client ID</Label>
+              <Label>PayPal Email</Label>
               <Input
-                value={ppClientId}
-                onChange={(e) => setPpClientId(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Client Secret</Label>
-              <Input
-                type="password"
-                value={ppClientSecret}
-                onChange={(e) => setPpClientSecret(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Webhook ID</Label>
-              <Input
-                value={ppWebhookId}
-                onChange={(e) => setPpWebhookId(e.target.value)}
+                type="email"
+                value={ppEmail}
+                onChange={(e) => setPpEmail(e.target.value)}
+                placeholder="you@example.com"
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Add webhook: <code className="bg-muted px-1 rounded">/api/webhooks/paypal</code>
+                The PayPal account email that will receive payments.
               </p>
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="h-4 w-4"
-                checked={ppSandbox}
-                onChange={(e) => setPpSandbox(e.target.checked)}
-              />
-              <span className="text-sm">Sandbox mode (for testing)</span>
-            </label>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Surcharge (%)</Label>
+                <Label>Transaction Fee (%)</Label>
                 <Input
                   type="number"
                   step="0.01"

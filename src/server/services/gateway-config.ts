@@ -5,10 +5,7 @@ export type StripeConfig = {
 };
 
 export type PayPalConfig = {
-  clientId: string;
-  clientSecret: string;
-  webhookId: string;
-  sandbox: boolean;
+  email: string;
 };
 
 export type ManualConfig = {

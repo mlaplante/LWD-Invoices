@@ -12,10 +12,7 @@ const stripeConfigSchema = z.object({
 });
 
 const paypalConfigSchema = z.object({
-  clientId: z.string().min(1),
-  clientSecret: z.string().min(1),
-  webhookId: z.string().min(1),
-  sandbox: z.boolean().default(true),
+  email: z.string().email(),
 });
 
 const manualConfigSchema = z.object({
@@ -39,7 +36,7 @@ export const gatewaySettingsRouter = router({
           safeConfig = { publishableKey: config.publishableKey };
         } else if (g.gatewayType === GatewayType.PAYPAL) {
           const config = decoded as PayPalConfig;
-          safeConfig = { clientId: config.clientId, sandbox: config.sandbox };
+          safeConfig = { email: config.email };
         } else {
           safeConfig = decoded;
         }

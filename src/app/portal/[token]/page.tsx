@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { PaymentButtons } from "@/components/portal/PaymentButtons";
 import { PortalComments } from "@/components/portal/PortalComments";
 import { EstimateActions } from "@/components/portal/EstimateActions";
-import type { InvoiceStatus } from "@/generated/prisma";
+import { decryptJson } from "@/server/services/encryption";
+import type { PayPalConfig } from "@/server/services/gateway-config";
+import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-700",
@@ -62,10 +64,29 @@ export default async function PortalInvoicePage({
   const symPos = invoice.currency.symbolPosition;
   const f = (n: Parameters<typeof fmt>[0]) => fmt(n, sym, symPos);
 
-  // Load enabled gateways (no secrets)
-  const gateways = await db.gatewaySetting.findMany({
+  // Load enabled gateways — include configJson so we can build the PayPal URL server-side
+  const gatewayRows = await db.gatewaySetting.findMany({
     where: { organizationId: invoice.organizationId, isEnabled: true },
-    select: { gatewayType: true, surcharge: true, label: true },
+    select: { gatewayType: true, surcharge: true, label: true, configJson: true },
+  });
+
+  const gateways = gatewayRows.map((g) => {
+    const base = {
+      gatewayType: g.gatewayType,
+      surcharge: g.surcharge.toNumber(),
+      label: g.label ?? null,
+      paypalUrl: undefined as string | undefined,
+    };
+    if (g.gatewayType === GatewayType.PAYPAL) {
+      try {
+        const config = decryptJson<PayPalConfig>(g.configJson);
+        const amount = (invoice.total.toNumber() * (1 + g.surcharge.toNumber() / 100)).toFixed(2);
+        base.paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(config.email)}&amount=${amount}&currency_code=${invoice.currency.code}&item_name=${encodeURIComponent(`Invoice ${invoice.number}`)}`;
+      } catch {
+        // configJson not set yet — PayPal button won't render
+      }
+    }
+    return base;
   });
 
   // Load public comments
@@ -243,11 +264,7 @@ export default async function PortalInvoicePage({
         {isPayable && gateways.length > 0 && (
           <PaymentButtons
             token={token}
-            gateways={gateways.map((g) => ({
-              gatewayType: g.gatewayType,
-              surcharge: g.surcharge.toNumber(),
-              label: g.label ?? null,
-            }))}
+            gateways={gateways}
             total={f(invoice.total)}
             orgName={invoice.organization.name}
           />
