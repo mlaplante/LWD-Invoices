@@ -10,14 +10,14 @@ import { InvoiceRowActions } from "@/components/invoices/InvoiceRowActions";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { FileText, Archive, Trash2 } from "lucide-react";
 
-const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string }> = {
-  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500" },
-  SENT:           { label: "Unpaid",   className: "bg-amber-50 text-amber-600" },
-  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600" },
-  PAID:           { label: "Paid",     className: "bg-primary/10 text-primary" },
-  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600" },
-  ACCEPTED:       { label: "Accepted", className: "bg-emerald-50 text-emerald-600" },
-  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-500" },
+const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
+  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",       dot: "bg-gray-400" },
+  SENT:           { label: "Unpaid",   className: "bg-amber-50 text-amber-600",      dot: "bg-amber-500" },
+  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600",        dot: "bg-blue-500" },
+  PAID:           { label: "Paid",     className: "bg-emerald-50 text-emerald-600",  dot: "bg-emerald-500" },
+  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600",          dot: "bg-red-500" },
+  ACCEPTED:       { label: "Accepted", className: "bg-primary/10 text-primary",      dot: "bg-primary" },
+  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-400",       dot: "bg-gray-300" },
 };
 
 const TYPE_LABELS: Record<InvoiceType, string> = {
@@ -199,7 +199,8 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground leading-tight">
-                        {TYPE_LABELS[inv.type]} #{inv.number}
+                        <span className="font-mono text-xs text-muted-foreground mr-1">#{inv.number}</span>
+                        {TYPE_LABELS[inv.type]}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {inv.client.name}
@@ -213,11 +214,12 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
                 <td className="py-3.5 text-foreground/80">
                   {inv.client.name}
                 </td>
-                <td className="py-3.5 text-right font-semibold text-foreground">
+                <td className="py-3.5 text-right font-mono font-semibold tabular-nums text-foreground">
                   {fmt(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
                 </td>
                 <td className="py-3.5 pl-4">
-                  <span className={cn("inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold", badge.className)}>
+                  <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium", badge.className)}>
+                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", badge.dot)} />
                     {badge.label}
                   </span>
                 </td>

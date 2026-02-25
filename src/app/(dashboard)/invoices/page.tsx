@@ -13,36 +13,15 @@ import { Suspense } from "react";
 
 const STATUS_BADGE: Record<
   InvoiceStatus,
-  { label: string; className: string }
+  { label: string; className: string; dot: string }
 > = {
-  DRAFT: {
-    label: "Draft",
-    className: "bg-gray-100 text-gray-500",
-  },
-  SENT: {
-    label: "Unpaid",
-    className: "bg-amber-50 text-amber-600",
-  },
-  PARTIALLY_PAID: {
-    label: "Partial",
-    className: "bg-blue-50 text-blue-600",
-  },
-  PAID: {
-    label: "Paid",
-    className: "bg-primary/10 text-primary",
-  },
-  OVERDUE: {
-    label: "Overdue",
-    className: "bg-red-50 text-red-600",
-  },
-  ACCEPTED: {
-    label: "Accepted",
-    className: "bg-emerald-50 text-emerald-600",
-  },
-  REJECTED: {
-    label: "Rejected",
-    className: "bg-gray-100 text-gray-500",
-  },
+  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",       dot: "bg-gray-400" },
+  SENT:           { label: "Unpaid",   className: "bg-amber-50 text-amber-600",      dot: "bg-amber-500" },
+  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600",        dot: "bg-blue-500" },
+  PAID:           { label: "Paid",     className: "bg-emerald-50 text-emerald-600",  dot: "bg-emerald-500" },
+  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600",          dot: "bg-red-500" },
+  ACCEPTED:       { label: "Accepted", className: "bg-primary/10 text-primary",      dot: "bg-primary" },
+  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-400",       dot: "bg-gray-300" },
 };
 
 const TYPE_LABELS: Record<InvoiceType, string> = {
@@ -219,7 +198,8 @@ export default async function InvoicesPage({
                     <span className="font-semibold text-sm">
                       {fmt(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
                     </span>
-                    <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold", badge.className)}>
+                    <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium", badge.className)}>
+                      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", badge.dot)} />
                       {badge.label}
                     </span>
                   </div>
