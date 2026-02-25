@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db";
 import { deleteFile } from "@/server/services/storage";
 
@@ -7,7 +7,10 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { userId, orgId } = await auth();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id;
+  const orgId = user?.app_metadata?.organizationId as string | undefined;
   if (!userId || !orgId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

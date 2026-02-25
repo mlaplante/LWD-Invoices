@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db";
 import { uploadLogo } from "@/lib/supabase-storage";
 import { NextResponse } from "next/server";
@@ -8,7 +8,9 @@ const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export async function POST(req: Request) {
   try {
-    const { orgId } = await auth();
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const orgId = user?.app_metadata?.organizationId as string | undefined;
     if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const formData = await req.formData();

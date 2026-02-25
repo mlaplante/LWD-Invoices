@@ -154,14 +154,15 @@ model Organization {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  email     String
-  firstName String?
-  lastName  String?
-  role      UserRole @default(STAFF)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  clerkId     String?  @unique
+  supabaseId  String?  @unique
+  email       String
+  firstName   String?
+  lastName    String?
+  role        UserRole @default(STAFF)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

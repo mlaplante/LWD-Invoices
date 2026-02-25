@@ -28,7 +28,7 @@ export async function notifyOrgAdmins(
     org.users.map((u) =>
       createNotification({
         ...notification,
-        userId: u.clerkId,
+        userId: u.supabaseId ?? u.id,
         organizationId: org.id,
       }),
     ),

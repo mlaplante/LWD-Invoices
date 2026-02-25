@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -27,15 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider dynamic publishableKey="pk_live_Y2xlcmsubGFwbGFudGVzLmRldiQ">
-      <html lang="en">
-        <body
-          className={`${jakartaSans.variable} ${geistMono.variable} antialiased`}
-        >
-          <TRPCReactProvider>{children}</TRPCReactProvider>
-          <Toaster richColors position="bottom-right" />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en">
+      <body
+        className={`${jakartaSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <TRPCReactProvider>{children}</TRPCReactProvider>
+        <Toaster richColors position="bottom-right" />
+      </body>
+    </html>
   );
 }

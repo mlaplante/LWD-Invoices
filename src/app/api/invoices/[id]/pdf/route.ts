@@ -1,12 +1,14 @@
 import { type NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { orgId } = await auth();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const orgId = user?.app_metadata?.organizationId as string | undefined;
   if (!orgId) {
     return new Response("Unauthorized", { status: 401 });
   }

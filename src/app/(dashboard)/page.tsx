@@ -1,5 +1,5 @@
 import { api } from "@/trpc/server";
-import { currentUser } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import {
@@ -63,9 +63,11 @@ function folderColor(name: string) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function DashboardPage() {
-  const [user, invoices, clients, projects, overdueInvoices] = await Promise.all([
-    currentUser(),
-    api.invoices.list({ includeArchived: false }),
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const [invoices, clients, projects, overdueInvoices] = await Promise.all([
+    api.invoices.list({ includeArchived: false, pageSize: 100 }),
     api.clients.list({ includeArchived: false }),
     api.projects.list({ includeArchived: false }),
     api.reports.overdueInvoices(),
@@ -73,10 +75,10 @@ export default async function DashboardPage() {
 
   // ── Derived stats ────────────────────────────────────────────────────────────
   const unpaidStatuses: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
-  const unpaidInvoices = invoices.filter((inv) => unpaidStatuses.includes(inv.status));
-  const overdueCount = invoices.filter((inv) => inv.status === "OVERDUE").length;
+  const unpaidInvoices = invoices.items.filter((inv) => unpaidStatuses.includes(inv.status));
+  const overdueCount = invoices.items.filter((inv) => inv.status === "OVERDUE").length;
   const activeProjects = projects.filter((p) => p.status === "ACTIVE");
-  const recentInvoices = invoices.slice(0, 6);
+  const recentInvoices = invoices.items.slice(0, 6);
 
   const today = new Date();
   const greeting = today.getHours() < 12 ? "Good morning" : today.getHours() < 17 ? "Good afternoon" : "Good evening";
@@ -89,7 +91,7 @@ export default async function DashboardPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {greeting}{user?.firstName ? `, ${user.firstName}` : ""}
+            {greeting}{user?.user_metadata?.firstName ? `, ${user.user_metadata.firstName}` : ""}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{dateLabel}</p>
         </div>
