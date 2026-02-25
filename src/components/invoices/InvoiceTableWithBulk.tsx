@@ -36,7 +36,7 @@ type Invoice = {
   total: number;
   currency: { symbol: string; symbolPosition: string };
   client: { name: string };
-  recurringInvoice?: { isActive: boolean; frequency: string; nextRunAt: Date } | null;
+  recurringInvoice?: { isActive: boolean; frequency: string } | null;
 };
 
 type Props = {

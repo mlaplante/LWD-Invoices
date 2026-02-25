@@ -91,7 +91,7 @@ const fullInvoiceInclude = {
 const summaryInvoiceInclude = {
   client: { select: { id: true, name: true } },
   currency: { select: { id: true, symbol: true, symbolPosition: true } },
-  recurringInvoice: { select: { isActive: true, frequency: true, nextRunAt: true } },
+  recurringInvoice: { select: { isActive: true, frequency: true } },
 };
 
 // ─── Router ────────────────────────────────────────────────────────────────────

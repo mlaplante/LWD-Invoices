@@ -232,7 +232,6 @@ export default async function InvoicesPage({
                   ? {
                       isActive: inv.recurringInvoice.isActive,
                       frequency: inv.recurringInvoice.frequency,
-                      nextRunAt: inv.recurringInvoice.nextRunAt,
                     }
                   : null,
               }))}
