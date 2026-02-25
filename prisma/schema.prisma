@@ -584,6 +584,8 @@ model Expense {
   rate           Decimal  @db.Decimal(20, 10)
   dueDate        DateTime?
   paymentDetails String?
+  paidAt         DateTime?
+  reimbursable   Boolean  @default(false)
   invoiceLineId  String?
   taxId          String?
   tax            Tax?     @relation(fields: [taxId], references: [id])
@@ -591,8 +593,8 @@ model Expense {
   category       ExpenseCategory? @relation(fields: [categoryId], references: [id])
   supplierId     String?
   supplier       ExpenseSupplier? @relation(fields: [supplierId], references: [id])
-  projectId      String
-  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId      String?
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
