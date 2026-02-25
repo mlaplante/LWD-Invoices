@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider dynamic>
+    <ClerkProvider dynamic publishableKey="pk_live_Y2xlcmsubGFwbGFudGVzLmRldiQ">
       <html lang="en">
         <body
           className={`${jakartaSans.variable} ${geistMono.variable} antialiased`}
