@@ -10,7 +10,11 @@ const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT = 60;
 const WINDOW_MS = 60_000;
 
-function isRateLimited(token: string): boolean {
+export function clearRateLimits() {
+  rateLimitMap.clear();
+}
+
+export function isRateLimited(token: string): boolean {
   const now = Date.now();
   const timestamps = (rateLimitMap.get(token) ?? []).filter((t) => now - t < WINDOW_MS);
   if (timestamps.length >= RATE_LIMIT) return true;

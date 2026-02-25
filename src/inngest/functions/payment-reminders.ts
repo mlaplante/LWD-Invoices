@@ -1,18 +1,28 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
 
+export function calcDaysUntilDue(now: Date, dueDate: Date): number {
+  return Math.ceil((dueDate.getTime() - now.getTime()) / 86400000);
+}
+
+export function getReminderWindow(now: Date): { tomorrow: Date; in3Days: Date } {
+  const tomorrow = new Date(now);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  tomorrow.setUTCHours(0, 0, 0, 0);
+
+  const in3Days = new Date(now);
+  in3Days.setUTCDate(in3Days.getUTCDate() + 3);
+  in3Days.setUTCHours(23, 59, 59, 999);
+
+  return { tomorrow, in3Days };
+}
+
 export const processPaymentReminders = inngest.createFunction(
   { id: "process-payment-reminders", name: "Process Payment Reminders" },
   { cron: "0 8 * * *" }, // daily at 8am UTC
   async () => {
     const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    tomorrow.setUTCHours(0, 0, 0, 0);
-
-    const in3Days = new Date(now);
-    in3Days.setUTCDate(in3Days.getUTCDate() + 3);
-    in3Days.setUTCHours(23, 59, 59, 999);
+    const { tomorrow, in3Days } = getReminderWindow(now);
 
     const invoices = await db.invoice.findMany({
       where: {
@@ -31,9 +41,7 @@ export const processPaymentReminders = inngest.createFunction(
       invoices.map(async (invoice) => {
         if (!invoice.client.email) return;
 
-        const daysUntilDue = Math.ceil(
-          (invoice.dueDate!.getTime() - now.getTime()) / 86400000,
-        );
+        const daysUntilDue = calcDaysUntilDue(now, invoice.dueDate!);
         const portalLink = `${process.env.NEXT_PUBLIC_APP_URL}/portal/${invoice.portalToken}`;
 
         const { Resend } = await import("resend");

@@ -2,6 +2,10 @@ import { inngest } from "../client";
 import { db } from "@/server/db";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 
+export function calcDaysOverdue(now: Date, dueDate: Date): number {
+  return Math.floor((now.getTime() - dueDate.getTime()) / 86400000);
+}
+
 export const processOverdueInvoices = inngest.createFunction(
   { id: "process-overdue-invoices", name: "Process Overdue Invoices" },
   { cron: "0 7 * * *" }, // daily at 7am UTC
@@ -28,9 +32,7 @@ export const processOverdueInvoices = inngest.createFunction(
           data: { status: "OVERDUE" },
         });
 
-        const daysOverdue = Math.floor(
-          (now.getTime() - invoice.dueDate!.getTime()) / 86400000,
-        );
+        const daysOverdue = calcDaysOverdue(now, invoice.dueDate!);
         const portalLink = `${process.env.NEXT_PUBLIC_APP_URL}/portal/${invoice.portalToken}`;
 
         // Send overdue email — non-fatal
