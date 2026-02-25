@@ -47,7 +47,6 @@ export default function SignInPage() {
     await supabase.auth.refreshSession();
 
     router.push("/");
-    router.refresh();
     setLoading(false);
   }
 

@@ -38,7 +38,6 @@ export default function OnboardingPage() {
     await supabase.auth.refreshSession();
 
     router.push("/");
-    router.refresh();
   }
 
   return (
