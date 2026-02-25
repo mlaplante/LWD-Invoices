@@ -51,9 +51,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Business name is required" }, { status: 400 });
   }
 
+  const DEFAULT_EXPENSE_CATEGORIES = [
+    "Advertising & Marketing",
+    "Bank Charges & Fees",
+    "Equipment & Supplies",
+    "Insurance",
+    "Meals & Entertainment",
+    "Office Expenses",
+    "Professional Services",
+    "Rent & Utilities",
+    "Software & Subscriptions",
+    "Travel & Transportation",
+    "Wages & Payroll",
+    "Taxes & Licenses",
+  ];
+
   // Create org in DB
   const org = await db.organization.create({
     data: { id: `org_${crypto.randomUUID()}`, name },
+  });
+
+  // Seed default expense categories
+  await db.expenseCategory.createMany({
+    data: DEFAULT_EXPENSE_CATEGORIES.map((name) => ({ name, organizationId: org.id })),
   });
 
   // Upsert user record — handle case where supabaseId column doesn't exist yet
