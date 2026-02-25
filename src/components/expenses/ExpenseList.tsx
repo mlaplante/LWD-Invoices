@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -25,10 +25,6 @@ export function ExpenseList({ initialExpenses }: Props) {
     {},
     { initialData: initialExpenses }
   );
-
-  const seedCategories = trpc.expenseCategories.ensureDefaults.useMutation();
-  const seedSuppliers = trpc.expenseSuppliers.ensureDefaults.useMutation();
-  useEffect(() => { seedCategories.mutate(); seedSuppliers.mutate(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteMutation = trpc.expenses.delete.useMutation({
     onSuccess: () => {

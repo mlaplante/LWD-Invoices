@@ -557,7 +557,6 @@ model Timer {
 model ExpenseCategory {
   id             String  @id @default(cuid())
   name           String
-  description    String?
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   expenses       Expense[]
@@ -568,7 +567,6 @@ model ExpenseCategory {
 model ExpenseSupplier {
   id             String  @id @default(cuid())
   name           String
-  description    String?
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   expenses       Expense[]
