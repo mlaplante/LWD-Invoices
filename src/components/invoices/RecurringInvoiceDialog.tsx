@@ -43,8 +43,11 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
 
   const cancel = trpc.recurringInvoices.cancel.useMutation({
     onSuccess: () => {
+      toast.success("Recurring schedule cancelled");
       void utils.recurringInvoices.getForInvoice.invalidate({ invoiceId });
+      setOpen(false);
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const [frequency, setFrequency] = useState<RecurringFrequency>(

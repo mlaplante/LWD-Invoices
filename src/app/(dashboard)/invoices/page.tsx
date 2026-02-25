@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { InvoiceRowActions } from "@/components/invoices/InvoiceRowActions";
+import { InvoiceTableWithBulk } from "@/components/invoices/InvoiceTableWithBulk";
 import { SearchInput } from "@/components/ui/SearchInput";
+import { DateRangeFilter } from "@/components/ui/DateRangeFilter";
 import { Suspense } from "react";
 
 // ── Status badge ─────────────────────────────────────────────────────────────
@@ -103,9 +104,9 @@ const PAGE_SIZE = 25;
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; page?: string; search?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string; search?: string; dateFrom?: string; dateTo?: string }>;
 }) {
-  const { tab: rawTab, page: rawPage, search } = await searchParams;
+  const { tab: rawTab, page: rawPage, search, dateFrom, dateTo } = await searchParams;
   const activeTab: Tab =
     rawTab && Object.keys(TAB_FILTERS).includes(rawTab)
       ? (rawTab as Tab)
@@ -116,7 +117,12 @@ export default async function InvoicesPage({
 
   let invoices: Awaited<ReturnType<typeof api.invoices.list>> = [];
   try {
-    invoices = await api.invoices.list({ ...filter, search: search || undefined });
+    invoices = await api.invoices.list({
+      ...filter,
+      search: search || undefined,
+      dateFrom: dateFrom ? new Date(dateFrom) : undefined,
+      dateTo: dateTo ? new Date(dateTo) : undefined,
+    });
   } catch (err) {
     console.error("[InvoicesPage] list failed:", err);
     throw err;
@@ -134,9 +140,12 @@ export default async function InvoicesPage({
   return (
     <div className="space-y-5">
       {/* Page heading */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Suspense>
+            <DateRangeFilter />
+          </Suspense>
           <Suspense>
             <SearchInput placeholder="Search invoices…" />
           </Suspense>
@@ -217,80 +226,9 @@ export default async function InvoicesPage({
             })}
           </div>
 
-          {/* Desktop table */}
+          {/* Desktop table with bulk actions */}
           <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-2">
-                    Invoice
-                  </th>
-                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Date
-                  </th>
-                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Client
-                  </th>
-                  <th className="pb-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Amount
-                  </th>
-                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-4">
-                    Status
-                  </th>
-                  <th className="pb-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {paginatedInvoices.map((inv) => {
-                  const badge = STATUS_BADGE[inv.status];
-                  return (
-                    <tr
-                      key={inv.id}
-                      className="group hover:bg-accent/30 transition-colors"
-                    >
-                      {/* Invoice identity */}
-                      <td className="py-3.5 pl-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                            <FileText className="w-4 h-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-foreground leading-tight">
-                              {TYPE_LABELS[inv.type]} #{inv.number}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {inv.client.name}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 text-muted-foreground">
-                        {formatDate(inv.date)}
-                      </td>
-                      <td className="py-3.5 text-foreground/80">
-                        {inv.client.name}
-                      </td>
-                      <td className="py-3.5 text-right font-semibold text-foreground">
-                        {fmt(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
-                      </td>
-                      <td className="py-3.5 pl-4">
-                        <span className={cn("inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold", badge.className)}>
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="py-3.5 pr-2">
-                        <InvoiceRowActions
-                          invoiceId={inv.id}
-                          invoiceTotal={Number(inv.total)}
-                          status={inv.status}
-                          invoiceType={inv.type}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <InvoiceTableWithBulk invoices={paginatedInvoices} />
           </div>
 
           {/* Pagination footer */}

@@ -421,6 +421,34 @@ export const invoicesRouter = router({
       });
     }),
 
+  archiveMany: protectedProcedure
+    .input(z.object({ ids: z.array(z.string()), isArchived: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.invoice.updateMany({
+        where: { id: { in: input.ids }, organizationId: ctx.orgId },
+        data: { isArchived: input.isArchived },
+      });
+    }),
+
+  deleteMany: protectedProcedure
+    .input(z.object({ ids: z.array(z.string()) }))
+    .mutation(async ({ ctx, input }) => {
+      // Only delete invoices that are not PAID, PARTIALLY_PAID, or OVERDUE
+      const deletable = await ctx.db.invoice.findMany({
+        where: {
+          id: { in: input.ids },
+          organizationId: ctx.orgId,
+          status: { notIn: [InvoiceStatus.PAID, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
+        },
+        select: { id: true },
+      });
+      const deletableIds = deletable.map((i) => i.id);
+      if (deletableIds.length === 0) return { count: 0 };
+      return ctx.db.invoice.deleteMany({
+        where: { id: { in: deletableIds }, organizationId: ctx.orgId },
+      });
+    }),
+
   send: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

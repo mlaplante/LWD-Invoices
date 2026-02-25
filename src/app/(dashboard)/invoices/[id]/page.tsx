@@ -12,6 +12,7 @@ import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
 import { ArchiveInvoiceButton } from "@/components/invoices/ArchiveInvoiceButton";
 import { DeleteInvoiceButton } from "@/components/invoices/DeleteInvoiceButton";
 import { DuplicateInvoiceButton } from "@/components/invoices/DuplicateInvoiceButton";
+import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -364,9 +365,9 @@ export default async function InvoiceDetailPage({
             <table className="w-full text-sm">
               <thead className="bg-muted/30 border-b border-border/50">
                 <tr>
-                  {["#", "Due Date", "Amount", "Status"].map((h, i) => (
+                  {["#", "Due Date", "Amount", "Status", ""].map((h, i) => (
                     <th
-                      key={h}
+                      key={i}
                       className={cn(
                         "px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide",
                         i === 2 ? "text-right" : "text-left"
@@ -396,6 +397,11 @@ export default async function InvoiceDetailPage({
                         <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-500">
                           Pending
                         </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {!pp.isPaid && isPayable && (
+                        <MarkPartialPaidButton partialPaymentId={pp.id} />
                       )}
                     </td>
                   </tr>

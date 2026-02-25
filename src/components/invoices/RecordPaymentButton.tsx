@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RecordPaymentDialog } from "./RecordPaymentDialog";
 
@@ -11,6 +12,7 @@ type Props = {
 
 export function RecordPaymentButton({ invoiceId, invoiceTotal }: Props) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <>
@@ -22,10 +24,7 @@ export function RecordPaymentButton({ invoiceId, invoiceTotal }: Props) {
         invoiceTotal={invoiceTotal}
         open={open}
         onOpenChange={setOpen}
-        onSuccess={() => {
-          // Reload the page to reflect updated status
-          window.location.reload();
-        }}
+        onSuccess={() => router.refresh()}
       />
     </>
   );

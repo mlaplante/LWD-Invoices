@@ -59,12 +59,34 @@ function avatarColor(name: string): string {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+type InvoiceFilter = "all" | "unpaid" | "paid";
+
+const INVOICE_FILTER_TABS: { id: InvoiceFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "unpaid", label: "Unpaid" },
+  { id: "paid", label: "Paid" },
+];
+
+const INVOICE_FILTER_STATUSES: Record<InvoiceFilter, InvoiceStatus[] | undefined> = {
+  all: undefined,
+  unpaid: ["SENT", "OVERDUE", "PARTIALLY_PAID"],
+  paid: ["PAID"],
+};
+
 export default async function ClientDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ filter?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, { filter: rawFilter }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
+
+  const activeFilter: InvoiceFilter =
+    rawFilter === "unpaid" || rawFilter === "paid" ? rawFilter : "all";
 
   let client;
   try {
@@ -73,7 +95,17 @@ export default async function ClientDetailPage({
     notFound();
   }
 
-  const invoices = await api.invoices.list({ clientId: id, includeArchived: false });
+  const allInvoices = await api.invoices.list({ clientId: id, includeArchived: false });
+
+  // Outstanding balance = sum of unpaid invoices
+  const outstandingBalance = allInvoices
+    .filter((inv) => ["SENT", "OVERDUE", "PARTIALLY_PAID"].includes(inv.status))
+    .reduce((sum, inv) => sum + Number(inv.total), 0);
+
+  const statusFilter = INVOICE_FILTER_STATUSES[activeFilter];
+  const invoices = statusFilter
+    ? allInvoices.filter((inv) => statusFilter.includes(inv.status))
+    : allInvoices;
 
   // Build portal link from request headers (avoids hardcoded NEXT_PUBLIC_APP_URL)
   const headersList = await headers();
@@ -181,7 +213,40 @@ export default async function ClientDetailPage({
 
       {/* ── Invoices ─────────────────────────────────────────────── */}
       <div className="space-y-3">
-        <h2 className="text-base font-semibold">Invoices</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Invoices</h2>
+          {outstandingBalance > 0 && (
+            <div className="text-sm">
+              <span className="text-muted-foreground">Outstanding: </span>
+              <span className="font-semibold text-amber-600">
+                ${outstandingBalance.toFixed(2)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Status filter tabs */}
+        {allInvoices.length > 0 && (
+          <div className="flex items-center gap-1 border-b border-border">
+            {INVOICE_FILTER_TABS.map((t) => (
+              <Link
+                key={t.id}
+                href={t.id === "all" ? `/clients/${id}` : `/clients/${id}?filter=${t.id}`}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium transition-colors relative",
+                  activeFilter === t.id
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t.label}
+                {activeFilter === t.id && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {invoices.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 rounded-2xl border border-border/50 border-dashed text-center">
@@ -189,13 +254,17 @@ export default async function ClientDetailPage({
               <FileText className="w-4 h-4 text-primary" />
             </div>
             <p className="text-sm text-muted-foreground">
-              No invoices for this client yet.
+              {activeFilter === "all"
+                ? "No invoices for this client yet."
+                : `No ${activeFilter} invoices.`}
             </p>
-            <Button asChild size="sm" className="mt-3">
-              <Link href={`/invoices/new?clientId=${client.id}`}>
-                Create Invoice
-              </Link>
-            </Button>
+            {activeFilter === "all" && (
+              <Button asChild size="sm" className="mt-3">
+                <Link href={`/invoices/new?clientId=${client.id}`}>
+                  Create Invoice
+                </Link>
+              </Button>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-border/50 overflow-hidden">
