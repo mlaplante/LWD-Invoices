@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ResendInvoiceButton } from "@/components/invoices/ResendInvoiceButton";
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 
@@ -261,6 +262,9 @@ export default async function InvoicesPage({
                         >
                           View
                         </Link>
+                        {(inv.status === "SENT" || inv.status === "OVERDUE" || inv.status === "PARTIALLY_PAID") && inv.type !== "ESTIMATE" && (
+                          <ResendInvoiceButton invoiceId={inv.id} />
+                        )}
                       </div>
                     </td>
                   </tr>
