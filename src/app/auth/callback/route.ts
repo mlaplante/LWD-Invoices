@@ -28,30 +28,43 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/sign-in`);
   }
 
-  // Data migration: match existing user by email on first Supabase login
-  const existingUser = await db.user.findFirst({
-    where: { email: user.email!, supabaseId: null },
-  });
-
-  if (existingUser) {
-    // Link Supabase ID to existing DB record
-    await db.user.update({
-      where: { id: existingUser.id },
-      data: { supabaseId: user.id },
-    });
-
-    // Store organizationId in Supabase app_metadata
-    const admin = createAdminClient();
-    await admin.auth.admin.updateUserById(user.id, {
-      app_metadata: { organizationId: existingUser.organizationId },
-    });
-
-    return NextResponse.redirect(`${origin}/`);
-  }
-
-  // Check if user already has org in app_metadata (returning user)
+  // Already migrated — just go to destination
   if (user.app_metadata?.organizationId) {
     return NextResponse.redirect(`${origin}${next}`);
+  }
+
+  // Data migration: match existing Clerk user by email on first Supabase login
+  if (user.email) {
+    try {
+      const existingUser = await db.user.findFirst({
+        where: { email: user.email },
+      });
+
+      if (existingUser) {
+        // Link supabaseId (best-effort — column may not exist yet)
+        try {
+          await db.user.update({
+            where: { id: existingUser.id },
+            data: { supabaseId: user.id },
+          });
+        } catch (err) {
+          console.warn("[auth/callback] Could not set supabaseId:", err);
+        }
+
+        // Store organizationId in app_metadata
+        const admin = createAdminClient();
+        await admin.auth.admin.updateUserById(user.id, {
+          app_metadata: { organizationId: existingUser.organizationId },
+        });
+
+        // Refresh the session so the new app_metadata is in the JWT cookie
+        await supabase.auth.refreshSession();
+
+        return NextResponse.redirect(`${origin}/`);
+      }
+    } catch (err) {
+      console.error("[auth/callback] Migration error:", err);
+    }
   }
 
   // New user — send to onboarding

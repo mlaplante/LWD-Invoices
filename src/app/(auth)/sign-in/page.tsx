@@ -25,12 +25,29 @@ export default function SignInPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
-    } else {
-      router.push("/api/auth/migrate?next=/");
+      setLoading(false);
+      return;
     }
+
+    // Run migration for existing Clerk users (sets organizationId in app_metadata)
+    const migrateRes = await fetch("/api/auth/migrate", { method: "POST" });
+    if (!migrateRes.ok && migrateRes.status !== 404) {
+      // 404 = no existing user (new user), all other errors are real failures
+      const data = await migrateRes.json().catch(() => ({}));
+      setError(data.error ?? "Sign in failed. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    // Refresh the session so the new app_metadata.organizationId is in the JWT cookie
+    await supabase.auth.refreshSession();
+
+    router.push("/");
+    router.refresh();
     setLoading(false);
   }
 

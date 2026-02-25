@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   "/api/trpc",
   "/api/inngest",
   "/api/onboarding",
+  "/api/auth",
   "/api/v1",
   "/auth/callback",
   "/auth/confirm",
