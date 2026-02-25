@@ -1,4 +1,6 @@
 import { db } from "@/server/db";
+import { env } from "@/lib/env";
+import { verifyPortalSession } from "@/lib/portal-session";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
@@ -13,7 +15,7 @@ export default async function PortalLayout({
 
   const invoice = await db.invoice.findUnique({
     where: { portalToken: token },
-    select: { id: true, portalPassphraseHash: true },
+    select: { id: true, client: { select: { portalPassphraseHash: true } } },
   });
 
   if (!invoice) {
@@ -22,11 +24,12 @@ export default async function PortalLayout({
   }
 
   // If passphrase is set, verify cookie
-  if (invoice.portalPassphraseHash) {
+  const storedHash = invoice.client?.portalPassphraseHash ?? null;
+  if (storedHash) {
     const cookieStore = await cookies();
     const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
 
-    if (!cookieVal || cookieVal !== invoice.portalPassphraseHash) {
+    if (!cookieVal || !verifyPortalSession(cookieVal, token, env.SUPABASE_SERVICE_ROLE_KEY)) {
       redirect(`/portal/${token}/login`);
     }
   }

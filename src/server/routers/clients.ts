@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import bcrypt from "bcryptjs";
 import { router, protectedProcedure } from "../trpc";
 
 const clientSchema = z.object({
@@ -15,6 +16,14 @@ const clientSchema = z.object({
   notes: z.string().optional(),
   portalPassphrase: z.string().optional(),
 });
+
+async function hashPassphraseIfProvided(
+  input: { portalPassphrase?: string },
+): Promise<{ portalPassphraseHash?: string }> {
+  if (!input.portalPassphrase) return {};
+  const hash = await bcrypt.hash(input.portalPassphrase, 12);
+  return { portalPassphraseHash: hash };
+}
 
 export const clientsRouter = router({
   list: protectedProcedure
@@ -50,18 +59,21 @@ export const clientsRouter = router({
   create: protectedProcedure
     .input(clientSchema)
     .mutation(async ({ ctx, input }) => {
+      const { portalPassphrase, ...rest } = input;
+      const passHash = await hashPassphraseIfProvided({ portalPassphrase });
       return ctx.db.client.create({
-        data: { ...input, organizationId: ctx.orgId },
+        data: { ...rest, ...passHash, organizationId: ctx.orgId },
       });
     }),
 
   update: protectedProcedure
     .input(z.object({ id: z.string() }).merge(clientSchema.partial()))
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
+      const { id, portalPassphrase, ...rest } = input;
+      const passHash = await hashPassphraseIfProvided({ portalPassphrase });
       return ctx.db.client.update({
         where: { id, organizationId: ctx.orgId },
-        data,
+        data: { ...rest, ...passHash },
       });
     }),
 

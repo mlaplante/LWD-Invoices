@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
+import { env } from "@/lib/env";
+import { verifyPortalSession } from "@/lib/portal-session";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 import { cookies } from "next/headers";
 
@@ -12,17 +14,25 @@ export async function POST(
 
   const invoice = await db.invoice.findUnique({
     where: { portalToken: token },
-    select: { id: true, number: true, type: true, status: true, organizationId: true, portalPassphraseHash: true },
+    select: {
+      id: true,
+      number: true,
+      type: true,
+      status: true,
+      organizationId: true,
+      client: { select: { portalPassphraseHash: true } },
+    },
   });
   if (!invoice || invoice.type !== "ESTIMATE") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   // Verify portal auth cookie (set by /api/portal/[token]/auth)
-  if (invoice.portalPassphraseHash) {
+  const storedHash = invoice.client?.portalPassphraseHash ?? null;
+  if (storedHash) {
     const cookieStore = await cookies();
     const authCookie = cookieStore.get(`portal_auth_${token}`);
-    if (!authCookie || authCookie.value !== invoice.portalPassphraseHash) {
+    if (!authCookie || !verifyPortalSession(authCookie.value, token, env.SUPABASE_SERVICE_ROLE_KEY)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }

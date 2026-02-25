@@ -19,7 +19,7 @@ type Client = {
   country: string | null;
   taxId: string | null;
   notes: string | null;
-  portalPassphrase: string | null;
+  portalPassphraseHash: string | null;
 };
 
 type Props = {
@@ -42,7 +42,7 @@ export function ClientForm({ mode, client }: Props) {
     country: client?.country ?? "",
     taxId: client?.taxId ?? "",
     notes: client?.notes ?? "",
-    portalPassphrase: client?.portalPassphrase ?? "",
+    portalPassphrase: "",
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -194,9 +194,15 @@ export function ClientForm({ mode, client }: Props) {
         <div>
           <label className="text-sm font-medium">Portal Passphrase</label>
           <Input
+            type="password"
             value={form.portalPassphrase}
             onChange={(e) => handleChange("portalPassphrase", e.target.value)}
-            placeholder="Optional password for client portal"
+            placeholder={
+              mode === "edit" && client?.portalPassphraseHash
+                ? "Leave blank to keep existing passphrase"
+                : "Optional password for client portal"
+            }
+            autoComplete="new-password"
             className="mt-1"
           />
         </div>

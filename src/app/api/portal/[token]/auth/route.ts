@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
-import { createHash } from "crypto";
+import { env } from "@/lib/env";
+import { signPortalSession } from "@/lib/portal-session";
 import { cookies } from "next/headers";
+import bcrypt from "bcryptjs";
 
 export async function POST(
   req: NextRequest,
@@ -13,27 +15,30 @@ export async function POST(
 
   const invoice = await db.invoice.findUnique({
     where: { portalToken: token },
-    select: { portalPassphraseHash: true },
+    select: { client: { select: { portalPassphraseHash: true } } },
   });
 
   if (!invoice) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (!invoice.portalPassphraseHash) {
+  const storedHash = invoice.client?.portalPassphraseHash ?? null;
+
+  if (!storedHash) {
     // No passphrase set — no auth needed
     return NextResponse.json({ ok: true });
   }
 
-  const hash = createHash("sha256").update(passphrase).digest("hex");
+  const match = await bcrypt.compare(passphrase, storedHash);
 
-  if (hash !== invoice.portalPassphraseHash) {
+  if (!match) {
     return NextResponse.json({ error: "Incorrect passphrase" }, { status: 401 });
   }
 
-  // Set HttpOnly cookie
+  // Set HttpOnly cookie with a signed session token (not the hash itself)
+  const sessionVal = signPortalSession(token, env.SUPABASE_SERVICE_ROLE_KEY);
   const cookieStore = await cookies();
-  cookieStore.set(`portal_auth_${token}`, hash, {
+  cookieStore.set(`portal_auth_${token}`, sessionVal, {
     httpOnly: true,
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 30, // 30 days
