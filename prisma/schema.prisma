@@ -584,6 +584,7 @@ model Expense {
   paymentDetails String?
   paidAt         DateTime?
   reimbursable   Boolean  @default(false)
+  receiptUrl     String?
   invoiceLineId  String?
   taxId          String?
   tax            Tax?     @relation(fields: [taxId], references: [id])

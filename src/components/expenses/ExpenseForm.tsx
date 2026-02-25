@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Paperclip, X, ExternalLink } from "lucide-react";
 
 type Tax = { id: string; name: string; rate: number };
 type Category = { id: string; name: string };
@@ -38,6 +39,7 @@ type BaseProps = {
     categoryId?: string;
     supplierId?: string;
     projectId?: string;
+    receiptUrl?: string;
   };
 };
 
@@ -56,6 +58,7 @@ export function ExpenseForm({
 }: Props) {
   const router = useRouter();
   const utils = trpc.useUtils();
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: defaults.name ?? "",
@@ -71,6 +74,8 @@ export function ExpenseForm({
     supplierId: defaults.supplierId ?? "",
     projectId: defaults.projectId ?? "",
   });
+  const [receiptUrl, setReceiptUrl] = useState<string>(defaults.receiptUrl ?? "");
+  const [receiptUploading, setReceiptUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const createMutation = trpc.expenses.create.useMutation({
@@ -93,6 +98,26 @@ export function ExpenseForm({
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  async function handleReceiptChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReceiptUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/expenses/receipt", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setReceiptUrl(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setReceiptUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -112,6 +137,7 @@ export function ExpenseForm({
         paidAt: form.paidAt ? new Date(form.paidAt) : undefined,
         reimbursable: form.reimbursable,
         paymentDetails: form.paymentDetails || undefined,
+        receiptUrl: receiptUrl || undefined,
         taxId: form.taxId || undefined,
         categoryId: form.categoryId || undefined,
         supplierId: form.supplierId || undefined,
@@ -128,6 +154,7 @@ export function ExpenseForm({
         paidAt: form.paidAt ? new Date(form.paidAt) : null,
         reimbursable: form.reimbursable,
         paymentDetails: form.paymentDetails || undefined,
+        receiptUrl: receiptUrl || null,
         taxId: form.taxId || null,
         categoryId: form.categoryId || null,
         supplierId: form.supplierId || null,
@@ -307,6 +334,53 @@ export function ExpenseForm({
           rows={2}
           className="mt-1"
         />
+      </div>
+
+      {/* Receipt */}
+      <div>
+        <label className="text-sm font-medium">Receipt</label>
+        <div className="mt-1 space-y-2">
+          {receiptUrl ? (
+            <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm">
+              <Paperclip className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+              <a
+                href={receiptUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 truncate text-primary hover:underline"
+              >
+                View receipt
+                <ExternalLink className="inline ml-1 w-3 h-3" />
+              </a>
+              <button
+                type="button"
+                onClick={() => setReceiptUrl("")}
+                className="text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif,application/pdf"
+                onChange={handleReceiptChange}
+                className="hidden"
+                id="receipt-upload"
+              />
+              <label
+                htmlFor="receipt-upload"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border/60 px-3 py-1.5 text-sm font-medium hover:bg-accent/30 transition-colors"
+              >
+                <Paperclip className="w-3.5 h-3.5" />
+                {receiptUploading ? "Uploading…" : "Attach receipt"}
+              </label>
+              <span className="text-xs text-muted-foreground">PNG, JPEG, PDF — max 10 MB</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-3">

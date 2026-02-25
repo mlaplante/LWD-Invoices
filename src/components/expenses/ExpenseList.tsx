@@ -5,7 +5,7 @@ import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/routers/_app";
@@ -110,6 +110,7 @@ export function ExpenseList({ initialExpenses }: Props) {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date Paid</th>
                   <th className="px-6 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">Reimb.</th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">Receipt</th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
@@ -146,6 +147,21 @@ export function ExpenseList({ initialExpenses }: Props) {
                       <td className="px-6 py-3.5 text-right font-semibold tabular-nums">
                         ${amount.toFixed(2)}
                       </td>
+                      <td className="px-6 py-3.5 text-center">
+                        {expense.receiptUrl ? (
+                          <a
+                            href={expense.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex text-muted-foreground hover:text-primary transition-colors"
+                            title="View receipt"
+                          >
+                            <Paperclip className="w-3.5 h-3.5" />
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </td>
                       <td className="px-6 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button asChild variant="ghost" size="icon" className="h-7 w-7">
@@ -173,7 +189,7 @@ export function ExpenseList({ initialExpenses }: Props) {
                 <tr>
                   <td colSpan={5} className="px-6 py-3 text-sm font-semibold text-right">Total</td>
                   <td className="px-6 py-3 text-right font-bold tabular-nums">${totalAmount.toFixed(2)}</td>
-                  <td />
+                  <td /><td />
                 </tr>
               </tfoot>
             </table>

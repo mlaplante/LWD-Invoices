@@ -63,6 +63,7 @@ export default async function EditExpensePage({ params }: Props) {
             categoryId: expense.categoryId ?? undefined,
             supplierId: expense.supplierId ?? undefined,
             projectId: expense.projectId ?? undefined,
+            receiptUrl: expense.receiptUrl ?? undefined,
           }}
         />
       </div>

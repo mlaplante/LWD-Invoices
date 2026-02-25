@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pancake — UI Improvements Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f3ef;
+    --card: #ffffff;
+    --sidebar: #1a1814;
+    --sidebar-text: rgba(255,255,255,0.55);
+    --sidebar-active: rgba(255,255,255,0.95);
+    --primary: #c17b3a;
+    --primary-light: #f5e9d9;
+    --primary-dark: #96571f;
+    --text: #1a1814;
+    --text-muted: #7a7066;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.12);
+    --green: #2d7d4f;
+    --green-bg: #e8f5ee;
+    --red: #c0392b;
+    --red-bg: #fdf0ee;
+    --amber: #b45309;
+    --amber-bg: #fef3c7;
+    --blue: #1d4ed8;
+    --blue-bg: #eff6ff;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    --shadow-elevated: 0 4px 12px rgba(0,0,0,0.08), 0 16px 40px rgba(0,0,0,0.06);
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────────── */
+  .sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: var(--sidebar);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 12px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    top: -80px;
+    right: -60px;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(193,123,58,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-logo-mark {
+    width: 32px;
+    height: 32px;
+    background: var(--primary);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Instrument Serif', serif;
+    font-size: 18px;
+    color: white;
+    letter-spacing: -0.5px;
+    box-shadow: 0 2px 8px rgba(193,123,58,0.4);
+  }
+
+  .sidebar-logo-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    letter-spacing: -0.3px;
+  }
+
+  .new-invoice-btn {
+    width: 100%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(193,123,58,0.35);
+    transition: all 0.15s;
+  }
+
+  .new-invoice-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.25);
+    padding: 0 10px;
+    margin-bottom: 4px;
+    margin-top: 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    color: var(--sidebar-text);
+    cursor: pointer;
+    transition: all 0.12s;
+    margin-bottom: 1px;
+    text-decoration: none;
+  }
+
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8); }
+
+  .nav-item.active {
+    background: rgba(255,255,255,0.1);
+    color: var(--sidebar-active);
+  }
+
+  .nav-item.active .nav-dot {
+    background: var(--primary);
+    box-shadow: 0 0 8px rgba(193,123,58,0.6);
+  }
+
+  .nav-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    flex-shrink: 0;
+  }
+
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+
+  .nav-item.active .nav-icon { opacity: 1; }
+
+  .nav-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 12px 0;
+  }
+
+  .sidebar-bottom {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .org-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    background: rgba(255,255,255,0.05);
+  }
+
+  .org-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .org-name { font-size: 12px; color: rgba(255,255,255,0.65); font-weight: 500; }
+
+  /* ── Main ────────────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .topbar-greeting {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .greeting-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .greeting-name {
+    font-family: 'Instrument Serif', serif;
+    font-size: 22px;
+    color: var(--text);
+    line-height: 1.2;
+    letter-spacing: -0.3px;
+  }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    box-shadow: var(--shadow-card);
+    transition: all 0.12s;
+    position: relative;
+  }
+
+  .icon-btn:hover { color: var(--text); border-color: var(--border-strong); }
+
+  .notif-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--bg);
+  }
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, #c17b3a, #96571f);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* ── Content ─────────────────────────────────────────────── */
+  .content {
+    padding: 24px 28px;
+    flex: 1;
+  }
+
+  /* ── KPI Strip ───────────────────────────────────────────── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.15s;
+    cursor: default;
+  }
+
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated); }
+
+  .kpi-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kpi-trend {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .trend-up { background: var(--green-bg); color: var(--green); }
+  .trend-down { background: var(--red-bg); color: var(--red); }
+  .trend-neutral { background: #f4f4f4; color: var(--text-muted); }
+
+  .kpi-value {
+    font-family: 'Instrument Serif', serif;
+    font-size: 28px;
+    letter-spacing: -0.5px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .kpi-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
+  .sparkline {
+    height: 28px;
+    width: 100%;
+  }
+
+  /* ── Main Grid ───────────────────────────────────────────── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .card-title-group {}
+
+  .card-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+  }
+
+  .card-link {
+    font-size: 12px;
+    color: var(--primary);
+    font-weight: 500;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  /* ── Invoice Table ───────────────────────────────────────── */
+  .invoice-table { width: 100%; border-collapse: collapse; }
+
+  .invoice-table th {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 10px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .invoice-table th:last-child { text-align: right; }
+
+  .invoice-row {
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .invoice-row:hover td { background: rgba(193,123,58,0.03); }
+
+  .invoice-row td {
+    padding: 12px 20px;
+    font-size: 13.5px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .invoice-row:last-child td { border-bottom: none; }
+
+  .invoice-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .invoice-client { font-weight: 500; font-size: 13.5px; }
+  .invoice-date { font-size: 12.5px; color: var(--text-muted); }
+
+  .invoice-amount {
+    text-align: right;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* ── Status Badges ───────────────────────────────────────── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .badge-paid { background: var(--green-bg); color: var(--green); }
+  .badge-paid::before { background: var(--green); }
+  .badge-unpaid { background: var(--amber-bg); color: var(--amber); }
+  .badge-unpaid::before { background: var(--amber); }
+  .badge-overdue { background: var(--red-bg); color: var(--red); }
+  .badge-overdue::before { background: var(--red); }
+  .badge-draft { background: #f4f4f4; color: var(--text-muted); }
+  .badge-draft::before { background: var(--text-muted); }
+  .badge-partial { background: var(--blue-bg); color: var(--blue); }
+  .badge-partial::before { background: var(--blue); }
+
+  /* ── Right Column ────────────────────────────────────────── */
+  .right-col { display: flex; flex-direction: column; gap: 16px; }
+
+  .mini-list { padding: 0; list-style: none; }
+
+  .mini-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .mini-item:last-child { border-bottom: none; }
+  .mini-item:hover { background: rgba(0,0,0,0.02); }
+
+  .mini-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+
+  .mini-body { flex: 1; min-width: 0; }
+  .mini-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+
+  .mini-amount {
+    font-family: 'DM Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 500;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ── Cash Flow Bar ───────────────────────────────────────── */
+  .cashflow-section {
+    padding: 16px 20px 18px;
+  }
+
+  .cashflow-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .cashflow-bar-wrap {
+    height: 8px;
+    background: var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .cashflow-bar-fill {
+    height: 100%;
+    border-radius: 20px;
+    background: linear-gradient(90deg, var(--green), #4ade80);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .cashflow-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ── Activity Feed ───────────────────────────────────────── */
+  .activity-feed { padding: 0; }
+
+  .activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+
+  .activity-item:last-child { border-bottom: none; }
+
+  .activity-dot-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 4px;
+  }
+
+  .activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .activity-body { flex: 1; min-width: 0; }
+  .activity-text { font-size: 12.5px; line-height: 1.4; }
+  .activity-text strong { font-weight: 600; }
+  .activity-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ── Progress ring ───────────────────────────────────────── */
+  .month-progress {
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .ring-wrap { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+
+  .ring-svg { transform: rotate(-90deg); }
+
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 5; }
+
+  .ring-fill {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-dasharray: 163;
+    stroke-dashoffset: 45;
+    transition: stroke-dashoffset 1s ease;
+  }
+
+  .ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  .ring-sub { font-size: 9px; color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-weight: 500; }
+
+  .month-stats { flex: 1; }
+  .month-stat { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .month-stat:last-child { margin-bottom: 0; }
+  .month-stat-label { font-size: 12px; color: var(--text-muted); }
+  .month-stat-val { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; }
+
+  /* ── Annotations panel ───────────────────────────────────── */
+  .annotation-panel {
+    background: var(--sidebar);
+    color: white;
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    margin-top: 28px;
+  }
+
+  .annotation-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 20px;
+    margin-bottom: 6px;
+    color: rgba(255,255,255,0.92);
+    letter-spacing: -0.3px;
+  }
+
+  .annotation-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .annotation-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+
+  .annotation-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .annotation-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: rgba(193,123,58,0.3);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .annotation-text { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.5; }
+  .annotation-text strong { color: rgba(255,255,255,0.92); font-weight: 600; }
+
+  /* ── Invoice Page mockup ─────────────────────────────────── */
+  .page-section { margin-top: 36px; }
+
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 26px;
+    letter-spacing: -0.4px;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+
+  .section-desc {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+
+  .tab-strip {
+    display: flex;
+    gap: 2px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    width: fit-content;
+    margin-bottom: 16px;
+  }
+
+  .tab {
+    padding: 6px 14px;
+    border-radius: 7px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tab.active { background: var(--sidebar); color: white; }
+
+  .tab-count {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 10px;
+  }
+
+  .tab.active .tab-count { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); }
+  .tab:not(.active) .tab-count { background: var(--border); color: var(--text-muted); }
+
+  .search-bar-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .search-input {
+    flex: 1;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 0 12px 0 34px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    background: var(--card);
+    color: var(--text);
+    outline: none;
+    box-shadow: var(--shadow-card);
+  }
+
+  .search-wrap { position: relative; flex: 1; }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+
+  .filter-btn {
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--card);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow-card);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .new-btn {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 9px;
+    background: var(--sidebar);
+    color: white;
+    border: none;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Sans', sans-serif;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+
+  /* ── Empty state ─────────────────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 52px 20px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+    font-size: 24px;
+  }
+
+  .empty-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .empty-desc { font-size: 13px; color: var(--text-muted); max-width: 260px; margin: 0 auto 18px; line-height: 1.5; }
+
+  /* ── Expense card ────────────────────────────────────────── */
+  .expense-row td { border-bottom: 1px solid var(--border); padding: 11px 20px; font-size: 13px; cursor: pointer; transition: background 0.1s; }
+  .expense-row:last-child td { border-bottom: none; }
+  .expense-row:hover td { background: rgba(193,123,58,0.03); }
+  .expense-name { font-weight: 500; }
+  .expense-cat { font-size: 12px; color: var(--text-muted); }
+
+  /* ── Animations ─────────────────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .kpi-card { animation: fadeUp 0.4s ease both; }
+  .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+  .kpi-card:nth-child(2) { animation-delay: 0.1s; }
+  .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+  .kpi-card:nth-child(4) { animation-delay: 0.2s; }
+
+  .card { animation: fadeUp 0.5s ease both; animation-delay: 0.25s; }
+
+  svg text { font-family: 'DM Mono', monospace; }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-mark">P</div>
+    <span class="sidebar-logo-text">Pancake</span>
+  </div>
+
+  <button class="new-invoice-btn">
+    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    New Invoice
+  </button>
+
+  <div class="nav-section-label">Main</div>
+
+  <a class="nav-item active">
+    <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+    <div class="nav-dot" style="margin-left:auto"></div>
+  </a>
+
+  <a class="nav-item">
+    <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+    Invoices
+  </a>
+
+  <a class="nav-item">
+    <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Clients
+  </a>
+
+  <a class="nav-item">
+    <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+    Projects
+  </a>
+
+  <a class="nav-item">
+    <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Timesheets
+  </a>
+
+  <a class="nav-item">
+    <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+    Expenses
+  </a>
+
+  <div class="nav-divider"></div>
+  <div class="nav-section-label">Analytics</div>
+
+  <a class="nav-item">
+    <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Reports
+  </a>
+
+  <a class="nav-item">
+    <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 1 21 12a10 10 0 0 1-10 10A10 10 0 0 1 3 12a10 10 0 0 1 1.93-5.87"/></svg>
+    Settings
+  </a>
+
+  <div class="sidebar-bottom">
+    <div class="org-pill">
+      <div class="org-avatar">A</div>
+      <span class="org-name">Acme Design Co.</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Main Content ────────────────────────────────────────── -->
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-greeting">
+      <span class="greeting-label">Tuesday, February 25</span>
+      <span class="greeting-name">Good afternoon, Matt</span>
+    </div>
+    <div class="topbar-actions">
+      <div class="icon-btn">
+        <div class="notif-dot"></div>
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div class="user-avatar">ML</div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ── KPI Cards ─────────────────────────────────────────── -->
+    <div class="kpi-grid">
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div class="kpi-icon" style="background:var(--amber-bg)">
+            <svg width="16" height="16" fill="none" stroke="var(--amber)" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+          </div>
+          <span class="kpi-trend trend-down">↑ 3</span>
+        </div>
+        <div>
+          <div class="kpi-value">$12,450</div>
+          <div class="kpi-label">Outstanding AR</div>
+        </div>
+        <svg class="sparkline" viewBox="0 0 120 28" preserveAspectRatio="none">
+          <polyline points="0,22 20,18 40,20 60,14 80,10 100,8 120,5"
+            fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-linejoin="round" opacity="0.6"/>
+          <polyline points="0,28 0,22 20,18 40,20 60,14 80,10 100,8 120,5 120,28"
+            fill="url(#amberGrad)" opacity="0.12"/>
+          <defs><linearGradient id="amberGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--amber)"/><stop offset="100%" stop-color="var(--amber)" stop-opacity="0"/></linearGradient></defs>
+        </svg>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div class="kpi-icon" style="background:var(--red-bg)">
+            <svg width="16" height="16" fill="none" stroke="var(--red)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <span class="kpi-trend trend-neutral">—</span>
+        </div>
+        <div>
+          <div class="kpi-value" style="color:var(--red)">$3,200</div>
+          <div class="kpi-label">Overdue (2 invoices)</div>
+        </div>
+        <svg class="sparkline" viewBox="0 0 120 28" preserveAspectRatio="none">
+          <polyline points="0,10 20,14 40,8 60,18 80,12 100,20 120,16"
+            fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linejoin="round" opacity="0.5"/>
+        </svg>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div class="kpi-icon" style="background:var(--green-bg)">
+            <svg width="16" height="16" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="kpi-trend trend-up">+18%</span>
+        </div>
+        <div>
+          <div class="kpi-value" style="color:var(--green)">$28,900</div>
+          <div class="kpi-label">Paid this month</div>
+        </div>
+        <svg class="sparkline" viewBox="0 0 120 28" preserveAspectRatio="none">
+          <polyline points="0,24 20,20 40,22 60,14 80,10 100,6 120,4"
+            fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linejoin="round" opacity="0.6"/>
+          <polyline points="0,28 0,24 20,20 40,22 60,14 80,10 100,6 120,4 120,28"
+            fill="url(#greenGrad)" opacity="0.12"/>
+          <defs><linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--green)"/><stop offset="100%" stop-color="var(--green)" stop-opacity="0"/></linearGradient></defs>
+        </svg>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div class="kpi-icon" style="background:#f0f0fe">
+            <svg width="16" height="16" fill="none" stroke="#6366f1" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+          </div>
+          <span class="kpi-trend trend-up">+2</span>
+        </div>
+        <div>
+          <div class="kpi-value">7</div>
+          <div class="kpi-label">Active projects</div>
+        </div>
+        <svg class="sparkline" viewBox="0 0 120 28" preserveAspectRatio="none">
+          <polyline points="0,18 20,16 40,12 60,14 80,10 100,8 120,6"
+            fill="none" stroke="#6366f1" stroke-width="1.5" stroke-linejoin="round" opacity="0.5"/>
+        </svg>
+      </div>
+
+    </div>
+
+    <!-- ── Main grid ─────────────────────────────────────────── -->
+    <div class="main-grid">
+
+      <!-- Left: Recent invoices + expense preview -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-eyebrow">Activity</div>
+              <div class="card-title">Recent Invoices</div>
+            </div>
+            <a class="card-link">
+              View all
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Client</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="invoice-row">
+                <td><span class="invoice-num">#INV-0048</span></td>
+                <td><span class="invoice-client">Brightline Media</span></td>
+                <td><span class="invoice-date">Feb 22</span></td>
+                <td><span class="badge badge-unpaid">Unpaid</span></td>
+                <td class="invoice-amount">$4,800.00</td>
+              </tr>
+              <tr class="invoice-row">
+                <td><span class="invoice-num">#INV-0047</span></td>
+                <td><span class="invoice-client">Vertex Software</span></td>
+                <td><span class="invoice-date">Feb 19</span></td>
+                <td><span class="badge badge-paid">Paid</span></td>
+                <td class="invoice-amount">$12,250.00</td>
+              </tr>
+              <tr class="invoice-row">
+                <td><span class="invoice-num">#INV-0046</span></td>
+                <td><span class="invoice-client">Harbor & Co.</span></td>
+                <td><span class="invoice-date">Feb 14</span></td>
+                <td><span class="badge badge-overdue">Overdue</span></td>
+                <td class="invoice-amount" style="color:var(--red)">$2,100.00</td>
+              </tr>
+              <tr class="invoice-row">
+                <td><span class="invoice-num">#INV-0045</span></td>
+                <td><span class="invoice-client">Nomad Collective</span></td>
+                <td><span class="invoice-date">Feb 10</span></td>
+                <td><span class="badge badge-partial">Partial</span></td>
+                <td class="invoice-amount">$6,500.00</td>
+              </tr>
+              <tr class="invoice-row">
+                <td><span class="invoice-num">#INV-0044</span></td>
+                <td><span class="invoice-client">Solstice Labs</span></td>
+                <td><span class="invoice-date">Feb 6</span></td>
+                <td><span class="badge badge-draft">Draft</span></td>
+                <td class="invoice-amount" style="color:var(--text-muted)">$3,300.00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Cash flow card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-eyebrow">February 2026</div>
+              <div class="card-title">Cash Flow</div>
+            </div>
+          </div>
+
+          <div class="month-progress">
+            <div class="ring-wrap">
+              <svg class="ring-svg" width="64" height="64" viewBox="0 0 64 64">
+                <circle class="ring-bg" cx="32" cy="32" r="26"/>
+                <circle class="ring-fill" cx="32" cy="32" r="26"/>
+              </svg>
+              <div class="ring-label">
+                72%
+                <span class="ring-sub">collected</span>
+              </div>
+            </div>
+            <div class="month-stats">
+              <div class="month-stat">
+                <span class="month-stat-label">Invoiced</span>
+                <span class="month-stat-val">$40,100</span>
+              </div>
+              <div class="month-stat">
+                <span class="month-stat-label">Collected</span>
+                <span class="month-stat-val" style="color:var(--green)">$28,900</span>
+              </div>
+              <div class="month-stat">
+                <span class="month-stat-label">Expenses</span>
+                <span class="month-stat-val" style="color:var(--red)">−$4,320</span>
+              </div>
+              <div style="height:1px;background:var(--border);margin:6px 0"></div>
+              <div class="month-stat">
+                <span class="month-stat-label" style="font-weight:600;color:var(--text)">Net</span>
+                <span class="month-stat-val" style="font-weight:600">$24,580</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right column -->
+      <div class="right-col">
+
+        <!-- Overdue -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-eyebrow">Action needed</div>
+              <div class="card-title">Overdue</div>
+            </div>
+            <span class="badge badge-overdue">2 invoices</span>
+          </div>
+          <ul class="mini-list">
+            <li class="mini-item">
+              <div class="mini-icon" style="background:var(--red-bg)">
+                <svg width="14" height="14" fill="none" stroke="var(--red)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div class="mini-body">
+                <div class="mini-title">Harbor & Co.</div>
+                <div class="mini-sub">11 days overdue · #INV-0046</div>
+              </div>
+              <div class="mini-amount" style="color:var(--red)">$2,100</div>
+            </li>
+            <li class="mini-item">
+              <div class="mini-icon" style="background:var(--red-bg)">
+                <svg width="14" height="14" fill="none" stroke="var(--red)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div class="mini-body">
+                <div class="mini-title">Redwood Studios</div>
+                <div class="mini-sub">3 days overdue · #INV-0041</div>
+              </div>
+              <div class="mini-amount" style="color:var(--red)">$1,100</div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Recently viewed -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-eyebrow">Client activity</div>
+              <div class="card-title">Recently Viewed</div>
+            </div>
+          </div>
+          <ul class="mini-list">
+            <li class="mini-item">
+              <div class="mini-icon" style="background:#eff6ff">
+                <svg width="14" height="14" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
+              <div class="mini-body">
+                <div class="mini-title">Brightline Media</div>
+                <div class="mini-sub">Viewed #INV-0048 · 2h ago</div>
+              </div>
+            </li>
+            <li class="mini-item">
+              <div class="mini-icon" style="background:#eff6ff">
+                <svg width="14" height="14" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
+              <div class="mini-body">
+                <div class="mini-title">Vertex Software</div>
+                <div class="mini-sub">Viewed #INV-0047 · Yesterday</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Activity feed -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-eyebrow">Feed</div>
+              <div class="card-title">Recent Activity</div>
+            </div>
+          </div>
+          <div class="activity-feed">
+            <div class="activity-item">
+              <div class="activity-dot-wrap"><div class="activity-dot" style="background:var(--green)"></div></div>
+              <div class="activity-body">
+                <div class="activity-text"><strong>Vertex Software</strong> paid invoice #INV-0047</div>
+                <div class="activity-time">2 hours ago</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot-wrap"><div class="activity-dot" style="background:var(--blue)"></div></div>
+              <div class="activity-body">
+                <div class="activity-text"><strong>Brightline Media</strong> viewed #INV-0048</div>
+                <div class="activity-time">3 hours ago</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot-wrap"><div class="activity-dot" style="background:var(--primary)"></div></div>
+              <div class="activity-body">
+                <div class="activity-text">Invoice <strong>#INV-0049</strong> created for Nomad Collective</div>
+                <div class="activity-time">Yesterday at 4:12pm</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Annotations ───────────────────────────────────────── -->
+    <div class="annotation-panel">
+      <div class="annotation-title">What changed in this redesign</div>
+      <div class="annotation-sub">A walkthrough of the specific UI improvements shown above</div>
+      <ul class="annotation-list">
+        <li class="annotation-item">
+          <div class="annotation-num">1</div>
+          <div class="annotation-text"><strong>Typography system:</strong> Replaced Geist Sans with <em>Instrument Serif</em> for display text (KPI values, greeting, headings) and <em>DM Sans</em> for body — creates contrast between editorial warmth and clean utility. Numbers use <em>DM Mono</em> for tabular alignment.</div>
+        </li>
+        <li class="annotation-item">
+          <div class="annotation-num">2</div>
+          <div class="annotation-text"><strong>Color palette shift:</strong> Moved from indigo-purple to warm amber (#c17b3a) as the brand primary, and swapped the flat white sidebar for a rich dark charcoal — matching the "Pancake" name's warmth. Background stays a warm off-white, not cold gray.</div>
+        </li>
+        <li class="annotation-item">
+          <div class="annotation-num">3</div>
+          <div class="annotation-text"><strong>KPI cards with sparklines:</strong> The current 4-stat grid has no trend data. Added inline SVG sparklines + trend badges (↑ +18%) so the numbers have temporal context at a glance. Hover lifts the card to signal interactivity.</div>
+        </li>
+        <li class="annotation-item">
+          <div class="annotation-num">4</div>
+          <div class="annotation-text"><strong>Cash flow widget:</strong> A new circular progress ring shows % of monthly invoiced revenue collected, alongside invoiced / collected / expenses / net. Currently missing from the dashboard entirely.</div>
+        </li>
+        <li class="annotation-item">
+          <div class="annotation-num">5</div>
+          <div class="annotation-text"><strong>Activity feed:</strong> A chronological feed of meaningful events (payment received, invoice viewed, invoice created) replaces the static "recently viewed" list — more informative and conversational.</div>
+        </li>
+        <li class="annotation-item">
+          <div class="annotation-num">6</div>
+          <div class="annotation-text"><strong>Invoice table refinements:</strong> Invoice numbers in monospace, semantic status dot inside each badge, amount column right-aligned in monospace — small details that make financial data easier to scan.</div>
+        </li>
+        <li class="annotation-item">
+          <div class="annotation-num">7</div>
+          <div class="annotation-text"><strong>Sidebar navigation:</strong> Section labels ("Main", "Analytics"), a glowing active indicator dot, and a structured org pill at the bottom — cleaner information hierarchy without extra visual noise.</div>
+        </li>
+      </ul>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+</body>
+</html>

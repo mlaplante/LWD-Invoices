@@ -61,6 +61,7 @@ export const expensesRouter = router({
         paidAt: z.coerce.date().optional(),
         reimbursable: z.boolean().default(false),
         paymentDetails: z.string().optional(),
+        receiptUrl: z.string().url().optional(),
         taxId: z.string().optional(),
         categoryId: z.string().optional(),
         supplierId: z.string().optional(),
@@ -89,6 +90,7 @@ export const expensesRouter = router({
         paidAt: z.coerce.date().nullable().optional(),
         reimbursable: z.boolean().optional(),
         projectId: z.string().nullable().optional(),
+        receiptUrl: z.string().url().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

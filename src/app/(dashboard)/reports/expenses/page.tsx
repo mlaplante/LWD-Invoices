@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default async function ExpensesReportPage() {
@@ -19,16 +19,25 @@ export default async function ExpensesReportPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-3 min-w-0">
-        <Link
-          href="/reports"
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            href="/reports"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Reports
+          </Link>
+          <span className="text-border/70">/</span>
+          <h1 className="text-xl font-bold tracking-tight">Expense Breakdown</h1>
+        </div>
+        <a
+          href="/api/reports/expenses/export"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card px-3 py-1.5 text-sm font-medium hover:bg-accent/30 transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Reports
-        </Link>
-        <span className="text-border/70">/</span>
-        <h1 className="text-xl font-bold tracking-tight">Expense Breakdown</h1>
+          <Download className="w-3.5 h-3.5" />
+          Export CSV
+        </a>
       </div>
 
       {/* Summary stats */}
