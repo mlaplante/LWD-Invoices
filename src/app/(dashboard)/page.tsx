@@ -59,16 +59,29 @@ export default async function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-  const [invoices, projects, overdueInvoices, recentlyViewed, revenueByMonth, expenseBreakdown, activityLog] =
-    await Promise.all([
-      api.invoices.list({ includeArchived: false, pageSize: 100 }),
-      api.projects.list({ includeArchived: false }),
-      api.reports.overdueInvoices(),
-      api.invoices.recentlyViewed({ limit: 5 }),
-      api.reports.revenueByMonth({ from: sixMonthsAgo }),
-      api.reports.expenseBreakdown({ from: monthStart, to: monthEnd }),
-      api.auditLog.list({ limit: 8 }),
-    ]);
+  // Core data — these were working before, keep them required
+  const [invoices, projects, overdueInvoices, recentlyViewed] = await Promise.all([
+    api.invoices.list({ includeArchived: false, pageSize: 100 }),
+    api.projects.list({ includeArchived: false }),
+    api.reports.overdueInvoices(),
+    api.invoices.recentlyViewed({ limit: 5 }),
+  ]);
+
+  // New data — catch individually so we can identify failures
+  const [revenueByMonth, expenseBreakdown, activityLog] = await Promise.all([
+    api.reports.revenueByMonth({ from: sixMonthsAgo }).catch((e) => {
+      console.error("[dashboard] revenueByMonth failed:", e);
+      return {} as Record<string, number>;
+    }),
+    api.reports.expenseBreakdown({ from: monthStart, to: monthEnd }).catch((e) => {
+      console.error("[dashboard] expenseBreakdown failed:", e);
+      return [];
+    }),
+    api.auditLog.list({ limit: 8 }).catch((e) => {
+      console.error("[dashboard] auditLog.list failed:", e);
+      return [];
+    }),
+  ]);
 
   // ── Derived stats ────────────────────────────────────────────────────────────
   const unpaidStatuses: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
