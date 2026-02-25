@@ -78,9 +78,11 @@ export default async function ExpensesReportPage() {
                 <tr key={e.id} className="hover:bg-accent/20 transition-colors">
                   <td className="px-6 py-3.5 font-medium">{e.name}</td>
                   <td className="px-6 py-3.5 text-muted-foreground">
-                    <Link href={`/projects/${e.project.id}`} className="hover:text-primary transition-colors">
-                      {e.project.name}
-                    </Link>
+                    {e.project ? (
+                      <Link href={`/projects/${e.project.id}`} className="hover:text-primary transition-colors">
+                        {e.project.name}
+                      </Link>
+                    ) : "—"}
                   </td>
                   <td className="px-6 py-3.5 text-muted-foreground">{e.category?.name ?? "—"}</td>
                   <td className="px-6 py-3.5 text-muted-foreground">{e.supplier?.name ?? "—"}</td>
