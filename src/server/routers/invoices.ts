@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
-import { PrismaClient, InvoiceStatus, InvoiceType, LineType } from "@/generated/prisma";
+import { Prisma, PrismaClient, InvoiceStatus, InvoiceType, LineType } from "@/generated/prisma";
 import {
   calculateLineTotals,
   calculateInvoiceTotals,
@@ -105,37 +105,48 @@ export const invoicesRouter = router({
         includeArchived: z.boolean().default(false),
         dateFrom: z.coerce.date().optional(),
         dateTo: z.coerce.date().optional(),
-        search: z.string().optional(),
+        search: z.string().max(100).optional(),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(25),
       })
     )
     .query(async ({ ctx, input }) => {
-      return ctx.db.invoice.findMany({
-        where: {
-          organizationId: ctx.orgId,
-          ...(input.status?.length ? { status: { in: input.status } } : {}),
-          ...(input.type ? { type: input.type } : {}),
-          ...(input.clientId ? { clientId: input.clientId } : {}),
-          ...(input.includeArchived ? {} : { isArchived: false }),
-          ...(input.dateFrom || input.dateTo
-            ? {
-                date: {
-                  ...(input.dateFrom ? { gte: input.dateFrom } : {}),
-                  ...(input.dateTo ? { lte: input.dateTo } : {}),
-                },
-              }
-            : {}),
-          ...(input.search
-            ? {
-                OR: [
-                  { number: { contains: input.search, mode: "insensitive" } },
-                  { client: { name: { contains: input.search, mode: "insensitive" } } },
-                ],
-              }
-            : {}),
-        },
-        include: summaryInvoiceInclude,
-        orderBy: { date: "desc" },
-      });
+      const where: Prisma.InvoiceWhereInput = {
+        organizationId: ctx.orgId,
+        ...(input.status?.length ? { status: { in: input.status } } : {}),
+        ...(input.type ? { type: input.type } : {}),
+        ...(input.clientId ? { clientId: input.clientId } : {}),
+        ...(input.includeArchived ? {} : { isArchived: false }),
+        ...(input.dateFrom || input.dateTo
+          ? {
+              date: {
+                ...(input.dateFrom ? { gte: input.dateFrom } : {}),
+                ...(input.dateTo ? { lte: input.dateTo } : {}),
+              },
+            }
+          : {}),
+        ...(input.search
+          ? {
+              OR: [
+                { number: { contains: input.search, mode: "insensitive" } },
+                { client: { name: { contains: input.search, mode: "insensitive" } } },
+              ],
+            }
+          : {}),
+      };
+
+      const [items, total] = await ctx.db.$transaction([
+        ctx.db.invoice.findMany({
+          where,
+          include: summaryInvoiceInclude,
+          orderBy: { date: "desc" },
+          skip: (input.page - 1) * input.pageSize,
+          take: input.pageSize,
+        }),
+        ctx.db.invoice.count({ where }),
+      ]);
+
+      return { items, total };
     }),
 
   get: protectedProcedure
@@ -497,8 +508,8 @@ export const invoicesRouter = router({
             subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
             html,
           });
-        } catch {
-          // Email failure is non-fatal
+        } catch (err) {
+          console.error("[invoices.send] Failed to send invoice email:", err);
         }
       }
 

@@ -57,6 +57,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
+  // Cross-validate: ensure the orgId from the verified event matches the pre-parsed one.
+  // This prevents an attacker from using one org's webhook secret to process another org's data.
+  const verifiedOrgId = (event.data.object as { metadata?: Record<string, string> })?.metadata?.orgId;
+  if (verifiedOrgId !== orgId) {
+    return NextResponse.json({ error: "OrgId mismatch" }, { status: 400 });
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const invoiceId = session.metadata?.invoiceId;
@@ -133,8 +140,8 @@ export async function POST(req: NextRequest) {
           html,
         });
       }
-    } catch {
-      // Email failure is non-fatal
+    } catch (err) {
+      console.error("[stripe-webhook] Failed to send payment receipt email:", err);
     }
   }
 

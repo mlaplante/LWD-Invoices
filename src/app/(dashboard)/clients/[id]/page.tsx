@@ -95,7 +95,7 @@ export default async function ClientDetailPage({
     notFound();
   }
 
-  const allInvoices = await api.invoices.list({ clientId: id, includeArchived: false });
+  const { items: allInvoices } = await api.invoices.list({ clientId: id, includeArchived: false, pageSize: 100 });
 
   // Outstanding balance = sum of unpaid invoices
   const unpaidInvoices = allInvoices.filter((inv) =>

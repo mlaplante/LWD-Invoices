@@ -52,10 +52,11 @@ export function BillToInvoiceDialog({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  const { data: invoices = [] } = trpc.invoices.list.useQuery({
+  const { data } = trpc.invoices.list.useQuery({
     clientId,
     status: ["DRAFT", "SENT", "PARTIALLY_PAID", "OVERDUE"],
   });
+  const invoices = data?.items ?? [];
 
   const billTimeMutation = trpc.timeEntries.billToInvoice.useMutation({
     onSuccess: () => {

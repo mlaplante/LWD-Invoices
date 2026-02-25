@@ -18,7 +18,7 @@ const clientSchema = z.object({
 
 export const clientsRouter = router({
   list: protectedProcedure
-    .input(z.object({ includeArchived: z.boolean().default(false), search: z.string().optional() }))
+    .input(z.object({ includeArchived: z.boolean().default(false), search: z.string().max(100).optional() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.client.findMany({
         where: {

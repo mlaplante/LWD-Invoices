@@ -115,23 +115,25 @@ export default async function InvoicesPage({
 
   const filter = TAB_FILTERS[activeTab];
 
-  let invoices: Awaited<ReturnType<typeof api.invoices.list>> = [];
+  let result: Awaited<ReturnType<typeof api.invoices.list>> = { items: [], total: 0 };
   try {
-    invoices = await api.invoices.list({
+    result = await api.invoices.list({
       ...filter,
       search: search || undefined,
       dateFrom: dateFrom ? new Date(dateFrom) : undefined,
       dateTo: dateTo ? new Date(dateTo) : undefined,
+      page,
+      pageSize: PAGE_SIZE,
     });
   } catch (err) {
     console.error("[InvoicesPage] list failed:", err);
     throw err;
   }
 
-  const totalPages = Math.ceil(invoices.length / PAGE_SIZE);
+  const { items: paginatedInvoices, total } = result;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(totalPages, 1));
   const start = (currentPage - 1) * PAGE_SIZE;
-  const paginatedInvoices = invoices.slice(start, start + PAGE_SIZE);
 
   // Build tab-aware page link
   const tabParam = activeTab !== "all" ? `tab=${activeTab}&` : "";
@@ -177,7 +179,7 @@ export default async function InvoicesPage({
       </div>
 
       {/* Invoice table */}
-      {invoices.length === 0 ? (
+      {total === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
             <FileText className="w-6 h-6 text-primary" />
@@ -246,7 +248,7 @@ export default async function InvoicesPage({
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
               <span>
-                Showing {start + 1}–{Math.min(start + PAGE_SIZE, invoices.length)} of {invoices.length}
+                Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of {total}
               </span>
               <div className="flex items-center gap-1">
                 {currentPage > 1 && (
