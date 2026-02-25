@@ -20,9 +20,7 @@ type Category = { id: string; name: string };
 type Supplier = { id: string; name: string };
 type Project = { id: string; name: string };
 
-type Props = {
-  mode: "create" | "edit";
-  expenseId?: string;
+type BaseProps = {
   taxes: Tax[];
   categories: Category[];
   suppliers: Supplier[];
@@ -42,6 +40,10 @@ type Props = {
     projectId?: string;
   };
 };
+
+type Props =
+  | (BaseProps & { mode: "create"; expenseId?: never })
+  | (BaseProps & { mode: "edit"; expenseId: string });
 
 export function ExpenseForm({
   mode,
@@ -100,25 +102,37 @@ export function ExpenseForm({
       return;
     }
 
-    const payload = {
-      name: form.name,
-      description: form.description || undefined,
-      qty: form.qty,
-      rate,
-      dueDate: form.dueDate ? new Date(form.dueDate) : undefined,
-      paidAt: form.paidAt ? new Date(form.paidAt) : undefined,
-      reimbursable: form.reimbursable,
-      paymentDetails: form.paymentDetails || undefined,
-      taxId: form.taxId || undefined,
-      categoryId: form.categoryId || undefined,
-      supplierId: form.supplierId || undefined,
-      projectId: form.projectId || undefined,
-    };
-
     if (mode === "create") {
-      createMutation.mutate(payload);
-    } else if (expenseId) {
-      updateMutation.mutate({ id: expenseId, ...payload });
+      createMutation.mutate({
+        name: form.name,
+        description: form.description || undefined,
+        qty: form.qty,
+        rate,
+        dueDate: form.dueDate ? new Date(form.dueDate) : undefined,
+        paidAt: form.paidAt ? new Date(form.paidAt) : undefined,
+        reimbursable: form.reimbursable,
+        paymentDetails: form.paymentDetails || undefined,
+        taxId: form.taxId || undefined,
+        categoryId: form.categoryId || undefined,
+        supplierId: form.supplierId || undefined,
+        projectId: form.projectId || undefined,
+      });
+    } else {
+      updateMutation.mutate({
+        id: expenseId,
+        name: form.name,
+        description: form.description || undefined,
+        qty: form.qty,
+        rate,
+        dueDate: form.dueDate ? new Date(form.dueDate) : undefined,
+        paidAt: form.paidAt ? new Date(form.paidAt) : null,
+        reimbursable: form.reimbursable,
+        paymentDetails: form.paymentDetails || undefined,
+        taxId: form.taxId || null,
+        categoryId: form.categoryId || null,
+        supplierId: form.supplierId || null,
+        projectId: form.projectId || null,
+      });
     }
   }
 
