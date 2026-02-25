@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const supabase = createClient();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,6 +32,10 @@ export default function OnboardingPage() {
       setLoading(false);
       return;
     }
+
+    // Refresh the session so the new app_metadata.organizationId is in the
+    // JWT cookie before the middleware checks it on the next navigation.
+    await supabase.auth.refreshSession();
 
     router.push("/");
     router.refresh();
