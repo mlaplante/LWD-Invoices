@@ -5,7 +5,9 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as "email" | "magiclink" | null;
-  const next = searchParams.get("next") ?? "/";
+  const rawNext = searchParams.get("next") ?? "/";
+  // Prevent open redirect: only allow relative paths, not protocol-relative URLs
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
 
   if (!tokenHash || !type) {
     return NextResponse.redirect(`${origin}/sign-in?error=missing_token`);

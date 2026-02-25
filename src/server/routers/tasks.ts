@@ -89,7 +89,7 @@ export const tasksRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.projectTask.update({
-        where: { id },
+        where: { id, organizationId: ctx.orgId },
         data,
         include: { taskStatus: true, milestone: true },
       });
@@ -103,7 +103,7 @@ export const tasksRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.projectTask.update({
-        where: { id: input.id },
+        where: { id: input.id, organizationId: ctx.orgId },
         data: { isCompleted: input.isCompleted },
       });
     }),
@@ -115,7 +115,7 @@ export const tasksRouter = router({
         where: { id: input.id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.projectTask.delete({ where: { id: input.id } });
+      return ctx.db.projectTask.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
   reorder: protectedProcedure

@@ -13,9 +13,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Already has an org — don't create a duplicate
+  // Already has an org in app_metadata
   if (user.app_metadata?.organizationId) {
     return NextResponse.json({ error: "Organization already exists" }, { status: 400 });
+  }
+
+  // Also check DB — handles the case where a previous request created the org
+  // but failed before writing app_metadata (race condition recovery)
+  const existingDbUser = await db.user.findFirst({
+    where: { supabaseId: user.id },
+    select: { organizationId: true },
+  });
+  if (existingDbUser?.organizationId) {
+    // Org exists in DB but wasn't written to app_metadata — fix that now
+    const admin = createAdminClient();
+    await admin.auth.admin.updateUserById(user.id, {
+      app_metadata: { organizationId: existingDbUser.organizationId },
+    });
+    return NextResponse.json({ organizationId: existingDbUser.organizationId });
   }
 
   const body = await req.json().catch(() => ({}));

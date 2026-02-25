@@ -93,7 +93,7 @@ export const timeEntriesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.timeEntry.update({ where: { id }, data });
+      return ctx.db.timeEntry.update({ where: { id, organizationId: ctx.orgId }, data });
     }),
 
   delete: protectedProcedure
@@ -109,7 +109,7 @@ export const timeEntriesRouter = router({
           message: "Cannot delete a billed time entry.",
         });
       }
-      return ctx.db.timeEntry.delete({ where: { id: input.id } });
+      return ctx.db.timeEntry.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
   billToInvoice: protectedProcedure

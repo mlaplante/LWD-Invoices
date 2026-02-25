@@ -76,7 +76,7 @@ export const expensesRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.expense.update({
-        where: { id },
+        where: { id, organizationId: ctx.orgId },
         data,
         include: { tax: true, category: true, supplier: true },
       });
@@ -95,7 +95,7 @@ export const expensesRouter = router({
           message: "Cannot delete a billed expense.",
         });
       }
-      return ctx.db.expense.delete({ where: { id: input.id } });
+      return ctx.db.expense.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
   billToInvoice: protectedProcedure

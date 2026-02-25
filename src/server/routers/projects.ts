@@ -175,7 +175,7 @@ export const projectsRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.project.update({ where: { id }, data });
+      return ctx.db.project.update({ where: { id, organizationId: ctx.orgId }, data });
     }),
 
   archive: protectedProcedure
@@ -186,7 +186,7 @@ export const projectsRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.project.update({
-        where: { id: input.id },
+        where: { id: input.id, organizationId: ctx.orgId },
         data: { status: input.status },
       });
     }),
@@ -214,6 +214,6 @@ export const projectsRouter = router({
         });
       }
 
-      return ctx.db.project.delete({ where: { id: input.id } });
+      return ctx.db.project.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 });

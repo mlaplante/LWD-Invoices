@@ -157,7 +157,7 @@ model User {
   id          String   @id @default(cuid())
   clerkId     String?  @unique
   supabaseId  String?  @unique
-  email       String
+  email       String   @unique
   firstName   String?
   lastName    String?
   role        UserRole @default(STAFF)
