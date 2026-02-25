@@ -29,8 +29,7 @@ export default function SignInPage() {
     if (error) {
       setError(error.message);
     } else {
-      router.push("/");
-      router.refresh();
+      router.push("/api/auth/migrate?next=/");
     }
     setLoading(false);
   }
