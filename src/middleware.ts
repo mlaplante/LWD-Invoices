@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   "/api/inngest",
   "/api/onboarding",
   "/api/auth",
+  "/api/portal",
   "/api/v1",
   "/auth/callback",
   "/auth/confirm",

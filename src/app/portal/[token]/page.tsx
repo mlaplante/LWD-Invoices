@@ -236,7 +236,19 @@ export default async function PortalInvoicePage({
         {/* Payment history */}
         {invoice.payments.length > 0 && (
           <div className="rounded-lg border bg-white shadow-sm p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Payment History</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-gray-900">Payment History</h2>
+              <a
+                href={`/api/portal/${token}/pdf`}
+                download
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Receipt
+              </a>
+            </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs uppercase text-gray-400">
