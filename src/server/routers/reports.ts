@@ -123,6 +123,44 @@ export const reportsRouter = router({
       });
     }),
 
+  cashFlowSummary: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const thisMonthStart = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+    const lastMonthStart = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999);
+
+    const [thisMonthPayments, lastMonthPayments] = await Promise.all([
+      ctx.db.payment.findMany({
+        where: { organizationId: ctx.orgId, paidAt: { gte: thisMonthStart } },
+        select: { amount: true },
+      }),
+      ctx.db.payment.findMany({
+        where: { organizationId: ctx.orgId, paidAt: { gte: lastMonthStart, lte: lastMonthEnd } },
+        select: { amount: true },
+      }),
+    ]);
+
+    return {
+      thisMonth: thisMonthPayments.reduce((s, p) => s + Number(p.amount), 0),
+      lastMonth: lastMonthPayments.reduce((s, p) => s + Number(p.amount), 0),
+    };
+  }),
+
+  upcomingDue: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return ctx.db.invoice.findMany({
+      where: {
+        organizationId: ctx.orgId,
+        isArchived: false,
+        status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID] },
+        dueDate: { gte: now, lte: in7Days },
+      },
+      include: { client: { select: { name: true } }, currency: true },
+      orderBy: { dueDate: "asc" },
+    });
+  }),
+
   revenueByMonth: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {

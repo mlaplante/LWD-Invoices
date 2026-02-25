@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { ClientForm } from "@/components/clients/ClientForm";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
+import { ClientStatementButton } from "@/components/clients/ClientStatementButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, ExternalLink, FileText, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -144,6 +145,7 @@ export default async function ClientDetailPage({
               New Invoice
             </Link>
           </Button>
+          <ClientStatementButton clientId={client.id} />
           <Button asChild variant="outline" size="sm">
             <a href={portalLink} target="_blank" rel="noreferrer">
               Portal
