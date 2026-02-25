@@ -39,7 +39,7 @@ export function ExpenseList({ initialExpenses }: Props) {
   });
 
   const totalAmount = expenses.reduce(
-    (s, e) => s + e.qty * e.rate.toNumber(),
+    (s, e) => s + e.qty * Number(e.rate),
     0
   );
 
@@ -116,7 +116,7 @@ export function ExpenseList({ initialExpenses }: Props) {
               </thead>
               <tbody className="divide-y divide-border/40">
                 {expenses.map((expense) => {
-                  const amount = expense.qty * expense.rate.toNumber();
+                  const amount = expense.qty * Number(expense.rate);
                   return (
                     <tr key={expense.id} className="hover:bg-accent/20 transition-colors">
                       <td className="px-6 py-3.5 font-medium">{expense.name}</td>
