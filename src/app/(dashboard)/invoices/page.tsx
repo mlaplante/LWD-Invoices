@@ -234,7 +234,7 @@ export default async function InvoicesPage({
                 number: inv.number,
                 status: inv.status,
                 type: inv.type,
-                date: inv.date,
+                date: inv.date ? inv.date.toISOString() : null,
                 total: Number(inv.total),
                 currency: inv.currency,
                 client: { name: inv.client.name },

@@ -32,7 +32,7 @@ type Invoice = {
   number: string;
   status: InvoiceStatus;
   type: InvoiceType;
-  date: Date | null;
+  date: string | null;
   total: number;
   currency: { symbol: string; symbolPosition: string };
   client: { name: string };
@@ -46,7 +46,7 @@ function fmt(n: number, symbol: string, pos: string): string {
   return pos === "before" ? `${symbol}${n.toFixed(2)}` : `${n.toFixed(2)}${symbol}`;
 }
 
-function formatDate(d: Date | null | undefined): string {
+function formatDate(d: string | null | undefined): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }

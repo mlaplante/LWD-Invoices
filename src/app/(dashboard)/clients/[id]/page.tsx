@@ -98,9 +98,11 @@ export default async function ClientDetailPage({
   const allInvoices = await api.invoices.list({ clientId: id, includeArchived: false });
 
   // Outstanding balance = sum of unpaid invoices
-  const outstandingBalance = allInvoices
-    .filter((inv) => ["SENT", "OVERDUE", "PARTIALLY_PAID"].includes(inv.status))
-    .reduce((sum, inv) => sum + Number(inv.total), 0);
+  const unpaidInvoices = allInvoices.filter((inv) =>
+    ["SENT", "OVERDUE", "PARTIALLY_PAID"].includes(inv.status)
+  );
+  const outstandingBalance = unpaidInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
+  const balanceCurrency = unpaidInvoices[0]?.currency;
 
   const statusFilter = INVOICE_FILTER_STATUSES[activeFilter];
   const invoices = statusFilter
@@ -219,7 +221,9 @@ export default async function ClientDetailPage({
             <div className="text-sm">
               <span className="text-muted-foreground">Outstanding: </span>
               <span className="font-semibold text-amber-600">
-                ${outstandingBalance.toFixed(2)}
+                {balanceCurrency?.symbolPosition === "after"
+                  ? `${outstandingBalance.toFixed(2)}${balanceCurrency.symbol}`
+                  : `${balanceCurrency?.symbol ?? "$"}${outstandingBalance.toFixed(2)}`}
               </span>
             </div>
           )}

@@ -63,7 +63,12 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
     if (existing) {
       setFrequency(existing.frequency);
       setInterval(existing.interval);
-      setStartDate(new Date(existing.startDate).toISOString().split("T")[0]);
+      // Use local date parts to avoid UTC-offset shifting the displayed day
+      const d = new Date(existing.startDate);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      setStartDate(`${yyyy}-${mm}-${dd}`);
       setAutoSend(existing.autoSend);
     }
   }, [existing]);
@@ -77,7 +82,7 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
       data: {
         frequency,
         interval,
-        startDate: new Date(startDate),
+        startDate: new Date(`${startDate}T00:00:00`),
         autoSend,
       },
     });

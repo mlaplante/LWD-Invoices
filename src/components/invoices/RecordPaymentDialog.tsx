@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/trpc/client";
 import {
   Dialog,
@@ -54,6 +54,18 @@ export function RecordPaymentDialog({
   const [paidAt, setPaidAt] = useState(today);
   const [gatewayFee, setGatewayFee] = useState("0");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setAmount(invoiceTotal.toFixed(2));
+      setMethod("bank_transfer");
+      setTransactionId("");
+      setNotes("");
+      setPaidAt(new Date().toISOString().split("T")[0]);
+      setGatewayFee("0");
+      setError("");
+    }
+  }, [open, invoiceTotal]);
 
   const markPaid = trpc.invoices.markPaid.useMutation({
     onSuccess: () => {
