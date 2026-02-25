@@ -153,7 +153,7 @@ export default async function InvoiceDetailPage({
           )}
           <DuplicateInvoiceButton invoiceId={invoice.id} />
           <ArchiveInvoiceButton invoiceId={invoice.id} isArchived={invoice.isArchived} />
-          {invoice.status !== "PAID" && (
+          {!["PAID", "PARTIALLY_PAID", "OVERDUE"].includes(invoice.status) && (
             <DeleteInvoiceButton invoiceId={invoice.id} />
           )}
         </div>

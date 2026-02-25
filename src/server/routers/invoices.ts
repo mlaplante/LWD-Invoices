@@ -406,10 +406,14 @@ export const invoicesRouter = router({
         select: { status: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
-      if (invoice.status === InvoiceStatus.PAID) {
+      if (
+        invoice.status === InvoiceStatus.PAID ||
+        invoice.status === InvoiceStatus.PARTIALLY_PAID ||
+        invoice.status === InvoiceStatus.OVERDUE
+      ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Paid invoices cannot be deleted.",
+          message: "Invoices that have been paid, partially paid, or are overdue cannot be deleted.",
         });
       }
       return ctx.db.invoice.delete({
