@@ -7,24 +7,11 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Pencil, Trash2, Plus, Paperclip } from "lucide-react";
 import { toast } from "sonner";
-import type { inferRouterOutputs } from "@trpc/server";
-import type { AppRouter } from "@/server/routers/_app";
-
-type RouterOutputs = inferRouterOutputs<AppRouter>;
-type Expense = RouterOutputs["expenses"]["list"][number];
-
-type Props = {
-  initialExpenses: Expense[];
-};
-
-export function ExpenseList({ initialExpenses }: Props) {
+export function ExpenseList() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
-  const { data: expenses = initialExpenses } = trpc.expenses.list.useQuery(
-    {},
-    { initialData: initialExpenses }
-  );
+  const { data: expenses = [] } = trpc.expenses.list.useQuery({});
 
   const deleteMutation = trpc.expenses.delete.useMutation({
     onSuccess: () => {
