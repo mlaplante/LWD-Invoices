@@ -20,12 +20,13 @@ function relativeTime(date: Date): string {
 }
 
 const ACTION_CONFIG: Record<string, { label: string; dotColor: string }> = {
-  CREATED:  { label: "created",   dotColor: "bg-primary" },
-  UPDATED:  { label: "updated",   dotColor: "bg-blue-400" },
-  SENT:     { label: "sent",      dotColor: "bg-violet-400" },
-  PAID:     { label: "paid",      dotColor: "bg-emerald-500" },
-  ARCHIVED: { label: "archived",  dotColor: "bg-gray-400" },
-  DELETED:  { label: "deleted",   dotColor: "bg-red-400" },
+  CREATED:          { label: "created",          dotColor: "bg-primary" },
+  UPDATED:          { label: "updated",           dotColor: "bg-blue-400" },
+  SENT:             { label: "sent",              dotColor: "bg-violet-400" },
+  PAYMENT_RECEIVED: { label: "payment received",  dotColor: "bg-emerald-500" },
+  STATUS_CHANGED:   { label: "status changed",    dotColor: "bg-amber-400" },
+  VIEWED:           { label: "viewed",            dotColor: "bg-sky-400" },
+  DELETED:          { label: "deleted",           dotColor: "bg-red-400" },
 };
 
 export function ActivityFeed({ items }: Props) {

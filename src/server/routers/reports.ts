@@ -39,7 +39,7 @@ export const reportsRouter = router({
               InvoiceStatus.OVERDUE,
             ],
           },
-          ...(input.from ?? input.to
+          ...(input.from || input.to
             ? {
                 date: {
                   ...(input.from ? { gte: input.from } : {}),
@@ -76,7 +76,7 @@ export const reportsRouter = router({
       const payments = await ctx.db.payment.findMany({
         where: {
           organizationId: org.id,
-          ...(input.from ?? input.to
+          ...(input.from || input.to
             ? {
                 paidAt: {
                   ...(input.from ? { gte: input.from } : {}),
@@ -105,7 +105,7 @@ export const reportsRouter = router({
       return ctx.db.expense.findMany({
         where: {
           organizationId: org.id,
-          ...(input.from ?? input.to
+          ...(input.from || input.to
             ? {
                 createdAt: {
                   ...(input.from ? { gte: input.from } : {}),
@@ -169,7 +169,7 @@ export const reportsRouter = router({
       const payments = await ctx.db.payment.findMany({
         where: {
           organizationId: org.id,
-          ...(input.from ?? input.to
+          ...(input.from || input.to
             ? {
                 paidAt: {
                   ...(input.from ? { gte: input.from } : {}),
