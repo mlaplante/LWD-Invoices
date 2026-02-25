@@ -91,6 +91,7 @@ const fullInvoiceInclude = {
 const summaryInvoiceInclude = {
   client: { select: { id: true, name: true } },
   currency: { select: { id: true, symbol: true, symbolPosition: true } },
+  recurringInvoice: { select: { isActive: true, frequency: true, nextRunAt: true } },
 };
 
 // ─── Router ────────────────────────────────────────────────────────────────────
@@ -103,6 +104,7 @@ export const invoicesRouter = router({
         type: z.nativeEnum(InvoiceType).optional(),
         clientId: z.string().optional(),
         includeArchived: z.boolean().default(false),
+        recurring: z.boolean().optional(),
         dateFrom: z.coerce.date().optional(),
         dateTo: z.coerce.date().optional(),
         search: z.string().max(100).optional(),
@@ -117,6 +119,7 @@ export const invoicesRouter = router({
         ...(input.type ? { type: input.type } : {}),
         ...(input.clientId ? { clientId: input.clientId } : {}),
         ...(input.includeArchived ? {} : { isArchived: false }),
+        ...(input.recurring ? { recurringInvoice: { isActive: true } } : {}),
         ...(input.dateFrom || input.dateTo
           ? {
               date: {

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { InvoiceRowActions } from "@/components/invoices/InvoiceRowActions";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { FileText, Archive, Trash2 } from "lucide-react";
+import { FileText, Archive, Trash2, RefreshCw } from "lucide-react";
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
   DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",       dot: "bg-gray-400" },
@@ -36,6 +36,7 @@ type Invoice = {
   total: number;
   currency: { symbol: string; symbolPosition: string };
   client: { name: string };
+  recurringInvoice?: { isActive: boolean; frequency: string; nextRunAt: Date } | null;
 };
 
 type Props = {
@@ -198,9 +199,18 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
                       <FileText className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground leading-tight">
-                        <span className="font-mono text-xs text-muted-foreground mr-1">#{inv.number}</span>
+                      <p className="font-semibold text-foreground leading-tight flex items-center gap-1.5">
+                        <span className="font-mono text-xs text-muted-foreground">#{inv.number}</span>
                         {TYPE_LABELS[inv.type]}
+                        {inv.recurringInvoice?.isActive && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5"
+                            title={`Recurring · ${inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}`}
+                          >
+                            <RefreshCw className="w-2.5 h-2.5" />
+                            {inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {inv.client.name}

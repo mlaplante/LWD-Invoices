@@ -2,7 +2,7 @@ import { api } from "@/trpc/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { FileText } from "lucide-react";
+import { FileText, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InvoiceTableWithBulk } from "@/components/invoices/InvoiceTableWithBulk";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -53,24 +53,26 @@ function formatDate(d: Date | null): string {
 
 // ── Tab config ───────────────────────────────────────────────────────────────
 
-type Tab = "all" | "unpaid" | "pending" | "paid" | "archived";
+type Tab = "all" | "unpaid" | "pending" | "paid" | "archived" | "recurring";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "all", label: "All Invoices" },
   { id: "unpaid", label: "Unpaid" },
   { id: "pending", label: "Pending" },
   { id: "paid", label: "Paid" },
+  { id: "recurring", label: "Recurring" },
   { id: "archived", label: "Archived" },
 ];
 
 const TAB_FILTERS: Record<
   Tab,
-  { status?: InvoiceStatus[]; includeArchived: boolean }
+  { status?: InvoiceStatus[]; includeArchived: boolean; recurring?: boolean }
 > = {
   all: { includeArchived: false },
   unpaid: { status: ["SENT", "OVERDUE"], includeArchived: false },
   pending: { status: ["DRAFT", "PARTIALLY_PAID"], includeArchived: false },
   paid: { status: ["PAID", "ACCEPTED"], includeArchived: false },
+  recurring: { includeArchived: false, recurring: true },
   archived: { includeArchived: true },
 };
 
@@ -187,8 +189,14 @@ export default async function InvoicesPage({
                     <FileText className="w-4 h-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm leading-tight truncate">
-                      {TYPE_LABELS[inv.type]} #{inv.number}
+                    <p className="font-semibold text-sm leading-tight flex items-center gap-1.5">
+                      <span className="truncate">{TYPE_LABELS[inv.type]} #{inv.number}</span>
+                      {inv.recurringInvoice?.isActive && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5 shrink-0">
+                          <RefreshCw className="w-2.5 h-2.5" />
+                          {inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
                       {inv.client.name} · {formatDate(inv.date)}
@@ -220,6 +228,13 @@ export default async function InvoicesPage({
                 total: Number(inv.total),
                 currency: inv.currency,
                 client: { name: inv.client.name },
+                recurringInvoice: inv.recurringInvoice
+                  ? {
+                      isActive: inv.recurringInvoice.isActive,
+                      frequency: inv.recurringInvoice.frequency,
+                      nextRunAt: inv.recurringInvoice.nextRunAt,
+                    }
+                  : null,
               }))}
             />
           </div>
