@@ -160,6 +160,30 @@ export const invoicesRouter = router({
       return invoice;
     }),
 
+  recentlyViewed: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(20).default(5) }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.invoice.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          lastViewed: { not: null },
+          isArchived: false,
+        },
+        select: {
+          id: true,
+          number: true,
+          type: true,
+          lastViewed: true,
+          status: true,
+          total: true,
+          client: { select: { id: true, name: true } },
+          currency: { select: { symbol: true, symbolPosition: true } },
+        },
+        orderBy: { lastViewed: "desc" },
+        take: input.limit,
+      });
+    }),
+
   create: protectedProcedure
     .input(invoiceWriteSchema)
     .mutation(async ({ ctx, input }) => {

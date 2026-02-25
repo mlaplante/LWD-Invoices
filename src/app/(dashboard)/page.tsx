@@ -9,6 +9,7 @@ import {
   AlertCircle,
   TrendingUp,
   Plus,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -66,11 +67,12 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [invoices, clients, projects, overdueInvoices] = await Promise.all([
+  const [invoices, clients, projects, overdueInvoices, recentlyViewed] = await Promise.all([
     api.invoices.list({ includeArchived: false, pageSize: 100 }),
     api.clients.list({ includeArchived: false }),
     api.projects.list({ includeArchived: false }),
     api.reports.overdueInvoices(),
+    api.invoices.recentlyViewed({ limit: 5 }),
   ]);
 
   // ── Derived stats ────────────────────────────────────────────────────────────
@@ -266,6 +268,50 @@ export default async function DashboardPage() {
                     <span className="text-sm font-bold text-red-600 shrink-0 tabular-nums">
                       {formatAmount(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
                     </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recently viewed by clients */}
+          <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Client Activity
+                </p>
+                <p className="text-sm font-semibold mt-0.5">Recently Viewed</p>
+              </div>
+              {recentlyViewed.length > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold">
+                  {recentlyViewed.length}
+                </span>
+              )}
+            </div>
+
+            {recentlyViewed.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center px-5">
+                <Eye className="w-5 h-5 text-muted-foreground/40 mb-2" />
+                <p className="text-xs text-muted-foreground">No invoices viewed yet.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border/40">
+                {recentlyViewed.map((inv) => (
+                  <Link
+                    key={inv.id}
+                    href={`/invoices/${inv.id}`}
+                    className="flex items-center justify-between px-5 py-3 hover:bg-accent/20 transition-colors gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">
+                        #{inv.number} · {inv.client.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Viewed {formatDate(inv.lastViewed)}
+                      </p>
+                    </div>
+                    <Eye className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
                   </Link>
                 ))}
               </div>
