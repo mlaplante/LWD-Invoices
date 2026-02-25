@@ -4,7 +4,7 @@ import { router, publicProcedure } from "../trpc";
 import { GatewayType, InvoiceStatus } from "@/generated/prisma";
 import { decryptJson } from "../services/encryption";
 import { getStripeClient, createCheckoutSession } from "../services/stripe";
-import { createPayPalOrder, capturePayPalOrder } from "../services/paypal";
+import { createPayPalOrder } from "../services/paypal";
 import type { StripeConfig, PayPalConfig } from "../services/gateway-config";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = [
@@ -160,55 +160,6 @@ export const portalRouter = router({
       });
 
       return { orderId, approveUrl };
-    }),
-
-  capturePayPalOrder: publicProcedure
-    .input(z.object({ token: z.string(), orderId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const invoice = await getInvoiceByToken(ctx.db, input.token);
-
-      const gateway = await ctx.db.gatewaySetting.findUnique({
-        where: {
-          organizationId_gatewayType: {
-            organizationId: invoice.organizationId,
-            gatewayType: GatewayType.PAYPAL,
-          },
-        },
-      });
-      if (!gateway?.isEnabled) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "PayPal is not enabled" });
-      }
-
-      const config = decryptJson<PayPalConfig>(gateway.configJson);
-      const { transactionId, amount } = await capturePayPalOrder(config, input.orderId);
-
-      const surcharge = gateway.surcharge.toNumber();
-      const invoiceTotal = invoice.total.toNumber();
-      const chargedAmount = parseFloat(amount);
-      const surchargeAmount = chargedAmount - invoiceTotal;
-
-      await ctx.db.$transaction(async (tx) => {
-        await tx.payment.create({
-          data: {
-            amount: invoiceTotal,
-            surchargeAmount,
-            method: "paypal",
-            transactionId,
-            invoiceId: invoice.id,
-            organizationId: invoice.organizationId,
-          },
-        });
-
-        await tx.invoice.update({
-          where: { id: invoice.id },
-          data: { status: InvoiceStatus.PAID },
-        });
-      });
-
-      // Suppress unused var warning
-      void surcharge;
-
-      return { success: true, transactionId };
     }),
 
   addComment: publicProcedure

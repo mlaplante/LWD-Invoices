@@ -73,11 +73,16 @@ export async function POST(req: NextRequest) {
   if (payload.event_type === "PAYMENT.CAPTURE.COMPLETED") {
     const invoice = await db.invoice.findUnique({
       where: { id: invoiceId, organizationId: orgId },
-      select: { id: true, total: true },
+      select: { id: true, total: true, status: true },
     });
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    // Idempotency: already processed (PayPal may retry webhooks)
+    if (invoice.status === InvoiceStatus.PAID) {
+      return NextResponse.json({ received: true });
     }
 
     const capturedAmount = parseFloat(payload.resource?.amount?.value ?? "0");

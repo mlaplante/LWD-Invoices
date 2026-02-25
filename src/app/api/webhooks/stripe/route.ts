@@ -74,6 +74,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    // Idempotency: already processed (Stripe may retry webhooks)
+    if (invoice.status === InvoiceStatus.PAID) {
+      return NextResponse.json({ received: true });
+    }
+
     const amountTotal = session.amount_total ?? 0;
     const invoiceTotal = invoice.total.toNumber();
     const chargedAmount = amountTotal / 100; // convert from cents
