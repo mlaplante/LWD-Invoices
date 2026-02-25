@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,10 @@ export function ProjectSettingsForm({ taskStatuses: initial, templates: initialT
     fontColor: "#111827",
   });
 
+  // Org settings (for time rounding)
+  const { data: org } = trpc.organization.get.useQuery();
+  const updateOrgMutation = trpc.organization.update.useMutation();
+
   const createStatusMutation = trpc.taskStatuses.create.useMutation({
     onSuccess: () => {
       utils.taskStatuses.list.invalidate();
@@ -62,10 +66,10 @@ export function ProjectSettingsForm({ taskStatuses: initial, templates: initialT
     onSuccess: () => utils.taskStatuses.list.invalidate(),
   });
 
-  // Time rounding — read from org settings
-  // We'll use a simple update via a separate mechanism
-  // For now track locally
   const [roundingInterval, setRoundingInterval] = useState("0");
+  useEffect(() => {
+    if (org) setRoundingInterval(String(org.taskTimeInterval));
+  }, [org]);
 
   // Templates
   const { data: templates = initialTemplates } = trpc.projectTemplates.list.useQuery();
@@ -231,8 +235,14 @@ export function ProjectSettingsForm({ taskStatuses: initial, templates: initialT
               Setting takes effect immediately for new entries. Existing entries are not changed.
             </p>
           </div>
-          <Button size="sm" disabled>
-            Save (coming soon)
+          <Button
+            size="sm"
+            disabled={updateOrgMutation.isPending}
+            onClick={() =>
+              updateOrgMutation.mutate({ taskTimeInterval: parseInt(roundingInterval) })
+            }
+          >
+            {updateOrgMutation.isPending ? "Saving…" : "Save"}
           </Button>
         </div>
       )}

@@ -14,9 +14,10 @@ type Props = {
   token: string;
   gateways: Gateway[];
   total: string;
+  orgName: string;
 };
 
-export function PaymentButtons({ token, gateways, total }: Props) {
+export function PaymentButtons({ token, gateways, total, orgName }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -118,7 +119,7 @@ export function PaymentButtons({ token, gateways, total }: Props) {
               {g.label ?? g.gatewayType.replace("_", " ")}
             </p>
             <p className="text-xs text-gray-500">
-              Please use the payment details provided by {"{org}"} to complete your payment.
+              Please use the payment details provided by {orgName} to complete your payment.
             </p>
           </div>
         ))}

@@ -62,7 +62,7 @@ export async function createPayPalOrder(opts: {
     payment_source: {
       paypal: {
         experience_context: {
-          return_url: `${appUrl}/portal/${invoice.portalToken}/payment-success?order_id=`,
+          return_url: `${appUrl}/portal/${invoice.portalToken}/payment-success`,
           cancel_url: `${appUrl}/portal/${invoice.portalToken}`,
         },
       },

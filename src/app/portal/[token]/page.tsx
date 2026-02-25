@@ -249,6 +249,7 @@ export default async function PortalInvoicePage({
               label: g.label ?? null,
             }))}
             total={f(invoice.total)}
+            orgName={invoice.organization.name}
           />
         )}
 

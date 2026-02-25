@@ -5,6 +5,20 @@ export interface V1Context {
   userId: string;
 }
 
+// Simple in-memory sliding-window rate limiter: 60 requests per token per minute
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT = 60;
+const WINDOW_MS = 60_000;
+
+function isRateLimited(token: string): boolean {
+  const now = Date.now();
+  const timestamps = (rateLimitMap.get(token) ?? []).filter((t) => now - t < WINDOW_MS);
+  if (timestamps.length >= RATE_LIMIT) return true;
+  timestamps.push(now);
+  rateLimitMap.set(token, timestamps);
+  return false;
+}
+
 export async function withV1Auth(
   req: NextRequest,
   handler: (ctx: V1Context) => Promise<NextResponse>,
@@ -15,6 +29,10 @@ export async function withV1Auth(
   }
 
   const token = authHeader.slice(7);
+
+  if (isRateLimited(token)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
   // Validate token via Clerk's verify endpoint
   const verifyRes = await fetch("https://api.clerk.com/v1/sessions/verify", {
