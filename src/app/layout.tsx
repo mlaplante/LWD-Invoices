@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -15,6 +15,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: "400",
+});
+
 export const metadata: Metadata = {
   title: "LaPlante Web Development Invoices",
   description: "Modern invoicing for freelancers and small teams",
@@ -28,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${jakartaSans.variable} ${geistMono.variable} antialiased`}
+        className={`${jakartaSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased`}
       >
         <TRPCReactProvider>{children}</TRPCReactProvider>
         <Toaster richColors position="bottom-right" />
