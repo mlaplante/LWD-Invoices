@@ -4,7 +4,7 @@ import { OrgSettingsForm } from "@/components/settings/OrgSettingsForm";
 import { BrandingForm } from "@/components/settings/BrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FolderKanban, ScrollText, ChevronRight } from "lucide-react";
+import { CreditCard, FolderKanban, ScrollText, Wallet, ChevronRight } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
@@ -29,6 +29,13 @@ const subPages = [
     description: "View a history of all actions in your organization.",
     icon: <ScrollText className="w-4 h-4" />,
     color: "bg-blue-50 text-blue-600",
+  },
+  {
+    href: "/settings/expenses",
+    label: "Expense Settings",
+    description: "Manage expense categories and suppliers.",
+    icon: <Wallet className="w-4 h-4" />,
+    color: "bg-amber-50 text-amber-600",
   },
 ];
 
