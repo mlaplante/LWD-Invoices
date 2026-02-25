@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { SidebarNav } from "@/components/layout/SidebarNav";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { db } from "@/server/db";
 import { Plus } from "lucide-react";
 
@@ -23,21 +24,17 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* ── Sidebar ─────────────────────────────────────────── */}
-      <aside className="w-56 shrink-0 flex flex-col p-4 gap-0 bg-sidebar">
-        {/* Logo */}
+      {/* ── Desktop sidebar (hidden on mobile) ──────────────── */}
+      <aside className="hidden lg:flex w-56 shrink-0 flex-col p-4 gap-0 bg-sidebar">
         <div className="flex items-center gap-2.5 px-2 mb-6">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/30">
-            <span className="text-primary-foreground text-sm font-black tracking-tight">
-              P
-            </span>
+            <span className="text-primary-foreground text-sm font-black tracking-tight">P</span>
           </div>
           <span className="font-extrabold text-[17px] text-sidebar-foreground tracking-tight">
             Pancake
           </span>
         </div>
 
-        {/* New Invoice CTA */}
         <Link
           href="/invoices/new"
           className="flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl py-2.5 mb-5 text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-primary/30"
@@ -46,10 +43,8 @@ export default async function DashboardLayout({
           New Invoice
         </Link>
 
-        {/* Navigation */}
         <SidebarNav />
 
-        {/* Org pill at bottom */}
         {orgName && (
           <div className="mt-auto pt-3 border-t border-sidebar-border">
             <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl bg-sidebar-accent">
@@ -62,10 +57,29 @@ export default async function DashboardLayout({
         )}
       </aside>
 
+      {/* ── Mobile fixed top header (hidden on desktop) ─────── */}
+      <header className="lg:hidden fixed top-0 inset-x-0 z-20 h-14 flex items-center justify-between px-4 bg-sidebar border-b border-sidebar-border">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/30">
+            <span className="text-primary-foreground text-xs font-black">P</span>
+          </div>
+          <span className="font-extrabold text-sm text-sidebar-foreground tracking-tight">
+            Pancake
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <NotificationBell />
+          <UserMenu
+            email={user?.email}
+            firstName={user?.user_metadata?.firstName as string | undefined}
+          />
+        </div>
+      </header>
+
       {/* ── Main area ───────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 p-5 pl-0">
-        {/* Top bar */}
-        <header className="flex items-center justify-end gap-3 mb-5 px-1">
+      <div className="flex-1 flex flex-col min-w-0 lg:p-5 lg:pl-0">
+        {/* Desktop top bar */}
+        <header className="hidden lg:flex items-center justify-end gap-3 mb-5 px-1">
           <NotificationBell />
           <UserMenu
             email={user?.email}
@@ -73,11 +87,16 @@ export default async function DashboardLayout({
           />
         </header>
 
-        {/* White content card */}
-        <main className="flex-1 bg-card rounded-2xl shadow-sm ring-1 ring-border/40 overflow-auto">
-          <div className="p-6">{children}</div>
+        {/* Content area */}
+        <main className="flex-1 lg:bg-card lg:rounded-2xl lg:shadow-sm lg:ring-1 lg:ring-border/40 lg:overflow-auto">
+          <div className="pt-16 pb-28 px-4 lg:p-6 lg:pt-6 lg:pb-6">
+            {children}
+          </div>
         </main>
       </div>
+
+      {/* ── Mobile bottom navigation ────────────────────────── */}
+      <MobileNav orgName={orgName} />
     </div>
   );
 }
