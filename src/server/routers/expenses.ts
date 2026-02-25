@@ -12,21 +12,22 @@ export const expensesRouter = router({
   list: protectedProcedure
     .input(
       z.object({
-        projectId: z.string(),
+        projectId: z.string().optional(),
         unbilledOnly: z.boolean().default(false),
       })
     )
     .query(async ({ ctx, input }) => {
       return ctx.db.expense.findMany({
         where: {
-          projectId: input.projectId,
           organizationId: ctx.orgId,
+          ...(input.projectId ? { projectId: input.projectId } : {}),
           ...(input.unbilledOnly ? { invoiceLineId: null } : {}),
         },
         include: {
           tax: true,
           category: true,
           supplier: true,
+          project: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
       });
@@ -35,12 +36,14 @@ export const expensesRouter = router({
   create: protectedProcedure
     .input(
       z.object({
-        projectId: z.string(),
+        projectId: z.string().optional(),
         name: z.string().min(1),
         description: z.string().optional(),
         qty: z.number().int().default(1),
         rate: z.number(),
         dueDate: z.coerce.date().optional(),
+        paidAt: z.coerce.date().optional(),
+        reimbursable: z.boolean().default(false),
         paymentDetails: z.string().optional(),
         taxId: z.string().optional(),
         categoryId: z.string().optional(),
@@ -50,7 +53,7 @@ export const expensesRouter = router({
     .mutation(async ({ ctx, input }) => {
       return ctx.db.expense.create({
         data: { ...input, organizationId: ctx.orgId },
-        include: { tax: true, category: true, supplier: true },
+        include: { tax: true, category: true, supplier: true, project: { select: { id: true, name: true } } },
       });
     }),
 
@@ -67,6 +70,9 @@ export const expensesRouter = router({
         taxId: z.string().nullable().optional(),
         categoryId: z.string().nullable().optional(),
         supplierId: z.string().nullable().optional(),
+        paidAt: z.coerce.date().nullable().optional(),
+        reimbursable: z.boolean().optional(),
+        projectId: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
