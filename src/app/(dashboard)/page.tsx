@@ -64,10 +64,10 @@ export default async function DashboardPage() {
       api.invoices.list({ includeArchived: false, pageSize: 100 }),
       api.projects.list({ includeArchived: false }),
       api.reports.overdueInvoices(),
-      api.invoices.recentlyViewed({ limit: 5 }),
-      api.reports.revenueByMonth({ from: sixMonthsAgo }),
-      api.reports.expenseBreakdown({ from: monthStart, to: monthEnd }),
-      api.auditLog.list({ limit: 8 }),
+      api.invoices.recentlyViewed({ limit: 5 }).catch(() => []),
+      api.reports.revenueByMonth({ from: sixMonthsAgo }).catch(() => ({} as Record<string, number>)),
+      api.reports.expenseBreakdown({ from: monthStart, to: monthEnd }).catch(() => []),
+      api.auditLog.list({ limit: 8 }).catch(() => []),
     ]);
 
   // ── Derived stats ────────────────────────────────────────────────────────────
