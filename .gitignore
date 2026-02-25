@@ -47,3 +47,7 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# claude-mem plugin auto-generated context files
+CLAUDE.md
+deno.lock
