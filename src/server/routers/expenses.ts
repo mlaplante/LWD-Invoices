@@ -12,7 +12,7 @@ export const expensesRouter = router({
   list: protectedProcedure
     .input(
       z.object({
-        projectId: z.string().optional(),
+        projectId: z.string().min(1).optional(),
         unbilledOnly: z.boolean().default(false),
       })
     )
@@ -36,10 +36,10 @@ export const expensesRouter = router({
   create: protectedProcedure
     .input(
       z.object({
-        projectId: z.string().optional(),
+        projectId: z.string().min(1).optional(),
         name: z.string().min(1),
         description: z.string().optional(),
-        qty: z.number().int().default(1),
+        qty: z.number().int().positive().default(1),
         rate: z.number(),
         dueDate: z.coerce.date().optional(),
         paidAt: z.coerce.date().optional(),
@@ -63,7 +63,7 @@ export const expensesRouter = router({
         id: z.string(),
         name: z.string().min(1).optional(),
         description: z.string().optional(),
-        qty: z.number().int().optional(),
+        qty: z.number().int().positive().optional(),
         rate: z.number().optional(),
         dueDate: z.coerce.date().optional(),
         paymentDetails: z.string().optional(),
@@ -84,7 +84,7 @@ export const expensesRouter = router({
       return ctx.db.expense.update({
         where: { id, organizationId: ctx.orgId },
         data,
-        include: { tax: true, category: true, supplier: true },
+        include: { tax: true, category: true, supplier: true, project: { select: { id: true, name: true } } },
       });
     }),
 
