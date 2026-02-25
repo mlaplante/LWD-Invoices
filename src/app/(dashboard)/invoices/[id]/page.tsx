@@ -157,6 +157,13 @@ export default async function InvoiceDetailPage({
         {/* Top banner: org name (left) + metadata grid (right) */}
         <div className="grid grid-cols-[1fr_auto] gap-10 px-8 pt-8 pb-6 border-b border-border/50">
           <div>
+            {invoice.organization.logoUrl && (
+              <img
+                src={invoice.organization.logoUrl}
+                alt={invoice.organization.name}
+                className="mb-3 h-10 w-auto max-w-[160px] object-contain"
+              />
+            )}
             <p className="text-2xl font-extrabold tracking-tight leading-tight">
               {invoice.organization.name}
             </p>
