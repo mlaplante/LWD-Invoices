@@ -24,23 +24,23 @@ export default async function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-background">
       {/* ── Sidebar ─────────────────────────────────────────── */}
-      <aside className="w-56 shrink-0 flex flex-col p-5 gap-0">
+      <aside className="w-56 shrink-0 flex flex-col p-4 gap-0 bg-sidebar">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-1 mb-7">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
+        <div className="flex items-center gap-2.5 px-2 mb-6">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/30">
             <span className="text-primary-foreground text-sm font-black tracking-tight">
-              L
+              P
             </span>
           </div>
-          <span className="font-extrabold text-[17px] text-foreground tracking-tight">
-            LWD Invoices
+          <span className="font-extrabold text-[17px] text-sidebar-foreground tracking-tight">
+            Pancake
           </span>
         </div>
 
         {/* New Invoice CTA */}
         <Link
           href="/invoices/new"
-          className="flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl py-3 mb-6 text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-primary/25"
+          className="flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl py-2.5 mb-5 text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-primary/30"
         >
           <Plus className="w-4 h-4" />
           New Invoice
@@ -49,11 +49,14 @@ export default async function DashboardLayout({
         {/* Navigation */}
         <SidebarNav />
 
-        {/* Org name at bottom */}
+        {/* Org pill at bottom */}
         {orgName && (
-          <div className="mt-auto pt-3 border-t border-border/60">
-            <div className="px-3 py-2 text-xs text-muted-foreground font-medium truncate">
-              {orgName}
+          <div className="mt-auto pt-3 border-t border-sidebar-border">
+            <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl bg-sidebar-accent">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0 text-[11px] font-bold text-primary-foreground shadow-sm">
+                {orgName.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-xs text-sidebar-foreground/70 font-medium truncate">{orgName}</span>
             </div>
           </div>
         )}

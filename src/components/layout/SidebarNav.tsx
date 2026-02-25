@@ -48,19 +48,17 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
     <Link
       href={item.href}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
+        "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150",
         active
-          ? "bg-accent text-primary"
-          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          ? "bg-sidebar-accent text-sidebar-foreground"
+          : "text-sidebar-foreground/50 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground/80"
       )}
     >
-      <Icon
-        className={cn(
-          "w-4 h-4 shrink-0",
-          active ? "text-primary" : "text-muted-foreground/70"
-        )}
-      />
-      {item.label}
+      <Icon className={cn("w-4 h-4 shrink-0", active ? "opacity-100" : "opacity-60")} />
+      <span className="flex-1">{item.label}</span>
+      {active && (
+        <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-sm shadow-primary/50" />
+      )}
     </Link>
   );
 }
@@ -70,10 +68,20 @@ export function SidebarNav() {
 
   return (
     <nav className="flex flex-col gap-0.5 flex-1">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30 px-2 mb-1">
+        Main
+      </p>
+
       {primaryNav.map((item) => (
         <NavLink key={item.href} item={item} pathname={pathname} />
       ))}
-      <div className="my-2 h-px bg-border" />
+
+      <div className="h-px bg-sidebar-border my-2" />
+
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30 px-2 mb-1">
+        Analytics
+      </p>
+
       {secondaryNav.map((item) => (
         <NavLink key={item.href} item={item} pathname={pathname} />
       ))}
