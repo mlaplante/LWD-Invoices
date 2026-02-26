@@ -20,7 +20,7 @@ export function InvoiceCommentEmail({
   invoiceNumber, clientName, authorName, commentBody, orgName, invoiceLink, logoUrl,
 }: Props) {
   return (
-    <Html>
+    <Html lang="en">
       <Head />
       <Preview>{`${authorName} commented on Invoice #${invoiceNumber}`}</Preview>
       <Body style={{ backgroundColor: "#f0efe9", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>

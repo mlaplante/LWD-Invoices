@@ -21,7 +21,7 @@ export function PaymentReceiptEmail({
   invoiceNumber, clientName, amountPaid, currencySymbol, paidAt, orgName, portalLink, logoUrl,
 }: Props) {
   return (
-    <Html>
+    <Html lang="en">
       <Head />
       <Preview>Payment confirmed — Invoice #{invoiceNumber} · {currencySymbol}{amountPaid}</Preview>
       <Body style={{ backgroundColor: "#f0efe9", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>

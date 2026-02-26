@@ -23,7 +23,7 @@ export function PaymentReminderEmail({
 }: Props) {
   const dayLabel = daysUntilDue === 1 ? "day" : "days";
   return (
-    <Html>
+    <Html lang="en">
       <Head />
       <Preview>{`Payment reminder — Invoice #${invoiceNumber} due in ${daysUntilDue} ${dayLabel}`}</Preview>
       <Body style={{ backgroundColor: "#f0efe9", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>

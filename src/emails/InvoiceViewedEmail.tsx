@@ -21,7 +21,7 @@ export function InvoiceViewedEmail({
   invoiceNumber, clientName, orgName, invoiceLink, viewedAt, total, currencySymbol, logoUrl,
 }: Props) {
   return (
-    <Html>
+    <Html lang="en">
       <Head />
       <Preview>{`${clientName} viewed Invoice #${invoiceNumber}${total ? ` · ${currencySymbol}${total}` : ""}`}</Preview>
       <Body style={{ backgroundColor: "#f0efe9", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>

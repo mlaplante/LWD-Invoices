@@ -23,7 +23,7 @@ export function OverdueEmail({
 }: Props) {
   const dayLabel = daysOverdue === 1 ? "day" : "days";
   return (
-    <Html>
+    <Html lang="en">
       <Head />
       <Preview>{`OVERDUE — Invoice #${invoiceNumber} was due ${daysOverdue} ${dayLabel} ago`}</Preview>
       <Body style={{ backgroundColor: "#f0efe9", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>

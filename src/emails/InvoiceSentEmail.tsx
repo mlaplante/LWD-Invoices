@@ -21,7 +21,7 @@ export function InvoiceSentEmail({
   invoiceNumber, clientName, total, currencySymbol, dueDate, orgName, portalLink, logoUrl,
 }: Props) {
   return (
-    <Html>
+    <Html lang="en">
       <Head />
       <Preview>Invoice #{invoiceNumber} from {orgName} — {currencySymbol}{total}</Preview>
       <Body style={{ backgroundColor: "#f0efe9", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>
