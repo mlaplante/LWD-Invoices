@@ -79,7 +79,8 @@
       "Bash(npm show:*)",
       "Bash(npm test:*)",
       "Bash(wc:*)",
-      "Bash(/tmp/commit_tasks.sh:*)"
+      "Bash(/tmp/commit_tasks.sh:*)",
+      "Bash(/tmp/test_summary.txt:*)"
     ]
   }
 }
