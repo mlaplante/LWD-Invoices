@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,32 +64,33 @@ export function PortalComments({ token, initialComments }: Props) {
   }
 
   return (
-    <div className="rounded-lg border bg-white shadow-sm p-6">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">Comments</h2>
+    <div className="rounded-2xl border border-border/50 bg-card p-6">
+      <h2 className="text-base font-semibold text-foreground mb-4">Comments</h2>
 
       {comments.length === 0 ? (
-        <p className="text-sm text-gray-400 mb-6">No comments yet.</p>
+        <p className="text-sm text-muted-foreground mb-6">No comments yet.</p>
       ) : (
         <div className="space-y-4 mb-6">
           {comments.map((c) => (
-            <div key={c.id} className="rounded-md bg-gray-50 p-3">
+            <div key={c.id} className="rounded-xl border border-border/50 bg-accent/30 p-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-900">{c.authorName}</span>
-                <span className="text-xs text-gray-400">{formatDate(c.createdAt)}</span>
+                <span className="text-sm font-medium text-foreground">{c.authorName}</span>
+                <span className="text-xs text-muted-foreground">{formatDate(c.createdAt)}</span>
               </div>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{c.body}</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{c.body}</p>
             </div>
           ))}
         </div>
       )}
 
       {submitted ? (
-        <p className="text-sm text-green-600 font-medium">
+        <div className="flex gap-2 text-emerald-600">
+          <CheckCircle2 className="w-5 h-5" />
           Your comment was submitted.
-        </p>
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3 border-t pt-4">
-          <p className="text-sm font-medium text-gray-700">Leave a comment</p>
+          <p className="text-sm font-medium text-foreground">Leave a comment</p>
 
           <div className="space-y-1.5">
             <Label htmlFor="authorName" className="text-xs">Your name</Label>
@@ -115,14 +117,14 @@ export function PortalComments({ token, initialComments }: Props) {
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">{error}</div>}
 
           <Button
             type="submit"
             size="sm"
             disabled={addComment.isPending}
           >
-            {addComment.isPending ? "Submitting..." : "Submit Comment"}
+            {addComment.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Submitting...</> : "Submit Comment"}
           </Button>
         </form>
       )}
