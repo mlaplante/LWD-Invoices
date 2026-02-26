@@ -105,7 +105,7 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
     <div className="space-y-3">
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="flex items-center gap-2 px-2 py-2 rounded-xl bg-accent/50 border border-border/50">
+        <div className="flex items-center gap-2 px-2 py-2 rounded-xl bg-accent/50 border border-border/50 print:hidden">
           <span className="text-sm font-medium text-foreground">
             {selected.size} selected
           </span>
@@ -145,7 +145,7 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border">
-            <th className="pb-3 pl-2 w-8">
+            <th className="pb-3 pl-2 w-8 print:hidden">
               <input
                 type="checkbox"
                 checked={allSelected}
@@ -169,7 +169,7 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
             <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-4">
               Status
             </th>
-            <th className="pb-3" />
+            <th className="pb-3 print:hidden" />
           </tr>
         </thead>
         <tbody className="divide-y divide-border/50">
@@ -184,7 +184,7 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
                   isSelected && "bg-accent/20"
                 )}
               >
-                <td className="py-3.5 pl-2">
+                <td className="py-3.5 pl-2 print:hidden">
                   <input
                     type="checkbox"
                     checked={isSelected}
@@ -233,7 +233,7 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
                     {badge.label}
                   </span>
                 </td>
-                <td className="py-3.5 pr-2">
+                <td className="py-3.5 pr-2 print:hidden">
                   <InvoiceRowActions
                     invoiceId={inv.id}
                     invoiceTotal={inv.total}
