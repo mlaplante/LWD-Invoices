@@ -31,6 +31,8 @@ export function createMockPrismaClient() {
     },
     auditLog: {
       create: vi.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
     },
     payment: {
       create: vi.fn(),
