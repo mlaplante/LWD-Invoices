@@ -3,12 +3,12 @@ import { db } from "@/server/db";
 
 function escapeCsv(val: string | number | null | undefined): string {
   if (val === null || val === undefined) return "";
-  const s = String(val);
+  let s = String(val);
+  // Prevent formula injection before quoting so it isn't bypassed by commas
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
   if (s.includes(",") || s.includes('"') || s.includes("\n")) {
     return `"${s.replace(/"/g, '""')}"`;
   }
-  // Prevent formula injection
-  if (/^[=+\-@]/.test(s)) return `'${s}`;
   return s;
 }
 
