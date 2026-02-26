@@ -1,16 +1,28 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { PrintReportButton } from "@/components/reports/PrintReportButton";
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function shortMonth(key: string) {
   return MONTH_NAMES[parseInt(key.split("-")[1], 10) - 1] ?? "";
 }
 
-export default async function ProfitLossPage() {
+export default async function ProfitLossPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
+  const params = await searchParams;
   const now = new Date();
-  const from = new Date(now.getFullYear() - 1, now.getMonth(), 1);
-  const data = await api.reports.profitLoss({ from });
+  const defaultFrom = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+  const fromRaw = params.from ? new Date(params.from) : undefined;
+  const toRaw   = params.to   ? new Date(params.to)   : undefined;
+  const from = (fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined) ?? defaultFrom;
+  const to   = toRaw   && !isNaN(toRaw.getTime())   ? toRaw   : undefined;
+
+  const data = await api.reports.profitLoss({ from, to });
 
   const months = Array.from(
     new Set([...Object.keys(data.revenueByMonth), ...Object.keys(data.expensesByMonth)])
@@ -26,12 +38,17 @@ export default async function ProfitLossPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <Link href="/reports" className="text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <h1 className="text-2xl font-bold tracking-tight">Profit & Loss</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/reports" className="text-muted-foreground hover:text-foreground transition-colors print:hidden">
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight">Profit & Loss</h1>
+        </div>
+        <PrintReportButton />
       </div>
+
+      <ReportFilters basePath="/reports/profit-loss" from={params.from} to={params.to} />
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
