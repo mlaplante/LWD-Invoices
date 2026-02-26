@@ -28,7 +28,7 @@ export default async function DashboardLayout({
       <aside className="hidden lg:flex w-56 shrink-0 flex-col p-4 gap-0 bg-sidebar">
         <div className="flex items-center gap-2.5 px-2 mb-6">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/30">
-            <span className="text-primary-foreground text-sm font-black tracking-tight">P</span>
+            <span className="text-primary-foreground text-sm font-black tracking-tight">L</span>
           </div>
           <span className="font-extrabold text-[17px] text-sidebar-foreground tracking-tight">
             LWD
@@ -61,7 +61,7 @@ export default async function DashboardLayout({
       <header className="lg:hidden fixed top-0 inset-x-0 z-20 h-14 flex items-center justify-between px-4 bg-sidebar border-b border-sidebar-border">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/30">
-            <span className="text-primary-foreground text-xs font-black">P</span>
+            <span className="text-primary-foreground text-xs font-black">L</span>
           </div>
           <span className="font-extrabold text-sm text-sidebar-foreground tracking-tight">
             LWD
