@@ -22,6 +22,10 @@ export default async function PortalLayout({
       number: true,
       lastViewed: true,
       organizationId: true,
+      total: true,
+      currency: {
+        select: { symbol: true },
+      },
       client: {
         select: {
           name: true,
@@ -106,6 +110,8 @@ export default async function PortalLayout({
           orgName,
           invoiceLink,
           viewedAt: viewedAtFormatted,
+          total: Number(invoice.total).toFixed(2),
+          currencySymbol: invoice.currency.symbol,
         })
       );
       resend.emails.send({
