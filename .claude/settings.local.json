@@ -72,7 +72,13 @@
       "Bash(DIRECT_DATABASE_URL=\"postgresql://postgres.cqxiacdadsnxprljuhhz:Q5zidMB8zHx3roK6@aws-1-us-east-1.pooler.supabase.com:5432/postgres\" npx prisma:*)",
       "Skill(claudeception)",
       "Bash(DIRECT_DATABASE_URL=\"postgresql://postgres:Q5zidMB8zHx3roK6@db.cqxiacdadsnxprljuhhz.supabase.co:5432/postgres\" npx prisma:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(lsof:*)",
+      "Bash(DIRECT_DATABASE_URL=\"\" DATABASE_URL=\"postgresql://postgres.cqxiacdadsnxprljuhhz:Q5zidMB8zHx3roK6@aws-1-us-east-1.pooler.supabase.com:5432/postgres\" npx prisma:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm show:*)",
+      "Bash(npm test:*)",
+      "Bash(wc:*)"
     ]
   }
 }
