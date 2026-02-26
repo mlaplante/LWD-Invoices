@@ -6,7 +6,7 @@ import { PrismaClient } from "@/generated/prisma";
  * Includes mocked methods for all operations used in router tests
  */
 export function createMockPrismaClient() {
-  return {
+  const mockClient: any = {
     invoice: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -30,14 +30,25 @@ export function createMockPrismaClient() {
     auditLog: {
       create: vi.fn(),
     },
-    $transaction: vi.fn((callback) => {
-      // Execute the callback immediately (no actual transaction)
-      if (typeof callback === "function") {
-        return callback(this);
-      }
-      return Promise.resolve([]);
-    }),
-  } as unknown as PrismaClient;
+    payment: {
+      create: vi.fn(),
+    },
+    partialPayment: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      findMany: vi.fn(),
+    },
+  };
+
+  // Mock $transaction to pass the same client mocks to the callback
+  mockClient.$transaction = vi.fn(async (callback) => {
+    if (typeof callback === "function") {
+      return await callback(mockClient);
+    }
+    return Promise.resolve([]);
+  });
+
+  return mockClient as unknown as PrismaClient;
 }
 
 export interface MockTRPCContext {
