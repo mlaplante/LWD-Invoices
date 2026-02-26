@@ -15,6 +15,7 @@ const clientSchema = z.object({
   taxId: z.string().optional(),
   notes: z.string().optional(),
   portalPassphrase: z.string().optional(),
+  defaultPaymentTermsDays: z.number().int().min(0).max(365).nullable().optional(),
 });
 
 async function hashPassphraseIfProvided(
