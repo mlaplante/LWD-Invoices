@@ -2,6 +2,8 @@ import { api } from "@/trpc/server";
 import Link from "next/link";
 import { ArrowLeft, CreditCard, Landmark, DollarSign, Banknote } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { PrintReportButton } from "@/components/reports/PrintReportButton";
 
 const GATEWAY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   STRIPE:        { label: "Stripe",        icon: <CreditCard className="w-4 h-4" />, color: "bg-violet-50 text-violet-600" },
@@ -10,8 +12,18 @@ const GATEWAY_CONFIG: Record<string, { label: string; icon: React.ReactNode; col
   CASH:          { label: "Cash",          icon: <Banknote className="w-4 h-4" />,   color: "bg-amber-50 text-amber-600" },
 };
 
-export default async function PaymentsReportPage() {
-  const byGateway = await api.reports.paymentsByGateway({});
+export default async function PaymentsReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
+  const params = await searchParams;
+  const fromRaw = params.from ? new Date(params.from) : undefined;
+  const toRaw   = params.to   ? new Date(params.to)   : undefined;
+  const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
+  const to   = toRaw   && !isNaN(toRaw.getTime())   ? toRaw   : undefined;
+
+  const byGateway = await api.reports.paymentsByGateway({ from, to });
   const entries = Object.entries(byGateway);
 
   const totalRevenue = entries.reduce((sum, [, s]) => sum + s.total, 0);
@@ -21,17 +33,22 @@ export default async function PaymentsReportPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-3 min-w-0">
-        <Link
-          href="/reports"
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Reports
-        </Link>
-        <span className="text-border/70">/</span>
-        <h1 className="text-xl font-bold tracking-tight">Payments by Gateway</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            href="/reports"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 print:hidden"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Reports
+          </Link>
+          <span className="text-border/70 print:hidden">/</span>
+          <h1 className="text-xl font-bold tracking-tight">Payments by Gateway</h1>
+        </div>
+        <PrintReportButton />
       </div>
+
+      <ReportFilters basePath="/reports/payments" from={params.from} to={params.to} />
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
