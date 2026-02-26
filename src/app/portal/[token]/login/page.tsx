@@ -39,10 +39,10 @@ export default function PortalLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-lg border bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-bold text-gray-900 mb-2">Protected Invoice</h1>
-        <p className="text-sm text-gray-500 mb-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-card p-8">
+        <h1 className="text-xl font-bold text-foreground mb-2">Protected Invoice</h1>
+        <p className="text-sm text-muted-foreground mb-6">
           This invoice is password protected. Enter the passphrase to continue.
         </p>
 
@@ -61,7 +61,7 @@ export default function PortalLoginPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">{error}</div>
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
