@@ -8,6 +8,8 @@ import { InvoiceTableWithBulk } from "@/components/invoices/InvoiceTableWithBulk
 import { SearchInput } from "@/components/ui/SearchInput";
 import { DateRangeFilter } from "@/components/ui/DateRangeFilter";
 import { Suspense } from "react";
+import { PrintReportButton } from "@/components/reports/PrintReportButton";
+import { InvoiceDatePresets } from "@/components/invoices/InvoiceDatePresets";
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 
@@ -126,20 +128,26 @@ export default async function InvoicesPage({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
         <div className="flex items-center gap-2 flex-wrap">
-          <Suspense>
-            <DateRangeFilter />
-          </Suspense>
-          <Suspense>
-            <SearchInput placeholder="Search invoices…" />
-          </Suspense>
-          <Button asChild size="sm">
-            <Link href="/invoices/new">+ New Invoice</Link>
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap print:hidden">
+            <Suspense>
+              <InvoiceDatePresets />
+            </Suspense>
+            <Suspense>
+              <DateRangeFilter />
+            </Suspense>
+            <Suspense>
+              <SearchInput placeholder="Search invoices…" />
+            </Suspense>
+            <Button asChild size="sm">
+              <Link href="/invoices/new">+ New Invoice</Link>
+            </Button>
+          </div>
+          <PrintReportButton />
         </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-1 border-b border-border">
+      <div className="flex items-center gap-1 border-b border-border print:hidden">
         {TABS.map((t) => (
           <Link
             key={t.id}
@@ -176,7 +184,7 @@ export default async function InvoicesPage({
       ) : (
         <>
           {/* Mobile card list */}
-          <div className="sm:hidden divide-y divide-border/50">
+          <div className="sm:hidden print:hidden divide-y divide-border/50">
             {paginatedInvoices.map((inv) => {
               const badge = STATUS_BADGE[inv.status];
               return (
@@ -217,7 +225,7 @@ export default async function InvoicesPage({
           </div>
 
           {/* Desktop table with bulk actions */}
-          <div className="hidden sm:block overflow-x-auto">
+          <div className="hidden sm:block print:block overflow-x-auto">
             <InvoiceTableWithBulk
               invoices={paginatedInvoices.map((inv) => ({
                 id: inv.id,
@@ -240,7 +248,7 @@ export default async function InvoicesPage({
 
           {/* Pagination footer */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
+            <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground print:hidden">
               <span>
                 Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of {total}
               </span>
