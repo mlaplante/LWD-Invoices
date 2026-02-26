@@ -35,6 +35,7 @@ export default async function PortalLayout({
       organization: {
         select: {
           name: true,
+          logoUrl: true,
           users: {
             where: { role: "ADMIN" },
             select: { email: true },
@@ -112,6 +113,7 @@ export default async function PortalLayout({
           viewedAt: viewedAtFormatted,
           total: Number(invoice.total).toFixed(2),
           currencySymbol: invoice.currency.symbol,
+          logoUrl: invoice.organization.logoUrl ?? undefined,
         })
       );
       resend.emails.send({

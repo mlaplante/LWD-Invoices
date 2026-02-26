@@ -58,10 +58,13 @@ const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
 
 export default async function InvoiceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ send?: string }>;
 }) {
   const { id } = await params;
+  const { send } = await searchParams;
   let invoice;
   try {
     invoice = await api.invoices.get({ id });
@@ -121,7 +124,7 @@ export default async function InvoiceDetailPage({
             </Button>
           )}
           {invoice.status === "DRAFT" && (
-            <SendInvoiceButton invoiceId={invoice.id} />
+            <SendInvoiceButton invoiceId={invoice.id} autoSend={send === "1"} />
           )}
           <Button asChild variant="outline" size="sm">
             <a

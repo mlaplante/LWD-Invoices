@@ -163,7 +163,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
           router.push(andSend ? `/invoices/${inv.id}?send=1` : `/invoices/${inv.id}`);
         } else if (form.id) {
           const inv = await updateMutation.mutateAsync({ id: form.id, ...buildInput() });
-          router.push(`/invoices/${inv.id}`);
+          router.push(andSend ? `/invoices/${inv.id}?send=1` : `/invoices/${inv.id}`);
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to save invoice");

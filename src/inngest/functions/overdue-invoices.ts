@@ -54,6 +54,7 @@ export const processOverdueInvoices = inngest.createFunction(
                 daysOverdue,
                 orgName: invoice.organization.name,
                 portalLink,
+                logoUrl: invoice.organization.logoUrl ?? undefined,
               }),
             );
 

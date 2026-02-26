@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
             portalLink: fullInvoice.portalToken
               ? `${process.env.NEXT_PUBLIC_APP_URL}/portal/${fullInvoice.portalToken}`
               : undefined,
+            logoUrl: fullInvoice.organization.logoUrl ?? undefined,
           })
         );
 

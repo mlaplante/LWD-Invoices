@@ -528,6 +528,7 @@ export const invoicesRouter = router({
               dueDate: invoice.dueDate?.toLocaleDateString() ?? null,
               orgName: invoice.organization.name,
               portalLink: `${appUrl}/portal/${invoice.portalToken}`,
+              logoUrl: invoice.organization.logoUrl ?? undefined,
             })
           );
 

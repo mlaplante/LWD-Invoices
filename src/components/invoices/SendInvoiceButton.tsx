@@ -1,12 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 
-export function SendInvoiceButton({ invoiceId }: { invoiceId: string }) {
+export function SendInvoiceButton({
+  invoiceId,
+  autoSend = false,
+}: {
+  invoiceId: string;
+  autoSend?: boolean;
+}) {
   const router = useRouter();
   const send = trpc.invoices.send.useMutation({
     onSuccess: () => {
@@ -15,6 +22,13 @@ export function SendInvoiceButton({ invoiceId }: { invoiceId: string }) {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  useEffect(() => {
+    if (autoSend && !send.isPending && !send.isSuccess && !send.isError) {
+      send.mutate({ id: invoiceId });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSend, invoiceId]);
 
   return (
     <Button

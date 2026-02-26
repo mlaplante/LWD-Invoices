@@ -139,6 +139,7 @@ export const portalRouter = router({
           organization: {
             select: {
               name: true,
+              logoUrl: true,
               users: { select: { email: true, supabaseId: true, id: true, role: true } },
             },
           },
@@ -176,6 +177,7 @@ export const portalRouter = router({
             commentBody: input.body,
             orgName: invoice.organization.name,
             invoiceLink,
+            logoUrl: invoice.organization.logoUrl ?? undefined,
           }),
         );
 

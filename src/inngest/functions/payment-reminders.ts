@@ -40,7 +40,7 @@ export const processPaymentReminders = inngest.createFunction(
       include: {
         client: true,
         organization: {
-          select: { name: true, paymentReminderDays: true },
+          select: { name: true, paymentReminderDays: true, logoUrl: true },
         },
         currency: true,
       },
@@ -71,6 +71,7 @@ export const processPaymentReminders = inngest.createFunction(
             orgName: invoice.organization.name,
             portalLink,
             daysUntilDue,
+            logoUrl: invoice.organization.logoUrl ?? undefined,
           }),
         );
 
