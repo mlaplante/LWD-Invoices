@@ -6,15 +6,18 @@ import { EstimateActions } from "@/components/portal/EstimateActions";
 import { decryptJson } from "@/server/services/encryption";
 import type { PayPalConfig } from "@/server/services/gateway-config";
 import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const STATUS_COLORS: Record<InvoiceStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-700",
-  SENT: "bg-blue-100 text-blue-700",
-  PARTIALLY_PAID: "bg-yellow-100 text-yellow-700",
-  PAID: "bg-green-100 text-green-700",
-  OVERDUE: "bg-red-100 text-red-700",
-  ACCEPTED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-rose-100 text-rose-700",
+const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
+  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",      dot: "bg-gray-400" },
+  SENT:           { label: "Unpaid",   className: "bg-amber-50 text-amber-600",     dot: "bg-amber-500" },
+  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600",       dot: "bg-blue-500" },
+  PAID:           { label: "Paid",     className: "bg-emerald-50 text-emerald-600", dot: "bg-emerald-500" },
+  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600",         dot: "bg-red-500" },
+  ACCEPTED:       { label: "Accepted", className: "bg-primary/10 text-primary",     dot: "bg-primary" },
+  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-400",      dot: "bg-gray-300" },
 };
 
 function fmt(
@@ -101,7 +104,7 @@ export default async function PortalInvoicePage({
   const brandColor = invoice.organization.brandColor ?? "#2563eb";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
         {/* Org header */}
         <div className="text-center">
@@ -113,11 +116,11 @@ export default async function PortalInvoicePage({
               className="mx-auto mb-3 h-12 w-auto max-w-[160px] object-contain"
             />
           )}
-          <h1 className="text-2xl font-bold text-gray-900">{invoice.organization.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{invoice.organization.name}</h1>
         </div>
 
         {/* Invoice card */}
-        <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
           {/* Invoice header */}
           <div className="px-6 py-5 text-white" style={{ backgroundColor: brandColor }}>
             <div className="flex items-start justify-between">
@@ -127,10 +130,9 @@ export default async function PortalInvoicePage({
                 </p>
                 <p className="text-3xl font-bold mt-1">#{invoice.number}</p>
               </div>
-              <span
-                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLORS[invoice.status]}`}
-              >
-                {invoice.status.replace("_", " ")}
+              <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium", STATUS_BADGE[invoice.status].className)}>
+                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_BADGE[invoice.status].dot)} />
+                {STATUS_BADGE[invoice.status].label}
               </span>
             </div>
           </div>
@@ -139,19 +141,19 @@ export default async function PortalInvoicePage({
             {/* Bill to + dates */}
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <p className="text-xs uppercase text-gray-400 mb-1">Bill To</p>
-                <p className="font-semibold text-gray-900">{invoice.client.name}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Bill To</p>
+                <p className="font-semibold text-foreground">{invoice.client.name}</p>
                 {invoice.client.email && (
-                  <p className="text-sm text-gray-500">{invoice.client.email}</p>
+                  <p className="text-sm text-muted-foreground">{invoice.client.email}</p>
                 )}
               </div>
               <div className="text-right">
-                <p className="text-xs uppercase text-gray-400 mb-1">Invoice Date</p>
-                <p className="text-sm text-gray-900 mb-3">{formatDate(invoice.date)}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Invoice Date</p>
+                <p className="text-sm text-foreground mb-3">{formatDate(invoice.date)}</p>
                 {invoice.dueDate && (
                   <>
-                    <p className="text-xs uppercase text-gray-400 mb-1">Due Date</p>
-                    <p className="text-sm text-gray-900">{formatDate(invoice.dueDate)}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Due Date</p>
+                    <p className="text-sm text-foreground">{formatDate(invoice.dueDate)}</p>
                   </>
                 )}
               </div>
@@ -160,27 +162,27 @@ export default async function PortalInvoicePage({
             {/* Line items */}
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-xs uppercase text-gray-400">
-                  <th className="pb-2 font-medium">Description</th>
-                  <th className="pb-2 text-right font-medium">Qty</th>
-                  <th className="pb-2 text-right font-medium">Rate</th>
-                  <th className="pb-2 text-right font-medium">Amount</th>
+                <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground pb-3">
+                  <th className="pb-3 font-semibold">Description</th>
+                  <th className="pb-3 text-right font-semibold">Qty</th>
+                  <th className="pb-3 text-right font-semibold">Rate</th>
+                  <th className="pb-3 text-right font-semibold">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {invoice.lines.map((line) => (
-                  <tr key={line.id} className="border-b">
-                    <td className="py-3">
-                      <p className="font-medium text-gray-900">{line.name}</p>
+                  <tr key={line.id} className="border-b border-border/50">
+                    <td className="py-3.5">
+                      <p className="font-medium text-foreground">{line.name}</p>
                       {line.description && (
-                        <p className="text-xs text-gray-500">{line.description}</p>
+                        <p className="text-xs text-muted-foreground">{line.description}</p>
                       )}
                     </td>
-                    <td className="py-3 text-right text-gray-600">
+                    <td className="py-3.5 text-right text-muted-foreground">
                       {Number(line.qty).toFixed(2)}
                     </td>
-                    <td className="py-3 text-right text-gray-600">{f(line.rate)}</td>
-                    <td className="py-3 text-right font-medium text-gray-900">
+                    <td className="py-3.5 text-right text-muted-foreground">{f(line.rate)}</td>
+                    <td className="py-3.5 text-right font-medium text-foreground">
                       {f(line.subtotal)}
                     </td>
                   </tr>
@@ -191,34 +193,34 @@ export default async function PortalInvoicePage({
             {/* Totals */}
             <div className="flex justify-end">
               <div className="w-60 space-y-1.5">
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Subtotal</span>
                   <span>{f(invoice.subtotal)}</span>
                 </div>
                 {Number(invoice.discountTotal) > 0 && (
-                  <div className="flex justify-between text-sm text-gray-600">
+                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Discount</span>
                     <span>-{f(invoice.discountTotal)}</span>
                   </div>
                 )}
                 {Number(invoice.taxTotal) > 0 && (
-                  <div className="flex justify-between text-sm text-gray-600">
+                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Tax</span>
                     <span>{f(invoice.taxTotal)}</span>
                   </div>
                 )}
-                <div className="flex justify-between border-t pt-2 text-base font-bold text-gray-900">
+                <div className="flex justify-between border-t border-border/50 pt-2 text-base font-bold text-foreground">
                   <span>Total</span>
-                  <span>{f(invoice.total)}</span>
+                  <span className="font-display">{f(invoice.total)}</span>
                 </div>
               </div>
             </div>
 
             {/* Notes */}
             {invoice.notes && (
-              <div className="rounded bg-gray-50 p-4">
-                <p className="text-xs uppercase text-gray-400 mb-1">Notes</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
+              <div className="rounded-xl bg-accent/30 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Notes</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{invoice.notes}</p>
               </div>
             )}
 
@@ -235,34 +237,30 @@ export default async function PortalInvoicePage({
 
         {/* Payment history */}
         {invoice.payments.length > 0 && (
-          <div className="rounded-lg border bg-white shadow-sm p-6">
+          <div className="rounded-2xl border border-border/50 bg-card p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-gray-900">Payment History</h2>
-              <a
-                href={`/api/portal/${token}/pdf`}
-                download
-                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Receipt
-              </a>
+              <h2 className="text-base font-semibold text-foreground">Payment History</h2>
+              <Button asChild variant="ghost" size="sm">
+                <a href={`/api/portal/${token}/pdf`} download>
+                  <Download className="h-3.5 w-3.5" />
+                  Download Receipt
+                </a>
+              </Button>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-xs uppercase text-gray-400">
-                  <th className="pb-2 font-medium">Date</th>
-                  <th className="pb-2 font-medium">Method</th>
-                  <th className="pb-2 text-right font-medium">Amount</th>
+                <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <th className="pb-3 font-semibold">Date</th>
+                  <th className="pb-3 font-semibold">Method</th>
+                  <th className="pb-3 text-right font-semibold">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {invoice.payments.map((p) => (
-                  <tr key={p.id} className="border-b last:border-0">
-                    <td className="py-2 text-gray-600">{formatDate(p.paidAt)}</td>
-                    <td className="py-2 capitalize text-gray-600">{p.method}</td>
-                    <td className="py-2 text-right font-medium text-gray-900">
+                  <tr key={p.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-3.5 text-muted-foreground">{formatDate(p.paidAt)}</td>
+                    <td className="py-3.5 capitalize text-muted-foreground">{p.method}</td>
+                    <td className="py-3.5 text-right font-medium text-foreground">
                       {f(p.amount)}
                     </td>
                   </tr>
