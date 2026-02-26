@@ -17,6 +17,7 @@ export const processOverdueInvoices = inngest.createFunction(
         status: { in: ["SENT", "PARTIALLY_PAID"] },
         dueDate: { lt: now },
         type: { in: ["SIMPLE", "DETAILED"] },
+        isArchived: false,
       },
       include: {
         client: true,

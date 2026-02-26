@@ -29,6 +29,7 @@ export const processPaymentReminders = inngest.createFunction(
         status: { in: ["SENT", "PARTIALLY_PAID"] },
         dueDate: { gte: tomorrow, lte: in3Days },
         type: { in: ["SIMPLE", "DETAILED"] },
+        isArchived: false,
       },
       include: {
         client: true,
