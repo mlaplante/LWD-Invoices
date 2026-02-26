@@ -7,6 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+const PAYMENT_TERM_OPTIONS = [
+  { label: "Use org default", days: null },
+  { label: "Due on receipt", days: 0 },
+  { label: "Net 7", days: 7 },
+  { label: "Net 14", days: 14 },
+  { label: "Net 15", days: 15 },
+  { label: "Net 30", days: 30 },
+  { label: "Net 45", days: 45 },
+  { label: "Net 60", days: 60 },
+  { label: "Net 90", days: 90 },
+];
+
 type Client = {
   id: string;
   name: string;
@@ -20,6 +32,7 @@ type Client = {
   taxId: string | null;
   notes: string | null;
   portalPassphraseHash: string | null;
+  defaultPaymentTermsDays: number | null;
 };
 
 type Props = {
@@ -43,6 +56,7 @@ export function ClientForm({ mode, client }: Props) {
     taxId: client?.taxId ?? "",
     notes: client?.notes ?? "",
     portalPassphrase: "",
+    defaultPaymentTermsDays: client?.defaultPaymentTermsDays ?? null,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -69,6 +83,7 @@ export function ClientForm({ mode, client }: Props) {
       taxId: form.taxId || undefined,
       notes: form.notes || undefined,
       portalPassphrase: form.portalPassphrase || undefined,
+      defaultPaymentTermsDays: form.defaultPaymentTermsDays,
     };
 
     if (mode === "create") {
@@ -216,6 +231,27 @@ export function ClientForm({ mode, client }: Props) {
             className="mt-1"
             rows={3}
           />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Default Payment Terms</label>
+          <select
+            value={form.defaultPaymentTermsDays ?? ""}
+            onChange={(e) =>
+              setForm((p) => ({
+                ...p,
+                defaultPaymentTermsDays: e.target.value === "" ? null : parseInt(e.target.value),
+              }))
+            }
+            className="mt-1 w-full border border-input rounded-md px-3 py-2 text-sm bg-background"
+          >
+            {PAYMENT_TERM_OPTIONS.map((o) => (
+              <option key={o.days ?? "null"} value={o.days ?? ""}>{o.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Overrides the organization default for new invoices with this client.
+          </p>
         </div>
       </div>
 
