@@ -118,9 +118,16 @@ export default async function InvoicesPage({
   const currentPage = Math.min(page, Math.max(totalPages, 1));
   const start = (currentPage - 1) * PAGE_SIZE;
 
-  // Build tab-aware page link
-  const tabParam = activeTab !== "all" ? `tab=${activeTab}&` : "";
-  const pageLink = (p: number) => `/invoices?${tabParam}page=${p}`;
+  // Build page link preserving all active filters
+  const pageLink = (p: number) => {
+    const params = new URLSearchParams();
+    if (activeTab !== "all") params.set("tab", activeTab);
+    if (search) params.set("search", search);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    params.set("page", String(p));
+    return `/invoices?${params.toString()}`;
+  };
 
   return (
     <div className="space-y-5">
