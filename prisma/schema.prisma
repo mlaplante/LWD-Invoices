@@ -120,8 +120,10 @@ model Organization {
   brandColor        String?  @default("#2563eb")
   invoicePrefix     String   @default("INV")
   invoiceNextNumber Int      @default(1)
-  taskTimeInterval  Float    @default(0)
-  createdAt         DateTime @default(now())
+  taskTimeInterval        Float    @default(0)
+  defaultPaymentTermsDays Int      @default(30)
+  paymentReminderDays     Int[]    @default([1, 3])
+  createdAt               DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   users             User[]
@@ -179,8 +181,9 @@ model Client {
   zip              String?
   country          String?
   taxId            String?
-  notes            String?
-  portalToken          String   @unique @default(cuid())
+  notes                   String?
+  defaultPaymentTermsDays Int?
+  portalToken             String   @unique @default(cuid())
   portalPassphraseHash String?
   isArchived       Boolean  @default(false)
   createdAt        DateTime @default(now())
@@ -266,8 +269,9 @@ model Invoice {
   // SIMPLE type only
   simpleAmount Decimal? @db.Decimal(20, 10)
 
-  notes      String?
-  isArchived Boolean @default(false)
+  notes                String?
+  isArchived           Boolean @default(false)
+  reminderDaysOverride Int[]   @default([])
 
   clientId       String
   client         Client       @relation(fields: [clientId], references: [id])
