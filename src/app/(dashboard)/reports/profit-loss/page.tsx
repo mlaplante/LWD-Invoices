@@ -9,7 +9,7 @@ function shortMonth(key: string) {
 
 export default async function ProfitLossPage() {
   const now = new Date();
-  const from = new Date(now.getFullYear() - 1, now.getMonth() + 1, 1);
+  const from = new Date(now.getFullYear() - 1, now.getMonth(), 1);
   const data = await api.reports.profitLoss({ from });
 
   const months = Array.from(
