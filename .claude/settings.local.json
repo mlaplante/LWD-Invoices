@@ -78,7 +78,8 @@
       "Bash(npm audit:*)",
       "Bash(npm show:*)",
       "Bash(npm test:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(/tmp/commit_tasks.sh:*)"
     ]
   }
 }

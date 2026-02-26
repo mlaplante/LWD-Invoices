@@ -49,6 +49,14 @@ export function createMockPrismaClient() {
     timeEntry: {
       findMany: vi.fn(),
     },
+    projectTask: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn(),
+    },
   };
 
   // Mock $transaction to handle both callback and array patterns
