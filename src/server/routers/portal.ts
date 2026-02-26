@@ -131,11 +131,21 @@ export const portalRouter = router({
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { portalToken: input.token },
-        select: { id: true, organizationId: true },
+        select: {
+          id: true,
+          number: true,
+          organizationId: true,
+          organization: {
+            select: {
+              name: true,
+              users: { select: { email: true, supabaseId: true, id: true } },
+            },
+          },
+        },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return ctx.db.comment.create({
+      const comment = await ctx.db.comment.create({
         data: {
           body: input.body,
           isPrivate: false,
@@ -145,5 +155,52 @@ export const portalRouter = router({
         },
         select: { id: true, body: true, authorName: true, createdAt: true },
       });
+
+      // Fire-and-forget notifications (non-fatal)
+      try {
+        const { Resend } = await import("resend");
+        const { render } = await import("@react-email/render");
+        const { InvoiceCommentEmail } = await import("@/emails/InvoiceCommentEmail");
+        const { notifyOrgAdmins } = await import("@/server/services/notifications");
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        const invoiceLink = `${appUrl}/invoices/${invoice.id}`;
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
+        const html = await render(
+          InvoiceCommentEmail({
+            invoiceNumber: invoice.number,
+            clientName: input.authorName,
+            authorName: input.authorName,
+            commentBody: input.body,
+            orgName: invoice.organization.name,
+            invoiceLink,
+          }),
+        );
+
+        await Promise.all(
+          invoice.organization.users
+            .filter((u) => u.email)
+            .map((u) =>
+              resend.emails.send({
+                from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
+                to: u.email as string,
+                subject: `New comment on Invoice #${invoice.number} from ${input.authorName}`,
+                html,
+              }),
+            ),
+        );
+
+        await notifyOrgAdmins(invoice.organizationId, {
+          type: "INVOICE_COMMENT",
+          title: `New comment on Invoice #${invoice.number}`,
+          body: `${input.authorName}: ${input.body.slice(0, 100)}${input.body.length > 100 ? "…" : ""}`,
+          link: `/invoices/${invoice.id}`,
+        });
+      } catch {
+        // Notification failure is non-fatal
+      }
+
+      return comment;
     }),
 });
