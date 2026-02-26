@@ -5,16 +5,20 @@ export function calcDaysUntilDue(now: Date, dueDate: Date): number {
   return Math.ceil((dueDate.getTime() - now.getTime()) / 86400000);
 }
 
-export function getReminderWindow(now: Date): { tomorrow: Date; in3Days: Date } {
-  const tomorrow = new Date(now);
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  tomorrow.setUTCHours(0, 0, 0, 0);
+export function getQueryWindow(now: Date): { from: Date; to: Date } {
+  const from = new Date(now);
+  from.setUTCDate(from.getUTCDate() + 1);
+  from.setUTCHours(0, 0, 0, 0);
 
-  const in3Days = new Date(now);
-  in3Days.setUTCDate(in3Days.getUTCDate() + 3);
-  in3Days.setUTCHours(23, 59, 59, 999);
+  const to = new Date(now);
+  to.setUTCDate(to.getUTCDate() + 90);
+  to.setUTCHours(23, 59, 59, 999);
 
-  return { tomorrow, in3Days };
+  return { from, to };
+}
+
+export function shouldSendReminder(daysUntilDue: number, override: number[], orgDays: number[]): boolean {
+  return (override.length > 0 ? override : orgDays).includes(daysUntilDue);
 }
 
 export const processPaymentReminders = inngest.createFunction(
@@ -22,18 +26,20 @@ export const processPaymentReminders = inngest.createFunction(
   { cron: "0 8 * * *" }, // daily at 8am UTC
   async () => {
     const now = new Date();
-    const { tomorrow, in3Days } = getReminderWindow(now);
+    const { from, to } = getQueryWindow(now);
 
     const invoices = await db.invoice.findMany({
       where: {
         status: { in: ["SENT", "PARTIALLY_PAID"] },
-        dueDate: { gte: tomorrow, lte: in3Days },
+        dueDate: { gte: from, lte: to },
         type: { in: ["SIMPLE", "DETAILED"] },
         isArchived: false,
       },
       include: {
         client: true,
-        organization: true,
+        organization: {
+          select: { name: true, paymentReminderDays: true },
+        },
         currency: true,
       },
     });
@@ -43,6 +49,8 @@ export const processPaymentReminders = inngest.createFunction(
         if (!invoice.client.email) return;
 
         const daysUntilDue = calcDaysUntilDue(now, invoice.dueDate!);
+
+        if (!shouldSendReminder(daysUntilDue, invoice.reminderDaysOverride, invoice.organization.paymentReminderDays)) return;
         const portalLink = `${process.env.NEXT_PUBLIC_APP_URL}/portal/${invoice.portalToken}`;
 
         const { Resend } = await import("resend");
