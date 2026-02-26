@@ -23,7 +23,7 @@ export function InvoiceViewedEmail({
   return (
     <Html lang="en">
       <Head />
-      <Preview>{`${clientName} viewed Invoice #${invoiceNumber}${total ? ` · ${currencySymbol}${total}` : ""}`}</Preview>
+      <Preview>{`${clientName} viewed Invoice #${invoiceNumber}${total && currencySymbol ? ` · ${currencySymbol}${total}` : ""}`}</Preview>
       <Body style={{ backgroundColor: "#f0efe9", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>
         <Container style={{ maxWidth: 580, margin: "32px auto", backgroundColor: "#ffffff", borderRadius: 12, border: "1px solid #e5e7eb" }}>
 

@@ -50,9 +50,11 @@ export function InvoiceCommentEmail({
             </Text>
 
             <Section style={{ backgroundColor: "#f0f7ff", borderLeft: `3px solid ${ACCENT}`, borderRadius: "0 6px 6px 0", padding: "16px 20px", margin: "0 0 28px" }}>
-              <Text style={{ color: "#1e3a5f", fontSize: 15, lineHeight: "1.7", fontStyle: "italic", margin: 0, whiteSpace: "pre-wrap" }}>
-                {commentBody}
-              </Text>
+              {commentBody.split("\n").map((line, i) => (
+                <Text key={i} style={{ color: "#1e3a5f", fontSize: 15, lineHeight: "1.7", fontStyle: "italic", margin: i === 0 ? 0 : "4px 0 0" }}>
+                  {line || "\u00A0"}
+                </Text>
+              ))}
             </Section>
 
             <Button
