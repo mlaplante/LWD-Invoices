@@ -11,14 +11,35 @@ function csvEscape(value: string | null | undefined): string {
   return str;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const orgId = user?.app_metadata?.organizationId as string | undefined;
   if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { searchParams } = new URL(request.url);
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+  const categoryId = searchParams.get("categoryId") ?? undefined;
+
+  const fromRaw = fromParam ? new Date(fromParam) : undefined;
+  const toRaw   = toParam   ? new Date(toParam)   : undefined;
+  const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
+  const to   = toRaw   && !isNaN(toRaw.getTime())   ? toRaw   : undefined;
+
   const expenses = await db.expense.findMany({
-    where: { organizationId: orgId },
+    where: {
+      organizationId: orgId,
+      ...(categoryId ? { categoryId } : {}),
+      ...(from || to
+        ? {
+            createdAt: {
+              ...(from ? { gte: from } : {}),
+              ...(to ? { lte: to } : {}),
+            },
+          }
+        : {}),
+    },
     include: {
       category: { select: { name: true } },
       supplier: { select: { name: true } },

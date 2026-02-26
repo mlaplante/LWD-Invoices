@@ -98,13 +98,14 @@ export const reportsRouter = router({
     }),
 
   expenseBreakdown: protectedProcedure
-    .input(dateRangeSchema)
+    .input(dateRangeSchema.extend({ categoryId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.expense.findMany({
         where: {
           organizationId: org.id,
+          ...(input.categoryId ? { categoryId: input.categoryId } : {}),
           ...(input.from || input.to
             ? {
                 createdAt: {
@@ -313,4 +314,12 @@ export const reportsRouter = router({
 
       return Array.from(byProject.values()).sort((a, b) => b.totalMinutes - a.totalMinutes);
     }),
+
+  expenseCategories: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.expenseCategory.findMany({
+      where: { organizationId: ctx.orgId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+  }),
 });

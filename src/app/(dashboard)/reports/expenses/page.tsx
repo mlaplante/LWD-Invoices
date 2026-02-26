@@ -1,14 +1,29 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { PrintReportButton } from "@/components/reports/PrintReportButton";
+import { ExpenseCategoryFilter } from "@/components/reports/ExpenseCategoryFilter";
 
-export default async function ExpensesReportPage() {
-  const expenses = await api.reports.expenseBreakdown({});
+export default async function ExpensesReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
+  const params = await searchParams;
+  const fromRaw = params.from ? new Date(params.from) : undefined;
+  const toRaw   = params.to   ? new Date(params.to)   : undefined;
+  const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
+  const to   = toRaw   && !isNaN(toRaw.getTime())   ? toRaw   : undefined;
+  const categoryId = params.categoryId ?? undefined;
+
+  const [expenses, categories] = await Promise.all([
+    api.reports.expenseBreakdown({ from, to, categoryId }),
+    api.reports.expenseCategories(),
+  ]);
 
   const totalAmount = expenses.reduce((sum, e) => sum + e.qty * Number(e.rate), 0);
 
-  // Group by category for summary
   const byCategory: Record<string, number> = {};
   for (const e of expenses) {
     const key = e.category?.name ?? "Uncategorized";
@@ -23,22 +38,36 @@ export default async function ExpensesReportPage() {
         <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/reports"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 print:hidden"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Reports
           </Link>
-          <span className="text-border/70">/</span>
+          <span className="text-border/70 print:hidden">/</span>
           <h1 className="text-xl font-bold tracking-tight">Expense Breakdown</h1>
         </div>
-        <a
-          href="/api/reports/expenses/export"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card px-3 py-1.5 text-sm font-medium hover:bg-accent/30 transition-colors"
-        >
-          <Download className="w-3.5 h-3.5" />
-          Export CSV
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/reports/expenses/export${(() => {
+              const p = new URLSearchParams();
+              if (params.from) p.set("from", params.from);
+              if (params.to) p.set("to", params.to);
+              if (params.categoryId) p.set("categoryId", params.categoryId);
+              const qs = p.toString();
+              return qs ? `?${qs}` : "";
+            })()}`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card px-3 py-1.5 text-sm font-medium hover:bg-accent/30 transition-colors print:hidden"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export CSV
+          </a>
+          <PrintReportButton />
+        </div>
       </div>
+
+      <ReportFilters basePath="/reports/expenses" from={params.from} to={params.to}>
+        <ExpenseCategoryFilter categories={categories} selected={categoryId} />
+      </ReportFilters>
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -61,9 +90,7 @@ export default async function ExpensesReportPage() {
       {/* Expenses table */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Expenses
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Expenses</p>
           <p className="text-base font-semibold mt-0.5">All Expenses</p>
         </div>
 
