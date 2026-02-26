@@ -32,10 +32,21 @@ export function createMockPrismaClient() {
     },
     payment: {
       create: vi.fn(),
+      findMany: vi.fn(),
     },
     partialPayment: {
       findUnique: vi.fn(),
       update: vi.fn(),
+      findMany: vi.fn(),
+    },
+    expense: {
+      findMany: vi.fn(),
+      groupBy: vi.fn(),
+    },
+    expenseCategory: {
+      findMany: vi.fn(),
+    },
+    timeEntry: {
       findMany: vi.fn(),
     },
   };
