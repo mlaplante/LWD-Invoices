@@ -130,6 +130,9 @@ export async function POST(req: NextRequest) {
             currencySymbol: fullInvoice.currency.symbol,
             orgName: fullInvoice.organization.name,
             paidAt: new Date().toLocaleDateString(),
+            portalLink: fullInvoice.portalToken
+              ? `${process.env.NEXT_PUBLIC_APP_URL}/portal/${fullInvoice.portalToken}`
+              : undefined,
           })
         );
 
