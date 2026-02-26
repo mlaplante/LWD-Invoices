@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download } from "lucide-react";
 
 const reports = [
   {
@@ -23,6 +23,27 @@ const reports = [
     description: "Project expenses by category and supplier.",
     icon: <Receipt className="w-4 h-4" />,
     color: "bg-violet-50 text-violet-600",
+  },
+  {
+    href: "/reports/profit-loss",
+    label: "Profit & Loss",
+    description: "Net income breakdown with revenue vs. expenses by month.",
+    icon: <TrendingUp className="w-4 h-4" />,
+    color: "bg-blue-50 text-blue-600",
+  },
+  {
+    href: "/reports/aging",
+    label: "Invoice Aging",
+    description: "Outstanding invoices bucketed by days overdue.",
+    icon: <Clock className="w-4 h-4" />,
+    color: "bg-red-50 text-red-600",
+  },
+  {
+    href: "/reports/time",
+    label: "Time Tracking",
+    description: "Hours logged and billable totals by project.",
+    icon: <Timer className="w-4 h-4" />,
+    color: "bg-cyan-50 text-cyan-600",
   },
 ];
 
@@ -73,6 +94,13 @@ export default async function ReportsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
+        <a
+          href="/api/reports/invoices/export"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground border border-border/50 rounded-lg px-3 py-1.5 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+          Export Invoices CSV
+        </a>
       </div>
 
       {/* Revenue chart card */}
@@ -162,7 +190,7 @@ export default async function ReportsPage() {
       </div>
 
       {/* Nav cards */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {reports.map((r) => (
           <Link
             key={r.href}
