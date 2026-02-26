@@ -11,6 +11,7 @@ export function createMockPrismaClient() {
       create: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
@@ -18,6 +19,7 @@ export function createMockPrismaClient() {
     invoiceLine: {
       deleteMany: vi.fn(),
       create: vi.fn(),
+      findMany: vi.fn(),
     },
     tax: {
       findMany: vi.fn(),
@@ -39,8 +41,26 @@ export function createMockPrismaClient() {
       update: vi.fn(),
       findMany: vi.fn(),
     },
-    expense: {
+    client: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
       findMany: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    project: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    expense: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
       groupBy: vi.fn(),
     },
     expenseCategory: {
@@ -48,6 +68,8 @@ export function createMockPrismaClient() {
     },
     timeEntry: {
       findMany: vi.fn(),
+      count: vi.fn(),
+      aggregate: vi.fn(),
     },
     projectTask: {
       findMany: vi.fn(),
@@ -56,6 +78,12 @@ export function createMockPrismaClient() {
       update: vi.fn(),
       updateMany: vi.fn(),
       delete: vi.fn(),
+    },
+    projectTemplate: {
+      findUnique: vi.fn(),
+    },
+    creditNoteApplication: {
+      create: vi.fn(),
     },
   };
 
