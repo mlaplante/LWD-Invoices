@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { db } from "@/server/db";
 import { notFound } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 export default async function PaymentSuccessPage({
   params,
@@ -17,8 +19,8 @@ export default async function PaymentSuccessPage({
   if (!invoice) notFound();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-lg border bg-white shadow-sm p-8 text-center">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-2xl border border-border/50 bg-card p-8 text-center">
         {/* Success icon */}
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
           <svg
@@ -32,31 +34,24 @@ export default async function PaymentSuccessPage({
           </svg>
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Received!</h1>
-        <p className="text-gray-500 mb-1">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Payment Received!</h1>
+        <p className="text-muted-foreground mb-1">
           Thank you for your payment on invoice <strong>#{invoice.number}</strong>.
         </p>
-        <p className="text-sm text-gray-400 mb-8">
+        <p className="text-sm text-muted-foreground mb-8">
           A receipt has been sent to your email address.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <a
-            href={`/api/portal/${token}/pdf`}
-            download
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700 transition-colors"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Download Receipt
-          </a>
-          <Link
-            href={`/portal/${token}`}
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Back to Invoice
-          </Link>
+          <Button asChild>
+            <a href={`/api/portal/${token}/pdf`} download>
+              <Download className="w-4 h-4" />
+              Download Receipt
+            </a>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/portal/${token}`}>Back to Invoice</Link>
+          </Button>
         </div>
       </div>
     </div>
