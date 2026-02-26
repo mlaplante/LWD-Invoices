@@ -25,7 +25,7 @@ export default async function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-background">
       {/* ── Desktop sidebar (hidden on mobile) ──────────────── */}
-      <aside className="hidden lg:flex w-56 shrink-0 flex-col p-4 gap-0 bg-sidebar">
+      <aside className="hidden lg:flex w-56 shrink-0 flex-col p-4 gap-0 bg-sidebar print:hidden">
         <div className="flex items-center gap-2.5 px-2 mb-6">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/30">
             <span className="text-primary-foreground text-sm font-black tracking-tight">L</span>
@@ -58,7 +58,7 @@ export default async function DashboardLayout({
       </aside>
 
       {/* ── Mobile fixed top header (hidden on desktop) ─────── */}
-      <header className="lg:hidden fixed top-0 inset-x-0 z-20 h-14 flex items-center justify-between px-4 bg-sidebar border-b border-sidebar-border">
+      <header className="lg:hidden fixed top-0 inset-x-0 z-20 h-14 flex items-center justify-between px-4 bg-sidebar border-b border-sidebar-border print:hidden">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/30">
             <span className="text-primary-foreground text-xs font-black">L</span>
@@ -79,7 +79,7 @@ export default async function DashboardLayout({
       {/* ── Main area ───────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 lg:p-5 lg:pl-0">
         {/* Desktop top bar */}
-        <header className="hidden lg:flex items-center justify-end gap-3 mb-5 px-1">
+        <header className="hidden lg:flex items-center justify-end gap-3 mb-5 px-1 print:hidden">
           <NotificationBell />
           <UserMenu
             email={user?.email}
@@ -96,7 +96,7 @@ export default async function DashboardLayout({
       </div>
 
       {/* ── Mobile bottom navigation ────────────────────────── */}
-      <MobileNav orgName={orgName} />
+      <div className="print:hidden"><MobileNav orgName={orgName} /></div>
     </div>
   );
 }
