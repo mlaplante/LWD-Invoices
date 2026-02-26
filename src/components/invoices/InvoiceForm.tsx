@@ -28,12 +28,14 @@ type InvoiceFormData = {
   notes?: string;
   clientId: string;
   lines: LineItemValue[];
+  reminderDaysOverride: number[];
 };
 
 type Props = {
   mode: "create" | "edit";
   initialData?: Partial<InvoiceFormData>;
-  clients: { id: string; name: string }[];
+  orgPaymentTermsDays: number;
+  clients: { id: string; name: string; defaultPaymentTermsDays: number | null }[];
   currencies: { id: string; code: string; symbol: string; symbolPosition: string }[];
   taxes: { id: string; name: string; rate: number; isCompound: boolean }[];
 };
@@ -45,7 +47,9 @@ const TYPE_LABELS: Record<InvoiceType, string> = {
   [InvoiceType.CREDIT_NOTE]: "Credit Note",
 };
 
-export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: Props) {
+const REMINDER_DAY_OPTIONS = [1, 2, 3, 5, 7, 14, 30];
+
+export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, currencies, taxes }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const savingRef = useRef(false);
@@ -60,8 +64,13 @@ export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: P
     clientId: "",
     notes: "",
     lines: [],
+    reminderDaysOverride: initialData?.reminderDaysOverride ?? [],
     ...initialData,
   });
+
+  const [useCustomReminders, setUseCustomReminders] = useState(
+    (initialData?.reminderDaysOverride?.length ?? 0) > 0
+  );
 
   const activeCurrency =
     currencies.find((c) => c.id === form.currencyId) ?? defaultCurrency;
@@ -96,6 +105,18 @@ export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: P
   const createMutation = trpc.invoices.create.useMutation();
   const updateMutation = trpc.invoices.update.useMutation();
 
+  function handleClientChange(clientId: string) {
+    const client = clients.find((c) => c.id === clientId);
+    const termsDays = client?.defaultPaymentTermsDays ?? orgPaymentTermsDays;
+    if (termsDays === 0) {
+      setForm((p) => ({ ...p, clientId, dueDate: p.date }));
+    } else {
+      const due = new Date(form.date);
+      due.setDate(due.getDate() + termsDays);
+      setForm((p) => ({ ...p, clientId, dueDate: due.toISOString().slice(0, 10) }));
+    }
+  }
+
   function buildInput() {
     return {
       type: form.type,
@@ -104,6 +125,7 @@ export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: P
       currencyId: form.currencyId,
       clientId: form.clientId,
       notes: form.notes || undefined,
+      reminderDaysOverride: form.reminderDaysOverride,
       lines: form.lines.map((l, idx) => ({
         sort: idx,
         lineType: l.lineType,
@@ -152,7 +174,7 @@ export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: P
           <label className="text-sm font-medium">Client</label>
           <Select
             value={form.clientId}
-            onValueChange={(v: string) => setForm((f) => ({ ...f, clientId: v }))}
+            onValueChange={(v: string) => handleClientChange(v)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select client…" />
@@ -262,6 +284,44 @@ export function InvoiceForm({ mode, initialData, clients, currencies, taxes }: P
           placeholder="Payment terms, bank details, thank you message…"
           rows={3}
         />
+      </div>
+
+      {/* Reminder override */}
+      <div>
+        <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!useCustomReminders}
+            onChange={(e) => {
+              setUseCustomReminders(!e.target.checked);
+              if (e.target.checked) setForm((p) => ({ ...p, reminderDaysOverride: [] }));
+            }}
+            className="rounded"
+          />
+          Use org default reminder schedule
+        </label>
+        {useCustomReminders && (
+          <div className="mt-2 flex flex-wrap gap-2 pl-1">
+            {REMINDER_DAY_OPTIONS.map((d) => (
+              <label key={d} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.reminderDaysOverride.includes(d)}
+                  onChange={(e) => {
+                    setForm((p) => ({
+                      ...p,
+                      reminderDaysOverride: e.target.checked
+                        ? [...p.reminderDaysOverride, d].sort((a, b) => a - b)
+                        : p.reminderDaysOverride.filter((x) => x !== d),
+                    }));
+                  }}
+                  className="rounded"
+                />
+                {d === 1 ? "1 day" : `${d} days`}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Totals panel */}

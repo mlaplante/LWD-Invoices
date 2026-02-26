@@ -42,6 +42,7 @@ const invoiceWriteSchema = z.object({
   notes: z.string().optional(),
   clientId: z.string().min(1),
   lines: z.array(lineSchema).default([]),
+  reminderDaysOverride: z.array(z.number().int().min(1)).optional(),
 });
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -225,6 +226,7 @@ export const invoicesRouter = router({
             notes: input.notes,
             clientId: input.clientId,
             organizationId: ctx.orgId,
+            reminderDaysOverride: input.reminderDaysOverride ?? [],
             subtotal: invoiceTotals.subtotal,
             discountTotal: invoiceTotals.discountTotal,
             taxTotal: invoiceTotals.taxTotal,

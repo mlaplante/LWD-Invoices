@@ -11,11 +11,12 @@ export default async function EditInvoicePage({
 }) {
   const { id } = await params;
 
-  const [invoice, clients, currencies, taxes] = await Promise.all([
+  const [invoice, clients, currencies, taxes, org] = await Promise.all([
     api.invoices.get({ id }).catch(() => null),
     api.clients.list({ includeArchived: false }),
     api.currencies.list(),
     api.taxes.list(),
+    api.organization.get(),
   ]);
 
   if (!invoice) notFound();
@@ -34,6 +35,7 @@ export default async function EditInvoicePage({
     number: invoice.number,
     notes: invoice.notes ?? "",
     clientId: invoice.clientId,
+    reminderDaysOverride: invoice.reminderDaysOverride,
     lines: invoice.lines.map((line) => ({
       sort: line.sort,
       lineType: line.lineType,
@@ -67,7 +69,8 @@ export default async function EditInvoicePage({
       <InvoiceForm
         mode="edit"
         initialData={initialData}
-        clients={clients.map((c) => ({ id: c.id, name: c.name }))}
+        orgPaymentTermsDays={org.defaultPaymentTermsDays}
+        clients={clients.map((c) => ({ id: c.id, name: c.name, defaultPaymentTermsDays: c.defaultPaymentTermsDays }))}
         currencies={currencies.map((c) => ({ id: c.id, code: c.code, symbol: c.symbol, symbolPosition: c.symbolPosition }))}
         taxes={taxes.map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate), isCompound: t.isCompound }))}
       />

@@ -4,10 +4,11 @@ import { ArrowLeft } from "lucide-react";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
 
 export default async function NewInvoicePage() {
-  const [clients, currencies, taxes] = await Promise.all([
+  const [clients, currencies, taxes, org] = await Promise.all([
     api.clients.list({ includeArchived: false }),
     api.currencies.list(),
     api.taxes.list(),
+    api.organization.get(),
   ]);
 
   return (
@@ -25,7 +26,8 @@ export default async function NewInvoicePage() {
       </div>
       <InvoiceForm
         mode="create"
-        clients={clients.map((c) => ({ id: c.id, name: c.name }))}
+        orgPaymentTermsDays={org.defaultPaymentTermsDays}
+        clients={clients.map((c) => ({ id: c.id, name: c.name, defaultPaymentTermsDays: c.defaultPaymentTermsDays }))}
         currencies={currencies.map((c) => ({ id: c.id, code: c.code, symbol: c.symbol, symbolPosition: c.symbolPosition }))}
         taxes={taxes.map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate), isCompound: t.isCompound }))}
       />
