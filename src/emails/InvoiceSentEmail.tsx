@@ -30,7 +30,7 @@ export function InvoiceSentEmail({
           {/* Header */}
           <Section style={{ backgroundColor: "#0f1628", padding: "28px 32px", textAlign: "center" }}>
             {logoUrl ? (
-              <Img src={logoUrl} alt={orgName} height={40} style={{ maxHeight: 40, margin: "0 auto" }} />
+              <Img src={logoUrl} alt={orgName} width={200} height={40} style={{ maxWidth: 200, maxHeight: 40, height: "auto", margin: "0 auto" }} />
             ) : (
               <Text style={{ color: "#ffffff", fontSize: 22, fontWeight: "bold", fontFamily: "Georgia, 'Times New Roman', Times, serif", margin: 0, letterSpacing: "-0.5px" }}>
                 {orgName}
