@@ -22,6 +22,7 @@ export default async function PaymentsReportPage({
   const toRaw   = params.to   ? new Date(params.to)   : undefined;
   const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
   const to   = toRaw   && !isNaN(toRaw.getTime())   ? toRaw   : undefined;
+  if (to) to.setHours(23, 59, 59, 999);
 
   const byGateway = await api.reports.paymentsByGateway({ from, to });
   const entries = Object.entries(byGateway);

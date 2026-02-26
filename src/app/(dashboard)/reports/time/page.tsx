@@ -16,12 +16,11 @@ export default async function TimeTrackingReportPage({
   searchParams: Promise<Record<string, string>>;
 }) {
   const params = await searchParams;
-  const now = new Date();
-  const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1);
   const fromRaw = params.from ? new Date(params.from) : undefined;
   const toRaw   = params.to   ? new Date(params.to)   : undefined;
-  const from = (fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined) ?? defaultFrom;
+  const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
   const to   = toRaw   && !isNaN(toRaw.getTime())   ? toRaw   : undefined;
+  if (to) to.setHours(23, 59, 59, 999);
 
   const data = await api.reports.timeTracking({ from, to });
 

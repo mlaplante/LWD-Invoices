@@ -26,6 +26,7 @@ export async function GET(request: Request) {
   const toRaw   = toParam   ? new Date(toParam)   : undefined;
   const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
   const to   = toRaw   && !isNaN(toRaw.getTime())   ? toRaw   : undefined;
+  if (to) to.setHours(23, 59, 59, 999);
 
   const expenses = await db.expense.findMany({
     where: {
