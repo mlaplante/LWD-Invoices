@@ -2,7 +2,9 @@ import { inngest } from "../client";
 import { db } from "@/server/db";
 
 export function calcDaysUntilDue(now: Date, dueDate: Date): number {
-  return Math.ceil((dueDate.getTime() - now.getTime()) / 86400000);
+  const nowMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const dueMidnight = Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), dueDate.getUTCDate());
+  return Math.round((dueMidnight - nowMidnight) / 86400000);
 }
 
 export function getQueryWindow(now: Date): { from: Date; to: Date } {
@@ -44,19 +46,20 @@ export const processPaymentReminders = inngest.createFunction(
       },
     });
 
+    const { Resend } = await import("resend");
+    const { render } = await import("@react-email/render");
+    const { PaymentReminderEmail } = await import("@/emails/PaymentReminderEmail");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
     const results = await Promise.allSettled(
       invoices.map(async (invoice) => {
         if (!invoice.client.email) return;
+        if (!invoice.dueDate) return;
 
-        const daysUntilDue = calcDaysUntilDue(now, invoice.dueDate!);
+        const daysUntilDue = calcDaysUntilDue(now, invoice.dueDate);
 
         if (!shouldSendReminder(daysUntilDue, invoice.reminderDaysOverride, invoice.organization.paymentReminderDays)) return;
         const portalLink = `${process.env.NEXT_PUBLIC_APP_URL}/portal/${invoice.portalToken}`;
-
-        const { Resend } = await import("resend");
-        const { render } = await import("@react-email/render");
-        const { PaymentReminderEmail } = await import("@/emails/PaymentReminderEmail");
-        const resend = new Resend(process.env.RESEND_API_KEY);
 
         const html = await render(
           PaymentReminderEmail({
@@ -64,7 +67,7 @@ export const processPaymentReminders = inngest.createFunction(
             clientName: invoice.client.name,
             total: invoice.total.toFixed(2),
             currencySymbol: invoice.currency.symbol,
-            dueDate: invoice.dueDate!.toLocaleDateString(),
+            dueDate: invoice.dueDate.toLocaleDateString(),
             orgName: invoice.organization.name,
             portalLink,
             daysUntilDue,

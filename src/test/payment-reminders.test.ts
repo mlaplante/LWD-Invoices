@@ -2,22 +2,28 @@ import { describe, it, expect } from "vitest";
 import { calcDaysUntilDue, getQueryWindow, shouldSendReminder } from "@/inngest/functions/payment-reminders";
 
 describe("calcDaysUntilDue", () => {
-  it("returns 1 for an invoice due in exactly 1 day", () => {
-    const now = new Date("2026-03-09T12:00:00Z");
-    const due = new Date("2026-03-10T12:00:00Z");
+  it("returns 1 when cron fires at 8am and invoice is due tomorrow midnight", () => {
+    const now = new Date("2026-03-10T08:00:00Z");
+    const due = new Date("2026-03-11T00:00:00Z");
     expect(calcDaysUntilDue(now, due)).toBe(1);
   });
 
-  it("returns 3 for an invoice due in exactly 3 days", () => {
-    const now = new Date("2026-03-07T00:00:00Z");
-    const due = new Date("2026-03-10T00:00:00Z");
+  it("returns 3 when cron fires at 8am and invoice is due in 3 days", () => {
+    const now = new Date("2026-03-10T08:00:00Z");
+    const due = new Date("2026-03-13T00:00:00Z");
     expect(calcDaysUntilDue(now, due)).toBe(3);
   });
 
-  it("ceils partial days (1.5 days → 2)", () => {
-    const now = new Date("2026-03-09T06:00:00Z");
-    const due = new Date("2026-03-10T18:00:00Z"); // 36h later
-    expect(calcDaysUntilDue(now, due)).toBe(2);
+  it("returns 1 for a non-midnight due date on the same calendar day as tomorrow", () => {
+    const now = new Date("2026-03-10T08:00:00Z");
+    const due = new Date("2026-03-11T18:00:00Z");
+    expect(calcDaysUntilDue(now, due)).toBe(1);
+  });
+
+  it("returns 0 when cron fires at 8am and invoice is due today", () => {
+    const now = new Date("2026-03-10T08:00:00Z");
+    const due = new Date("2026-03-10T00:00:00Z");
+    expect(calcDaysUntilDue(now, due)).toBe(0);
   });
 });
 
