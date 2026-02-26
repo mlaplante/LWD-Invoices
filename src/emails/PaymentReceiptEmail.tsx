@@ -78,7 +78,7 @@ export function PaymentReceiptEmail({
           <Hr style={{ borderColor: "#f3f4f6", margin: 0 }} />
           <Section style={{ padding: "20px 40px", textAlign: "center" }}>
             <Text style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
-              Sent by {orgName} · Powered by Pancake
+              Sent by {orgName} · Powered by LWD Invoices
             </Text>
           </Section>
 
