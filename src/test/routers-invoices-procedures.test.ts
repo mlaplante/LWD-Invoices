@@ -563,4 +563,101 @@ describe("Invoices Router Procedures", () => {
       }
     });
   });
+
+  describe("list", () => {
+    it("returns paginated invoices", async () => {
+      ctx.db.invoice.findMany.mockResolvedValue([
+        {
+          id: "inv_1",
+          number: "INV-2026-0001",
+          status: "SENT",
+          total: 1000,
+          client: { id: "c1", name: "Client 1" },
+          currency: { id: "usd", symbol: "$", symbolPosition: "LEFT" },
+        },
+      ]);
+      ctx.db.invoice.count.mockResolvedValue(1);
+
+      const result = await caller.list({
+        page: 1,
+        pageSize: 25,
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(ctx.db.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 0,
+          take: 25,
+        })
+      );
+    });
+
+    it("filters by status", async () => {
+      ctx.db.invoice.findMany.mockResolvedValue([]);
+      ctx.db.invoice.count.mockResolvedValue(0);
+
+      await caller.list({
+        status: ["DRAFT"],
+        page: 1,
+        pageSize: 25,
+      });
+
+      expect(ctx.db.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { in: ["DRAFT"] },
+          }),
+        })
+      );
+    });
+
+    it("filters by date range", async () => {
+      ctx.db.invoice.findMany.mockResolvedValue([]);
+      ctx.db.invoice.count.mockResolvedValue(0);
+
+      const from = new Date("2026-01-01");
+      const to = new Date("2026-03-31");
+
+      await caller.list({
+        dateFrom: from,
+        dateTo: to,
+        page: 1,
+        pageSize: 25,
+      });
+
+      expect(ctx.db.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            date: {
+              gte: from,
+              lte: to,
+            },
+          }),
+        })
+      );
+    });
+
+    it("searches by invoice number and client name", async () => {
+      ctx.db.invoice.findMany.mockResolvedValue([]);
+      ctx.db.invoice.count.mockResolvedValue(0);
+
+      await caller.list({
+        search: "Acme",
+        page: 1,
+        pageSize: 25,
+      });
+
+      expect(ctx.db.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { number: { contains: "Acme", mode: "insensitive" } },
+              { client: { name: { contains: "Acme", mode: "insensitive" } } },
+            ],
+          }),
+        })
+      );
+    });
+  });
 });

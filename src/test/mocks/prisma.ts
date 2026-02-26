@@ -40,10 +40,14 @@ export function createMockPrismaClient() {
     },
   };
 
-  // Mock $transaction to pass the same client mocks to the callback
-  mockClient.$transaction = vi.fn(async (callback) => {
-    if (typeof callback === "function") {
-      return await callback(mockClient);
+  // Mock $transaction to handle both callback and array patterns
+  mockClient.$transaction = vi.fn(async (input) => {
+    if (typeof input === "function") {
+      return await input(mockClient);
+    }
+    // For array of promises pattern: return the resolved values
+    if (Array.isArray(input)) {
+      return await Promise.all(input);
     }
     return Promise.resolve([]);
   });
