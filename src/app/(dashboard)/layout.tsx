@@ -31,7 +31,7 @@ export default async function DashboardLayout({
             <span className="text-primary-foreground text-sm font-black tracking-tight">P</span>
           </div>
           <span className="font-extrabold text-[17px] text-sidebar-foreground tracking-tight">
-            Pancake
+            LWD
           </span>
         </div>
 
@@ -64,7 +64,7 @@ export default async function DashboardLayout({
             <span className="text-primary-foreground text-xs font-black">P</span>
           </div>
           <span className="font-extrabold text-sm text-sidebar-foreground tracking-tight">
-            Pancake
+            LWD
           </span>
         </div>
         <div className="flex items-center gap-3">
