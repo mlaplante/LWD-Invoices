@@ -105,16 +105,26 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
   const createMutation = trpc.invoices.create.useMutation();
   const updateMutation = trpc.invoices.update.useMutation();
 
+  function calcDueDate(invoiceDate: string, termsDays: number): string {
+    if (termsDays === 0) return invoiceDate;
+    const due = new Date(invoiceDate);
+    due.setDate(due.getDate() + termsDays);
+    return due.toISOString().slice(0, 10);
+  }
+
   function handleClientChange(clientId: string) {
     const client = clients.find((c) => c.id === clientId);
     const termsDays = client?.defaultPaymentTermsDays ?? orgPaymentTermsDays;
-    if (termsDays === 0) {
-      setForm((p) => ({ ...p, clientId, dueDate: p.date }));
-    } else {
-      const due = new Date(form.date);
-      due.setDate(due.getDate() + termsDays);
-      setForm((p) => ({ ...p, clientId, dueDate: due.toISOString().slice(0, 10) }));
-    }
+    setForm((p) => ({ ...p, clientId, dueDate: calcDueDate(p.date, termsDays) }));
+  }
+
+  function handleDateChange(newDate: string) {
+    setForm((p) => {
+      if (!p.clientId) return { ...p, date: newDate };
+      const client = clients.find((c) => c.id === p.clientId);
+      const termsDays = client?.defaultPaymentTermsDays ?? orgPaymentTermsDays;
+      return { ...p, date: newDate, dueDate: calcDueDate(newDate, termsDays) };
+    });
   }
 
   function buildInput() {
@@ -217,7 +227,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
           <Input
             type="date"
             value={form.date}
-            onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+            onChange={(e) => handleDateChange(e.target.value)}
           />
         </div>
 

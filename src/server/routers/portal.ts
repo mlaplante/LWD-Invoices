@@ -135,10 +135,11 @@ export const portalRouter = router({
           id: true,
           number: true,
           organizationId: true,
+          client: { select: { name: true } },
           organization: {
             select: {
               name: true,
-              users: { select: { email: true, supabaseId: true, id: true } },
+              users: { select: { email: true, supabaseId: true, id: true, role: true } },
             },
           },
         },
@@ -170,7 +171,7 @@ export const portalRouter = router({
         const html = await render(
           InvoiceCommentEmail({
             invoiceNumber: invoice.number,
-            clientName: input.authorName,
+            clientName: invoice.client.name,
             authorName: input.authorName,
             commentBody: input.body,
             orgName: invoice.organization.name,
@@ -180,7 +181,7 @@ export const portalRouter = router({
 
         await Promise.all(
           invoice.organization.users
-            .filter((u) => u.email)
+            .filter((u) => u.email && u.role === "ADMIN")
             .map((u) =>
               resend.emails.send({
                 from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
