@@ -1,0 +1,106 @@
+
+> laplante-web-development-invoices@0.1.0 test
+> vitest
+
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/mlaplante/Sites/pancake[39m
+
+ [32m✓[39m src/test/api-routes.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32m✓[39m src/test/routers-reports-procedures.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/test/routers-organization-procedures.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m src/test/routers-partialpayments-procedures.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m src/test/routers-recurringinvoices-procedures.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+[90mstdout[2m | src/test/routers-invoices-procedures.test.ts[2m > [22m[2mInvoices Router Procedures[2m > [22m[2mcreate[2m > [22m[2mcreates invoice with lines and taxes
+[22m[39mprisma:error 
+Invalid `db.auditLog.create()` invocation in
+/Users/mlaplante/Sites/pancake/src/server/services/audit.ts:16:21
+
+  13 }
+  14 
+  15 export async function logAudit(input: AuditInput): Promise<void> {
+→ 16   await db.auditLog.create(
+
+
+[90mstdout[2m | src/test/routers-invoices-procedures.test.ts[2m > [22m[2mInvoices Router Procedures[2m > [22m[2mcreate[2m > [22m[2mcreates invoice with multiple line items and taxes
+[22m[39mprisma:error 
+Invalid `db.auditLog.create()` invocation in
+/Users/mlaplante/Sites/pancake/src/server/services/audit.ts:16:21
+
+  13 }
+  14 
+  15 export async function logAudit(input: AuditInput): Promise<void> {
+→ 16   await db.auditLog.create(
+
+
+[90mstdout[2m | src/test/routers-invoices-procedures.test.ts[2m > [22m[2mInvoices Router Procedures[2m > [22m[2mupdate[2m > [22m[2mupdates DRAFT invoice successfully
+[22m[39mprisma:error 
+Invalid `db.auditLog.create()` invocation in
+/Users/mlaplante/Sites/pancake/src/server/services/audit.ts:16:21
+
+  13 }
+  14 
+  15 export async function logAudit(input: AuditInput): Promise<void> {
+→ 16   await db.auditLog.create(
+
+
+ [32m✓[39m src/test/routers-projects-procedures.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/test/routers-invoices-procedures.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 190[2mms[22m[39m
+ [32m✓[39m src/test/routers-additional-coverage.test.ts [2m([22m[2m106 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+ [32m✓[39m v2/src/test/services-notifications.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/test/services-storage.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/test/routers-clients-procedures.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 505[2mms[22m[39m
+       [33m[2m✓[22m[39m hashes portal passphrase on create [33m 479[2mms[22m[39m
+ [32m✓[39m src/test/routers-expenses-procedures.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m src/test/routers-tasks-procedures.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m src/test/v1-auth-helpers.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/test/routers-auditlog-procedures.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m v2/src/test/services-invoice-numbering.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/test/rate-limiter.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m src/test/routers-creditnotes-procedures.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m src/test/routers-gatewaysettings-procedures.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m src/test/routers-timeentries-procedures.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+[90mstderr[2m | src/test/stripe-webhook.test.ts[2m > [22m[2mStripe webhook[2m > [22m[2mcalls $transaction to record payment for an unpaid invoice
+[22m[39m[stripe-webhook] Failed to send payment receipt email: TypeError: Cannot read properties of undefined (reading 'email')
+    at Module.POST [90m(/Users/mlaplante/Sites/pancake/[39msrc/app/api/webhooks/stripe/route.ts:119:24[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at [90m/Users/mlaplante/Sites/pancake/[39msrc/test/stripe-webhook.test.ts:89:17
+    at [90mfile:///Users/mlaplante/Sites/pancake/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:915:20
+
+ [32m✓[39m src/test/stripe-webhook.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/test/utils.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/test/routers-currencies-items-procedures.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/test/routers-invoices-helpers.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/test/routers-reports-helpers.test.ts [2m([22m[2m38 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/test/estimate-route.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/test/routers-invoices-query-builders.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/test/routers-invoices-validation.test.ts [2m([22m[2m53 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/test/routers-timesheets-procedures.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/test/recurring.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+(node:84087) [DEP0182] DeprecationWarning: Using AES-GCM authentication tags of less than 128 bits without specifying the authTagLength option when initializing decryption is deprecated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [32m✓[39m src/test/encryption.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/test/v1-api-endpoints.test.ts [2m([22m[2m35 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/test/services-gateway-config.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/test/inngest-payment-reminders.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/test/services-stripe.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/test/time-rounding.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/test/tax-calculator.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/test/services-audit.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/test/payment-reminders.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/test/smoke.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m src/test/reports.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m src/test/v1-pagination.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m src/test/overdue-invoices.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/test/credit-notes.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m src/test/routers-helpers.test.ts [2m([22m[2m28 tests[22m[2m)[22m[33m 2972[2mms[22m[39m
+       [33m[2m✓[22m[39m generates hash for valid passphrase [33m 427[2mms[22m[39m
+       [33m[2m✓[22m[39m generates different hashes for same passphrase [33m 905[2mms[22m[39m
+       [33m[2m✓[22m[39m handles long passphrase [33m 309[2mms[22m[39m
+       [33m[2m✓[22m[39m hash can be verified with bcrypt [33m 440[2mms[22m[39m
+       [33m[2m✓[22m[39m hash verification fails with wrong password [33m 438[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m45 passed[39m[22m[90m (45)[39m
+[2m      Tests [22m [1m[32m799 passed[39m[22m[90m (799)[39m
+[2m   Start at [22m 18:00:56
+[2m   Duration [22m 3.51s[2m (transform 1.96s, setup 659ms, import 7.79s, tests 4.36s, environment 5ms)[22m
+

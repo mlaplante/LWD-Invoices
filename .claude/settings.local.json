@@ -80,7 +80,12 @@
       "Bash(npm test:*)",
       "Bash(wc:*)",
       "Bash(/tmp/commit_tasks.sh:*)",
-      "Bash(/tmp/test_summary.txt:*)"
+      "Bash(/tmp/test_summary.txt:*)",
+      "Bash(/tmp/count_tests.sh:*)",
+      "Bash(chmod +x /tmp/count_tests.sh)",
+      "Bash(/tmp/count_tests.sh)",
+      "Bash(tee test-output.txt)",
+      "Bash(tee coverage-output.txt)"
     ]
   }
 }
