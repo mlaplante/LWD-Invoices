@@ -2,7 +2,7 @@
 import { vi } from "vitest";
 
 // Set test environment variables before any modules are loaded
-process.env.NODE_ENV = "test";
+(process.env as any).NODE_ENV = "test";
 process.env.DATABASE_URL ??= "postgresql://test:test@localhost/test";
 process.env.RESEND_API_KEY ??= "test_key";
 process.env.SUPABASE_URL ??= "https://test.supabase.co";
