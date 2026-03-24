@@ -7,7 +7,7 @@ import { decryptJson } from "@/server/services/encryption";
 import type { PayPalConfig } from "@/server/services/gateway-config";
 import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
@@ -58,6 +58,7 @@ export default async function PortalInvoicePage({
         orderBy: { sort: "asc" },
       },
       payments: { orderBy: { paidAt: "asc" } },
+      proposalContent: { select: { id: true } },
     },
   });
 
@@ -231,6 +232,18 @@ export default async function PortalInvoicePage({
                 token={token}
                 currentStatus={invoice.status}
               />
+            )}
+
+            {/* View Full Proposal link */}
+            {invoice.proposalContent && (
+              <a
+                href={`/api/portal/${token}/proposal-pdf`}
+                target="_blank"
+                className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+              >
+                <FileText className="h-4 w-4" />
+                View Full Proposal
+              </a>
             )}
           </div>
         </div>
