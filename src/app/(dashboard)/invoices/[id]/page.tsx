@@ -14,6 +14,7 @@ import { ProposalEditor } from "@/components/invoices/ProposalEditor";
 import { ArchiveInvoiceButton } from "@/components/invoices/ArchiveInvoiceButton";
 import { DeleteInvoiceButton } from "@/components/invoices/DeleteInvoiceButton";
 import { DuplicateInvoiceButton } from "@/components/invoices/DuplicateInvoiceButton";
+import { ConvertEstimateButton } from "@/components/invoices/ConvertEstimateButton";
 import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
@@ -156,6 +157,9 @@ export default async function InvoiceDetailPage({
               invoiceId={invoice.id}
               invoiceTotal={Number(invoice.total)}
             />
+          )}
+          {invoice.type === "ESTIMATE" && invoice.status === "ACCEPTED" && (
+            <ConvertEstimateButton invoiceId={invoice.id} />
           )}
           <DuplicateInvoiceButton invoiceId={invoice.id} />
           <ArchiveInvoiceButton invoiceId={invoice.id} isArchived={invoice.isArchived} />

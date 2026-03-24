@@ -370,6 +370,72 @@ export const invoicesRouter = router({
       return invoice;
     }),
 
+  convertEstimateToInvoice: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const source = await ctx.db.invoice.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+        include: { lines: { include: { taxes: true } } },
+      });
+      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+      if (source.type !== InvoiceType.ESTIMATE) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only estimates can be converted to invoices" });
+      }
+      if (source.status !== InvoiceStatus.ACCEPTED) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only accepted estimates can be converted" });
+      }
+
+      return ctx.db.$transaction(async (tx) => {
+        const txClient = tx as unknown as PrismaClient;
+        const number = await generateInvoiceNumber(txClient, ctx.orgId);
+
+        return tx.invoice.create({
+          data: {
+            number,
+            type: InvoiceType.DETAILED,
+            status: InvoiceStatus.DRAFT,
+            date: new Date(),
+            dueDate: source.dueDate,
+            currencyId: source.currencyId,
+            exchangeRate: source.exchangeRate,
+            simpleAmount: source.simpleAmount,
+            notes: source.notes,
+            clientId: source.clientId,
+            organizationId: ctx.orgId,
+            subtotal: source.subtotal,
+            discountTotal: source.discountTotal,
+            taxTotal: source.taxTotal,
+            total: source.total,
+            lines: {
+              create: source.lines.map((line) => ({
+                sort: line.sort,
+                lineType: line.lineType,
+                name: line.name,
+                description: line.description,
+                qty: line.qty,
+                rate: line.rate,
+                period: line.period,
+                discount: line.discount,
+                discountIsPercentage: line.discountIsPercentage,
+                sourceTable: line.sourceTable,
+                sourceId: line.sourceId,
+                subtotal: line.subtotal,
+                taxTotal: line.taxTotal,
+                total: line.total,
+                taxes: {
+                  create: line.taxes.map((t) => ({
+                    taxId: t.taxId,
+                    taxAmount: t.taxAmount,
+                  })),
+                },
+              })),
+            },
+          },
+          include: fullInvoiceInclude,
+        });
+      });
+    }),
+
   duplicate: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
