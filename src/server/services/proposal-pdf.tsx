@@ -131,7 +131,35 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     fontSize: 11,
   },
+  mdTableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#f3f4f6",
+    borderBottom: "1 solid #d1d5db",
+  },
+  mdTableRow: {
+    flexDirection: "row",
+    borderBottom: "1 solid #f3f4f6",
+  },
+  mdTableCell: {
+    flex: 1,
+    padding: "4 6",
+    fontSize: 9,
+  },
+  mdTableHeaderCell: {
+    flex: 1,
+    padding: "4 6",
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+  },
 });
+
+function parseTableRow(line: string): string[] {
+  return line.split("|").slice(1, -1).map((c) => c.trim());
+}
+
+function isTableSeparator(line: string): boolean {
+  return /^\|[\s:?-]+\|/.test(line);
+}
 
 function MarkdownContent({ content }: { content: string }) {
   const lines = content.split("\n");
@@ -139,6 +167,34 @@ function MarkdownContent({ content }: { content: string }) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+
+    // Markdown table: header row, separator row, then data rows
+    if (line.startsWith("|") && lines[i + 1] && isTableSeparator(lines[i + 1])) {
+      const headerCells = parseTableRow(line);
+      i++; // skip separator
+      const rows: string[][] = [];
+      while (i + 1 < lines.length && lines[i + 1].startsWith("|")) {
+        i++;
+        rows.push(parseTableRow(lines[i]));
+      }
+      elements.push(
+        <View key={`table-${i}`} style={{ marginVertical: 6 }}>
+          <View style={styles.mdTableHeader}>
+            {headerCells.map((cell, ci) => (
+              <Text key={ci} style={styles.mdTableHeaderCell}>{cell}</Text>
+            ))}
+          </View>
+          {rows.map((row, ri) => (
+            <View key={ri} style={styles.mdTableRow}>
+              {row.map((cell, ci) => (
+                <Text key={ci} style={styles.mdTableCell}>{cell}</Text>
+              ))}
+            </View>
+          ))}
+        </View>
+      );
+      continue;
+    }
 
     const h3Match = line.match(/^### (.+)$/);
     if (h3Match) {

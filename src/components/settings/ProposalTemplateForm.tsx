@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { MarkdownPreview } from "@/components/ui/markdown-preview";
 import { toast } from "sonner";
+import { Eye, Pencil } from "lucide-react";
 
 type Section = { key: string; title: string; content: string | null };
 
@@ -32,6 +34,7 @@ export function ProposalTemplateForm({
   const [sections, setSections] = useState<Section[]>(DEFAULT_SECTIONS);
   const [isDefault, setIsDefault] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [previewing, setPreviewing] = useState<string | null>(null);
 
   const { data: template } = trpc.proposalTemplates.get.useQuery(
     { id: templateId! },
@@ -101,17 +104,35 @@ export function ProposalTemplateForm({
       <div className="space-y-4">
         {sections.map((section, i) => (
           <div key={section.key} className="space-y-1">
-            <Label>{section.title}</Label>
+            <div className="flex items-center justify-between">
+              <Label>{section.title}</Label>
+              {section.key !== "budget" && section.content && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPreviewing(previewing === section.key ? null : section.key)}
+                >
+                  {previewing === section.key ? (
+                    <><Pencil className="h-3.5 w-3.5 mr-1.5" />Edit</>
+                  ) : (
+                    <><Eye className="h-3.5 w-3.5 mr-1.5" />Preview</>
+                  )}
+                </Button>
+              )}
+            </div>
             {section.key === "budget" ? (
               <p className="text-sm text-muted-foreground">
                 Auto-generated from estimate line items.
               </p>
+            ) : previewing === section.key ? (
+              <MarkdownPreview content={section.content ?? ""} />
             ) : (
               <Textarea
                 rows={8}
                 value={section.content ?? ""}
                 onChange={(e) => updateSection(i, e.target.value)}
-                placeholder={`Markdown content for ${section.title}...`}
+                placeholder={`Markdown content for ${section.title}. Supports **bold**, ## headings, - bullets, and | tables |`}
               />
             )}
           </div>
