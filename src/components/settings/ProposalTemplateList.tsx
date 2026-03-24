@@ -7,13 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ProposalTemplateForm } from "./ProposalTemplateForm";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import type { Prisma } from "@/generated/prisma";
 
 type Template = {
   id: string;
   name: string;
   isDefault: boolean;
-  sections: unknown;
+  sections: Prisma.JsonValue;
+  organizationId: string;
   createdAt: Date;
+  updatedAt: Date;
 };
 
 export function ProposalTemplateList({ initialTemplates }: { initialTemplates: Template[] }) {

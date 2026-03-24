@@ -62,7 +62,7 @@ export const proposalsRouter = router({
             message: "Template not found",
           });
         }
-        sections = template.sections as typeof sections;
+        sections = template.sections as unknown as typeof sections;
       }
 
       // If still no sections, try org default template
@@ -71,7 +71,7 @@ export const proposalsRouter = router({
           where: { organizationId: ctx.orgId, isDefault: true },
         });
         if (defaultTemplate) {
-          sections = defaultTemplate.sections as typeof sections;
+          sections = defaultTemplate.sections as unknown as typeof sections;
         }
       }
 

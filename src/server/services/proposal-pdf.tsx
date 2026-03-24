@@ -239,7 +239,7 @@ function ProposalDocument({
 
   const variables: Record<string, string> = {
     client_name: invoice.client.name,
-    client_url: invoice.client.website ?? "",
+    client_url: "",
     client_email: invoice.client.email ?? "",
     date: formatDate(invoice.date),
   };
