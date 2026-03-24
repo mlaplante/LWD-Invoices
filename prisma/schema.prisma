@@ -791,6 +791,8 @@ model ProposalContent {
   templateId      String?
   template        ProposalTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   sections        Json     // Array of { key, title, content } objects
+  fileUrl         String?  // Supabase Storage path for uploaded proposal file
+  fileName        String?  // Original filename (e.g., "proposal-v2.pdf")
   version         String   @default("1.0")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
