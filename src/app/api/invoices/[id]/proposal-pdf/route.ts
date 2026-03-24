@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db";
+import { getProposalFileSignedUrl } from "@/lib/supabase/storage";
 
 export async function GET(
   _req: NextRequest,
@@ -40,6 +41,12 @@ export async function GET(
 
   if (!proposal) {
     return new Response("No proposal found for this estimate", { status: 404 });
+  }
+
+  // If an uploaded file exists, redirect to signed URL
+  if (proposal.fileUrl) {
+    const signedUrl = await getProposalFileSignedUrl(proposal.fileUrl);
+    return Response.redirect(signedUrl, 302);
   }
 
   // Lazy-load so any module-load failure is caught inside the handler

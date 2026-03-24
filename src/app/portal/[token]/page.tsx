@@ -58,7 +58,7 @@ export default async function PortalInvoicePage({
         orderBy: { sort: "asc" },
       },
       payments: { orderBy: { paidAt: "asc" } },
-      proposalContent: { select: { id: true } },
+      proposalContent: { select: { id: true, fileUrl: true } },
     },
   });
 
@@ -241,8 +241,17 @@ export default async function PortalInvoicePage({
                 target="_blank"
                 className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
               >
-                <FileText className="h-4 w-4" />
-                View Full Proposal
+                {invoice.proposalContent.fileUrl ? (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Download Proposal
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4" />
+                    View Full Proposal
+                  </>
+                )}
               </a>
             )}
           </div>
