@@ -4,7 +4,7 @@ import { OrgSettingsForm } from "@/components/settings/OrgSettingsForm";
 import { BrandingForm } from "@/components/settings/BrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FolderKanban, ScrollText, Wallet, ChevronRight } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, ChevronRight } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
@@ -36,6 +36,13 @@ const subPages = [
     description: "Manage expense categories and suppliers.",
     icon: <Wallet className="w-4 h-4" />,
     color: "bg-amber-50 text-amber-600",
+  },
+  {
+    href: "/settings/proposals",
+    label: "Proposal Templates",
+    description: "Manage reusable proposal templates for estimates.",
+    icon: <FileText className="w-4 h-4" />,
+    color: "bg-rose-50 text-rose-600",
   },
 ];
 
