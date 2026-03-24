@@ -29,6 +29,7 @@ import { auditLogRouter } from "./auditLog";
 import { ticketsRouter } from "./tickets";
 import { discussionsRouter } from "./discussions";
 import { proposalTemplatesRouter } from "./proposal-templates";
+import { proposalsRouter } from "./proposals";
 
 export const appRouter = router({
   organization: organizationRouter,
@@ -61,6 +62,7 @@ export const appRouter = router({
   tickets: ticketsRouter,
   discussions: discussionsRouter,
   proposalTemplates: proposalTemplatesRouter,
+  proposals: proposalsRouter,
 });
 
 export type AppRouter = typeof appRouter;
