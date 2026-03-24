@@ -85,6 +85,7 @@ const fullInvoiceInclude = {
     orderBy: { sort: "asc" as const },
   },
   payments: { orderBy: { paidAt: "asc" as const } },
+  proposalContent: true,
   partialPayments: { orderBy: { sortOrder: "asc" as const } },
 };
 

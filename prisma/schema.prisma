@@ -153,6 +153,8 @@ model Organization {
   auditLogs               AuditLog[]
   tickets                 Ticket[]
   discussions             Discussion[]
+  proposalTemplates       ProposalTemplate[]
+  proposalContents        ProposalContent[]
 }
 
 model User {
@@ -287,6 +289,7 @@ model Invoice {
   recurringInvoice        RecurringInvoice?
   creditNotesIssued       CreditNoteApplication[] @relation("CreditNoteSource")
   creditNotesReceived     CreditNoteApplication[] @relation("CreditNoteTarget")
+  proposalContent         ProposalContent?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -763,4 +766,32 @@ model DiscussionReply {
   discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+// ─── Proposal Templates ──────────────────────────────────────────────────────
+
+model ProposalTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  sections        Json     // Array of { key, title, content } objects
+  isDefault       Boolean  @default(false)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  proposals       ProposalContent[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ProposalContent {
+  id              String   @id @default(cuid())
+  invoiceId       String   @unique
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  templateId      String?
+  template        ProposalTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  sections        Json     // Array of { key, title, content } objects
+  version         String   @default("1.0")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
