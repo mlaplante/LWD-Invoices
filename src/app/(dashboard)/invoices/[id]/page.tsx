@@ -9,8 +9,7 @@ import { ApplyCreditNoteDialog } from "@/components/invoices/ApplyCreditNoteDial
 import { InvoiceComments } from "@/components/invoices/InvoiceComments";
 import { RecurringInvoiceDialog } from "@/components/invoices/RecurringInvoiceDialog";
 import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
-import { GenerateProposalButton } from "@/components/invoices/GenerateProposalButton";
-import { ProposalEditor } from "@/components/invoices/ProposalEditor";
+import { ProposalSection } from "@/components/invoices/ProposalSection";
 import { ArchiveInvoiceButton } from "@/components/invoices/ArchiveInvoiceButton";
 import { DeleteInvoiceButton } from "@/components/invoices/DeleteInvoiceButton";
 import { DuplicateInvoiceButton } from "@/components/invoices/DuplicateInvoiceButton";
@@ -328,10 +327,7 @@ export default async function InvoiceDetailPage({
 
       {/* ── Proposal (Estimates only) ──────────────────────────── */}
       {invoice.type === "ESTIMATE" && (
-        <div className="space-y-4">
-          <GenerateProposalButton invoiceId={invoice.id} />
-          <ProposalEditor invoiceId={invoice.id} />
-        </div>
+        <ProposalSection invoiceId={invoice.id} />
       )}
 
       {/* ── Payment History ──────────────────────────────────────── */}
