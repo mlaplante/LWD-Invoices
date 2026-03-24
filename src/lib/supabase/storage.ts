@@ -23,9 +23,6 @@ export async function uploadProposalFile(
   const ext = file.name.split(".").pop();
   const storagePath = `${orgId}/${invoiceId}/proposal.${ext}`;
 
-  // Remove existing file if any (replace scenario)
-  await supabase.storage.from(BUCKET).remove([storagePath]);
-
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(storagePath, file, {
