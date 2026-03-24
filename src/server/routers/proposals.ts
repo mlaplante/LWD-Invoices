@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { proposalSectionsSchema } from "./proposal-templates-helpers";
+import { deleteProposalFile } from "@/lib/supabase/storage";
 
 export const proposalsRouter = router({
   get: protectedProcedure
@@ -123,6 +124,11 @@ export const proposalsRouter = router({
         where: { invoiceId: input.invoiceId, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Clean up uploaded file from storage if present
+      if (existing.fileUrl) {
+        await deleteProposalFile(existing.fileUrl);
+      }
 
       await ctx.db.proposalContent.delete({ where: { id: existing.id } });
       return { success: true };
