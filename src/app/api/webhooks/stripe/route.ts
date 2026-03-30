@@ -74,39 +74,113 @@ export async function POST(req: NextRequest) {
 
     const invoice = await db.invoice.findUnique({
       where: { id: invoiceId, organizationId: orgId },
-      select: { id: true, total: true, status: true },
+      include: { partialPayments: true, payments: true },
     });
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // Idempotency: already processed (Stripe may retry webhooks)
-    if (invoice.status === InvoiceStatus.PAID) {
+    const partialPaymentId = session.metadata?.partialPaymentId;
+
+    // Idempotency: skip if fully paid AND no specific installment targeted
+    if (invoice.status === InvoiceStatus.PAID && !partialPaymentId) {
       return NextResponse.json({ received: true });
     }
 
     const amountTotal = session.amount_total ?? 0;
-    const invoiceTotal = invoice.total.toNumber();
     const chargedAmount = amountTotal / 100; // convert from cents
-    const surchargeAmount = Math.max(0, chargedAmount - invoiceTotal);
+    const invoiceTotal = invoice.total.toNumber();
+    const transactionId =
+      (session.payment_intent as string | undefined) ?? session.id;
 
     await db.$transaction(async (tx) => {
-      await tx.payment.create({
-        data: {
-          amount: invoiceTotal,
-          surchargeAmount,
-          method: "stripe",
-          transactionId: session.payment_intent as string | undefined ?? session.id,
-          invoiceId,
-          organizationId: orgId,
-        },
-      });
+      if (partialPaymentId) {
+        // --- Installment payment ---
+        const installment = invoice.partialPayments.find(
+          (pp) => pp.id === partialPaymentId
+        );
+        if (!installment || installment.isPaid) {
+          return; // idempotency or not found
+        }
 
-      await tx.invoice.update({
-        where: { id: invoiceId, organizationId: orgId },
-        data: { status: InvoiceStatus.PAID },
-      });
+        const installmentAmount = installment.isPercentage
+          ? (installment.amount.toNumber() / 100) * invoiceTotal
+          : installment.amount.toNumber();
+        const surchargeAmount = Math.max(0, chargedAmount - installmentAmount);
+
+        await tx.payment.create({
+          data: {
+            amount: installmentAmount,
+            surchargeAmount,
+            method: "stripe",
+            transactionId,
+            invoiceId,
+            organizationId: orgId,
+          },
+        });
+
+        await tx.partialPayment.update({
+          where: { id: partialPaymentId },
+          data: {
+            isPaid: true,
+            paidAt: new Date(),
+            paymentMethod: "stripe",
+            transactionId,
+          },
+        });
+
+        // Check if ALL partial payments are now paid
+        const allPartials = await tx.partialPayment.findMany({
+          where: { invoiceId },
+        });
+        const allPaid = allPartials.every((pp) => pp.isPaid);
+
+        await tx.invoice.update({
+          where: { id: invoiceId, organizationId: orgId },
+          data: {
+            status: allPaid
+              ? InvoiceStatus.PAID
+              : InvoiceStatus.PARTIALLY_PAID,
+          },
+        });
+      } else {
+        // --- Full payment / pay full balance ---
+        const existingTotal = invoice.payments.reduce(
+          (sum, p) => sum + p.amount.toNumber(),
+          0
+        );
+        let paymentAmount = invoiceTotal - existingTotal;
+        if (paymentAmount <= 0) paymentAmount = chargedAmount;
+        const surchargeAmount = Math.max(0, chargedAmount - paymentAmount);
+
+        await tx.payment.create({
+          data: {
+            amount: paymentAmount,
+            surchargeAmount,
+            method: "stripe",
+            transactionId,
+            invoiceId,
+            organizationId: orgId,
+          },
+        });
+
+        // Mark all unpaid partial payments as paid
+        await tx.partialPayment.updateMany({
+          where: { invoiceId, isPaid: false },
+          data: {
+            isPaid: true,
+            paidAt: new Date(),
+            paymentMethod: "stripe",
+            transactionId,
+          },
+        });
+
+        await tx.invoice.update({
+          where: { id: invoiceId, organizationId: orgId },
+          data: { status: InvoiceStatus.PAID },
+        });
+      }
     });
 
     // Send payment receipt email
