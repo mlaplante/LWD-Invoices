@@ -15,6 +15,7 @@ import { DeleteInvoiceButton } from "@/components/invoices/DeleteInvoiceButton";
 import { DuplicateInvoiceButton } from "@/components/invoices/DuplicateInvoiceButton";
 import { ConvertEstimateButton } from "@/components/invoices/ConvertEstimateButton";
 import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
+import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -155,6 +156,25 @@ export default async function InvoiceDetailPage({
             <RecordPaymentButton
               invoiceId={invoice.id}
               invoiceTotal={Number(invoice.total)}
+            />
+          )}
+          {invoice.type !== "CREDIT_NOTE" && (
+            <PaymentScheduleButton
+              invoiceId={invoice.id}
+              invoiceTotal={Number(invoice.total)}
+              invoiceDueDate={invoice.dueDate?.toISOString().slice(0, 10)}
+              currencySymbol={sym}
+              currencySymbolPosition={symPos}
+              existingSchedule={invoice.partialPayments.map((pp) => ({
+                id: pp.id,
+                sortOrder: pp.sortOrder,
+                amount: Number(pp.amount),
+                isPercentage: pp.isPercentage,
+                dueDate: pp.dueDate ? new Date(pp.dueDate).toISOString().slice(0, 10) : "",
+                notes: pp.notes ?? "",
+                isPaid: pp.isPaid,
+                paidAt: pp.paidAt,
+              }))}
             />
           )}
           {invoice.type === "ESTIMATE" && invoice.status === "ACCEPTED" && (
