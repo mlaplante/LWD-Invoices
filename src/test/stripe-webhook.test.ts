@@ -25,6 +25,7 @@ const GATEWAY = { isEnabled: true, configJson: "enc" };
 const mockTx = {
   payment: { create: vi.fn() },
   invoice: { update: vi.fn() },
+  partialPayment: { findUnique: vi.fn(), findMany: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
 };
 
 function makeBody(meta: Record<string, string> = { orgId: "org1", invoiceId: "inv1" }) {
@@ -71,6 +72,8 @@ describe("Stripe webhook", () => {
       id: "inv1",
       total: { toNumber: () => 100 },
       status: "PAID",
+      partialPayments: [],
+      payments: [],
     } as any);
 
     const res = await POST(makeReq(makeBody()) as any);
@@ -83,7 +86,10 @@ describe("Stripe webhook", () => {
       id: "inv1",
       total: { toNumber: () => 100 },
       status: "SENT",
+      partialPayments: [],
+      payments: [],
     } as any);
+    mockTx.partialPayment.updateMany.mockResolvedValue({ count: 0 });
     vi.mocked(db.$transaction).mockImplementation((fn: any) => fn(mockTx));
 
     const res = await POST(makeReq(makeBody()) as any);
