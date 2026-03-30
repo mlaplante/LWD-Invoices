@@ -58,6 +58,7 @@ export default async function PortalInvoicePage({
         orderBy: { sort: "asc" },
       },
       payments: { orderBy: { paidAt: "asc" } },
+      partialPayments: { orderBy: { sortOrder: "asc" } },
       proposalContent: { select: { id: true, fileUrl: true } },
     },
   });
@@ -284,6 +285,47 @@ export default async function PortalInvoicePage({
                     <td className="py-3.5 capitalize text-muted-foreground">{p.method}</td>
                     <td className="py-3.5 text-right font-medium text-foreground">
                       {f(p.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Payment Schedule */}
+        {invoice.partialPayments.length > 0 && (
+          <div className="rounded-2xl border border-border/50 bg-card p-6">
+            <h2 className="text-base font-semibold text-foreground mb-4">Payment Schedule</h2>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <th className="pb-3 font-semibold">#</th>
+                  <th className="pb-3 font-semibold">Due Date</th>
+                  <th className="pb-3 text-right font-semibold">Amount</th>
+                  <th className="pb-3 text-right font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoice.partialPayments.map((pp, i) => (
+                  <tr key={pp.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-3.5 text-muted-foreground">{i + 1}</td>
+                    <td className="py-3.5 text-muted-foreground">{formatDate(pp.dueDate)}</td>
+                    <td className="py-3.5 text-right font-medium text-foreground">
+                      {pp.isPercentage
+                        ? `${Number(pp.amount).toFixed(0)}%`
+                        : f(pp.amount)}
+                    </td>
+                    <td className="py-3.5 text-right">
+                      {pp.isPaid ? (
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600">
+                          Paid
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-500">
+                          Pending
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

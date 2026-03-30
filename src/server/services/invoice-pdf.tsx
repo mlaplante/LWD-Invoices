@@ -289,6 +289,26 @@ function InvoiceDocument({ invoice }: { invoice: FullInvoice }) {
           </View>
         )}
 
+        {/* Payment Schedule */}
+        {invoice.partialPayments.length > 0 && (
+          <View style={{ marginTop: 24 }}>
+            <Text style={[styles.label, { marginBottom: 6 }]}>Payment Schedule</Text>
+            {invoice.partialPayments.map((pp, i) => (
+              <View key={pp.id} style={[styles.totalsRow, { minWidth: "auto", justifyContent: "space-between" }]}>
+                <Text style={{ color: "#6b7280" }}>
+                  #{i + 1} · {formatDate(pp.dueDate)}
+                  {pp.isPaid ? " · Paid" : " · Pending"}
+                </Text>
+                <Text>
+                  {pp.isPercentage
+                    ? `${Number(pp.amount).toFixed(0)}%`
+                    : fmt(pp.amount)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Payment History */}
         {invoice.payments.length > 0 && (
           <View style={{ marginTop: 24 }}>
