@@ -94,6 +94,18 @@ export default async function PortalInvoicePage({
     return base;
   });
 
+  function buildPayPalUrl(amount: number): string | undefined {
+    const paypalGw = gatewayRows.find((g) => g.gatewayType === GatewayType.PAYPAL);
+    if (!paypalGw) return undefined;
+    try {
+      const config = decryptJson<PayPalConfig>(paypalGw.configJson);
+      const chargedAmount = (amount * (1 + paypalGw.surcharge.toNumber() / 100)).toFixed(2);
+      return `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(config.email)}&amount=${chargedAmount}&currency_code=${invoice!.currency.code}&item_name=${encodeURIComponent(`Invoice ${invoice!.number}`)}`;
+    } catch {
+      return undefined;
+    }
+  }
+
   // Load public comments
   const comments = await db.comment.findMany({
     where: { invoiceId: invoice.id, isPrivate: false },
@@ -335,14 +347,65 @@ export default async function PortalInvoicePage({
         )}
 
         {/* Payment buttons */}
-        {isPayable && gateways.length > 0 && (
-          <PaymentButtons
-            token={token}
-            gateways={gateways}
-            total={f(invoice.total)}
-            orgName={invoice.organization.name}
-          />
-        )}
+        {isPayable && gateways.length > 0 && (() => {
+          const unpaidInstallments = invoice.partialPayments.filter((pp) => !pp.isPaid);
+          if (unpaidInstallments.length > 0) {
+            const invoiceTotal = invoice.total.toNumber();
+            const paidSum = invoice.payments.reduce((sum, p) => sum + p.amount.toNumber(), 0);
+            const remaining = invoiceTotal - paidSum;
+
+            return (
+              <>
+                {unpaidInstallments.map((pp, i) => {
+                  const installmentAmount = pp.isPercentage
+                    ? invoiceTotal * (pp.amount.toNumber() / 100)
+                    : pp.amount.toNumber();
+
+                  const ppPaypalUrl = buildPayPalUrl(installmentAmount);
+                  const ppGateways = gateways.map((g) =>
+                    g.gatewayType === "PAYPAL" ? { ...g, paypalUrl: ppPaypalUrl } : g
+                  );
+
+                  return (
+                    <PaymentButtons
+                      key={pp.id}
+                      token={token}
+                      gateways={ppGateways}
+                      total={f(installmentAmount)}
+                      orgName={invoice.organization.name}
+                      partialPaymentId={pp.id}
+                      label={`Pay Installment ${invoice.partialPayments.indexOf(pp) + 1}`}
+                    />
+                  );
+                })}
+                {remaining > 0 && (() => {
+                  const fullBalanceGateways = gateways.map((g) =>
+                    g.gatewayType === "PAYPAL" ? { ...g, paypalUrl: buildPayPalUrl(remaining) } : g
+                  );
+                  return (
+                  <PaymentButtons
+                    token={token}
+                    gateways={fullBalanceGateways}
+                    total={f(remaining)}
+                    orgName={invoice.organization.name}
+                    payFullBalance={true}
+                    label="Pay Full Balance"
+                  />
+                  );
+                })()}
+              </>
+            );
+          }
+
+          return (
+            <PaymentButtons
+              token={token}
+              gateways={gateways}
+              total={f(invoice.total)}
+              orgName={invoice.organization.name}
+            />
+          );
+        })()}
 
         {/* Comments */}
         <PortalComments

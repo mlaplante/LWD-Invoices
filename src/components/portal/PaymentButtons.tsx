@@ -18,9 +18,12 @@ type Props = {
   gateways: Gateway[];
   total: string;
   orgName: string;
+  partialPaymentId?: string;
+  payFullBalance?: boolean;
+  label?: string;
 };
 
-export function PaymentButtons({ token, gateways, total, orgName }: Props) {
+export function PaymentButtons({ token, gateways, total, orgName, partialPaymentId, payFullBalance, label }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -37,7 +40,7 @@ export function PaymentButtons({ token, gateways, total, orgName }: Props) {
   const handleStripe = () => {
     setError("");
     setLoading("stripe");
-    createStripeCheckout.mutate({ token });
+    createStripeCheckout.mutate({ token, partialPaymentId, payFullBalance });
   };
 
   const stripeGateway = gateways.find((g) => g.gatewayType === "STRIPE");
@@ -51,7 +54,7 @@ export function PaymentButtons({ token, gateways, total, orgName }: Props) {
 
   return (
     <div className="rounded-2xl border border-border/50 bg-card p-6">
-      <h2 className="text-base font-semibold text-foreground mb-4">Pay Now</h2>
+      <h2 className="text-base font-semibold text-foreground mb-4">{label ?? "Pay Now"}</h2>
       <p className="text-sm text-muted-foreground mb-4">
         Amount due: <span className="font-semibold text-foreground">{total}</span>
       </p>
