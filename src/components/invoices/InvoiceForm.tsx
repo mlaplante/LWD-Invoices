@@ -17,6 +17,8 @@ import {
 import { LineItemEditor, type LineItemValue } from "./LineItemEditor";
 import { calculateInvoiceTotals, type TaxInput } from "@/server/services/tax-calculator";
 import { trpc } from "@/trpc/client";
+import { PaymentScheduleDialog, type PartialPaymentEntry } from "./PaymentScheduleDialog";
+import { CalendarRange, X } from "lucide-react";
 
 type InvoiceFormData = {
   id?: string;
@@ -29,6 +31,7 @@ type InvoiceFormData = {
   clientId: string;
   lines: LineItemValue[];
   reminderDaysOverride: number[];
+  partialPayments?: PartialPaymentEntry[];
 };
 
 type Props = {
@@ -70,6 +73,11 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
 
   const [useCustomReminders, setUseCustomReminders] = useState(
     (initialData?.reminderDaysOverride?.length ?? 0) > 0
+  );
+
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [schedule, setSchedule] = useState<PartialPaymentEntry[]>(
+    initialData?.partialPayments ?? []
   );
 
   const activeCurrency =
@@ -136,6 +144,15 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
       clientId: form.clientId,
       notes: form.notes || undefined,
       reminderDaysOverride: form.reminderDaysOverride,
+      partialPayments: schedule.length > 0
+        ? schedule.map((s) => ({
+            sortOrder: s.sortOrder,
+            amount: s.amount,
+            isPercentage: s.isPercentage,
+            dueDate: s.dueDate ? new Date(s.dueDate) : undefined,
+            notes: s.notes || undefined,
+          }))
+        : undefined,
       lines: form.lines.map((l, idx) => ({
         sort: idx,
         lineType: l.lineType,
@@ -282,6 +299,47 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
           taxes={taxOptions}
           currencySymbol={sym}
           onChange={(lines) => setForm((f) => ({ ...f, lines }))}
+        />
+      </div>
+
+      {/* Payment Schedule */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold">Payment Schedule</h3>
+          {schedule.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              {schedule.length} payment{schedule.length !== 1 ? "s" : ""} scheduled
+              <button
+                type="button"
+                onClick={() => setSchedule([])}
+                className="ml-0.5 hover:text-destructive transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setScheduleOpen(true)}
+        >
+          <CalendarRange className="w-3.5 h-3.5 mr-1.5" />
+          {schedule.length > 0 ? "Edit Schedule" : "Set Up Payment Schedule"}
+        </Button>
+        <PaymentScheduleDialog
+          open={scheduleOpen}
+          onOpenChange={setScheduleOpen}
+          invoiceTotal={invoiceTotals.total}
+          invoiceDueDate={form.dueDate || null}
+          currencySymbol={sym}
+          currencySymbolPosition={symPos}
+          existingSchedule={schedule}
+          onSave={(s) => {
+            setSchedule(s);
+            setScheduleOpen(false);
+          }}
         />
       </div>
 
