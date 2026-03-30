@@ -79,12 +79,50 @@ export const portalRouter = router({
     }),
 
   createStripeCheckout: publicProcedure
-    .input(z.object({ token: z.string() }))
+    .input(
+      z.object({
+        token: z.string(),
+        partialPaymentId: z.string().optional(),
+        payFullBalance: z.boolean().optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const invoice = await getInvoiceByToken(ctx.db, input.token);
 
       if (!PAYABLE_STATUSES.includes(invoice.status)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice is not payable" });
+      }
+
+      // Resolve amount override for partial / balance payments
+      let amountOverride: number | undefined;
+      let partialPaymentId: string | undefined;
+
+      if (input.partialPaymentId) {
+        const partial = await ctx.db.partialPayment.findUnique({
+          where: { id: input.partialPaymentId },
+        });
+        if (!partial || partial.invoiceId !== invoice.id) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid installment" });
+        }
+        if (partial.isPaid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Installment already paid" });
+        }
+        const invoiceTotal = invoice.total.toNumber();
+        amountOverride = partial.isPercentage
+          ? (partial.amount.toNumber() / 100) * invoiceTotal
+          : partial.amount.toNumber();
+        partialPaymentId = partial.id;
+      } else if (input.payFullBalance) {
+        const invoiceTotal = invoice.total.toNumber();
+        const paidSoFar = invoice.payments.reduce(
+          (sum, p) => sum + p.amount.toNumber(),
+          0,
+        );
+        const remaining = invoiceTotal - paidSoFar;
+        if (remaining <= 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice already fully paid" });
+        }
+        amountOverride = remaining;
       }
 
       const gateway = await ctx.db.gatewaySetting.findUnique({
@@ -115,6 +153,8 @@ export const portalRouter = router({
         },
         surcharge: gateway.surcharge.toNumber(),
         appUrl,
+        partialPaymentId,
+        amountOverride,
       });
 
       return { url };

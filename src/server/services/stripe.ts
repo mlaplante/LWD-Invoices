@@ -18,13 +18,19 @@ export async function createCheckoutSession(opts: {
   };
   surcharge: number;
   appUrl: string;
+  partialPaymentId?: string;
+  amountOverride?: number;
 }): Promise<{ url: string; sessionId: string }> {
-  const { stripeClient, invoice, surcharge, appUrl } = opts;
+  const { stripeClient, invoice, surcharge, appUrl, partialPaymentId, amountOverride } = opts;
 
-  const invoiceTotal = invoice.total.toNumber();
-  const chargedAmount = invoiceTotal * (1 + surcharge / 100);
+  const baseAmount = amountOverride ?? invoice.total.toNumber();
+  const chargedAmount = baseAmount * (1 + surcharge / 100);
   // Stripe expects amount in smallest currency unit (cents)
   const amountCents = Math.round(chargedAmount * 100);
+
+  const itemName = partialPaymentId
+    ? `Invoice #${invoice.number} — Installment`
+    : `Invoice #${invoice.number}`;
 
   const session = await stripeClient.checkout.sessions.create({
     mode: "payment",
@@ -35,7 +41,7 @@ export async function createCheckoutSession(opts: {
           currency: invoice.currency.code.toLowerCase(),
           unit_amount: amountCents,
           product_data: {
-            name: `Invoice #${invoice.number}`,
+            name: itemName,
           },
         },
       },
@@ -44,6 +50,7 @@ export async function createCheckoutSession(opts: {
       invoiceId: invoice.id,
       orgId: invoice.organizationId,
       portalToken: invoice.portalToken,
+      ...(partialPaymentId ? { partialPaymentId } : {}),
     },
     success_url: `${appUrl}/portal/${invoice.portalToken}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/portal/${invoice.portalToken}`,
