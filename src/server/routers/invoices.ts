@@ -45,6 +45,18 @@ const invoiceWriteSchema = z.object({
   reminderDaysOverride: z.array(z.number().int().min(1)).optional(),
 });
 
+const partialPaymentInputSchema = z.object({
+  sortOrder: z.number().int().default(0),
+  amount: z.number().positive(),
+  isPercentage: z.boolean().default(false),
+  dueDate: z.coerce.date().optional(),
+  notes: z.string().optional(),
+});
+
+const invoiceWriteWithScheduleSchema = invoiceWriteSchema.extend({
+  partialPayments: z.array(partialPaymentInputSchema).optional(),
+});
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function toLineInput(line: z.infer<typeof lineSchema>): LineInput {
@@ -190,7 +202,7 @@ export const invoicesRouter = router({
     }),
 
   create: protectedProcedure
-    .input(invoiceWriteSchema)
+    .input(invoiceWriteWithScheduleSchema)
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
         where: { id: ctx.orgId },
@@ -214,7 +226,7 @@ export const invoicesRouter = router({
           [...taxMap.values()]
         );
 
-        return tx.invoice.create({
+        const created = await tx.invoice.create({
           data: {
             number,
             type: input.type,
@@ -259,6 +271,18 @@ export const invoicesRouter = router({
           },
           include: fullInvoiceInclude,
         });
+
+        if (input.partialPayments && input.partialPayments.length > 0) {
+          await tx.partialPayment.createMany({
+            data: input.partialPayments.map((s) => ({
+              ...s,
+              invoiceId: created.id,
+              organizationId: ctx.orgId,
+            })),
+          });
+        }
+
+        return created;
       });
 
       await logAudit({
@@ -274,7 +298,7 @@ export const invoicesRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string() }).merge(invoiceWriteSchema.partial()))
+    .input(z.object({ id: z.string() }).merge(invoiceWriteWithScheduleSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
         where: { id: ctx.orgId },
@@ -297,9 +321,11 @@ export const invoicesRouter = router({
       }
 
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
-      const { id, lines, ...rest } = input;
+      const { id, lines, partialPayments, ...rest } = input;
 
       const invoice = await ctx.db.$transaction(async (tx) => {
+        let updated;
+
         if (lines !== undefined) {
           await tx.invoiceLine.deleteMany({ where: { invoiceId: id } });
 
@@ -314,7 +340,7 @@ export const invoicesRouter = router({
             [...taxMap.values()]
           );
 
-          return tx.invoice.update({
+          updated = await tx.invoice.update({
             where: { id, organizationId: ctx.orgId },
             data: {
               ...rest,
@@ -349,13 +375,30 @@ export const invoicesRouter = router({
             },
             include: fullInvoiceInclude,
           });
+        } else {
+          updated = await tx.invoice.update({
+            where: { id, organizationId: ctx.orgId },
+            data: rest,
+            include: fullInvoiceInclude,
+          });
         }
 
-        return tx.invoice.update({
-          where: { id, organizationId: ctx.orgId },
-          data: rest,
-          include: fullInvoiceInclude,
-        });
+        if (partialPayments !== undefined) {
+          await tx.partialPayment.deleteMany({
+            where: { invoiceId: id, isPaid: false },
+          });
+          if (partialPayments.length > 0) {
+            await tx.partialPayment.createMany({
+              data: partialPayments.map((s) => ({
+                ...s,
+                invoiceId: id,
+                organizationId: ctx.orgId,
+              })),
+            });
+          }
+        }
+
+        return updated;
       });
 
       await logAudit({
