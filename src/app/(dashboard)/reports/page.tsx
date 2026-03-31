@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale } from "lucide-react";
 
 const reports = [
   {
@@ -44,6 +44,13 @@ const reports = [
     description: "Hours logged and billable totals by project.",
     icon: <Timer className="w-4 h-4" />,
     color: "bg-cyan-50 text-cyan-600",
+  },
+  {
+    href: "/reports/tax-liability",
+    label: "Tax Liability",
+    description: "Tax collected by type for your accountant.",
+    icon: <Scale className="w-4 h-4" />,
+    color: "bg-orange-50 text-orange-600",
   },
 ];
 
