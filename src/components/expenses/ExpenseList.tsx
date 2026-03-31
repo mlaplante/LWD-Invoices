@@ -114,7 +114,20 @@ export function ExpenseList() {
                   const amount = expense.qty * Number(expense.rate);
                   return (
                     <tr key={expense.id} className="hover:bg-accent/20 transition-colors">
-                      <td className="px-6 py-3.5 font-medium">{expense.name}</td>
+                      <td className="px-6 py-3.5 font-medium">
+                        <span className="flex items-center gap-1.5">
+                          {expense.name}
+                          {expense.recurringExpenseId && (
+                            <Link
+                              href={`/expenses/recurring/${expense.recurringExpenseId}/edit`}
+                              title="From recurring expense"
+                              className="text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <Repeat className="w-3 h-3" />
+                            </Link>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-6 py-3.5 text-muted-foreground">
                         {expense.category?.name ?? "—"}
                       </td>

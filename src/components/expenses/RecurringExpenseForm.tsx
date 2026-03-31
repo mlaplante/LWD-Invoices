@@ -117,7 +117,7 @@ export function RecurringExpenseForm({
       qty: form.qty,
       rate,
       reimbursable: form.reimbursable,
-      frequency: form.frequency as any,
+      frequency: form.frequency as "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY",
       interval: form.interval,
       startDate: new Date(form.startDate),
       endDate: form.endDate ? new Date(form.endDate) : undefined,

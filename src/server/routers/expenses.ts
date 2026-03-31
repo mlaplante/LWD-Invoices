@@ -7,9 +7,9 @@ import {
   calculateInvoiceTotals,
   type TaxInput,
 } from "../services/tax-calculator";
-import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
+import { generateExpensesForRecurring } from "../services/recurring-expense-generator";
 
-async function generateDueExpenses(db: any, orgId: string) {
+async function generateDueExpenses(db: PrismaClient, orgId: string) {
   const now = new Date();
   const due = await db.recurringExpense.findMany({
     where: {
@@ -21,47 +21,10 @@ async function generateDueExpenses(db: any, orgId: string) {
   });
 
   for (const rec of due) {
-    let nextRun = new Date(rec.nextRunAt);
-    let count = rec.occurrenceCount;
-
-    while (nextRun <= now) {
-      if (rec.maxOccurrences !== null && count >= rec.maxOccurrences) break;
-      if (rec.endDate !== null && nextRun > rec.endDate) break;
-
-      await db.$transaction(async (tx: any) => {
-        await tx.expense.create({
-          data: {
-            name: rec.name,
-            description: rec.description,
-            qty: rec.qty,
-            rate: rec.rate,
-            reimbursable: rec.reimbursable,
-            dueDate: nextRun,
-            taxId: rec.taxId,
-            categoryId: rec.categoryId,
-            supplierId: rec.supplierId,
-            projectId: rec.projectId,
-            organizationId: rec.organizationId,
-            recurringExpenseId: rec.id,
-          },
-        });
-
-        count++;
-        const newNextRun = computeNextRunAt(nextRun, rec.frequency, rec.interval);
-        const maxReached = rec.maxOccurrences !== null && count >= rec.maxOccurrences;
-        const pastEnd = rec.endDate !== null && newNextRun > rec.endDate;
-
-        await tx.recurringExpense.update({
-          where: { id: rec.id },
-          data: {
-            occurrenceCount: count,
-            nextRunAt: newNextRun,
-            isActive: !(maxReached || pastEnd),
-          },
-        });
-
-        nextRun = newNextRun;
-      });
+    try {
+      await generateExpensesForRecurring(db, rec, now);
+    } catch {
+      // Silently skip failed records so the expense list still loads
     }
   }
 }

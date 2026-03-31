@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
-import { RecurringFrequency } from "@/generated/prisma";
+import { Prisma, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 
 const recurringExpenseSchema = z.object({
@@ -77,7 +77,7 @@ export const recurringExpensesRouter = router({
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
       const scheduleChanged = data.frequency || data.interval || data.startDate;
-      const updateData: any = { ...data };
+      const updateData: Prisma.RecurringExpenseUpdateInput = { ...data };
       if (scheduleChanged) {
         const freq = data.frequency ?? existing.frequency;
         const intv = data.interval ?? existing.interval;
