@@ -91,25 +91,27 @@ export async function POST(req: Request) {
   try {
     await db.user.upsert({
       where: { supabaseId: user.id },
-      update: { organizationId: org.id },
+      update: { organizationId: org.id, role: "OWNER" },
       create: {
         supabaseId: user.id,
         email: user.email!,
         firstName: user.user_metadata?.firstName ?? null,
         lastName: user.user_metadata?.lastName ?? null,
         organizationId: org.id,
+        role: "OWNER",
       },
     });
   } catch {
     // supabaseId column missing — upsert by email instead
     await db.user.upsert({
       where: { email: user.email! },
-      update: { organizationId: org.id },
+      update: { organizationId: org.id, role: "OWNER" },
       create: {
         email: user.email!,
         firstName: user.user_metadata?.firstName ?? null,
         lastName: user.user_metadata?.lastName ?? null,
         organizationId: org.id,
+        role: "OWNER",
       },
     });
   }
