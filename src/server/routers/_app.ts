@@ -30,6 +30,7 @@ import { ticketsRouter } from "./tickets";
 import { discussionsRouter } from "./discussions";
 import { proposalTemplatesRouter } from "./proposal-templates";
 import { proposalsRouter } from "./proposals";
+import { recurringExpensesRouter } from "./recurringExpenses";
 
 export const appRouter = router({
   organization: organizationRouter,
@@ -63,6 +64,7 @@ export const appRouter = router({
   discussions: discussionsRouter,
   proposalTemplates: proposalTemplatesRouter,
   proposals: proposalsRouter,
+  recurringExpenses: recurringExpensesRouter,
 });
 
 export type AppRouter = typeof appRouter;
