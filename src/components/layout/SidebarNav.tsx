@@ -14,6 +14,7 @@ import {
   BarChart2,
   LifeBuoy,
   Settings,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -36,6 +37,7 @@ const primaryNav: NavItem[] = [
 const secondaryNav: NavItem[] = [
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/tickets", label: "Tickets", icon: LifeBuoy },
+  { href: "/settings/team", label: "Team", icon: UsersRound },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
