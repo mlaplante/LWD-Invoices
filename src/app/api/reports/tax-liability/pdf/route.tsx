@@ -356,7 +356,7 @@ export async function GET(request: Request) {
   );
 
   const date = new Date().toISOString().split("T")[0];
-  return new Response(buffer, {
+  return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="tax-liability-${date}.pdf"`,
