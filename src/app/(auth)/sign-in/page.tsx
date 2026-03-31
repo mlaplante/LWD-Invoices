@@ -51,7 +51,9 @@ export default function SignInPage() {
     // Refresh the session so the new app_metadata.organizationId is in the JWT cookie
     await getSupabase().auth.refreshSession();
 
-    router.push("/");
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectTo = searchParams.get("redirect");
+    router.push(redirectTo ?? "/");
     setLoading(false);
   }
 
@@ -61,7 +63,13 @@ export default function SignInPage() {
     setError(null);
     const { error } = await getSupabase().auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: (() => {
+          const sp = new URLSearchParams(window.location.search);
+          const redir = sp.get("redirect");
+          return `${window.location.origin}/auth/callback${redir ? `?redirect=${encodeURIComponent(redir)}` : ""}`;
+        })(),
+      },
     });
     if (error) {
       setError(error.message);
@@ -76,7 +84,13 @@ export default function SignInPage() {
     setError(null);
     const { error } = await getSupabase().auth.signInWithOAuth({
       provider: "github",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: (() => {
+          const sp = new URLSearchParams(window.location.search);
+          const redir = sp.get("redirect");
+          return `${window.location.origin}/auth/callback${redir ? `?redirect=${encodeURIComponent(redir)}` : ""}`;
+        })(),
+      },
     });
     if (error) {
       setError(error.message);

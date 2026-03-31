@@ -10,6 +10,12 @@ export async function GET(request: NextRequest) {
   // Prevent open redirect: only allow relative paths, not protocol-relative URLs
   const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
 
+  // Support invite redirect param (e.g. ?redirect=/invite/abc123)
+  const rawRedirect = searchParams.get("redirect");
+  const redirect = rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+    ? rawRedirect
+    : null;
+
   if (!code) {
     return NextResponse.redirect(`${origin}/sign-in?error=missing_code`);
   }
@@ -32,7 +38,7 @@ export async function GET(request: NextRequest) {
 
   // Already migrated — just go to destination
   if (user.app_metadata?.organizationId) {
-    return NextResponse.redirect(`${origin}${next}`);
+    return NextResponse.redirect(`${origin}${redirect ?? next}`);
   }
 
   // Data migration: match existing Clerk user by email on first Supabase login
@@ -62,7 +68,7 @@ export async function GET(request: NextRequest) {
         // Refresh the session so the new app_metadata is in the JWT cookie
         await supabase.auth.refreshSession();
 
-        return NextResponse.redirect(`${origin}/`);
+        return NextResponse.redirect(`${origin}${redirect ?? "/"}`);
       }
     } catch (err) {
       console.error("[auth/callback] Migration error:", err);

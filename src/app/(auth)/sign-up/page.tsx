@@ -33,7 +33,11 @@ export default function SignUpPage() {
       password,
       options: {
         data: { firstName },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: (() => {
+          const sp = new URLSearchParams(window.location.search);
+          const redir = sp.get("redirect");
+          return `${window.location.origin}/auth/callback${redir ? `?redirect=${encodeURIComponent(redir)}` : ""}`;
+        })(),
       },
     });
 
@@ -50,7 +54,13 @@ export default function SignUpPage() {
     setError(null);
     const { error } = await getSupabase().auth.signInWithOAuth({
       provider: "github",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: (() => {
+          const sp = new URLSearchParams(window.location.search);
+          const redir = sp.get("redirect");
+          return `${window.location.origin}/auth/callback${redir ? `?redirect=${encodeURIComponent(redir)}` : ""}`;
+        })(),
+      },
     });
     if (error) {
       setError(error.message);
