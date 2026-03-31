@@ -10,8 +10,10 @@ datasource db {
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 enum UserRole {
+  OWNER
   ADMIN
-  STAFF
+  ACCOUNTANT
+  VIEWER
 }
 
 enum GatewayType {
@@ -110,6 +112,13 @@ enum TicketStatus {
   CLOSED
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 // ─── Core Models ──────────────────────────────────────────────────────────────
 
 model Organization {
@@ -127,6 +136,7 @@ model Organization {
   updatedAt               DateTime @updatedAt
 
   users             User[]
+  invitations       Invitation[]
   clients           Client[]
   currencies        Currency[]
   taxes             Tax[]
@@ -165,12 +175,32 @@ model User {
   email       String   @unique
   firstName   String?
   lastName    String?
-  role        UserRole @default(STAFF)
+  role        UserRole @default(ADMIN)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  invitationsSent Invitation[] @relation("InvitedBy")
+}
+
+model Invitation {
+  id        String           @id @default(cuid())
+  email     String
+  role      UserRole         @default(VIEWER)
+  token     String           @unique @default(cuid())
+  expiresAt DateTime
+  status    InvitationStatus @default(PENDING)
+
+  invitedById    String
+  invitedBy      User         @relation("InvitedBy", fields: [invitedById], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([email, organizationId])
 }
 
 model Client {
