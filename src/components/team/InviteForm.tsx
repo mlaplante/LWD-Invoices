@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/trpc/react";
+import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { Copy } from "lucide-react";
 
@@ -10,8 +10,8 @@ export function InviteForm() {
   const [role, setRole] = useState<"ADMIN" | "ACCOUNTANT" | "VIEWER">("VIEWER");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
 
-  const utils = api.useUtils();
-  const inviteMutation = api.team.invite.useMutation({
+  const utils = trpc.useUtils();
+  const inviteMutation = trpc.team.invite.useMutation({
     onSuccess: (data) => {
       toast.success("Invitation sent!");
       setInviteUrl(data.inviteUrl);

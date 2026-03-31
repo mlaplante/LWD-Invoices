@@ -1,23 +1,13 @@
 "use client";
 
-import { api } from "@/trpc/react";
+import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 
-type Invitation = {
-  id: string;
-  email: string;
-  role: string;
-  expiresAt: Date;
-  invitedBy: { firstName: string | null; lastName: string | null; email: string };
-};
+export function PendingInvitationList() {
+  const { data: invitations } = trpc.team.pendingInvites.useQuery();
+  const utils = trpc.useUtils();
 
-export function PendingInvitationList({ invitations: initial }: { invitations: Invitation[] }) {
-  const { data: invitations } = api.team.pendingInvites.useQuery(undefined, {
-    initialData: initial,
-  });
-  const utils = api.useUtils();
-
-  const resendMutation = api.team.resendInvite.useMutation({
+  const resendMutation = trpc.team.resendInvite.useMutation({
     onSuccess: () => {
       toast.success("Invitation resent!");
       utils.team.pendingInvites.invalidate();
@@ -25,7 +15,7 @@ export function PendingInvitationList({ invitations: initial }: { invitations: I
     onError: (err) => toast.error(err.message),
   });
 
-  const revokeMutation = api.team.revokeInvite.useMutation({
+  const revokeMutation = trpc.team.revokeInvite.useMutation({
     onSuccess: () => {
       toast.success("Invitation revoked");
       utils.team.pendingInvites.invalidate();

@@ -1,27 +1,28 @@
 "use client";
 
-import { api } from "@/trpc/react";
+import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { useState } from "react";
+import type { UserRole } from "@/generated/prisma";
 
 type Member = {
   id: string;
   email: string;
   firstName: string | null;
   lastName: string | null;
-  role: string;
+  role: UserRole;
   createdAt: Date;
 };
 
 export function TeamMemberList({ members: initialMembers }: { members: Member[] }) {
-  const { data: members } = api.team.list.useQuery(undefined, {
+  const { data: members } = trpc.team.list.useQuery(undefined, {
     initialData: initialMembers,
   });
   const [removingId, setRemovingId] = useState<string | null>(null);
 
-  const utils = api.useUtils();
+  const utils = trpc.useUtils();
 
-  const changeRoleMutation = api.team.changeRole.useMutation({
+  const changeRoleMutation = trpc.team.changeRole.useMutation({
     onSuccess: () => {
       toast.success("Role updated");
       utils.team.list.invalidate();
@@ -29,7 +30,7 @@ export function TeamMemberList({ members: initialMembers }: { members: Member[] 
     onError: (err) => toast.error(err.message),
   });
 
-  const removeMutation = api.team.removeMember.useMutation({
+  const removeMutation = trpc.team.removeMember.useMutation({
     onSuccess: () => {
       toast.success("Member removed");
       setRemovingId(null);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/trpc/react";
+import { trpc } from "@/trpc/client";
 
 type Props = {
   token: string;
@@ -16,7 +16,7 @@ export function InviteAcceptClient({ token, orgName, orgLogoUrl, inviterName, ro
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
-  const acceptMutation = api.team.acceptInvite.useMutation({
+  const acceptMutation = trpc.team.acceptInvite.useMutation({
     onSuccess: () => {
       router.push("/");
       router.refresh();

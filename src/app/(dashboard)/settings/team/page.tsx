@@ -4,9 +4,8 @@ import { TeamMemberList } from "@/components/team/TeamMemberList";
 import { PendingInvitationList } from "@/components/team/PendingInvitationList";
 
 export default async function TeamSettingsPage() {
-  const [members, pendingInvites, org] = await Promise.all([
+  const [members, org] = await Promise.all([
     api.team.list(),
-    api.team.pendingInvites().catch(() => []),
     api.organization.get(),
   ]);
 
@@ -19,9 +18,7 @@ export default async function TeamSettingsPage() {
         </p>
       </div>
       <InviteForm />
-      {pendingInvites.length > 0 && (
-        <PendingInvitationList invitations={pendingInvites} />
-      )}
+      <PendingInvitationList />
       <TeamMemberList members={members} />
     </div>
   );
