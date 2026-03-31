@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { TRPCError } from "@trpc/server";
 
 export const organizationRouter = router({
@@ -23,7 +23,7 @@ export const organizationRouter = router({
     return org;
   }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN")
     .input(
       z.object({
         name: z.string().min(1).optional(),

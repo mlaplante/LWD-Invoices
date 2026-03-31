@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 
 const taxSchema = z.object({
   name: z.string().min(1),
@@ -16,7 +16,7 @@ export const taxesRouter = router({
     });
   }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN")
     .input(taxSchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.db.tax.create({
@@ -24,7 +24,7 @@ export const taxesRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }).merge(taxSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -34,7 +34,7 @@ export const taxesRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.tax.delete({

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { PrismaClient, LineType } from "@/generated/prisma";
 import {
   calculateLineTotals,
@@ -72,7 +72,7 @@ export const expensesRouter = router({
       return expense;
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         projectId: z.string().min(1).optional(),
@@ -97,7 +97,7 @@ export const expensesRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         id: z.string(),
@@ -129,7 +129,7 @@ export const expensesRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.expense.findUnique({
@@ -145,7 +145,7 @@ export const expensesRouter = router({
       return ctx.db.expense.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
-  billToInvoice: protectedProcedure
+  billToInvoice: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         invoiceId: z.string(),

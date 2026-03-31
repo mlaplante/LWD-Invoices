@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { Prisma, PrismaClient, InvoiceStatus, InvoiceType, LineType } from "@/generated/prisma";
 import {
   calculateLineTotals,
@@ -201,7 +201,7 @@ export const invoicesRouter = router({
       });
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN")
     .input(invoiceWriteWithScheduleSchema)
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
@@ -297,7 +297,7 @@ export const invoicesRouter = router({
       return invoice;
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }).merge(invoiceWriteWithScheduleSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
@@ -413,7 +413,7 @@ export const invoicesRouter = router({
       return invoice;
     }),
 
-  convertEstimateToInvoice: protectedProcedure
+  convertEstimateToInvoice: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const source = await ctx.db.invoice.findUnique({
@@ -479,7 +479,7 @@ export const invoicesRouter = router({
       });
     }),
 
-  duplicate: protectedProcedure
+  duplicate: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const source = await ctx.db.invoice.findUnique({
@@ -539,7 +539,7 @@ export const invoicesRouter = router({
       });
     }),
 
-  archive: protectedProcedure
+  archive: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string(), isArchived: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.invoice.update({
@@ -548,7 +548,7 @@ export const invoicesRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
@@ -571,7 +571,7 @@ export const invoicesRouter = router({
       });
     }),
 
-  archiveMany: protectedProcedure
+  archiveMany: requireRole("OWNER", "ADMIN")
     .input(z.object({ ids: z.array(z.string()), isArchived: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.invoice.updateMany({
@@ -580,7 +580,7 @@ export const invoicesRouter = router({
       });
     }),
 
-  deleteMany: protectedProcedure
+  deleteMany: requireRole("OWNER", "ADMIN")
     .input(z.object({ ids: z.array(z.string()) }))
     .mutation(async ({ ctx, input }) => {
       // Only delete invoices that are not PAID, PARTIALLY_PAID, or OVERDUE
@@ -599,7 +599,7 @@ export const invoicesRouter = router({
       });
     }),
 
-  send: protectedProcedure
+  send: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
@@ -673,7 +673,7 @@ export const invoicesRouter = router({
       return updated;
     }),
 
-  markPaid: protectedProcedure
+  markPaid: requireRole("OWNER", "ADMIN")
     .input(
       z.object({
         id: z.string(),
@@ -713,7 +713,7 @@ export const invoicesRouter = router({
       });
     }),
 
-  recordPartialPayment: protectedProcedure
+  recordPartialPayment: requireRole("OWNER", "ADMIN")
     .input(z.object({ partialPaymentId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const partial = await ctx.db.partialPayment.findUnique({
@@ -751,7 +751,7 @@ export const invoicesRouter = router({
       );
     }),
 
-  acceptEstimate: protectedProcedure
+  acceptEstimate: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
@@ -768,7 +768,7 @@ export const invoicesRouter = router({
       });
     }),
 
-  declineEstimate: protectedProcedure
+  declineEstimate: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({

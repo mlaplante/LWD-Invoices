@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { InvoiceType } from "@/generated/prisma";
 
 export function validateCreditApplication(
@@ -38,7 +38,7 @@ export const creditNotesRouter = router({
       });
     }),
 
-  applyToInvoice: protectedProcedure
+  applyToInvoice: requireRole("OWNER", "ADMIN")
     .input(
       z.object({
         creditNoteId: z.string(),

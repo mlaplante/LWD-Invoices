@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 
 const clientSchema = z.object({
   name: z.string().min(1),
@@ -57,7 +57,7 @@ export const clientsRouter = router({
       return client;
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN")
     .input(clientSchema)
     .mutation(async ({ ctx, input }) => {
       const { portalPassphrase, ...rest } = input;
@@ -67,7 +67,7 @@ export const clientsRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }).merge(clientSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, portalPassphrase, ...rest } = input;
@@ -78,7 +78,7 @@ export const clientsRouter = router({
       });
     }),
 
-  archive: protectedProcedure
+  archive: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string(), isArchived: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.client.update({
@@ -87,7 +87,7 @@ export const clientsRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.client.delete({

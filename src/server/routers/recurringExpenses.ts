@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { Prisma, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 
@@ -55,7 +55,7 @@ export const recurringExpensesRouter = router({
       return rec;
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(recurringExpenseSchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.db.recurringExpense.create({
@@ -67,7 +67,7 @@ export const recurringExpensesRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ id: z.string() }).merge(recurringExpenseSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -100,7 +100,7 @@ export const recurringExpensesRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.recurringExpense.findUnique({
@@ -112,7 +112,7 @@ export const recurringExpensesRouter = router({
       });
     }),
 
-  toggleActive: protectedProcedure
+  toggleActive: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.recurringExpense.findUnique({

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { RecurringFrequency } from "@/generated/prisma";
 
 const recurringSchema = z.object({
@@ -23,7 +23,7 @@ export const recurringInvoicesRouter = router({
       });
     }),
 
-  upsert: protectedProcedure
+  upsert: requireRole("OWNER", "ADMIN")
     .input(z.object({ invoiceId: z.string(), data: recurringSchema }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
@@ -53,7 +53,7 @@ export const recurringInvoicesRouter = router({
       });
     }),
 
-  cancel: protectedProcedure
+  cancel: requireRole("OWNER", "ADMIN")
     .input(z.object({ invoiceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });

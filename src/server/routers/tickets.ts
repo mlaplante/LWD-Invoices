@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { TicketStatus, TicketPriority } from "@/generated/prisma";
 
 export const ticketsRouter = router({
@@ -36,7 +36,7 @@ export const ticketsRouter = router({
       return ticket;
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN")
     .input(z.object({
       subject: z.string().min(1),
       body: z.string().min(1),
@@ -81,7 +81,7 @@ export const ticketsRouter = router({
       }
     }),
 
-  reply: protectedProcedure
+  reply: requireRole("OWNER", "ADMIN")
     .input(z.object({ ticketId: z.string(), body: z.string().min(1), isStaff: z.boolean().default(true) }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
@@ -101,7 +101,7 @@ export const ticketsRouter = router({
       });
     }),
 
-  updateStatus: protectedProcedure
+  updateStatus: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string(), status: z.nativeEnum(TicketStatus) }))
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });

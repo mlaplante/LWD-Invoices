@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { ProjectStatus } from "@/generated/prisma";
 
 const projectWriteSchema = z.object({
@@ -119,7 +119,7 @@ export const projectsRouter = router({
       };
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN")
     .input(projectWriteSchema.extend({ templateId: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       const { templateId, ...projectData } = input;
@@ -167,7 +167,7 @@ export const projectsRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }).merge(projectWriteSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -178,7 +178,7 @@ export const projectsRouter = router({
       return ctx.db.project.update({ where: { id, organizationId: ctx.orgId }, data });
     }),
 
-  archive: protectedProcedure
+  archive: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string(), status: z.nativeEnum(ProjectStatus) }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.project.findUnique({
@@ -191,7 +191,7 @@ export const projectsRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.project.findUnique({

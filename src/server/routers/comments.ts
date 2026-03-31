@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 
 export const commentsRouter = router({
   list: protectedProcedure
@@ -19,7 +19,7 @@ export const commentsRouter = router({
       });
     }),
 
-  add: protectedProcedure
+  add: requireRole("OWNER", "ADMIN")
     .input(
       z.object({
         invoiceId: z.string(),
@@ -47,7 +47,7 @@ export const commentsRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const comment = await ctx.db.comment.findUnique({

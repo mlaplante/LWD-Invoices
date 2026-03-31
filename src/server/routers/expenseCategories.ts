@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 
 export const expenseCategoriesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -10,7 +10,7 @@ export const expenseCategoriesRouter = router({
     });
   }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN")
     .input(z.object({ name: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.expenseCategory.create({
@@ -18,7 +18,7 @@ export const expenseCategoriesRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string(), name: z.string().min(1).optional() }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -29,7 +29,7 @@ export const expenseCategoriesRouter = router({
       return ctx.db.expenseCategory.update({ where: { id }, data });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.expenseCategory.findUnique({

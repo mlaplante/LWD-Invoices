@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { GatewayType } from "@/generated/prisma";
 import { encryptJson, decryptJson } from "../services/encryption";
 import type { StripeConfig, PayPalConfig } from "../services/gateway-config";
@@ -55,7 +55,7 @@ export const gatewaySettingsRouter = router({
     });
   }),
 
-  upsert: protectedProcedure
+  upsert: requireRole("OWNER", "ADMIN")
     .input(
       z.discriminatedUnion("gatewayType", [
         z.object({
@@ -129,7 +129,7 @@ export const gatewaySettingsRouter = router({
       });
     }),
 
-  toggle: protectedProcedure
+  toggle: requireRole("OWNER", "ADMIN")
     .input(z.object({ gatewayType: z.nativeEnum(GatewayType), isEnabled: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.gatewaySetting.findUnique({

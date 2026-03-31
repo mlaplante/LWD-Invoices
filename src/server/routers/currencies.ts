@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 
 const currencySchema = z.object({
   code: z.string().min(1).max(10),
@@ -18,7 +18,7 @@ export const currenciesRouter = router({
     });
   }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN")
     .input(currencySchema)
     .mutation(async ({ ctx, input }) => {
       if (input.isDefault) {
@@ -32,7 +32,7 @@ export const currenciesRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }).merge(currencySchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -48,7 +48,7 @@ export const currenciesRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.currency.delete({

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 
 const partialPaymentSchema = z.object({
   sortOrder: z.number().int().default(0),
@@ -27,7 +27,7 @@ export const partialPaymentsRouter = router({
       });
     }),
 
-  set: protectedProcedure
+  set: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         invoiceId: z.string(),
@@ -64,7 +64,7 @@ export const partialPaymentsRouter = router({
       });
     }),
 
-  recordPayment: protectedProcedure
+  recordPayment: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         id: z.string(),
