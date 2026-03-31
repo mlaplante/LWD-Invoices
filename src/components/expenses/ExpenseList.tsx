@@ -5,7 +5,7 @@ import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Pencil, Trash2, Plus, Paperclip } from "lucide-react";
+import { Pencil, Trash2, Plus, Paperclip, Repeat } from "lucide-react";
 import { toast } from "sonner";
 export function ExpenseList() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -40,12 +40,20 @@ export function ExpenseList() {
             Track business expenses across your organization.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/expenses/new">
-            <Plus className="w-4 h-4 mr-1.5" />
-            New Expense
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/expenses/recurring">
+              <Repeat className="w-4 h-4 mr-1.5" />
+              Recurring
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/expenses/new">
+              <Plus className="w-4 h-4 mr-1.5" />
+              New Expense
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Summary stats */}
