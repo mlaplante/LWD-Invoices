@@ -2,6 +2,7 @@ import { api } from "@/trpc/server";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
+import { ReportHeader } from "@/components/reports/ReportHeader";
 
 function fmt(n: number | { toNumber(): number }) {
   const v = typeof n === "object" ? n.toNumber() : n;
@@ -9,7 +10,10 @@ function fmt(n: number | { toNumber(): number }) {
 }
 
 export default async function AgingPage() {
-  const data = await api.reports.invoiceAging();
+  const [data, org] = await Promise.all([
+    api.reports.invoiceAging(),
+    api.organization.get(),
+  ]);
 
   const buckets = [
     { key: "current" as const, label: "Current", color: "text-emerald-600", dotColor: "bg-emerald-500" },
@@ -21,6 +25,7 @@ export default async function AgingPage() {
 
   return (
     <div className="space-y-5">
+      <ReportHeader title="Invoice Aging" orgName={org.name} logoUrl={org.logoUrl} />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/reports" className="text-muted-foreground hover:text-foreground transition-colors print:hidden">

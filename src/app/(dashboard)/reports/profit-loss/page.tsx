@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
+import { ReportHeader } from "@/components/reports/ReportHeader";
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function shortMonth(key: string) {
@@ -21,7 +22,14 @@ export default async function ProfitLossPage({
   const to   = toRaw   && !isNaN(toRaw.getTime())   ? toRaw   : undefined;
   if (to) to.setHours(23, 59, 59, 999);
 
-  const data = await api.reports.profitLoss({ from, to });
+  const [data, org] = await Promise.all([
+    api.reports.profitLoss({ from, to }),
+    api.organization.get(),
+  ]);
+
+  const dateRange = from || to
+    ? `${from ? from.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Beginning"} — ${to ? to.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Present"}`
+    : "All Time";
 
   const months = Array.from(
     new Set([...Object.keys(data.revenueByMonth), ...Object.keys(data.expensesByMonth)])
@@ -37,6 +45,7 @@ export default async function ProfitLossPage({
 
   return (
     <div className="space-y-5">
+      <ReportHeader title="Profit & Loss" orgName={org.name} logoUrl={org.logoUrl} dateRange={dateRange} />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/reports" className="text-muted-foreground hover:text-foreground transition-colors print:hidden">

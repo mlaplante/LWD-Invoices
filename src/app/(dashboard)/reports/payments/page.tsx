@@ -4,6 +4,7 @@ import { ArrowLeft, CreditCard, Landmark, DollarSign, Banknote } from "lucide-re
 import { cn } from "@/lib/utils";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
+import { ReportHeader } from "@/components/reports/ReportHeader";
 
 const GATEWAY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   STRIPE:        { label: "Stripe",        icon: <CreditCard className="w-4 h-4" />, color: "bg-violet-50 text-violet-600" },
@@ -24,7 +25,15 @@ export default async function PaymentsReportPage({
   const to   = toRaw   && !isNaN(toRaw.getTime())   ? toRaw   : undefined;
   if (to) to.setHours(23, 59, 59, 999);
 
-  const byGateway = await api.reports.paymentsByGateway({ from, to });
+  const [byGateway, org] = await Promise.all([
+    api.reports.paymentsByGateway({ from, to }),
+    api.organization.get(),
+  ]);
+
+  const dateRange = from || to
+    ? `${from ? from.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Beginning"} — ${to ? to.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Present"}`
+    : "All Time";
+
   const entries = Object.entries(byGateway);
 
   const totalRevenue = entries.reduce((sum, [, s]) => sum + s.total, 0);
@@ -33,6 +42,7 @@ export default async function PaymentsReportPage({
 
   return (
     <div className="space-y-5">
+      <ReportHeader title="Payments by Gateway" orgName={org.name} logoUrl={org.logoUrl} dateRange={dateRange} />
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">

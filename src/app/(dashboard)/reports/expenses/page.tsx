@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Repeat } from "lucide-react";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { ExpenseCategoryFilter } from "@/components/reports/ExpenseCategoryFilter";
+import { ReportHeader } from "@/components/reports/ReportHeader";
 
 export default async function ExpensesReportPage({
   searchParams,
@@ -18,10 +19,15 @@ export default async function ExpensesReportPage({
   if (to) to.setHours(23, 59, 59, 999);
   const categoryId = params.categoryId ?? undefined;
 
-  const [expenses, categories] = await Promise.all([
+  const [expenses, categories, org] = await Promise.all([
     api.reports.expenseBreakdown({ from, to, categoryId }),
     api.reports.expenseCategories(),
+    api.organization.get(),
   ]);
+
+  const dateRange = from || to
+    ? `${from ? from.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Beginning"} — ${to ? to.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Present"}`
+    : "All Time";
 
   const totalAmount = expenses.reduce((sum, e) => sum + e.qty * Number(e.rate), 0);
 
@@ -34,6 +40,7 @@ export default async function ExpensesReportPage({
 
   return (
     <div className="space-y-5">
+      <ReportHeader title="Expense Breakdown" orgName={org.name} logoUrl={org.logoUrl} dateRange={dateRange} />
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">

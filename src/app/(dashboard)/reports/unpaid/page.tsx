@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import type { InvoiceStatus } from "@/generated/prisma";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
+import { ReportHeader } from "@/components/reports/ReportHeader";
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   SENT:           { label: "Unpaid",  className: "bg-amber-50 text-amber-600" },
@@ -13,7 +14,10 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
 };
 
 export default async function UnpaidReportPage() {
-  const invoices = await api.reports.unpaidInvoices({});
+  const [invoices, org] = await Promise.all([
+    api.reports.unpaidInvoices({}),
+    api.organization.get(),
+  ]);
 
   // Group totals by currency to avoid mixing currency values
   const totalsByCurrency: Record<string, { symbol: string; symbolPosition: string; total: number }> = {};
@@ -28,6 +32,7 @@ export default async function UnpaidReportPage() {
 
   return (
     <div className="space-y-5">
+      <ReportHeader title="Unpaid Invoices" orgName={org.name} logoUrl={org.logoUrl} />
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
