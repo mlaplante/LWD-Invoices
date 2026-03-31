@@ -612,6 +612,8 @@ model Expense {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([recurringExpenseId])
 }
 
 // ─── Recurring Expenses ──────────────────────────────────────────────────────
@@ -648,6 +650,9 @@ model RecurringExpense {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([isActive, nextRunAt])
 }
 
 // ─── Recurring Invoices ───────────────────────────────────────────────────────

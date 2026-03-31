@@ -45,3 +45,12 @@ ALTER TABLE "RecurringExpense" ADD CONSTRAINT "RecurringExpense_projectId_fkey" 
 
 -- AddForeignKey
 ALTER TABLE "RecurringExpense" ADD CONSTRAINT "RecurringExpense_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- CreateIndex
+CREATE INDEX "Expense_recurringExpenseId_idx" ON "Expense"("recurringExpenseId");
+
+-- CreateIndex
+CREATE INDEX "RecurringExpense_organizationId_idx" ON "RecurringExpense"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "RecurringExpense_isActive_nextRunAt_idx" ON "RecurringExpense"("isActive", "nextRunAt");
