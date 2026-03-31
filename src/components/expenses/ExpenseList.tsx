@@ -5,13 +5,28 @@ import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Pencil, Trash2, Plus, Paperclip, Repeat } from "lucide-react";
+import { Pencil, Trash2, Plus, Paperclip, Repeat, Pause, Play } from "lucide-react";
 import { toast } from "sonner";
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  DAILY: "Daily",
+  WEEKLY: "Weekly",
+  MONTHLY: "Monthly",
+  YEARLY: "Yearly",
+};
+
+function formatFrequency(freq: string, interval: number) {
+  if (interval === 1) return FREQUENCY_LABELS[freq] ?? freq;
+  return `Every ${interval} ${freq.toLowerCase().replace(/ly$/, "")}s`;
+}
+
 export function ExpenseList() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteRecurringId, setDeleteRecurringId] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
   const { data: expenses = [] } = trpc.expenses.list.useQuery({});
+  const { data: recurringExpenses = [] } = trpc.recurringExpenses.list.useQuery();
 
   const deleteMutation = trpc.expenses.delete.useMutation({
     onSuccess: () => {
@@ -23,6 +38,26 @@ export function ExpenseList() {
       toast.error(err.message);
       setDeleteId(null);
     },
+  });
+
+  const deleteRecurringMutation = trpc.recurringExpenses.delete.useMutation({
+    onSuccess: () => {
+      utils.recurringExpenses.list.invalidate();
+      toast.success("Recurring expense deleted");
+      setDeleteRecurringId(null);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setDeleteRecurringId(null);
+    },
+  });
+
+  const toggleMutation = trpc.recurringExpenses.toggleActive.useMutation({
+    onSuccess: () => {
+      utils.recurringExpenses.list.invalidate();
+      toast.success("Status updated");
+    },
+    onError: (err) => toast.error(err.message),
   });
 
   const totalAmount = expenses.reduce(
@@ -84,7 +119,7 @@ export function ExpenseList() {
           </p>
         </div>
 
-        {expenses.length === 0 ? (
+        {expenses.length === 0 && recurringExpenses.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
             <p className="text-sm text-muted-foreground">No expenses recorded yet.</p>
             <Button asChild size="sm">
@@ -110,6 +145,89 @@ export function ExpenseList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
+                {recurringExpenses.map((rec) => {
+                  const amount = rec.qty * Number(rec.rate);
+                  return (
+                    <tr key={`rec-${rec.id}`} className="hover:bg-accent/20 transition-colors bg-muted/10">
+                      <td className="px-6 py-3.5 font-medium">
+                        <span className="flex items-center gap-1.5">
+                          <Repeat className="w-3.5 h-3.5 text-primary shrink-0" />
+                          {rec.name}
+                          <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                            {formatFrequency(rec.frequency, rec.interval)}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-muted-foreground">
+                        {rec.category?.name ?? "—"}
+                      </td>
+                      <td className="px-6 py-3.5 text-muted-foreground">
+                        {rec.project ? (
+                          <Link href={`/projects/${rec.project.id}`} className="hover:text-primary transition-colors">
+                            {rec.project.name}
+                          </Link>
+                        ) : "—"}
+                      </td>
+                      <td className="px-6 py-3.5 text-muted-foreground text-xs">
+                        {rec.isActive ? (
+                          <span>Next: {new Date(rec.nextRunAt).toLocaleDateString()}</span>
+                        ) : (
+                          <span className="text-zinc-400">Paused</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3.5 text-center">
+                        {rec.reimbursable ? (
+                          <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            Yes
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3.5 text-right font-semibold tabular-nums">
+                        ${amount.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-3.5 text-center text-muted-foreground tabular-nums text-xs">
+                        {rec.occurrenceCount}x
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => toggleMutation.mutate({ id: rec.id })}
+                            title={rec.isActive ? "Pause" : "Resume"}
+                          >
+                            {rec.isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                          </Button>
+                          <Button asChild variant="ghost" size="icon" className="h-7 w-7">
+                            <Link href={`/expenses/recurring/${rec.id}/edit`}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteRecurringId(rec.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {recurringExpenses.length > 0 && expenses.length > 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-1.5 bg-muted/30">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                        One-Time Expenses
+                      </p>
+                    </td>
+                  </tr>
+                )}
                 {expenses.map((expense) => {
                   const amount = expense.qty * Number(expense.rate);
                   return (
@@ -205,7 +323,7 @@ export function ExpenseList() {
         )}
       </div>
 
-      {/* Delete confirmation dialog — single instance, controlled by deleteId */}
+      {/* Delete confirmation dialogs */}
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
@@ -213,6 +331,15 @@ export function ExpenseList() {
         description="This cannot be undone."
         onConfirm={() => { if (deleteId) deleteMutation.mutate({ id: deleteId }); }}
         loading={deleteMutation.isPending}
+        destructive
+      />
+      <ConfirmDialog
+        open={deleteRecurringId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteRecurringId(null); }}
+        title="Delete recurring expense"
+        description="Generated expenses will remain. This only removes the recurring template."
+        onConfirm={() => { if (deleteRecurringId) deleteRecurringMutation.mutate({ id: deleteRecurringId }); }}
+        loading={deleteRecurringMutation.isPending}
         destructive
       />
     </div>
