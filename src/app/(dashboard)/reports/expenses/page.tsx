@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Repeat } from "lucide-react";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { ExpenseCategoryFilter } from "@/components/reports/ExpenseCategoryFilter";
@@ -107,6 +107,7 @@ export default async function ExpensesReportPage({
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Project</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Supplier</th>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">Type</th>
                 <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
               </tr>
             </thead>
@@ -123,6 +124,16 @@ export default async function ExpensesReportPage({
                   </td>
                   <td className="px-6 py-3.5 text-muted-foreground">{e.category?.name ?? "—"}</td>
                   <td className="px-6 py-3.5 text-muted-foreground">{e.supplier?.name ?? "—"}</td>
+                  <td className="px-6 py-3.5 text-center">
+                    {e.recurringExpenseId ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        <Repeat className="w-2.5 h-2.5" />
+                        Recurring
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">One-time</span>
+                    )}
+                  </td>
                   <td className="px-6 py-3.5 text-right font-semibold tabular-nums">
                     ${(e.qty * Number(e.rate)).toFixed(2)}
                   </td>
@@ -131,7 +142,7 @@ export default async function ExpensesReportPage({
             </tbody>
             <tfoot className="border-t border-border bg-muted/20">
               <tr>
-                <td colSpan={4} className="px-6 py-3 text-sm font-semibold text-right">Total</td>
+                <td colSpan={5} className="px-6 py-3 text-sm font-semibold text-right">Total</td>
                 <td className="px-6 py-3 text-right font-bold tabular-nums">${totalAmount.toFixed(2)}</td>
               </tr>
             </tfoot>
