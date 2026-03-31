@@ -146,6 +146,7 @@ model Organization {
   expenses                Expense[]
   expenseCategories       ExpenseCategory[]
   expenseSuppliers        ExpenseSupplier[]
+  recurringExpenses       RecurringExpense[]
   recurringInvoices       RecurringInvoice[]
   creditNoteApplications  CreditNoteApplication[]
   attachments             Attachment[]
@@ -229,7 +230,8 @@ model Tax {
   organizationId   String
   organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invoiceLineTaxes InvoiceLineTax[]
-  expenses         Expense[]
+  expenses              Expense[]
+  recurringExpenses     RecurringExpense[] @relation("RecurringExpenseTax")
 }
 
 model Item {
@@ -448,6 +450,7 @@ model Project {
   tasks               ProjectTask[]
   timeEntries         TimeEntry[]
   expenses            Expense[]
+  recurringExpenses   RecurringExpense[] @relation("RecurringExpenseProject")
   discussions         Discussion[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -566,7 +569,8 @@ model ExpenseCategory {
   name           String
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  expenses       Expense[]
+  expenses             Expense[]
+  recurringExpenses    RecurringExpense[] @relation("RecurringExpenseCategory")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -576,7 +580,8 @@ model ExpenseSupplier {
   name           String
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  expenses       Expense[]
+  expenses             Expense[]
+  recurringExpenses    RecurringExpense[] @relation("RecurringExpenseSupplier")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -601,8 +606,46 @@ model Expense {
   supplier       ExpenseSupplier? @relation(fields: [supplierId], references: [id])
   projectId      String?
   project        Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  recurringExpenseId String?
+  recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Recurring Expenses ──────────────────────────────────────────────────────
+
+model RecurringExpense {
+  id              String             @id @default(cuid())
+  name            String
+  description     String?
+  qty             Int                @default(1)
+  rate            Decimal            @db.Decimal(20, 10)
+  reimbursable    Boolean            @default(false)
+
+  frequency       RecurringFrequency
+  interval        Int                @default(1)
+  startDate       DateTime
+  nextRunAt       DateTime
+  endDate         DateTime?
+  maxOccurrences  Int?
+  occurrenceCount Int                @default(0)
+  isActive        Boolean            @default(true)
+
+  taxId          String?
+  tax            Tax?             @relation("RecurringExpenseTax", fields: [taxId], references: [id])
+  categoryId     String?
+  category       ExpenseCategory? @relation("RecurringExpenseCategory", fields: [categoryId], references: [id])
+  supplierId     String?
+  supplier       ExpenseSupplier? @relation("RecurringExpenseSupplier", fields: [supplierId], references: [id])
+  projectId      String?
+  project        Project?         @relation("RecurringExpenseProject", fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  generatedExpenses Expense[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
