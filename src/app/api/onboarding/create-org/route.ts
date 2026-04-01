@@ -77,13 +77,30 @@ export async function POST(req: Request) {
     "UPS", "USPS", "Staples", "Home Depot", "Other",
   ];
 
-  // Seed default expense categories and suppliers
+  // Seed default expense categories, suppliers, and reminder sequence
   await Promise.all([
     db.expenseCategory.createMany({
       data: DEFAULT_EXPENSE_CATEGORIES.map((name) => ({ name, organizationId: org.id })),
     }),
     db.expenseSupplier.createMany({
       data: DEFAULT_EXPENSE_SUPPLIERS.map((name) => ({ name, organizationId: org.id })),
+    }),
+    db.reminderSequence.create({
+      data: {
+        name: "Default Reminder Sequence",
+        isDefault: true,
+        enabled: true,
+        organizationId: org.id,
+        steps: {
+          create: [
+            { daysRelativeToDue: -3, subject: "Upcoming: Invoice #{{ invoiceNumber }} due in 3 days", body: '<p>Hi {{ clientName }},</p><p>This is a friendly reminder that Invoice #{{ invoiceNumber }} for {{ amountDue }} is due on {{ dueDate }}.</p><p><a href="{{ paymentLink }}">View & Pay</a></p><p>{{ orgName }}</p>', sort: 0 },
+            { daysRelativeToDue: 0, subject: "Due today: Invoice #{{ invoiceNumber }}", body: '<p>Hi {{ clientName }},</p><p>Invoice #{{ invoiceNumber }} for {{ amountDue }} is due today.</p><p><a href="{{ paymentLink }}">View & Pay</a></p><p>{{ orgName }}</p>', sort: 1 },
+            { daysRelativeToDue: 7, subject: "Overdue: Invoice #{{ invoiceNumber }} (7 days past due)", body: '<p>Hi {{ clientName }},</p><p>Invoice #{{ invoiceNumber }} for {{ amountDue }} is now 7 days overdue.</p><p><a href="{{ paymentLink }}">View & Pay</a></p><p>{{ orgName }}</p>', sort: 2 },
+            { daysRelativeToDue: 14, subject: "Second notice: Invoice #{{ invoiceNumber }} (14 days overdue)", body: '<p>Hi {{ clientName }},</p><p>This is a second reminder that Invoice #{{ invoiceNumber }} for {{ amountDue }} is 14 days past due.</p><p><a href="{{ paymentLink }}">View & Pay Now</a></p><p>{{ orgName }}</p>', sort: 3 },
+            { daysRelativeToDue: 30, subject: "Final notice: Invoice #{{ invoiceNumber }} (30 days overdue)", body: '<p>Hi {{ clientName }},</p><p>Invoice #{{ invoiceNumber }} for {{ amountDue }} is now 30 days overdue. Please arrange payment immediately.</p><p><a href="{{ paymentLink }}">View & Pay Now</a></p><p>{{ orgName }}</p>', sort: 4 },
+          ],
+        },
+      },
     }),
   ]);
 

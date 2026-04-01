@@ -5,7 +5,7 @@ import { BrandingForm } from "@/components/settings/BrandingForm";
 import { PortalBrandingForm } from "@/components/settings/PortalBrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
@@ -72,6 +72,13 @@ const subPages = [
     description: "Automatically generate and email reports on a recurring schedule.",
     icon: <CalendarClock className="w-4 h-4" />,
     color: "bg-teal-50 text-teal-600",
+  },
+  {
+    href: "/settings/reminders",
+    label: "Reminder Sequences",
+    description: "Automatic escalating reminder emails for unpaid invoices.",
+    icon: <Bell className="w-4 h-4" />,
+    color: "bg-purple-50 text-purple-600",
   },
 ];
 
