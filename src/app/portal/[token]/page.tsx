@@ -10,6 +10,8 @@ import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getPortalBranding } from "@/lib/portal-branding";
+import { PortalShell } from "@/components/portal/PortalShell";
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
   DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",      dot: "bg-gray-400" },
@@ -117,23 +119,11 @@ export default async function PortalInvoicePage({
   const isPayable = PAYABLE_STATUSES.includes(invoice.status);
 
   const brandColor = invoice.organization.brandColor ?? "#2563eb";
+  const branding = getPortalBranding(invoice.organization);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
-        {/* Org header */}
-        <div className="text-center">
-          {invoice.organization.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={invoice.organization.logoUrl}
-              alt={invoice.organization.name}
-              className="mx-auto mb-3 h-12 w-auto max-w-[160px] object-contain"
-            />
-          )}
-          <h1 className="text-2xl font-bold text-foreground">{invoice.organization.name}</h1>
-        </div>
-
+    <PortalShell branding={branding}>
+      <div className="space-y-6">
         {/* Invoice card */}
         <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
           {/* Invoice header */}
@@ -461,6 +451,6 @@ export default async function PortalInvoicePage({
           }))}
         />
       </div>
-    </div>
+    </PortalShell>
   );
 }
