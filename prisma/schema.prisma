@@ -333,6 +333,13 @@ model Invoice {
 
   portalToken String @unique @default(cuid())
 
+  // E-signature fields (for proposals/estimates)
+  signedAt       DateTime?
+  signedByName   String?
+  signedByEmail  String?
+  signedByIp     String?
+  signatureData  String?   // Encrypted base64 PNG or SVG path data
+
   lines           InvoiceLine[]
   partialPayments PartialPayment[]
   payments        Payment[]
@@ -341,6 +348,7 @@ model Invoice {
   creditNotesIssued       CreditNoteApplication[] @relation("CreditNoteSource")
   creditNotesReceived     CreditNoteApplication[] @relation("CreditNoteTarget")
   proposalContent         ProposalContent?
+  signatureAuditLogs      SignatureAuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -795,6 +803,24 @@ model AuditLog {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+model SignatureAuditLog {
+  id              String   @id @default(cuid())
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId  String
+  signedByName    String
+  signedByEmail   String
+  signedByIp      String
+  userAgent       String?
+  documentHash    String   // SHA-256 hash of proposal content at time of signing
+  signatureHash   String   // SHA-256 hash of signature data
+
+  createdAt       DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([organizationId])
 }
 
 // ─── Support Tickets ──────────────────────────────────────────────────────────

@@ -219,6 +219,11 @@ export function createMockPrismaClient() {
       updateMany: vi.fn(),
       delete: vi.fn(),
     },
+    signatureAuditLog: {
+      create: vi.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+    },
   };
 
   // Mock $transaction to handle both callback and array patterns
