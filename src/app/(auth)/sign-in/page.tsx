@@ -38,6 +38,18 @@ export default function SignInPage() {
       return;
     }
 
+    // Check if MFA is required
+    const { data: aalData } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalData?.nextLevel === "aal2" && aalData.currentLevel === "aal1") {
+      // User has MFA enrolled — redirect to challenge page
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirectTo = searchParams.get("redirect");
+      const mfaUrl = `/mfa-challenge${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`;
+      router.push(mfaUrl);
+      setLoading(false);
+      return;
+    }
+
     // Run migration for existing Clerk users (sets organizationId in app_metadata)
     const migrateRes = await fetch("/api/auth/migrate", { method: "POST" });
     if (!migrateRes.ok && migrateRes.status !== 404) {
