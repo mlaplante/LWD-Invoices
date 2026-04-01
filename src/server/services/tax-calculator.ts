@@ -56,6 +56,10 @@ export type InvoiceTotals = {
   total: number;
 };
 
+export type InvoiceTotalsWithDiscount = InvoiceTotals & {
+  invoiceDiscount: number; // the invoice-level discount amount applied
+};
+
 function round(n: number, places = 10): number {
   return Math.round(n * 10 ** places) / 10 ** places;
 }
@@ -184,5 +188,108 @@ export function calculateInvoiceTotals(
     discountTotal: round2(discountTotal),
     taxTotal: round2(taxTotal),
     total: round2(total),
+  };
+}
+
+/**
+ * Calculate invoice totals with an invoice-level discount applied.
+ *
+ * The invoice-level discount is applied BEFORE tax — meaning the discount reduces
+ * the taxable subtotal. The discount is prorated across standard lines so taxes
+ * are recalculated on the reduced amounts.
+ *
+ * @param discountType - "percentage" | "fixed" | null/undefined
+ * @param discountAmount - the discount value (percentage 0-100 or fixed amount)
+ */
+export function calculateInvoiceTotalsWithDiscount(
+  lines: LineInput[],
+  allTaxes: TaxInput[],
+  discountType: string | null | undefined,
+  discountAmount: number
+): InvoiceTotalsWithDiscount {
+  // First, compute the base totals without invoice-level discount
+  // We need the raw subtotal from standard lines (after line-item discounts)
+  let rawSubtotal = 0;
+  let lineDiscountTotal = 0;
+
+  // Collect standard line results for tax recalculation
+  const standardLines: { line: LineInput; subtotal: number }[] = [];
+
+  for (const line of lines) {
+    if (line.lineType === LineType.PERCENTAGE_DISCOUNT) {
+      const discAmt = round(rawSubtotal * (line.rate / 100));
+      lineDiscountTotal = round(lineDiscountTotal + discAmt);
+      rawSubtotal = round(rawSubtotal - discAmt);
+      continue;
+    }
+    if (line.lineType === LineType.FIXED_DISCOUNT) {
+      const discAmt = round(line.rate);
+      lineDiscountTotal = round(lineDiscountTotal + discAmt);
+      rawSubtotal = round(rawSubtotal - discAmt);
+      continue;
+    }
+
+    const lineTaxes = allTaxes.filter((t) => line.taxIds.includes(t.id));
+    const result = calculateLineTotals(line, lineTaxes);
+    standardLines.push({ line, subtotal: result.subtotal });
+    rawSubtotal = round(rawSubtotal + result.subtotal);
+  }
+
+  // Calculate the invoice-level discount amount
+  let invoiceDiscount = 0;
+  if (discountType === "fixed" && discountAmount > 0) {
+    // Cap at the post-line-discount subtotal
+    invoiceDiscount = round2(Math.min(discountAmount, Math.max(rawSubtotal, 0)));
+  } else if (discountType === "percentage" && discountAmount > 0) {
+    const cappedPct = Math.min(discountAmount, 100);
+    invoiceDiscount = round2(round(rawSubtotal * (cappedPct / 100)));
+  }
+
+  if (invoiceDiscount <= 0) {
+    // No invoice-level discount — use standard calculation
+    const base = calculateInvoiceTotals(lines, allTaxes);
+    return { ...base, invoiceDiscount: 0 };
+  }
+
+  // Prorate the invoice discount across standard lines and recalculate taxes
+  const totalStandardSubtotal = standardLines.reduce((s, l) => s + l.subtotal, 0);
+  let taxTotal = 0;
+
+  if (totalStandardSubtotal > 0) {
+    for (const { line, subtotal } of standardLines) {
+      const proportion = subtotal / totalStandardSubtotal;
+      const lineShare = round(invoiceDiscount * proportion);
+      const adjustedSubtotal = round(subtotal - lineShare);
+
+      // Recalculate taxes on the adjusted subtotal
+      const applicableTaxes = allTaxes.filter((t) => line.taxIds.includes(t.id));
+      const nonCompound = applicableTaxes.filter((t) => !t.isCompound);
+      const compound = applicableTaxes.filter((t) => t.isCompound);
+
+      let lineTax = 0;
+      for (const tax of nonCompound) {
+        lineTax = round(lineTax + round(adjustedSubtotal * (tax.rate / 100)));
+      }
+      let running = round(adjustedSubtotal + lineTax);
+      for (const tax of compound) {
+        const amt = round(running * (tax.rate / 100));
+        lineTax = round(lineTax + amt);
+        running = round(running + amt);
+      }
+
+      taxTotal = round(taxTotal + lineTax);
+    }
+  }
+
+  const subtotal = round2(totalStandardSubtotal);
+  const totalDiscounts = round2(lineDiscountTotal + invoiceDiscount);
+  const total = round2(subtotal - totalDiscounts + taxTotal);
+
+  return {
+    subtotal,
+    discountTotal: totalDiscounts,
+    taxTotal: round2(taxTotal),
+    total,
+    invoiceDiscount: round2(invoiceDiscount),
   };
 }
