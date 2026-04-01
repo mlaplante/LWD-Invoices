@@ -35,8 +35,10 @@ import { teamRouter } from "./team";
 import { emailAutomationsRouter } from "./emailAutomations";
 import { lateFeesRouter } from "./lateFees";
 import { retainersRouter } from "./retainers";
+import { dashboardRouter } from "./dashboard";
 
 export const appRouter = router({
+  dashboard: dashboardRouter,
   organization: organizationRouter,
   clients: clientsRouter,
   currencies: currenciesRouter,
