@@ -5,6 +5,7 @@ import { Prisma, PrismaClient, InvoiceStatus, InvoiceType, LineType } from "@/ge
 import {
   calculateLineTotals,
   calculateInvoiceTotals,
+  calculateInvoiceTotalsWithDiscount,
   type TaxInput,
   type LineInput,
 } from "../services/tax-calculator";
@@ -44,6 +45,9 @@ const invoiceWriteSchema = z.object({
   clientId: z.string().min(1),
   lines: z.array(lineSchema).default([]),
   reminderDaysOverride: z.array(z.number().int().min(1)).optional(),
+  discountType: z.enum(["percentage", "fixed"]).nullable().optional(),
+  discountAmount: z.number().min(0).default(0),
+  discountDescription: z.string().max(200).optional(),
 });
 
 const partialPaymentInputSchema = z.object({
@@ -222,9 +226,11 @@ export const invoicesRouter = router({
           return { line, result };
         });
 
-        const invoiceTotals = calculateInvoiceTotals(
+        const invoiceTotals = calculateInvoiceTotalsWithDiscount(
           input.lines.map(toLineInput),
-          [...taxMap.values()]
+          [...taxMap.values()],
+          input.discountType ?? null,
+          input.discountAmount ?? 0
         );
 
         const created = await tx.invoice.create({
@@ -241,6 +247,9 @@ export const invoicesRouter = router({
             clientId: input.clientId,
             organizationId: ctx.orgId,
             reminderDaysOverride: input.reminderDaysOverride ?? [],
+            discountType: input.discountType ?? null,
+            discountAmount: input.discountAmount ?? 0,
+            discountDescription: input.discountDescription ?? null,
             subtotal: invoiceTotals.subtotal,
             discountTotal: invoiceTotals.discountTotal,
             taxTotal: invoiceTotals.taxTotal,
@@ -322,7 +331,7 @@ export const invoicesRouter = router({
       }
 
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
-      const { id, lines, partialPayments, ...rest } = input;
+      const { id, lines, partialPayments, discountType, discountAmount, discountDescription, ...rest } = input;
 
       const invoice = await ctx.db.$transaction(async (tx) => {
         let updated;
@@ -336,15 +345,20 @@ export const invoicesRouter = router({
             return { line, result };
           });
 
-          const invoiceTotals = calculateInvoiceTotals(
+          const invoiceTotals = calculateInvoiceTotalsWithDiscount(
             lines.map(toLineInput),
-            [...taxMap.values()]
+            [...taxMap.values()],
+            discountType ?? null,
+            discountAmount ?? 0
           );
 
           updated = await tx.invoice.update({
             where: { id, organizationId: ctx.orgId },
             data: {
               ...rest,
+              discountType: discountType ?? null,
+              discountAmount: discountAmount ?? 0,
+              discountDescription: discountDescription ?? null,
               subtotal: invoiceTotals.subtotal,
               discountTotal: invoiceTotals.discountTotal,
               taxTotal: invoiceTotals.taxTotal,
