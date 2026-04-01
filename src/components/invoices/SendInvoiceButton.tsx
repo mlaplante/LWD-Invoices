@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ export function SendInvoiceButton({
   autoSend?: boolean;
 }) {
   const router = useRouter();
+  const didAutoSend = useRef(false);
   const send = trpc.invoices.send.useMutation({
     onSuccess: () => {
       toast.success("Invoice sent");
@@ -24,7 +25,8 @@ export function SendInvoiceButton({
   });
 
   useEffect(() => {
-    if (autoSend && !send.isPending && !send.isSuccess && !send.isError) {
+    if (autoSend && !didAutoSend.current) {
+      didAutoSend.current = true;
       send.mutate({ id: invoiceId });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
