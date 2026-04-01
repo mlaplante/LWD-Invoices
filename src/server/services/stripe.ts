@@ -20,8 +20,10 @@ export async function createCheckoutSession(opts: {
   appUrl: string;
   partialPaymentId?: string;
   amountOverride?: number;
+  successUrl?: string;
+  cancelUrl?: string;
 }): Promise<{ url: string; sessionId: string }> {
-  const { stripeClient, invoice, surcharge, appUrl, partialPaymentId, amountOverride } = opts;
+  const { stripeClient, invoice, surcharge, appUrl, partialPaymentId, amountOverride, successUrl, cancelUrl } = opts;
 
   const baseAmount = amountOverride ?? invoice.total.toNumber();
   const chargedAmount = baseAmount * (1 + surcharge / 100);
@@ -52,8 +54,8 @@ export async function createCheckoutSession(opts: {
       portalToken: invoice.portalToken,
       ...(partialPaymentId ? { partialPaymentId } : {}),
     },
-    success_url: `${appUrl}/portal/${invoice.portalToken}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl}/portal/${invoice.portalToken}`,
+    success_url: successUrl ?? `${appUrl}/portal/${invoice.portalToken}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: cancelUrl ?? `${appUrl}/portal/${invoice.portalToken}`,
   });
 
   if (!session.url) throw new Error("Stripe session URL missing");
