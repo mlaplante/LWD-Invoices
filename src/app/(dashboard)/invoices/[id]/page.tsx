@@ -125,7 +125,7 @@ export default async function InvoiceDetailPage({
         </div>
 
         {/* Contextual actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           {invoice.type !== "CREDIT_NOTE" && (
             <ReminderOverrideSelect
               invoiceId={invoice.id}

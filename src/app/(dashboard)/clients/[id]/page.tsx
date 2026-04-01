@@ -153,7 +153,7 @@ export default async function ClientDetailPage({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <Button asChild size="sm">
             <Link href={`/invoices/new?clientId=${client.id}`}>
               <Receipt className="w-3.5 h-3.5 mr-1.5" />

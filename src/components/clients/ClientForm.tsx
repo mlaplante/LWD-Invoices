@@ -128,7 +128,7 @@ export function ClientForm({ mode, client }: Props) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium">Email</label>
             <Input
@@ -160,7 +160,7 @@ export function ClientForm({ mode, client }: Props) {
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="text-sm font-medium">City</label>
             <Input
@@ -187,7 +187,7 @@ export function ClientForm({ mode, client }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium">Country</label>
             <Input
