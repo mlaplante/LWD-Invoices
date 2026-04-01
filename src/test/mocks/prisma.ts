@@ -193,6 +193,14 @@ export function createMockPrismaClient() {
       update: vi.fn(),
       delete: vi.fn(),
     },
+    clientPortalSession: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     ticket: {
       findMany: vi.fn(),
       findFirst: vi.fn(),

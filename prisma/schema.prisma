@@ -228,6 +228,24 @@ model Client {
   invoices       Invoice[]
   projects       Project[]
   tickets        Ticket[]
+  portalSessions ClientPortalSession[]
+}
+
+model ClientPortalSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ipAddress String?
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([clientId])
+  @@index([expiresAt])
 }
 
 model Currency {
