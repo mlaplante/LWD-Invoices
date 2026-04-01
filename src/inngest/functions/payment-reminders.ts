@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
+import { getOwnerBcc } from "@/server/services/email-bcc";
 
 export function calcDaysUntilDue(now: Date, dueDate: Date): number {
   const nowMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -75,11 +76,13 @@ export const processPaymentReminders = inngest.createFunction(
           }),
         );
 
+        const bcc = await getOwnerBcc(invoice.organizationId);
         await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
           to: invoice.client.email,
           subject: `Payment reminder — Invoice #${invoice.number} due in ${daysUntilDue} ${daysUntilDue === 1 ? "day" : "days"}`,
           html,
+          ...(bcc ? { bcc } : {}),
         });
       }),
     );

@@ -5,6 +5,7 @@ import { decryptJson } from "@/server/services/encryption";
 import { constructStripeEvent } from "@/server/services/stripe";
 import type { StripeConfig } from "@/server/services/gateway-config";
 import type Stripe from "stripe";
+import { getOwnerBcc } from "@/server/services/email-bcc";
 
 export async function POST(req: NextRequest) {
   // Must use raw text — Stripe signature verification requires exact bytes
@@ -211,11 +212,13 @@ export async function POST(req: NextRequest) {
           })
         );
 
+        const bcc = await getOwnerBcc(orgId);
         await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
           to: fullInvoice.client.email,
           subject: `Payment received — Invoice #${fullInvoice.number}`,
           html,
+          ...(bcc ? { bcc } : {}),
         });
       }
     } catch (err) {

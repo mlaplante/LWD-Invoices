@@ -17,6 +17,7 @@ export const organizationRouter = router({
         taskTimeInterval: true,
         defaultPaymentTermsDays: true,
         paymentReminderDays: true,
+        emailBccOwner: true,
       },
     });
     if (!org) throw new TRPCError({ code: "NOT_FOUND" });
@@ -34,6 +35,7 @@ export const organizationRouter = router({
         taskTimeInterval: z.number().min(0).optional(),
         defaultPaymentTermsDays: z.number().int().min(0).max(365).optional(),
         paymentReminderDays: z.array(z.number().int().min(1).max(365)).optional(),
+        emailBccOwner: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

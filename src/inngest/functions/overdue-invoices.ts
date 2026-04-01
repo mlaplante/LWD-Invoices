@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
 import { notifyOrgAdmins } from "@/server/services/notifications";
+import { getOwnerBcc } from "@/server/services/email-bcc";
 
 export function calcDaysOverdue(now: Date, dueDate: Date): number {
   return Math.floor((now.getTime() - dueDate.getTime()) / 86400000);
@@ -58,11 +59,13 @@ export const processOverdueInvoices = inngest.createFunction(
               }),
             );
 
+            const bcc = await getOwnerBcc(invoice.organizationId);
             await resend.emails.send({
               from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
               to: invoice.client.email,
               subject: `OVERDUE — Invoice #${invoice.number} is ${daysOverdue} ${daysOverdue === 1 ? "day" : "days"} past due`,
               html,
+              ...(bcc ? { bcc } : {}),
             });
           } catch {
             // Email failure is non-fatal

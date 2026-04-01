@@ -14,6 +14,7 @@ import { notifyOrgAdmins } from "../services/notifications";
 import { Resend } from "resend";
 import { env } from "@/lib/env";
 import { headers } from "next/headers";
+import { getOwnerBcc } from "../services/email-bcc";
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
 
@@ -642,11 +643,13 @@ export const invoicesRouter = router({
             })
           );
 
+          const bcc = await getOwnerBcc(invoice.organizationId);
           await resend.emails.send({
             from: env.RESEND_FROM_EMAIL,
             to: invoice.client.email,
             subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
             html,
+            ...(bcc ? { bcc } : {}),
           });
         } catch (err) {
           console.error("[invoices.send] Failed to send invoice email:", err);

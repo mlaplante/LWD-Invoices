@@ -13,6 +13,7 @@ type Org = {
   taskTimeInterval: number;
   defaultPaymentTermsDays: number;
   paymentReminderDays: number[];
+  emailBccOwner: boolean;
 };
 
 const PAYMENT_TERM_OPTIONS = [
@@ -38,6 +39,7 @@ export function OrgSettingsForm({ org }: { org: Org }) {
     taskTimeInterval: org.taskTimeInterval,
     defaultPaymentTermsDays: org.defaultPaymentTermsDays,
     paymentReminderDays: org.paymentReminderDays,
+    emailBccOwner: org.emailBccOwner,
   });
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export function OrgSettingsForm({ org }: { org: Org }) {
         taskTimeInterval: form.taskTimeInterval,
         defaultPaymentTermsDays: form.defaultPaymentTermsDays,
         paymentReminderDays: form.paymentReminderDays,
+        emailBccOwner: form.emailBccOwner,
       },
       {
         onSuccess: () => {
@@ -176,6 +179,21 @@ export function OrgSettingsForm({ org }: { org: Org }) {
             </label>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.emailBccOwner}
+            onChange={(e) => setForm((p) => ({ ...p, emailBccOwner: e.target.checked }))}
+            className="rounded"
+          />
+          <span className="font-medium">BCC owner on client emails</span>
+        </label>
+        <p className="text-xs text-muted-foreground mt-1">
+          Send a blind copy of all client-facing emails (invoices, payment receipts, reminders, overdue notices) to the organization owner.
+        </p>
       </div>
 
       <Button type="submit" disabled={updateMutation.isPending}>
