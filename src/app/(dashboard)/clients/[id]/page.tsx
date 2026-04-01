@@ -116,7 +116,7 @@ export default async function ClientDetailPage({
   const proto =
     headersList.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");
-  const portalLink = `${proto}://${host}/portal/${client.portalToken}`;
+  const portalLink = `${proto}://${host}/portal/dashboard/${client.portalToken}`;
 
   const color = avatarColor(client.name);
 
