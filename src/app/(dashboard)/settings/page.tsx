@@ -5,7 +5,7 @@ import { BrandingForm } from "@/components/settings/BrandingForm";
 import { PortalBrandingForm } from "@/components/settings/PortalBrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
@@ -65,6 +65,13 @@ const subPages = [
     description: "Late fees, interest, and payment enforcement rules.",
     icon: <ShieldAlert className="w-4 h-4" />,
     color: "bg-orange-50 text-orange-600",
+  },
+  {
+    href: "/settings/reports",
+    label: "Scheduled Reports",
+    description: "Automatically generate and email reports on a recurring schedule.",
+    icon: <CalendarClock className="w-4 h-4" />,
+    color: "bg-teal-50 text-teal-600",
   },
 ];
 
