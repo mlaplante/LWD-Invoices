@@ -183,6 +183,7 @@ model Organization {
   proposalContents        ProposalContent[]
   emailAutomations        EmailAutomation[]
   lateFeeEntries          LateFeeEntry[]
+  retainers               Retainer[]
 }
 
 model User {
@@ -245,6 +246,7 @@ model Client {
   projects       Project[]
   tickets        Ticket[]
   portalSessions ClientPortalSession[]
+  retainer       Retainer?
 }
 
 model ClientPortalSession {
@@ -343,6 +345,8 @@ model Invoice {
   // SIMPLE type only
   simpleAmount Decimal? @db.Decimal(20, 10)
 
+  retainerApplied Decimal @default(0) @db.Decimal(20, 10)
+
   notes                String?
   isArchived           Boolean @default(false)
   reminderDaysOverride Int[]   @default([])
@@ -371,6 +375,7 @@ model Invoice {
   proposalContent         ProposalContent?
   signatureAuditLogs      SignatureAuditLog[]
   lateFeeEntries          LateFeeEntry[]
+  retainerTransactions    RetainerTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -988,4 +993,33 @@ model LateFeeEntry {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+// ─── Retainers / Deposits ────────────────────────────────────────────────────
+
+model Retainer {
+  id             String   @id @default(cuid())
+  balance        Decimal  @default(0) @db.Decimal(20, 10)
+  clientId       String   @unique
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transactions   RetainerTransaction[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([clientId, organizationId])
+}
+
+model RetainerTransaction {
+  id          String   @id @default(cuid())
+  type        String   // "deposit" | "drawdown" | "refund"
+  amount      Decimal  @db.Decimal(20, 10)
+  description String?
+  method      String?
+  retainerId  String
+  retainer    Retainer @relation(fields: [retainerId], references: [id], onDelete: Cascade)
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
 }
