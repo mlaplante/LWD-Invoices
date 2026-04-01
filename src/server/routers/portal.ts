@@ -494,6 +494,55 @@ export const portalRouter = router({
         // Notification failure is non-fatal
       }
 
+      // Send email notification (non-fatal)
+      try {
+        const { Resend } = await import("resend");
+        const { render } = await import("@react-email/render");
+        const { ProposalSignedEmail } = await import("@/emails/ProposalSignedEmail");
+        const { getOwnerBcc } = await import("@/server/services/email-bcc");
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        const invoiceLink = `${appUrl}/invoices/${invoice.id}`;
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
+        const html = await render(
+          ProposalSignedEmail({
+            invoiceNumber: invoice.number,
+            clientName: invoice.client.name,
+            signedByName: input.signedByName,
+            signedByEmail: input.signedByEmail,
+            signedAt: now.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            orgName: invoice.organization.name,
+            invoiceLink,
+            proposalPdfLink: `${appUrl}/api/portal/${input.token}/proposal-pdf`,
+          }),
+        );
+
+        const adminEmails = invoice.organization.users
+          .filter((u) => u.email && u.role === "ADMIN")
+          .map((u) => u.email as string);
+
+        const bcc = await getOwnerBcc(invoice.organizationId);
+
+        if (adminEmails.length > 0) {
+          await resend.emails.send({
+            from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
+            to: adminEmails,
+            ...(bcc ? { bcc } : {}),
+            subject: `Proposal #${invoice.number} signed by ${input.signedByName}`,
+            html,
+          });
+        }
+      } catch {
+        // Email failure is non-fatal
+      }
+
       return { status: updated.status, signedAt: updated.signedAt };
     }),
 });
