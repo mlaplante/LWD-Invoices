@@ -27,6 +27,7 @@ export async function GET(
       },
       payments: { orderBy: { paidAt: "asc" } },
       partialPayments: { orderBy: { sortOrder: "asc" } },
+      lateFeeEntries: { orderBy: { createdAt: "asc" } },
     },
   });
 

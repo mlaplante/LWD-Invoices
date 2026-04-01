@@ -8,7 +8,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import React from "react";
-import type { Invoice, InvoiceLine, InvoiceLineTax, Tax, Client, Currency, Organization, Payment, PartialPayment } from "@/generated/prisma";
+import type { Invoice, InvoiceLine, InvoiceLineTax, Tax, Client, Currency, Organization, Payment, PartialPayment, LateFeeEntry } from "@/generated/prisma";
 import { formatAmount, formatDate } from "./pdf-shared";
 
 export type FullInvoice = Invoice & {
@@ -18,6 +18,7 @@ export type FullInvoice = Invoice & {
   lines: (InvoiceLine & { taxes: (InvoiceLineTax & { tax: Tax })[] })[];
   payments: Payment[];
   partialPayments: PartialPayment[];
+  lateFeeEntries?: LateFeeEntry[];
 };
 
 const styles = StyleSheet.create({
@@ -334,6 +335,36 @@ function InvoiceDocument({ invoice }: { invoice: FullInvoice }) {
                 <Text>{fmt(p.amount)}</Text>
               </View>
             ))}
+          </View>
+        )}
+
+        {/* Late Fees */}
+        {invoice.lateFeeEntries && invoice.lateFeeEntries.filter((e) => !e.isWaived).length > 0 && (
+          <View style={{ marginTop: 24 }}>
+            <Text style={[styles.label, { marginBottom: 6 }]}>Late Fees</Text>
+            {invoice.lateFeeEntries
+              .filter((e) => !e.isWaived)
+              .map((entry) => (
+                <View key={entry.id} style={[styles.totalsRow, { minWidth: "auto", justifyContent: "space-between" }]}>
+                  <Text style={{ color: "#6b7280" }}>
+                    {formatDate(entry.createdAt)} ·{" "}
+                    {entry.feeType === "percentage"
+                      ? `${Number(entry.feeRate)}%`
+                      : "Flat fee"}
+                  </Text>
+                  <Text>{fmt(entry.amount)}</Text>
+                </View>
+              ))}
+            <View style={[styles.totalsRow, { minWidth: "auto", justifyContent: "space-between", borderTop: "1 solid #e5e7eb", paddingTop: 4, marginTop: 4 }]}>
+              <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 10 }}>Late Fee Total</Text>
+              <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 10 }}>
+                {fmt(
+                  invoice.lateFeeEntries
+                    .filter((e) => !e.isWaived)
+                    .reduce((sum, e) => sum + Number(e.amount), 0),
+                )}
+              </Text>
+            </View>
           </View>
         )}
       </Page>
