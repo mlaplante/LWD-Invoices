@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ClientForm } from "@/components/clients/ClientForm";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
 import { ClientStatementButton } from "@/components/clients/ClientStatementButton";
+import { RetainerPanel } from "@/components/clients/RetainerPanel";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, ExternalLink, FileText, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -213,6 +214,11 @@ export default async function ClientDetailPage({
           </p>
           <ClientForm mode="edit" client={client} />
         </div>
+      </div>
+
+      {/* ── Retainer ──────────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-border/50 bg-card p-5">
+        <RetainerPanel clientId={id} />
       </div>
 
       {/* ── Invoices ─────────────────────────────────────────────── */}
