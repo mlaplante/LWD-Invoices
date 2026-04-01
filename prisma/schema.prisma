@@ -84,6 +84,7 @@ enum NotificationType {
   ESTIMATE_ACCEPTED
   ESTIMATE_REJECTED
   RECURRING_INVOICE_GENERATED
+  RECURRING_EXPENSE_GENERATED
   TICKET_CREATED
   TICKET_REPLIED
 }
@@ -687,6 +688,8 @@ model Expense {
   paidAt         DateTime?
   reimbursable   Boolean  @default(false)
   receiptUrl     String?
+  ocrRawResult   Json?
+  ocrConfidence  Float?
   invoiceLineId  String?
   taxId          String?
   tax            Tax?     @relation(fields: [taxId], references: [id])
@@ -724,6 +727,8 @@ model RecurringExpense {
   maxOccurrences  Int?
   occurrenceCount Int                @default(0)
   isActive        Boolean            @default(true)
+  lastRunDate     DateTime?
+  totalGenerated  Int                @default(0)
 
   taxId          String?
   tax            Tax?             @relation("RecurringExpenseTax", fields: [taxId], references: [id])
