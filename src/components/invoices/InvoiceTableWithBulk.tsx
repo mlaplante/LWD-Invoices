@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { InvoiceRowActions } from "@/components/invoices/InvoiceRowActions";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { FileText, Archive, Trash2, RefreshCw } from "lucide-react";
+import { FileText, Archive, Trash2, RefreshCw, Send, CheckCircle } from "lucide-react";
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
   DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",       dot: "bg-gray-400" },
@@ -48,8 +48,25 @@ function fmt(n: number, symbol: string, pos: string): string {
 }
 
 function formatDate(d: string | null | undefined): string {
-  if (!d) return "—";
+  if (!d) return "\u2014";
   return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function formatBulkResult(
+  action: string,
+  result: { succeeded: number; failed: number; skipped: number; errors: string[] }
+): { message: string; isError: boolean } {
+  if (result.failed === 0 && result.skipped === 0) {
+    return {
+      message: `${result.succeeded} invoice${result.succeeded !== 1 ? "s" : ""} ${action}`,
+      isError: false,
+    };
+  }
+  const parts: string[] = [];
+  if (result.succeeded > 0) parts.push(`${result.succeeded} ${action}`);
+  if (result.failed > 0) parts.push(`${result.failed} failed`);
+  if (result.skipped > 0) parts.push(`${result.skipped} skipped`);
+  return { message: parts.join(", "), isError: result.failed > 0 };
 }
 
 export function InvoiceTableWithBulk({ invoices }: Props) {
@@ -57,12 +74,16 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
   const router = useRouter();
   const utils = trpc.useUtils();
 
+  function onBulkComplete() {
+    setSelected(new Set());
+    router.refresh();
+    void utils.invoices.list.invalidate();
+  }
+
   const archiveMany = trpc.invoices.archiveMany.useMutation({
     onSuccess: (result) => {
       toast.success(`${result.count} invoice${result.count !== 1 ? "s" : ""} archived`);
-      setSelected(new Set());
-      router.refresh();
-      void utils.invoices.list.invalidate();
+      onBulkComplete();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -70,9 +91,43 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
   const deleteMany = trpc.invoices.deleteMany.useMutation({
     onSuccess: (result) => {
       toast.success(`${result.count} invoice${result.count !== 1 ? "s" : ""} deleted`);
-      setSelected(new Set());
-      router.refresh();
-      void utils.invoices.list.invalidate();
+      onBulkComplete();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const sendMany = trpc.invoices.sendMany.useMutation({
+    onSuccess: (result) => {
+      const { message, isError } = formatBulkResult("sent", {
+        succeeded: result.sent,
+        failed: result.failed,
+        skipped: result.skipped,
+        errors: result.errors,
+      });
+      if (isError) {
+        toast.error(message);
+      } else {
+        toast.success(message);
+      }
+      onBulkComplete();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const markPaidMany = trpc.invoices.markPaidMany.useMutation({
+    onSuccess: (result) => {
+      const { message, isError } = formatBulkResult("marked paid", {
+        succeeded: result.paid,
+        failed: result.failed,
+        skipped: result.skipped,
+        errors: result.errors,
+      });
+      if (isError) {
+        toast.error(message);
+      } else {
+        toast.success(message);
+      }
+      onBulkComplete();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -80,55 +135,80 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
   const allIds = invoices.map((i) => i.id);
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
   const someSelected = selected.size > 0;
+  const isLoading = archiveMany.isPending || deleteMany.isPending || sendMany.isPending || markPaidMany.isPending;
 
   function toggleAll() {
-    if (allSelected) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(allIds));
-    }
+    setSelected(allSelected ? new Set() : new Set(allIds));
   }
 
   function toggle(id: string) {
     const next = new Set(selected);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     setSelected(next);
   }
 
   const selectedIds = Array.from(selected);
 
+  // Determine which bulk actions make sense for the selection
+  const selectedInvoices = invoices.filter((i) => selected.has(i.id));
+  const hasSendable = selectedInvoices.some((i) => i.status === "DRAFT");
+  const hasPayable = selectedInvoices.some(
+    (i) => i.status === "SENT" || i.status === "PARTIALLY_PAID" || i.status === "OVERDUE"
+  );
+
   return (
     <div className="space-y-3">
-      {/* Bulk action bar */}
+      {/* Floating bulk action bar */}
       {someSelected && (
-        <div className="flex items-center gap-2 px-2 py-2 rounded-xl bg-accent/50 border border-border/50 print:hidden">
+        <div className="sticky top-2 z-20 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-card border border-border shadow-lg print:hidden">
           <span className="text-sm font-medium text-foreground">
             {selected.size} selected
           </span>
           <div className="flex items-center gap-1.5 ml-auto">
+            {hasSendable && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1.5"
+                disabled={isLoading}
+                onClick={() => sendMany.mutate({ ids: selectedIds })}
+              >
+                <Send className="w-3.5 h-3.5" />
+                Send ({selectedInvoices.filter((i) => i.status === "DRAFT").length})
+              </Button>
+            )}
+            {hasPayable && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1.5"
+                disabled={isLoading}
+                onClick={() => markPaidMany.mutate({ ids: selectedIds })}
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                Mark Paid ({selectedInvoices.filter((i) => ["SENT", "PARTIALLY_PAID", "OVERDUE"].includes(i.status)).length})
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
               className="h-7 text-xs gap-1.5"
-              disabled={archiveMany.isPending}
+              disabled={isLoading}
               onClick={() => archiveMany.mutate({ ids: selectedIds, isArchived: true })}
             >
               <Archive className="w-3.5 h-3.5" />
-              Archive
+              Archive ({selected.size})
             </Button>
             <Button
               size="sm"
               variant="destructive"
               className="h-7 text-xs gap-1.5"
-              disabled={deleteMany.isPending}
+              disabled={isLoading}
               onClick={() => deleteMany.mutate({ ids: selectedIds })}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Delete
+              Delete ({selected.size})
             </Button>
             <Button
               size="sm"
@@ -205,7 +285,7 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
                         {inv.recurringInvoice?.isActive && (
                           <span
                             className="inline-flex items-center gap-1 text-[10px] font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5"
-                            title={`Recurring · ${inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}`}
+                            title={`Recurring \u00b7 ${inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}`}
                           >
                             <RefreshCw className="w-2.5 h-2.5" />
                             {inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}
