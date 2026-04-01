@@ -245,7 +245,51 @@ export function ExpenseList() {
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-border/40">
+            {recurringExpenses.map((rec) => {
+              const amount = rec.qty * Number(rec.rate);
+              return (
+                <div key={`rec-m-${rec.id}`} className="block rounded-xl border border-border/50 bg-card p-4 mx-4 my-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-sm truncate flex items-center gap-1.5">
+                      <Repeat className="w-3.5 h-3.5 text-primary shrink-0" />
+                      {rec.name}
+                    </p>
+                    <p className="text-sm font-medium tabular-nums">${amount.toFixed(2)}</p>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-muted-foreground">{rec.supplier?.name ?? ""}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFrequency(rec.frequency, rec.interval)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            {expenses.map((expense) => {
+              const amount = expense.qty * Number(expense.rate);
+              return (
+                <div key={`exp-m-${expense.id}`} className="block rounded-xl border border-border/50 bg-card p-4 mx-4 my-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-sm truncate">{expense.name}</p>
+                    <p className="text-sm font-medium tabular-nums">${amount.toFixed(2)}</p>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-muted-foreground">{expense.supplier?.name ?? ""}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {expense.paidAt
+                        ? new Date(expense.paidAt).toLocaleDateString()
+                        : "\u2014"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/40">
