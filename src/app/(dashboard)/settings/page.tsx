@@ -4,7 +4,7 @@ import { OrgSettingsForm } from "@/components/settings/OrgSettingsForm";
 import { BrandingForm } from "@/components/settings/BrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ChevronRight } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, ChevronRight } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
@@ -50,6 +50,13 @@ const subPages = [
     description: "Automated emails triggered by invoice events.",
     icon: <Mail className="w-4 h-4" />,
     color: "bg-indigo-50 text-indigo-600",
+  },
+  {
+    href: "/settings/policies",
+    label: "Policies",
+    description: "Late fees, interest, and payment enforcement rules.",
+    icon: <ShieldAlert className="w-4 h-4" />,
+    color: "bg-orange-50 text-orange-600",
   },
 ];
 
