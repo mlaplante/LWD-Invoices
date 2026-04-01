@@ -123,9 +123,14 @@ export default async function PortalInvoicePage({
 
   return (
     <PortalShell branding={branding}>
-      <div className="space-y-6">
+      <div className="space-y-6" data-template={invoice.organization.invoiceTemplate ?? "modern"}>
         {/* Invoice card */}
-        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className={cn(
+          "border border-border/50 bg-card overflow-hidden",
+          (invoice.organization.invoiceTemplate ?? "modern") === "classic"
+            ? "rounded-none border-t-2"
+            : "rounded-2xl"
+        )}>
           {/* Invoice header */}
           <div className="px-6 py-5 text-white" style={{ backgroundColor: brandColor }}>
             <div className="flex items-start justify-between">
