@@ -35,6 +35,7 @@ export const organizationRouter = router({
         lateFeeMaxApplications: true,
         lateFeeIntervalDays: true,
         require2FA: true,
+        defaultDepositPercent: true,
       },
     });
     if (!org) throw new TRPCError({ code: "NOT_FOUND" });
@@ -70,6 +71,7 @@ export const organizationRouter = router({
         invoiceShowLogo: z.boolean().optional(),
         invoiceFooterText: z.string().max(500).nullable().optional(),
         require2FA: z.boolean().optional(),
+        defaultDepositPercent: z.number().int().min(1).max(100).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
