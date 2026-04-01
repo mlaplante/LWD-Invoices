@@ -217,7 +217,7 @@ export function CompactTemplate({ invoice, config }: TemplateProps) {
         .sort((a, b) => a.sort - b.sort)
         .map((line) => {
           const lineTax = line.taxes.reduce(
-            (sum, t) => sum + Number(t.amount),
+            (sum, t) => sum + Number(t.taxAmount),
             0
           );
           return (
