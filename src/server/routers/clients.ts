@@ -68,10 +68,12 @@ export const clientsRouter = router({
     }),
 
   update: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }).merge(clientSchema.partial()))
+    .input(z.object({ id: z.string(), removePassphrase: z.boolean().optional() }).merge(clientSchema.partial()))
     .mutation(async ({ ctx, input }) => {
-      const { id, portalPassphrase, ...rest } = input;
-      const passHash = await hashPassphraseIfProvided({ portalPassphrase });
+      const { id, portalPassphrase, removePassphrase, ...rest } = input;
+      const passHash = removePassphrase
+        ? { portalPassphraseHash: null }
+        : await hashPassphraseIfProvided({ portalPassphrase });
       return ctx.db.client.update({
         where: { id, organizationId: ctx.orgId },
         data: { ...rest, ...passHash },

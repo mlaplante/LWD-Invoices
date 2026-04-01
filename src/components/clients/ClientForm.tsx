@@ -208,18 +208,41 @@ export function ClientForm({ mode, client }: Props) {
 
         <div>
           <label className="text-sm font-medium">Portal Passphrase</label>
-          <Input
-            type="password"
-            value={form.portalPassphrase}
-            onChange={(e) => handleChange("portalPassphrase", e.target.value)}
-            placeholder={
-              mode === "edit" && client?.portalPassphraseHash
-                ? "Leave blank to keep existing passphrase"
-                : "Optional password for client portal"
-            }
-            autoComplete="new-password"
-            className="mt-1"
-          />
+          <div className="flex gap-2 mt-1">
+            <Input
+              type="password"
+              value={form.portalPassphrase}
+              onChange={(e) => handleChange("portalPassphrase", e.target.value)}
+              placeholder={
+                mode === "edit" && client?.portalPassphraseHash
+                  ? "Leave blank to keep existing passphrase"
+                  : "Optional password for client portal"
+              }
+              autoComplete="new-password"
+            />
+            {mode === "edit" && client?.portalPassphraseHash && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 text-destructive hover:text-destructive"
+                onClick={() => {
+                  if (confirm("Remove the portal passphrase? The invoice portal will be accessible without a password.")) {
+                    updateMutation.mutate(
+                      { id: client.id, removePassphrase: true },
+                      {
+                        onSuccess: () => {
+                          startTransition(() => router.refresh());
+                        },
+                      }
+                    );
+                  }
+                }}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
         </div>
 
         <div>
