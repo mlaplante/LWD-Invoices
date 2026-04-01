@@ -15,6 +15,7 @@ import { DeleteInvoiceButton } from "@/components/invoices/DeleteInvoiceButton";
 import { DuplicateInvoiceButton } from "@/components/invoices/DuplicateInvoiceButton";
 import { ConvertEstimateButton } from "@/components/invoices/ConvertEstimateButton";
 import { LateFeeSection } from "@/components/invoices/LateFeeSection";
+import { ApplyRetainerDialog } from "@/components/invoices/ApplyRetainerDialog";
 import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
 import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
@@ -151,6 +152,15 @@ export default async function InvoiceDetailPage({
             <ApplyCreditNoteDialog
               invoiceId={invoice.id}
               clientId={invoice.client.id}
+            />
+          )}
+          {isPayable && (
+            <ApplyRetainerDialog
+              invoiceId={invoice.id}
+              clientId={invoice.client.id}
+              invoiceTotal={Number(invoice.total)}
+              invoicePaid={invoice.payments.reduce((s, p) => s + Number(p.amount), 0)}
+              retainerAlreadyApplied={Number(invoice.retainerApplied)}
             />
           )}
           {isPayable && (
@@ -341,6 +351,14 @@ export default async function InvoiceDetailPage({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Estimated Tax</span>
                   <span className="font-medium">{f(invoice.taxTotal)}</span>
+                </div>
+              )}
+              {Number(invoice.retainerApplied) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Retainer Applied</span>
+                  <span className="font-medium text-emerald-600">
+                    -{f(Number(invoice.retainerApplied))}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between border-t border-border pt-3">
