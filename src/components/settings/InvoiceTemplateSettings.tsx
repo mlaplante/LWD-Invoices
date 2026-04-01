@@ -27,6 +27,7 @@ type Props = {
     invoiceAccentColor: string | null;
     invoiceShowLogo: boolean;
     invoiceFooterText: string | null;
+    defaultDepositPercent: number | null;
   };
 };
 
@@ -193,6 +194,7 @@ export function InvoiceTemplateSettings({ org }: Props) {
   const [accentColor, setAccentColor] = useState(org.invoiceAccentColor ?? org.brandColor ?? "#2563eb");
   const [showLogo, setShowLogo] = useState(org.invoiceShowLogo);
   const [footerText, setFooterText] = useState(org.invoiceFooterText ?? "");
+  const [depositPercent, setDepositPercent] = useState<number | null>(org.defaultDepositPercent);
 
   function handleSave() {
     updateMutation.mutate({
@@ -201,6 +203,7 @@ export function InvoiceTemplateSettings({ org }: Props) {
       invoiceAccentColor: accentColor || null,
       invoiceShowLogo: showLogo,
       invoiceFooterText: footerText || null,
+      defaultDepositPercent: depositPercent,
     });
   }
 
@@ -330,6 +333,46 @@ export function InvoiceTemplateSettings({ org }: Props) {
               maxLength={500}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Deposit Default */}
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border/50">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Payments
+          </p>
+          <p className="text-base font-semibold mt-1">Default Deposit</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            When set, new invoices will default to requiring a deposit.
+          </p>
+        </div>
+        <div className="px-6 py-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="deposit-toggle">Require deposit by default</Label>
+            <Switch
+              id="deposit-toggle"
+              checked={depositPercent !== null}
+              onCheckedChange={(checked) => setDepositPercent(checked ? 50 : null)}
+            />
+          </div>
+          {depositPercent !== null && (
+            <div className="space-y-1">
+              <Label htmlFor="deposit-percent">Deposit percentage</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="deposit-percent"
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={depositPercent}
+                  onChange={(e) => setDepositPercent(Number(e.target.value) || 50)}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
