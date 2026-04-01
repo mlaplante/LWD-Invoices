@@ -2,6 +2,8 @@ import { db } from "@/server/db";
 import { isSessionExpired } from "@/server/services/portal-dashboard";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getPortalBranding } from "@/lib/portal-branding";
+import { PortalShell } from "@/components/portal/PortalShell";
 
 export default async function PortalDashboardLayout({
   children,
@@ -22,6 +24,10 @@ export default async function PortalDashboardLayout({
           name: true,
           logoUrl: true,
           brandColor: true,
+          portalTagline: true,
+          portalFooterText: true,
+          brandFont: true,
+          hidePoweredBy: true,
         },
       },
     },
@@ -49,35 +55,11 @@ export default async function PortalDashboardLayout({
     redirect(`/portal/dashboard-login/${clientToken}`);
   }
 
-  const brandColor = client.organization.brandColor ?? "#2563eb";
+  const branding = getPortalBranding(client.organization);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header
-        className="border-b"
-        style={{ borderColor: `${brandColor}20` }}
-      >
-        <div className="mx-auto max-w-5xl px-4 py-4 flex items-center gap-3">
-          {client.organization.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={client.organization.logoUrl}
-              alt={client.organization.name}
-              className="h-8 w-auto max-w-[120px] object-contain"
-            />
-          )}
-          <div className="flex-1">
-            <h1 className="text-lg font-bold text-foreground">
-              {client.organization.name}
-            </h1>
-            <p className="text-xs text-muted-foreground">Client Portal</p>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
-    </div>
+    <PortalShell branding={branding} maxWidth="max-w-5xl">
+      {children}
+    </PortalShell>
   );
 }
