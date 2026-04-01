@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Receipt,
   Users,
+  UsersRound,
   Wallet,
   MoreHorizontal,
   FolderOpen,
@@ -32,6 +33,7 @@ const moreItems = [
   { href: "/items", label: "Items", icon: Package },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/tickets", label: "Tickets", icon: LifeBuoy },
+  { href: "/settings/team", label: "Team", icon: UsersRound },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
