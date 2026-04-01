@@ -36,6 +36,7 @@ import { emailAutomationsRouter } from "./emailAutomations";
 import { lateFeesRouter } from "./lateFees";
 import { retainersRouter } from "./retainers";
 import { scheduledReportsRouter } from "./scheduledReports";
+import { reminderSequencesRouter } from "./reminderSequences";
 import { dashboardRouter } from "./dashboard";
 
 export const appRouter = router({
@@ -77,6 +78,7 @@ export const appRouter = router({
   lateFees: lateFeesRouter,
   retainers: retainersRouter,
   scheduledReports: scheduledReportsRouter,
+  reminderSequences: reminderSequencesRouter,
 });
 
 export type AppRouter = typeof appRouter;
