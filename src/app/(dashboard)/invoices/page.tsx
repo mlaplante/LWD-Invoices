@@ -1,57 +1,16 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { FileText, RefreshCw } from "lucide-react";
+import type { InvoiceStatus } from "@/generated/prisma";
+import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InvoiceTableWithBulk } from "@/components/invoices/InvoiceTableWithBulk";
+import { InvoiceMobileListWithBulk } from "@/components/invoices/InvoiceMobileListWithBulk";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { DateRangeFilter } from "@/components/ui/DateRangeFilter";
 import { Suspense } from "react";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { InvoiceDatePresets } from "@/components/invoices/InvoiceDatePresets";
-
-// ── Status badge ─────────────────────────────────────────────────────────────
-
-const STATUS_BADGE: Record<
-  InvoiceStatus,
-  { label: string; className: string; dot: string }
-> = {
-  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",       dot: "bg-gray-400" },
-  SENT:           { label: "Unpaid",   className: "bg-amber-50 text-amber-600",      dot: "bg-amber-500" },
-  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600",        dot: "bg-blue-500" },
-  PAID:           { label: "Paid",     className: "bg-emerald-50 text-emerald-600",  dot: "bg-emerald-500" },
-  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600",          dot: "bg-red-500" },
-  ACCEPTED:       { label: "Accepted", className: "bg-primary/10 text-primary",      dot: "bg-primary" },
-  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-400",       dot: "bg-gray-300" },
-};
-
-const TYPE_LABELS: Record<InvoiceType, string> = {
-  DETAILED: "Invoice",
-  SIMPLE: "Invoice",
-  ESTIMATE: "Estimate",
-  CREDIT_NOTE: "Credit Note",
-};
-
-function fmt(
-  n: number | { toNumber(): number },
-  symbol: string,
-  pos: string
-): string {
-  const val = typeof n === "object" ? n.toNumber() : n;
-  return pos === "before"
-    ? `${symbol}${val.toFixed(2)}`
-    : `${val.toFixed(2)}${symbol}`;
-}
-
-function formatDate(d: Date | null): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 // ── Tab config ───────────────────────────────────────────────────────────────
 
@@ -190,46 +149,22 @@ export default async function InvoicesPage({
         </div>
       ) : (
         <>
-          {/* Mobile card list */}
-          <div className="sm:hidden print:hidden divide-y divide-border/50">
-            {paginatedInvoices.map((inv) => {
-              const badge = STATUS_BADGE[inv.status];
-              return (
-                <Link
-                  key={inv.id}
-                  href={`/invoices/${inv.id}`}
-                  className="flex items-center gap-3 py-3.5 px-2 hover:bg-accent/30 transition-colors"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                    <FileText className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm leading-tight flex items-center gap-1.5">
-                      <span className="truncate">{TYPE_LABELS[inv.type]} #{inv.number}</span>
-                      {inv.recurringInvoice?.isActive && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5 shrink-0">
-                          <RefreshCw className="w-2.5 h-2.5" />
-                          {inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {inv.client.name} · {formatDate(inv.date)}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="font-semibold text-sm">
-                      {fmt(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
-                    </span>
-                    <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium", badge.className)}>
-                      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", badge.dot)} />
-                      {badge.label}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+          {/* Mobile card list with bulk selection */}
+          <InvoiceMobileListWithBulk
+            invoices={paginatedInvoices.map((inv) => ({
+              id: inv.id,
+              number: inv.number,
+              status: inv.status,
+              type: inv.type,
+              date: inv.date ? inv.date.toISOString() : null,
+              total: Number(inv.total),
+              currency: inv.currency,
+              client: { name: inv.client.name },
+              recurringInvoice: inv.recurringInvoice
+                ? { isActive: inv.recurringInvoice.isActive, frequency: inv.recurringInvoice.frequency }
+                : null,
+            }))}
+          />
 
           {/* Desktop table with bulk actions */}
           <div className="hidden sm:block print:block overflow-x-auto">
