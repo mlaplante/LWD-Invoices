@@ -614,6 +614,165 @@ export const invoicesRouter = router({
       });
     }),
 
+  sendMany: requireRole("OWNER", "ADMIN")
+    .input(z.object({ ids: z.array(z.string()).min(1).max(50) }))
+    .mutation(async ({ ctx, input }) => {
+      const invoices = await ctx.db.invoice.findMany({
+        where: {
+          id: { in: input.ids },
+          organizationId: ctx.orgId,
+          status: InvoiceStatus.DRAFT,
+          type: { notIn: [InvoiceType.CREDIT_NOTE] },
+        },
+        include: { client: true, organization: true, currency: true },
+      });
+
+      if (invoices.length === 0) {
+        return { sent: 0, failed: 0, skipped: input.ids.length, errors: [] as string[] };
+      }
+
+      const hdrs = await headers();
+      const host = hdrs.get("host") ?? "localhost:3000";
+      const proto =
+        hdrs.get("x-forwarded-proto") ??
+        (host.startsWith("localhost") ? "http" : "https");
+      const appUrl = `${proto}://${host}`;
+
+      const errors: string[] = [];
+      const results = await Promise.allSettled(
+        invoices.map(async (invoice) => {
+          // Update status
+          await ctx.db.invoice.update({
+            where: { id: invoice.id, organizationId: ctx.orgId },
+            data: {
+              status: invoice.type === InvoiceType.ESTIMATE ? invoice.status : InvoiceStatus.SENT,
+              lastSent: new Date(),
+            },
+          });
+
+          // Send email if client has email
+          if (invoice.client.email) {
+            try {
+              const { render } = await import("@react-email/render");
+              const { InvoiceSentEmail } = await import("@/emails/InvoiceSentEmail");
+              const resend = new Resend(env.RESEND_API_KEY);
+              const html = await render(
+                InvoiceSentEmail({
+                  invoiceNumber: invoice.number,
+                  clientName: invoice.client.name,
+                  total: Number(invoice.total).toFixed(2),
+                  currencySymbol: invoice.currency.symbol,
+                  dueDate: invoice.dueDate?.toLocaleDateString() ?? null,
+                  orgName: invoice.organization.name,
+                  portalLink: `${appUrl}/portal/${invoice.portalToken}`,
+                  logoUrl: invoice.organization.logoUrl ?? undefined,
+                })
+              );
+
+              const bcc = await getOwnerBcc(invoice.organizationId);
+              await resend.emails.send({
+                from: env.RESEND_FROM_EMAIL,
+                to: invoice.client.email,
+                subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
+                html,
+                ...(bcc ? { bcc } : {}),
+              });
+            } catch (err) {
+              console.error(`[invoices.sendMany] Failed to email invoice ${invoice.number}:`, err);
+            }
+          }
+
+          // Audit + notification (non-blocking)
+          await Promise.all([
+            logAudit({
+              action: "SENT",
+              entityType: "Invoice",
+              entityId: invoice.id,
+              entityLabel: invoice.number,
+              organizationId: invoice.organization.id,
+              userId: ctx.userId,
+            }).catch(() => {}),
+            notifyOrgAdmins(invoice.organization.id, {
+              type: "INVOICE_SENT",
+              title: "Invoice sent",
+              body: `Invoice #${invoice.number} sent to ${invoice.client.name}`,
+              link: `/invoices/${invoice.id}`,
+            }).catch(() => {}),
+          ]);
+        })
+      );
+
+      const sent = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+      results.forEach((r) => {
+        if (r.status === "rejected") {
+          errors.push(r.reason?.message ?? "Unknown error");
+        }
+      });
+
+      return {
+        sent,
+        failed,
+        skipped: input.ids.length - invoices.length,
+        errors,
+      };
+    }),
+
+  markPaidMany: requireRole("OWNER", "ADMIN")
+    .input(
+      z.object({
+        ids: z.array(z.string()).min(1).max(50),
+        method: z.string().default("manual"),
+        paidAt: z.coerce.date().default(() => new Date()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Fetch eligible invoices with their totals
+      const invoices = await ctx.db.invoice.findMany({
+        where: {
+          id: { in: input.ids },
+          organizationId: ctx.orgId,
+          status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
+        },
+        select: { id: true, total: true, number: true },
+      });
+
+      if (invoices.length === 0) {
+        return { paid: 0, failed: 0, skipped: input.ids.length, errors: [] as string[] };
+      }
+
+      const errors: string[] = [];
+      const results = await Promise.allSettled(
+        invoices.map(async (invoice) => {
+          await ctx.db.$transaction(async (tx) => {
+            await tx.payment.create({
+              data: {
+                amount: invoice.total,
+                method: input.method,
+                paidAt: input.paidAt,
+                invoiceId: invoice.id,
+                organizationId: ctx.orgId,
+              },
+            });
+            await tx.invoice.update({
+              where: { id: invoice.id, organizationId: ctx.orgId },
+              data: { status: InvoiceStatus.PAID },
+            });
+          });
+        })
+      );
+
+      const paid = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+      results.forEach((r) => {
+        if (r.status === "rejected") {
+          errors.push(r.reason?.message ?? "Unknown error");
+        }
+      });
+
+      return { paid, failed, skipped: input.ids.length - invoices.length, errors };
+    }),
+
   send: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
