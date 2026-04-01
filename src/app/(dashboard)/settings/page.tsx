@@ -4,7 +4,7 @@ import { OrgSettingsForm } from "@/components/settings/OrgSettingsForm";
 import { BrandingForm } from "@/components/settings/BrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, ChevronRight } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ChevronRight } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
@@ -43,6 +43,13 @@ const subPages = [
     description: "Manage reusable proposal templates for estimates.",
     icon: <FileText className="w-4 h-4" />,
     color: "bg-rose-50 text-rose-600",
+  },
+  {
+    href: "/settings/automations",
+    label: "Email Automations",
+    description: "Automated emails triggered by invoice events.",
+    icon: <Mail className="w-4 h-4" />,
+    color: "bg-indigo-50 text-indigo-600",
   },
 ];
 
