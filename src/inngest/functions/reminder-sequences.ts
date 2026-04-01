@@ -5,6 +5,7 @@ import {
   interpolateTemplate,
   buildTemplateVariables,
 } from "@/server/services/automation-template";
+import { isReliablePayer } from "@/server/services/client-payment-score";
 
 /**
  * Determines which step fires today for a given invoice.
@@ -49,6 +50,13 @@ export const processReminderSequences = inngest.createFunction(
       list.push(seq);
       orgSequences.set(seq.organizationId, list);
     }
+
+    // Pre-fetch smart reminder settings for all orgs
+    const orgSettings = await db.organization.findMany({
+      where: { id: { in: orgIds } },
+      select: { id: true, smartRemindersEnabled: true, smartRemindersThreshold: true },
+    });
+    const orgSettingsMap = new Map(orgSettings.map((o) => [o.id, o]));
 
     // 2. Fetch unpaid invoices with due dates for these orgs
     const orgIds = [...orgSequences.keys()];
@@ -123,6 +131,21 @@ export const processReminderSequences = inngest.createFunction(
       if (!fullStep) {
         skipped++;
         continue;
+      }
+
+      // Smart reminders: skip pre-due steps for reliable clients
+      if (fullStep.daysRelativeToDue < 0) {
+        const orgSetting = orgSettingsMap.get(invoice.organizationId);
+        if (orgSetting?.smartRemindersEnabled) {
+          const reliable = await isReliablePayer(db, invoice.clientId, orgSetting.smartRemindersThreshold);
+          if (reliable) {
+            await db.reminderLog.create({
+              data: { stepId: fullStep.id, invoiceId: invoice.id },
+            });
+            skipped++;
+            continue;
+          }
+        }
       }
 
       try {
