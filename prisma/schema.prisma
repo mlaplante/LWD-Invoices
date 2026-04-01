@@ -943,7 +943,6 @@ model ReminderStep {
   logs                ReminderLog[]
 
   createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
 
   @@index([sequenceId])
 }
