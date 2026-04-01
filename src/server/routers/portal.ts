@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../trpc";
-import { GatewayType, InvoiceStatus, ProjectStatus } from "@/generated/prisma";
+import { GatewayType, InvoiceStatus, InvoiceType, ProjectStatus } from "@/generated/prisma";
 import { decryptJson } from "../services/encryption";
 import { getStripeClient, createCheckoutSession } from "../services/stripe";
 import type { StripeConfig } from "../services/gateway-config";
@@ -10,6 +10,12 @@ import {
   SESSION_DURATION_MS,
   isSessionExpired,
 } from "../services/portal-dashboard";
+import {
+  hashDocument,
+  hashSignature,
+  validateSignatureData,
+  encryptSignature,
+} from "../services/signature";
 import bcrypt from "bcryptjs";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = [
@@ -379,5 +385,115 @@ export const portalRouter = router({
         projects,
         recentPayments,
       };
+    }),
+
+  signProposal: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        signedByName: z.string().min(1).max(200),
+        signedByEmail: z.string().email(),
+        signatureData: z.string(),
+        legalConsent: z.literal(true),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Validate signature data format
+      if (!validateSignatureData(input.signatureData)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid signature data",
+        });
+      }
+
+      // Find invoice by portal token
+      const invoice = await ctx.db.invoice.findUnique({
+        where: { portalToken: input.token },
+        include: {
+          proposalContent: true,
+          client: { select: { name: true } },
+          organization: {
+            select: {
+              name: true,
+              users: { select: { email: true, id: true, role: true } },
+            },
+          },
+        },
+      });
+
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      // Must be an ESTIMATE type
+      if (invoice.type !== InvoiceType.ESTIMATE) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only estimates/proposals can be signed",
+        });
+      }
+
+      // Must not already be signed
+      if (invoice.signedAt) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This proposal has already been signed",
+        });
+      }
+
+      // Hash document sections and signature
+      const sections = (invoice.proposalContent?.sections as Array<{
+        key: string;
+        title: string;
+        content: string;
+      }>) ?? [];
+      const documentHash = hashDocument(sections);
+      const signatureHash = hashSignature(input.signatureData);
+
+      // Encrypt signature data for storage
+      const encryptedSignature = encryptSignature(input.signatureData);
+
+      const now = new Date();
+
+      // Update invoice with signature fields and ACCEPTED status
+      const updated = await ctx.db.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          signedAt: now,
+          signedByName: input.signedByName,
+          signedByEmail: input.signedByEmail,
+          signedByIp: "0.0.0.0", // IP should be set from request headers in production
+          signatureData: encryptedSignature,
+          status: InvoiceStatus.ACCEPTED,
+        },
+      });
+
+      // Create signature audit log
+      await ctx.db.signatureAuditLog.create({
+        data: {
+          invoiceId: invoice.id,
+          organizationId: invoice.organizationId,
+          signedByName: input.signedByName,
+          signedByEmail: input.signedByEmail,
+          signedByIp: "0.0.0.0",
+          documentHash,
+          signatureHash,
+        },
+      });
+
+      // Fire notification (non-fatal)
+      try {
+        const { notifyOrgAdmins } = await import("@/server/services/notifications");
+        await notifyOrgAdmins(invoice.organizationId, {
+          type: "ESTIMATE_ACCEPTED",
+          title: `Proposal #${invoice.number} signed`,
+          body: `${input.signedByName} signed the proposal`,
+          link: `/invoices/${invoice.id}`,
+        });
+      } catch {
+        // Notification failure is non-fatal
+      }
+
+      return { status: updated.status, signedAt: updated.signedAt };
     }),
 });
