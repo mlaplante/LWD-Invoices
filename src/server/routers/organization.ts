@@ -22,6 +22,11 @@ export const organizationRouter = router({
         portalFooterText: true,
         brandFont: true,
         hidePoweredBy: true,
+        invoiceTemplate: true,
+        invoiceFontFamily: true,
+        invoiceAccentColor: true,
+        invoiceShowLogo: true,
+        invoiceFooterText: true,
         lateFeeEnabled: true,
         lateFeeType: true,
         lateFeeAmount: true,
@@ -58,6 +63,11 @@ export const organizationRouter = router({
         portalFooterText: z.string().max(500).nullable().optional(),
         brandFont: z.enum(["inter", "georgia", "system"]).nullable().optional(),
         hidePoweredBy: z.boolean().optional(),
+        invoiceTemplate: z.enum(["modern", "classic", "minimal", "compact"]).optional(),
+        invoiceFontFamily: z.enum(["helvetica", "georgia", "courier"]).nullable().optional(),
+        invoiceAccentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+        invoiceShowLogo: z.boolean().optional(),
+        invoiceFooterText: z.string().max(500).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
