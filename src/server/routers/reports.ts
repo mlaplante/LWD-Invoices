@@ -191,24 +191,35 @@ export const reportsRouter = router({
   profitLoss: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {
-      const [payments, expenses] = await Promise.all([
+      const dateFilter = input.from || input.to
+        ? { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) }
+        : undefined;
+
+      const [payments, expenses, discountedInvoices] = await Promise.all([
         ctx.db.payment.findMany({
           where: {
             organizationId: ctx.orgId,
-            ...(input.from || input.to
-              ? { paidAt: { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) } }
-              : {}),
+            ...(dateFilter ? { paidAt: dateFilter } : {}),
           },
           select: { amount: true, paidAt: true },
         }),
         ctx.db.expense.findMany({
           where: {
             organizationId: ctx.orgId,
-            ...(input.from || input.to
-              ? { createdAt: { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) } }
-              : {}),
+            ...(dateFilter ? { createdAt: dateFilter } : {}),
           },
           select: { rate: true, qty: true, createdAt: true },
+        }),
+        ctx.db.invoice.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            isArchived: false,
+            status: { notIn: [InvoiceStatus.DRAFT] },
+            discountType: { not: null },
+            discountAmount: { gt: 0 },
+            ...(dateFilter ? { date: dateFilter } : {}),
+          },
+          select: { discountType: true, discountAmount: true, subtotal: true },
         }),
       ]);
 
@@ -228,6 +239,16 @@ export const reportsRouter = router({
       const totalRevenue = Object.values(revenueByMonth).reduce((s, v) => s + v, 0);
       const totalExpenses = Object.values(expensesByMonth).reduce((s, v) => s + v, 0);
 
+      // Calculate total discounts given
+      let totalDiscountsGiven = 0;
+      for (const inv of discountedInvoices) {
+        if (inv.discountType === "percentage") {
+          totalDiscountsGiven += Number(inv.subtotal) * Number(inv.discountAmount) / 100;
+        } else {
+          totalDiscountsGiven += Number(inv.discountAmount);
+        }
+      }
+
       return {
         revenueByMonth,
         expensesByMonth,
@@ -235,6 +256,7 @@ export const reportsRouter = router({
         totalRevenue,
         totalExpenses,
         netIncome: totalRevenue - totalExpenses,
+        totalDiscountsGiven: Math.round(totalDiscountsGiven * 100) / 100,
       };
     }),
 
