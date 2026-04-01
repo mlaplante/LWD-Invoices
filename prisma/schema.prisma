@@ -157,6 +157,8 @@ model Organization {
   defaultPaymentTermsDays Int      @default(30)
   paymentReminderDays     Int[]    @default([1, 3])
   defaultDepositPercent   Int?
+  smartRemindersEnabled   Boolean  @default(false)
+  smartRemindersThreshold Int      @default(80)
   emailBccOwner           Boolean  @default(true)
   lateFeeEnabled          Boolean @default(false)
   lateFeeType             String?
