@@ -156,6 +156,7 @@ model Organization {
   taskTimeInterval        Float    @default(0)
   defaultPaymentTermsDays Int      @default(30)
   paymentReminderDays     Int[]    @default([1, 3])
+  defaultDepositPercent   Int?
   emailBccOwner           Boolean  @default(true)
   lateFeeEnabled          Boolean @default(false)
   lateFeeType             String?
