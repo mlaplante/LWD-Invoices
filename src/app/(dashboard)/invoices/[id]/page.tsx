@@ -14,6 +14,7 @@ import { ArchiveInvoiceButton } from "@/components/invoices/ArchiveInvoiceButton
 import { DeleteInvoiceButton } from "@/components/invoices/DeleteInvoiceButton";
 import { DuplicateInvoiceButton } from "@/components/invoices/DuplicateInvoiceButton";
 import { ConvertEstimateButton } from "@/components/invoices/ConvertEstimateButton";
+import { LateFeeSection } from "@/components/invoices/LateFeeSection";
 import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
 import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
@@ -462,6 +463,9 @@ export default async function InvoiceDetailPage({
           </div>
         </div>
       )}
+
+      {/* ── Late Fees ─────────────────────────────────────────────── */}
+      <LateFeeSection invoiceId={invoice.id} />
 
       {/* ── Comments ─────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border/50 p-5">
