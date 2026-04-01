@@ -213,6 +213,7 @@ model Organization {
   scheduledReports        ScheduledReport[]
   lateFeeEntries          LateFeeEntry[]
   retainers               Retainer[]
+  reminderSequences       ReminderSequence[]
 }
 
 model User {
@@ -384,6 +385,10 @@ model Invoice {
   isArchived           Boolean @default(false)
   reminderDaysOverride Int[]   @default([])
 
+  // Optional per-invoice reminder sequence override
+  reminderSequenceId  String?
+  reminderSequence    ReminderSequence? @relation(fields: [reminderSequenceId], references: [id], onDelete: SetNull)
+
   clientId       String
   client         Client       @relation(fields: [clientId], references: [id])
   organizationId String
@@ -409,6 +414,7 @@ model Invoice {
   signatureAuditLogs      SignatureAuditLog[]
   lateFeeEntries          LateFeeEntry[]
   retainerTransactions    RetainerTransaction[]
+  reminderLogs            ReminderLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -901,6 +907,57 @@ model ScheduledReport {
 
   @@index([organizationId])
   @@index([enabled])
+}
+
+// ─── Reminder Sequences ──────────────────────────────────────────────────────
+
+model ReminderSequence {
+  id              String   @id @default(cuid())
+  name            String
+  isDefault       Boolean  @default(false)
+  enabled         Boolean  @default(true)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  steps           ReminderStep[]
+  invoices        Invoice[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model ReminderStep {
+  id                  String   @id @default(cuid())
+  daysRelativeToDue   Int      // negative = before due, 0 = on due, positive = after due
+  subject             String
+  body                String
+  sort                Int      @default(0)
+
+  sequenceId          String
+  sequence            ReminderSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  logs                ReminderLog[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([sequenceId])
+}
+
+model ReminderLog {
+  id         String   @id @default(cuid())
+  sentAt     DateTime @default(now())
+
+  stepId     String
+  step       ReminderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  invoiceId  String
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([stepId, invoiceId])   // prevents double-sends
+  @@index([invoiceId])
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
