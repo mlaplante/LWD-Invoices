@@ -15,6 +15,8 @@ import { DeleteInvoiceButton } from "@/components/invoices/DeleteInvoiceButton";
 import { DuplicateInvoiceButton } from "@/components/invoices/DuplicateInvoiceButton";
 import { ConvertEstimateButton } from "@/components/invoices/ConvertEstimateButton";
 import { LateFeeSection } from "@/components/invoices/LateFeeSection";
+import { ReminderOverrideSelect } from "@/components/invoices/ReminderOverrideSelect";
+import { ReminderHistory } from "@/components/invoices/ReminderHistory";
 import { ApplyRetainerDialog } from "@/components/invoices/ApplyRetainerDialog";
 import { IssueCreditNoteDialog } from "@/components/invoices/IssueCreditNoteDialog";
 import { CreditNoteActions } from "@/components/invoices/CreditNoteActions";
@@ -122,6 +124,12 @@ export default async function InvoiceDetailPage({
 
         {/* Contextual actions */}
         <div className="flex items-center gap-2 shrink-0">
+          {invoice.type !== "CREDIT_NOTE" && (
+            <ReminderOverrideSelect
+              invoiceId={invoice.id}
+              currentSequenceId={invoice.reminderSequenceId}
+            />
+          )}
           {(invoice.status === "DRAFT" || invoice.status === "SENT") && (
             <Button asChild variant="outline" size="sm">
               <Link href={`/invoices/${invoice.id}/edit`}>
@@ -509,6 +517,9 @@ export default async function InvoiceDetailPage({
 
       {/* ── Late Fees ─────────────────────────────────────────────── */}
       <LateFeeSection invoiceId={invoice.id} />
+
+      {/* ── Reminder History ─────────────────────────────────────── */}
+      <ReminderHistory invoiceId={invoice.id} />
 
       {/* ── Comments ─────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border/50 p-5">

@@ -45,6 +45,7 @@ const invoiceWriteSchema = z.object({
   clientId: z.string().min(1),
   lines: z.array(lineSchema).default([]),
   reminderDaysOverride: z.array(z.number().int().min(1)).optional(),
+  reminderSequenceId: z.string().nullable().optional(),
   discountType: z.enum(["percentage", "fixed"]).nullable().optional(),
   discountAmount: z.number().min(0).default(0),
   discountDescription: z.string().max(200).optional(),
