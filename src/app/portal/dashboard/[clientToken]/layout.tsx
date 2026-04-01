@@ -36,7 +36,7 @@ export default async function PortalDashboardLayout({
   const sessionToken = cookieStore.get(`portal_dashboard_${clientToken}`)?.value;
 
   if (!sessionToken) {
-    redirect(`/portal/dashboard/${clientToken}/login`);
+    redirect(`/portal/dashboard-login/${clientToken}`);
   }
 
   // Validate session in DB
@@ -46,7 +46,7 @@ export default async function PortalDashboardLayout({
   });
 
   if (!session || session.clientId !== client.id || isSessionExpired(session.expiresAt)) {
-    redirect(`/portal/dashboard/${clientToken}/login`);
+    redirect(`/portal/dashboard-login/${clientToken}`);
   }
 
   const brandColor = client.organization.brandColor ?? "#2563eb";
