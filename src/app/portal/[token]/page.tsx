@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import { PaymentButtons } from "@/components/portal/PaymentButtons";
 import { PortalComments } from "@/components/portal/PortalComments";
 import { EstimateActions } from "@/components/portal/EstimateActions";
+import { ProposalSignatureForm } from "@/components/portal/ProposalSignatureForm";
 import { decryptJson } from "@/server/services/encryption";
 import type { PayPalConfig } from "@/server/services/gateway-config";
 import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
@@ -245,6 +246,33 @@ export default async function PortalInvoicePage({
                 token={token}
                 currentStatus={invoice.status}
               />
+            )}
+
+            {/* Proposal signature */}
+            {invoice.type === "ESTIMATE" &&
+              invoice.proposalContent &&
+              !invoice.signedAt &&
+              invoice.status !== "ACCEPTED" &&
+              invoice.status !== "REJECTED" && (
+                <ProposalSignatureForm
+                  token={token}
+                  invoiceNumber={invoice.number}
+                />
+              )}
+
+            {/* Signed indicator */}
+            {invoice.signedAt && invoice.signedByName && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-emerald-800">
+                    Signed by {invoice.signedByName}
+                  </p>
+                  <p className="text-xs text-emerald-600">
+                    {formatDate(invoice.signedAt)}
+                  </p>
+                </div>
+              </div>
             )}
 
             {/* View Full Proposal link */}
