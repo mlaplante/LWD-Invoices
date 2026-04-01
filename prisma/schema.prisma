@@ -150,6 +150,11 @@ model Organization {
   lateFeeRecurring        Boolean @default(false)
   lateFeeMaxApplications  Int?
   lateFeeIntervalDays     Int     @default(30)
+  // ─── Portal Branding ────────────────────────────────────────────────────────
+  portalTagline       String?
+  portalFooterText    String?
+  brandFont           String?  // "inter" | "georgia" | "system"
+  hidePoweredBy       Boolean  @default(false)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
