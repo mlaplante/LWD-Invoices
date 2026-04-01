@@ -6,6 +6,8 @@ const PUBLIC_PATHS = [
   "/sign-up",
   "/onboarding",
   "/portal",
+  "/pay",
+  "/api/pay",
   "/api/webhooks",
   "/api/trpc",
   "/api/inngest",
