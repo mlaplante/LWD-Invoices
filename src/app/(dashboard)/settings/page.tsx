@@ -1,6 +1,7 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { OrgSettingsForm } from "@/components/settings/OrgSettingsForm";
+import { Require2FAToggle } from "@/components/settings/Require2FAToggle";
 import { BrandingForm } from "@/components/settings/BrandingForm";
 import { PortalBrandingForm } from "@/components/settings/PortalBrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
@@ -142,6 +143,22 @@ export default async function SettingsPage() {
         </div>
         <div className="px-6 py-6">
           <OrgSettingsForm org={org} />
+        </div>
+      </div>
+
+      {/* Security Enforcement */}
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border/50">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Security
+          </p>
+          <p className="text-base font-semibold mt-1">Team Security</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Enforce security requirements for all team members.
+          </p>
+        </div>
+        <div className="px-6 py-6">
+          <Require2FAToggle require2FA={org.require2FA} />
         </div>
       </div>
 

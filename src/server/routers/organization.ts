@@ -34,6 +34,7 @@ export const organizationRouter = router({
         lateFeeRecurring: true,
         lateFeeMaxApplications: true,
         lateFeeIntervalDays: true,
+        require2FA: true,
       },
     });
     if (!org) throw new TRPCError({ code: "NOT_FOUND" });
@@ -68,12 +69,37 @@ export const organizationRouter = router({
         invoiceAccentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
         invoiceShowLogo: z.boolean().optional(),
         invoiceFooterText: z.string().max(500).nullable().optional(),
+        require2FA: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.organization.update({
+      const org = await ctx.db.organization.update({
         where: { id: ctx.orgId },
         data: input,
       });
+
+      // If require2FA was changed, sync to all org users' app_metadata
+      if (input.require2FA !== undefined) {
+        const { createAdminClient } = await import("@/lib/supabase/admin");
+        const adminSupabase = createAdminClient();
+
+        const orgUsers = await ctx.db.user.findMany({
+          where: { organizationId: ctx.orgId },
+          select: { supabaseId: true },
+        });
+
+        // Update each user's app_metadata with the require2FA flag
+        await Promise.all(
+          orgUsers
+            .filter((u) => u.supabaseId)
+            .map((u) =>
+              adminSupabase.auth.admin.updateUserById(u.supabaseId!, {
+                app_metadata: { require2FA: input.require2FA },
+              })
+            )
+        );
+      }
+
+      return org;
     }),
 });
