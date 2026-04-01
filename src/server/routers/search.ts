@@ -44,7 +44,6 @@ export const searchRouter = router({
         ctx.db.project.findMany({
           where: {
             organizationId: ctx.orgId,
-            isArchived: false,
             name: { contains: q, mode: "insensitive" },
           },
           select: { id: true, name: true, status: true },

@@ -102,10 +102,10 @@ export async function GET(request: Request) {
   if (format === "pdf" && report) {
     const data = await fetchMap[report]();
     const pdfMap = { pl: renderPLPdf, expenses: renderExpensePdf, payments: renderPaymentPdf, tax: renderTaxPdf };
-    const pdfBuffer = await pdfMap[report](data as never);
+    const pdfBuffer = await pdfMap[report](data as never, year);
     const filename = `${report === "tax" ? "tax-liability" : report}-${year}.pdf`;
 
-    return new Response(pdfBuffer, {
+    return new Response(new Uint8Array(pdfBuffer) as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}"`,
@@ -123,10 +123,10 @@ export async function GET(request: Request) {
   ]);
 
   const [plPdf, expensesPdf, paymentsPdf, taxPdf] = await Promise.all([
-    renderPLPdf(plData as never),
-    renderExpensePdf(expensesData as never),
-    renderPaymentPdf(paymentsData as never),
-    renderTaxPdf(taxData as never),
+    renderPLPdf(plData as never, year),
+    renderExpensePdf(expensesData as never, year),
+    renderPaymentPdf(paymentsData as never, year),
+    renderTaxPdf(taxData as never, year),
   ]);
 
   const zip = new JSZip();
@@ -139,9 +139,9 @@ export async function GET(request: Request) {
   zip.file(`tax-liability-${year}.csv`, taxToCsv(taxData as never));
   zip.file(`tax-liability-${year}.pdf`, taxPdf);
 
-  const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+  const zipBuffer = await zip.generateAsync({ type: "uint8array" });
 
-  return new Response(zipBuffer, {
+  return new Response(zipBuffer as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/zip",
       "Content-Disposition": `attachment; filename="year-end-${year}.zip"`,

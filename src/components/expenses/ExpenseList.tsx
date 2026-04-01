@@ -245,6 +245,7 @@ export function ExpenseList() {
             </Button>
           </div>
         ) : (
+          <>
           {/* Mobile cards */}
           <div className="sm:hidden divide-y divide-border/40">
             {recurringExpenses.map((rec) => {
@@ -506,6 +507,7 @@ export function ExpenseList() {
               </tfoot>
             </table>
           </div>
+          </>
         )}
       </div>
 
