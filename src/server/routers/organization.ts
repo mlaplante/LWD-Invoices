@@ -18,6 +18,10 @@ export const organizationRouter = router({
         defaultPaymentTermsDays: true,
         paymentReminderDays: true,
         emailBccOwner: true,
+        portalTagline: true,
+        portalFooterText: true,
+        brandFont: true,
+        hidePoweredBy: true,
         lateFeeEnabled: true,
         lateFeeType: true,
         lateFeeAmount: true,
@@ -50,6 +54,10 @@ export const organizationRouter = router({
         lateFeeRecurring: z.boolean().optional(),
         lateFeeMaxApplications: z.number().int().min(1).nullable().optional(),
         lateFeeIntervalDays: z.number().int().min(1).optional(),
+        portalTagline: z.string().max(200).nullable().optional(),
+        portalFooterText: z.string().max(500).nullable().optional(),
+        brandFont: z.enum(["inter", "georgia", "system"]).nullable().optional(),
+        hidePoweredBy: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
