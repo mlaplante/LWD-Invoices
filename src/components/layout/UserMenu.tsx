@@ -2,9 +2,10 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Shield } from "lucide-react";
 
 interface UserMenuProps {
   email?: string;
@@ -56,6 +57,14 @@ export function UserMenu({ email, firstName }: UserMenuProps) {
                 </div>
               </div>
             )}
+            <Link
+              href="/settings/security"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/60 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Security
+            </Link>
             <button
               onClick={handleSignOut}
               className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/60 transition-colors text-muted-foreground hover:text-foreground"

@@ -5,11 +5,18 @@ import { BrandingForm } from "@/components/settings/BrandingForm";
 import { PortalBrandingForm } from "@/components/settings/PortalBrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell, Shield } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
 const subPages = [
+  {
+    href: "/settings/security",
+    label: "Security",
+    description: "Two-factor authentication and account security settings.",
+    icon: <Shield className="w-4 h-4" />,
+    color: "bg-sky-50 text-sky-600",
+  },
   {
     href: "/settings/invoices",
     label: "Invoice Templates",
