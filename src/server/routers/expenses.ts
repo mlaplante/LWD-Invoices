@@ -88,6 +88,8 @@ export const expensesRouter = router({
         taxId: z.string().optional(),
         categoryId: z.string().optional(),
         supplierId: z.string().optional(),
+        ocrRawResult: z.record(z.unknown()).optional(),
+        ocrConfidence: z.number().min(0).max(1).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -114,6 +116,8 @@ export const expensesRouter = router({
         reimbursable: z.boolean().optional(),
         projectId: z.string().nullable().optional(),
         receiptUrl: z.string().url().nullable().optional(),
+        ocrRawResult: z.record(z.unknown()).nullable().optional(),
+        ocrConfidence: z.number().min(0).max(1).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
