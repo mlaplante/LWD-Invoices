@@ -12,6 +12,7 @@ import type { FullInvoice } from "./invoice-pdf";
 import type { ProposalContent } from "@/generated/prisma";
 import { formatAmount, formatDate } from "./pdf-shared";
 import { substituteVariables } from "../routers/proposals-helpers";
+import { decryptSignature } from "./signature";
 
 type ProposalSection = { key: string; title: string; content: string | null };
 
@@ -151,6 +152,34 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: "Helvetica-Bold",
   },
+  signatureBlock: {
+    marginTop: 32,
+    padding: 20,
+    borderTop: "2 solid #e5e7eb",
+  },
+  signatureLabel: {
+    fontSize: 8,
+    color: "#6b7280",
+    letterSpacing: 2,
+    textTransform: "uppercase" as const,
+    marginBottom: 8,
+  },
+  signatureImage: {
+    height: 60,
+    objectFit: "contain" as const,
+    marginBottom: 8,
+  },
+  signatureDetail: {
+    fontSize: 9,
+    color: "#4b5563",
+    marginBottom: 3,
+  },
+  signatureDetailBold: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: "#1a1a1a",
+    marginBottom: 3,
+  },
 });
 
 function parseTableRow(line: string): string[] {
@@ -281,6 +310,36 @@ function BudgetSection({ invoice, fmt }: { invoice: FullInvoice; fmt: (n: number
   );
 }
 
+function SignatureBlock({ invoice }: { invoice: FullInvoice }) {
+  if (!invoice.signedAt || !invoice.signatureData) return null;
+
+  let signatureDataUrl: string;
+  try {
+    signatureDataUrl = decryptSignature(invoice.signatureData);
+  } catch {
+    return null;
+  }
+
+  return (
+    <View style={styles.signatureBlock}>
+      <Text style={styles.signatureLabel}>ELECTRONICALLY SIGNED</Text>
+      {signatureDataUrl.startsWith("data:image/") && (
+        <Image src={signatureDataUrl} style={styles.signatureImage} />
+      )}
+      <Text style={styles.signatureDetailBold}>{invoice.signedByName}</Text>
+      {invoice.signedByEmail && (
+        <Text style={styles.signatureDetail}>{invoice.signedByEmail}</Text>
+      )}
+      <Text style={styles.signatureDetail}>
+        Signed: {formatDate(invoice.signedAt)}
+      </Text>
+      {invoice.signedByIp && (
+        <Text style={styles.signatureDetail}>IP: {invoice.signedByIp}</Text>
+      )}
+    </View>
+  );
+}
+
 function ProposalDocument({
   invoice,
   proposal,
@@ -320,7 +379,7 @@ function ProposalDocument({
       </Page>
 
       {/* Content Pages */}
-      {sections.map((section) => (
+      {sections.map((section, idx) => (
         <Page key={section.key} size="A4" style={styles.page}>
           <Text style={[styles.sectionTitle, { borderBottomColor: brandColor }]}>
             {section.title}
@@ -332,6 +391,10 @@ function ProposalDocument({
               content={substituteVariables(section.content, variables) ?? ""}
             />
           ) : null}
+          {/* Add signature block on the last page */}
+          {idx === sections.length - 1 && invoice.signedAt && (
+            <SignatureBlock invoice={invoice} />
+          )}
         </Page>
       ))}
     </Document>
