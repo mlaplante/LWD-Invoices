@@ -161,6 +161,42 @@ export const expensesRouter = router({
       return ctx.db.expense.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
+  deleteMany: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(z.object({ ids: z.array(z.string()).min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      // Only delete unbilled expenses
+      const deletable = await ctx.db.expense.findMany({
+        where: {
+          id: { in: input.ids },
+          organizationId: ctx.orgId,
+          invoiceLineId: null,
+        },
+        select: { id: true },
+      });
+      const deletableIds = deletable.map((e) => e.id);
+      if (deletableIds.length === 0) return { count: 0 };
+      return ctx.db.expense.deleteMany({
+        where: { id: { in: deletableIds }, organizationId: ctx.orgId },
+      });
+    }),
+
+  categorizeMany: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(
+      z.object({
+        ids: z.array(z.string()).min(1).max(100),
+        categoryId: z.string().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.expense.updateMany({
+        where: {
+          id: { in: input.ids },
+          organizationId: ctx.orgId,
+        },
+        data: { categoryId: input.categoryId },
+      });
+    }),
+
   billToInvoice: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
