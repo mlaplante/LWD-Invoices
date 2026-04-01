@@ -261,9 +261,22 @@ function InvoiceDocument({ invoice }: { invoice: FullInvoice }) {
             <Text style={styles.totalsValue}>{fmt(invoice.subtotal)}</Text>
           </View>
 
+          {invoice.discountType && Number(invoice.discountAmount) > 0 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>
+                Invoice Discount{invoice.discountType === "percentage" ? ` (${Number(invoice.discountAmount)}%)` : ""}
+              </Text>
+              <Text style={styles.totalsValue}>
+                -{fmt(invoice.discountType === "percentage"
+                  ? Number(invoice.subtotal) * Number(invoice.discountAmount) / 100
+                  : Number(invoice.discountAmount))}
+              </Text>
+            </View>
+          )}
+
           {Number(invoice.discountTotal) > 0 && (
             <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Discount</Text>
+              <Text style={styles.totalsLabel}>Total Discount</Text>
               <Text style={styles.totalsValue}>-{fmt(invoice.discountTotal)}</Text>
             </View>
           )}
