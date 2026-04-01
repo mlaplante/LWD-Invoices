@@ -78,6 +78,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(mfaChallengeUrl);
   }
 
+  // Org enforcement: if org requires 2FA and user isn't enrolled, redirect to enrollment
+  const orgRequire2FA = user.app_metadata?.require2FA as boolean | undefined;
+  if (orgRequire2FA && !pathname.startsWith("/mfa-enroll")) {
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const enrolled = (factors?.totp ?? []).some((f: { status: string }) => f.status === "verified");
+    if (!enrolled) {
+      const enrollUrl = new URL("/mfa-enroll", request.url);
+      return NextResponse.redirect(enrollUrl);
+    }
+  }
+
   // Redirect authenticated users without an org to onboarding
   const organizationId = user.app_metadata?.organizationId as string | undefined;
   if (!organizationId && pathname !== "/onboarding") {
