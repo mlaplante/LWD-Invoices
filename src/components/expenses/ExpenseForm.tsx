@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Paperclip, X, ExternalLink } from "lucide-react";
+import { ReceiptOCRDropzone } from "./ReceiptOCRDropzone";
+import type { OCRResult } from "@/server/services/receipt-ocr";
 
 type Tax = { id: string; name: string; rate: number };
 type Category = { id: string; name: string };
@@ -77,6 +79,26 @@ export function ExpenseForm({
   const [receiptUrl, setReceiptUrl] = useState<string>(defaults.receiptUrl ?? "");
   const [receiptUploading, setReceiptUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ocrData, setOcrData] = useState<OCRResult | null>(null);
+
+  function handleOCRResult(data: {
+    ocr: OCRResult;
+    matches: { supplierId: string | null; categoryId: string | null };
+    receiptUrl: string;
+  }) {
+    setOcrData(data.ocr);
+    setReceiptUrl(data.receiptUrl);
+
+    // Pre-fill empty form fields from OCR data
+    setForm((prev) => ({
+      ...prev,
+      name: prev.name || data.ocr.vendor || "",
+      rate: prev.rate || (data.ocr.amount != null ? String(data.ocr.amount) : ""),
+      dueDate: prev.dueDate || data.ocr.date || "",
+      categoryId: prev.categoryId || data.matches.categoryId || "",
+      supplierId: prev.supplierId || data.matches.supplierId || "",
+    }));
+  }
 
   const createMutation = trpc.expenses.create.useMutation({
     onSuccess: () => {
@@ -142,6 +164,8 @@ export function ExpenseForm({
         categoryId: form.categoryId || undefined,
         supplierId: form.supplierId || undefined,
         projectId: form.projectId || undefined,
+        ocrRawResult: ocrData?.rawResponse ?? undefined,
+        ocrConfidence: ocrData?.confidence ?? undefined,
       });
     } else {
       updateMutation.mutate({
@@ -335,6 +359,16 @@ export function ExpenseForm({
           className="mt-1"
         />
       </div>
+
+      {/* Receipt OCR Dropzone — shown in create mode when no receipt attached */}
+      {mode === "create" && !receiptUrl && (
+        <div>
+          <label className="text-sm font-medium">Scan Receipt</label>
+          <div className="mt-1">
+            <ReceiptOCRDropzone onResult={handleOCRResult} />
+          </div>
+        </div>
+      )}
 
       {/* Receipt */}
       <div>
