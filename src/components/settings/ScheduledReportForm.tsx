@@ -112,7 +112,7 @@ export function ScheduledReportForm({ editId, onClose }: Props) {
           <label className="text-sm font-medium">Frequency</label>
           <select
             value={frequency}
-            onChange={(e) => setFrequency(e.target.value)}
+            onChange={(e) => setFrequency(e.target.value as typeof frequency)}
             className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           >
             {FREQUENCIES.map((f) => (
