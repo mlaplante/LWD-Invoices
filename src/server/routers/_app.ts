@@ -34,6 +34,7 @@ import { recurringExpensesRouter } from "./recurringExpenses";
 import { teamRouter } from "./team";
 import { emailAutomationsRouter } from "./emailAutomations";
 import { lateFeesRouter } from "./lateFees";
+import { retainersRouter } from "./retainers";
 
 export const appRouter = router({
   organization: organizationRouter,
@@ -71,6 +72,7 @@ export const appRouter = router({
   team: teamRouter,
   emailAutomations: emailAutomationsRouter,
   lateFees: lateFeesRouter,
+  retainers: retainersRouter,
 });
 
 export type AppRouter = typeof appRouter;
