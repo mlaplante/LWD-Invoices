@@ -10,6 +10,8 @@ import { RetainerPanel } from "@/components/clients/RetainerPanel";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, ExternalLink, FileText, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getClientOnTimePercent } from "@/server/services/client-payment-score";
+import { db } from "@/server/db";
 
 // ── Shared status badge config (mirrors invoices page) ───────────────────────
 
@@ -97,7 +99,14 @@ export default async function ClientDetailPage({
     notFound();
   }
 
-  const { items: allInvoices } = await api.invoices.list({ clientId: id, includeArchived: false, pageSize: 100 });
+  const [{ items: allInvoices }, onTimePercent, org] = await Promise.all([
+    api.invoices.list({ clientId: id, includeArchived: false, pageSize: 100 }),
+    getClientOnTimePercent(db, id),
+    api.organization.get(),
+  ]);
+  const isReliable = org.smartRemindersEnabled &&
+    onTimePercent !== null &&
+    onTimePercent >= org.smartRemindersThreshold;
 
   // Outstanding balance = sum of unpaid invoices
   const unpaidInvoices = allInvoices.filter((inv) =>
@@ -138,6 +147,11 @@ export default async function ClientDetailPage({
           <h1 className="text-xl font-bold tracking-tight truncate">
             {client.name}
           </h1>
+          {isReliable && (
+            <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 shrink-0">
+              Reliable payer
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button asChild size="sm">
