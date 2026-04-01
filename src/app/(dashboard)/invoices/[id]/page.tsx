@@ -16,6 +16,7 @@ import { DuplicateInvoiceButton } from "@/components/invoices/DuplicateInvoiceBu
 import { ConvertEstimateButton } from "@/components/invoices/ConvertEstimateButton";
 import { LateFeeSection } from "@/components/invoices/LateFeeSection";
 import { ApplyRetainerDialog } from "@/components/invoices/ApplyRetainerDialog";
+import { IssueCreditNoteDialog } from "@/components/invoices/IssueCreditNoteDialog";
 import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
 import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
@@ -154,6 +155,23 @@ export default async function InvoiceDetailPage({
               clientId={invoice.client.id}
             />
           )}
+          {invoice.type !== "CREDIT_NOTE" &&
+            invoice.type !== "ESTIMATE" &&
+            invoice.status !== "DRAFT" && (
+              <IssueCreditNoteDialog
+                invoiceId={invoice.id}
+                lines={invoice.lines.map((l) => ({
+                  id: l.id,
+                  name: l.name,
+                  description: l.description,
+                  qty: l.qty,
+                  rate: l.rate,
+                  subtotal: l.subtotal,
+                }))}
+                currencySymbol={sym}
+                currencySymbolPosition={symPos}
+              />
+            )}
           {isPayable && (
             <ApplyRetainerDialog
               invoiceId={invoice.id}
