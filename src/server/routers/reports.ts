@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
-import { InvoiceStatus } from "@/generated/prisma";
+import { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 
 export function groupByMonth<T>(
   items: T[],
@@ -195,7 +195,7 @@ export const reportsRouter = router({
         ? { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) }
         : undefined;
 
-      const [payments, expenses, discountedInvoices] = await Promise.all([
+      const [payments, expenses, discountedInvoices, appliedCredits] = await Promise.all([
         ctx.db.payment.findMany({
           where: {
             organizationId: ctx.orgId,
@@ -221,6 +221,13 @@ export const reportsRouter = router({
           },
           select: { discountType: true, discountAmount: true, subtotal: true },
         }),
+        ctx.db.creditNoteApplication.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            ...(dateFilter ? { createdAt: dateFilter } : {}),
+          },
+          select: { amount: true, createdAt: true },
+        }),
       ]);
 
       const revenueByMonth = groupByMonth(payments, (p) => p.paidAt, (p) => Number(p.amount));
@@ -229,15 +236,30 @@ export const reportsRouter = router({
         (e) => e.createdAt,
         (e) => Number(e.rate) * e.qty,
       );
+      const creditsByMonth = groupByMonth(
+        appliedCredits,
+        (c) => c.createdAt,
+        (c) => Number(c.amount),
+      );
 
-      const allMonths = Array.from(new Set([...Object.keys(revenueByMonth), ...Object.keys(expensesByMonth)])).sort();
+      const allMonths = Array.from(
+        new Set([
+          ...Object.keys(revenueByMonth),
+          ...Object.keys(expensesByMonth),
+          ...Object.keys(creditsByMonth),
+        ]),
+      ).sort();
       const netByMonth: Record<string, number> = {};
       for (const m of allMonths) {
-        netByMonth[m] = (revenueByMonth[m] ?? 0) - (expensesByMonth[m] ?? 0);
+        netByMonth[m] =
+          (revenueByMonth[m] ?? 0) -
+          (expensesByMonth[m] ?? 0) -
+          (creditsByMonth[m] ?? 0);
       }
 
       const totalRevenue = Object.values(revenueByMonth).reduce((s, v) => s + v, 0);
       const totalExpenses = Object.values(expensesByMonth).reduce((s, v) => s + v, 0);
+      const totalCredits = Object.values(creditsByMonth).reduce((s, v) => s + v, 0);
 
       // Calculate total discounts given
       let totalDiscountsGiven = 0;
@@ -252,10 +274,12 @@ export const reportsRouter = router({
       return {
         revenueByMonth,
         expensesByMonth,
+        creditsByMonth,
         netByMonth,
         totalRevenue,
         totalExpenses,
-        netIncome: totalRevenue - totalExpenses,
+        totalCredits,
+        netIncome: totalRevenue - totalExpenses - totalCredits,
         totalDiscountsGiven: Math.round(totalDiscountsGiven * 100) / 100,
       };
     }),
@@ -348,7 +372,7 @@ export const reportsRouter = router({
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
       if (input.basis === "accrual") {
-        // Accrual: filter by invoice date
+        // Accrual: filter by invoice date, exclude credit notes
         const lineTaxes = await ctx.db.invoiceLineTax.findMany({
           where: {
             invoiceLine: {
@@ -356,6 +380,7 @@ export const reportsRouter = router({
                 organizationId: org.id,
                 isArchived: false,
                 status: { notIn: [InvoiceStatus.DRAFT] },
+                type: { not: InvoiceType.CREDIT_NOTE },
                 ...(input.from || input.to
                   ? {
                       date: {
@@ -435,10 +460,11 @@ export const reportsRouter = router({
         return { summary, details, grandTotal };
       }
 
-      // Cash basis: filter by payment date, prorate tax
+      // Cash basis: filter by payment date, prorate tax, exclude credit notes
       const payments = await ctx.db.payment.findMany({
         where: {
           organizationId: org.id,
+          invoice: { type: { not: InvoiceType.CREDIT_NOTE } },
           ...(input.from || input.to
             ? {
                 paidAt: {
@@ -521,5 +547,31 @@ export const reportsRouter = router({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     });
+  }),
+
+  retainerLiability: protectedProcedure.query(async ({ ctx }) => {
+    const retainers = await ctx.db.retainer.findMany({
+      where: {
+        organizationId: ctx.orgId,
+        balance: { gt: 0 },
+      },
+      include: {
+        client: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { balance: "desc" },
+    });
+
+    const total = retainers.reduce((s, r) => s + Number(r.balance), 0);
+
+    return {
+      retainers: retainers.map((r) => ({
+        clientId: r.client.id,
+        clientName: r.client.name,
+        clientEmail: r.client.email,
+        balance: Number(r.balance),
+        updatedAt: r.updatedAt,
+      })),
+      totalLiability: total,
+    };
   }),
 });
