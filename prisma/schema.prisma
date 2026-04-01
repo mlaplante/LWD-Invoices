@@ -327,6 +327,11 @@ model Invoice {
   currency     Currency @relation(fields: [currencyId], references: [id])
   exchangeRate Decimal  @default(1) @db.Decimal(10, 5)
 
+  // Invoice-level discount
+  discountType        String?  // "percentage" | "fixed" | null
+  discountAmount      Decimal  @default(0) @db.Decimal(20, 10)
+  discountDescription String?
+
   // SIMPLE type only
   simpleAmount Decimal? @db.Decimal(20, 10)
 
