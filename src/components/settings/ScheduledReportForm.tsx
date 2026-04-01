@@ -100,7 +100,7 @@ export function ScheduledReportForm({ editId, onClose }: Props) {
           <label className="text-sm font-medium">Report Type</label>
           <select
             value={reportType}
-            onChange={(e) => setReportType(e.target.value)}
+            onChange={(e) => setReportType(e.target.value as typeof reportType)}
             className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           >
             {REPORT_TYPES.map((t) => (
