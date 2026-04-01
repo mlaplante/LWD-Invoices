@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LineItemEditor, type LineItemValue } from "./LineItemEditor";
-import { calculateInvoiceTotals, type TaxInput } from "@/server/services/tax-calculator";
+import { calculateInvoiceTotalsWithDiscount, type TaxInput } from "@/server/services/tax-calculator";
 import { trpc } from "@/trpc/client";
 import { PaymentScheduleDialog, type PartialPaymentEntry } from "./PaymentScheduleDialog";
 import { CalendarRange, X } from "lucide-react";
@@ -32,6 +32,9 @@ type InvoiceFormData = {
   lines: LineItemValue[];
   reminderDaysOverride: number[];
   partialPayments?: PartialPaymentEntry[];
+  discountType?: "percentage" | "fixed" | null;
+  discountAmount?: number;
+  discountDescription?: string;
 };
 
 type Props = {
@@ -92,7 +95,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
 
   const taxInputs: TaxInput[] = taxOptions;
 
-  const invoiceTotals = calculateInvoiceTotals(
+  const invoiceTotals = calculateInvoiceTotalsWithDiscount(
     form.lines.map((l) => ({
       qty: l.qty,
       rate: l.rate,
@@ -102,7 +105,9 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
       discountIsPercentage: l.discountIsPercentage,
       taxIds: l.taxIds,
     })),
-    taxInputs
+    taxInputs,
+    form.discountType ?? null,
+    form.discountAmount ?? 0
   );
 
   const sym = activeCurrency?.symbol ?? "$";
@@ -144,6 +149,9 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
       clientId: form.clientId,
       notes: form.notes || undefined,
       reminderDaysOverride: form.reminderDaysOverride,
+      discountType: form.discountType ?? null,
+      discountAmount: form.discountAmount ?? 0,
+      discountDescription: form.discountDescription || undefined,
       partialPayments: schedule.length > 0
         ? schedule.map((s) => ({
             sortOrder: s.sortOrder,
@@ -302,6 +310,69 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
         />
       </div>
 
+      {/* Invoice-Level Discount */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Invoice Discount</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Discount Type</label>
+            <Select
+              value={form.discountType ?? "none"}
+              onValueChange={(v: string) =>
+                setForm((f) => ({
+                  ...f,
+                  discountType: v === "none" ? null : (v as "percentage" | "fixed"),
+                  discountAmount: v === "none" ? 0 : f.discountAmount ?? 0,
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Discount</SelectItem>
+                <SelectItem value="percentage">Percentage (%)</SelectItem>
+                <SelectItem value="fixed">Fixed Amount</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {form.discountType && (
+            <>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">
+                  {form.discountType === "percentage" ? "Percentage" : "Amount"}
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={form.discountType === "percentage" ? 100 : undefined}
+                  step="0.01"
+                  value={form.discountAmount ?? 0}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      discountAmount: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                  placeholder={form.discountType === "percentage" ? "0-100" : "0.00"}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Description (optional)</label>
+                <Input
+                  value={form.discountDescription ?? ""}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, discountDescription: e.target.value }))
+                  }
+                  placeholder="e.g. Early payment discount"
+                  maxLength={200}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Payment Schedule */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -402,7 +473,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
           {invoiceTotals.discountTotal > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Discount</span>
-              <span>-{fmt(invoiceTotals.discountTotal)}</span>
+              <span className="text-emerald-600">-{fmt(invoiceTotals.discountTotal)}</span>
             </div>
           )}
           {invoiceTotals.taxTotal > 0 && (
