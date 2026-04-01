@@ -17,6 +17,7 @@ import { ConvertEstimateButton } from "@/components/invoices/ConvertEstimateButt
 import { LateFeeSection } from "@/components/invoices/LateFeeSection";
 import { ApplyRetainerDialog } from "@/components/invoices/ApplyRetainerDialog";
 import { IssueCreditNoteDialog } from "@/components/invoices/IssueCreditNoteDialog";
+import { CreditNoteActions } from "@/components/invoices/CreditNoteActions";
 import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
 import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
@@ -204,6 +205,12 @@ export default async function InvoiceDetailPage({
                 isPaid: pp.isPaid,
                 paidAt: pp.paidAt,
               }))}
+            />
+          )}
+          {invoice.type === "CREDIT_NOTE" && (
+            <CreditNoteActions
+              creditNoteId={invoice.id}
+              creditNoteStatus={invoice.creditNoteStatus}
             />
           )}
           {invoice.type === "ESTIMATE" && invoice.status === "ACCEPTED" && (
