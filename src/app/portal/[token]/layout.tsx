@@ -62,7 +62,7 @@ export default async function PortalLayout({
     const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
 
     if (!cookieVal || !verifyPortalSession(cookieVal, token, env.SUPABASE_SERVICE_ROLE_KEY)) {
-      redirect(`/portal/${token}/login`);
+      redirect(`/portal/portal-login/${token}`);
     }
   }
 
