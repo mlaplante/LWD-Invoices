@@ -212,9 +212,24 @@ export default async function PortalInvoicePage({
                   <span>Subtotal</span>
                   <span>{f(invoice.subtotal)}</span>
                 </div>
+                {invoice.discountType && Number(invoice.discountAmount) > 0 && (
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>
+                      Invoice Discount
+                      {invoice.discountType === "percentage"
+                        ? ` (${Number(invoice.discountAmount)}%)`
+                        : ""}
+                    </span>
+                    <span>
+                      -{f(invoice.discountType === "percentage"
+                        ? Number(invoice.subtotal) * Number(invoice.discountAmount) / 100
+                        : Number(invoice.discountAmount))}
+                    </span>
+                  </div>
+                )}
                 {Number(invoice.discountTotal) > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Discount</span>
+                    <span>Total Discount</span>
                     <span>-{f(invoice.discountTotal)}</span>
                   </div>
                 )}

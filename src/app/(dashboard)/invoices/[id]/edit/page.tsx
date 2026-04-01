@@ -36,6 +36,9 @@ export default async function EditInvoicePage({
     notes: invoice.notes ?? "",
     clientId: invoice.clientId,
     reminderDaysOverride: invoice.reminderDaysOverride,
+    discountType: (invoice.discountType as "percentage" | "fixed" | null) ?? null,
+    discountAmount: Number(invoice.discountAmount),
+    discountDescription: invoice.discountDescription ?? "",
     lines: invoice.lines.map((line) => ({
       sort: line.sort,
       lineType: line.lineType,
