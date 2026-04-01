@@ -65,9 +65,9 @@ export function InvoiceStatusChart({ data }: Props) {
                   backgroundColor: "hsl(var(--card))",
                   fontSize: "0.8125rem",
                 }}
-                formatter={(value: number, name: string) => [
+                formatter={(value, name) => [
                   value,
-                  STATUS_LABELS[name] ?? name,
+                  STATUS_LABELS[String(name)] ?? name,
                 ]}
               />
             </PieChart>
