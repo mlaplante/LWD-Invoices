@@ -36,6 +36,8 @@ export const organizationRouter = router({
         lateFeeIntervalDays: true,
         require2FA: true,
         defaultDepositPercent: true,
+        smartRemindersEnabled: true,
+        smartRemindersThreshold: true,
       },
     });
     if (!org) throw new TRPCError({ code: "NOT_FOUND" });
@@ -72,6 +74,8 @@ export const organizationRouter = router({
         invoiceFooterText: z.string().max(500).nullable().optional(),
         require2FA: z.boolean().optional(),
         defaultDepositPercent: z.number().int().min(1).max(100).nullable().optional(),
+        smartRemindersEnabled: z.boolean().optional(),
+        smartRemindersThreshold: z.number().int().min(50).max(100).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
