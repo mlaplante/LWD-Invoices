@@ -130,6 +130,8 @@ export default async function PortalLayout({
           total: Number(invoice.total).toFixed(2),
           currencySymbol: invoice.currency.symbol,
           logoUrl: invoice.organization.logoUrl ?? undefined,
+          brandColor: invoice.organization.brandColor ?? undefined,
+          hidePoweredBy: invoice.organization.hidePoweredBy ?? false,
         })
       );
       resend.emails.send({

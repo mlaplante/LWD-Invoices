@@ -14,12 +14,14 @@ type Props = {
   orgName: string;
   portalLink: string;
   logoUrl?: string;
+  brandColor?: string;
+  hidePoweredBy?: boolean;
 };
 
 const ACCENT = "#e11d48";
 
 export function OverdueEmail({
-  invoiceNumber, clientName, total, currencySymbol, dueDate, daysOverdue, orgName, portalLink, logoUrl,
+  invoiceNumber, clientName, total, currencySymbol, dueDate, daysOverdue, orgName, portalLink, logoUrl, brandColor, hidePoweredBy,
 }: Props) {
   const dayLabel = daysOverdue === 1 ? "day" : "days";
   return (
@@ -87,7 +89,7 @@ export function OverdueEmail({
           <Hr style={{ borderColor: "#f3f4f6", margin: 0 }} />
           <Section style={{ padding: "20px 40px", textAlign: "center" }}>
             <Text style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
-              Sent by {orgName} · Powered by LWD Invoices
+              Sent by {orgName}{!hidePoweredBy ? " · Powered by LWD Invoices" : ""}
             </Text>
           </Section>
 

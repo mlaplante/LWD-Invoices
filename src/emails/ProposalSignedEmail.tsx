@@ -14,14 +14,15 @@ type Props = {
   invoiceLink: string;
   proposalPdfLink?: string;
   logoUrl?: string;
+  brandColor?: string;
+  hidePoweredBy?: boolean;
 };
-
-const ACCENT = "#2563eb";
 
 export function ProposalSignedEmail({
   invoiceNumber, clientName, signedByName, signedByEmail, signedAt,
-  orgName, invoiceLink, proposalPdfLink, logoUrl,
+  orgName, invoiceLink, proposalPdfLink, logoUrl, brandColor, hidePoweredBy,
 }: Props) {
+  const ACCENT = brandColor ?? "#2563eb";
   return (
     <Html lang="en">
       <Head />
@@ -95,7 +96,7 @@ export function ProposalSignedEmail({
           <Hr style={{ borderColor: "#f3f4f6", margin: 0 }} />
           <Section style={{ padding: "20px 40px", textAlign: "center" }}>
             <Text style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
-              Sent by {orgName} · Powered by LWD Invoices
+              Sent by {orgName}{!hidePoweredBy ? " · Powered by LWD Invoices" : ""}
             </Text>
           </Section>
 

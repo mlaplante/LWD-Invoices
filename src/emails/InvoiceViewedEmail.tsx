@@ -13,12 +13,14 @@ type Props = {
   total?: string;
   currencySymbol?: string;
   logoUrl?: string;
+  brandColor?: string;
+  hidePoweredBy?: boolean;
 };
 
 const ACCENT = "#7c3aed";
 
 export function InvoiceViewedEmail({
-  invoiceNumber, clientName, orgName, invoiceLink, viewedAt, total, currencySymbol, logoUrl,
+  invoiceNumber, clientName, orgName, invoiceLink, viewedAt, total, currencySymbol, logoUrl, brandColor, hidePoweredBy,
 }: Props) {
   return (
     <Html lang="en">
@@ -83,7 +85,7 @@ export function InvoiceViewedEmail({
           <Hr style={{ borderColor: "#f3f4f6", margin: 0 }} />
           <Section style={{ padding: "20px 40px", textAlign: "center" }}>
             <Text style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
-              {orgName} · Powered by LWD Invoices
+              {orgName}{!hidePoweredBy ? " · Powered by LWD Invoices" : ""}
             </Text>
           </Section>
 
