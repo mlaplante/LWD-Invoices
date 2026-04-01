@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ReminderSequenceList } from "@/components/settings/ReminderSequenceList";
 import { ReminderSequenceForm } from "@/components/settings/ReminderSequenceForm";
+import { SmartRemindersCard } from "@/components/settings/SmartRemindersCard";
 import { Plus, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -50,6 +51,7 @@ export default function RemindersSettingsPage() {
 
       {showForm && <ReminderSequenceForm editId={editId} onClose={handleClose} />}
       <ReminderSequenceList onEdit={handleEdit} />
+      <SmartRemindersCard />
     </div>
   );
 }
