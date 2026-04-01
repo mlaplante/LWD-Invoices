@@ -119,6 +119,13 @@ enum InvitationStatus {
   REVOKED
 }
 
+enum EmailAutomationTrigger {
+  PAYMENT_RECEIVED
+  INVOICE_SENT
+  INVOICE_VIEWED
+  INVOICE_OVERDUE
+}
+
 // ─── Core Models ──────────────────────────────────────────────────────────────
 
 model Organization {
@@ -167,6 +174,7 @@ model Organization {
   discussions             Discussion[]
   proposalTemplates       ProposalTemplate[]
   proposalContents        ProposalContent[]
+  emailAutomations        EmailAutomation[]
 }
 
 model User {
@@ -785,6 +793,36 @@ model Notification {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+// ─── Email Automations ────────────────────────────────────────────────────────
+
+model EmailAutomation {
+  id              String                  @id @default(cuid())
+  trigger         EmailAutomationTrigger
+  delayDays       Int                     @default(0)
+  templateSubject String
+  templateBody    String
+  enabled         Boolean                 @default(true)
+  organizationId  String
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  logs            EmailAutomationLog[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  @@index([organizationId, trigger])
+  @@index([enabled])
+}
+
+model EmailAutomationLog {
+  id              String          @id @default(cuid())
+  automationId    String
+  automation      EmailAutomation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  invoiceId       String
+  recipientEmail  String
+  sentAt          DateTime        @default(now())
+  @@index([automationId])
+  @@index([invoiceId])
+  @@unique([automationId, invoiceId])
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
