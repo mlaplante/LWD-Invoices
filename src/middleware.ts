@@ -15,6 +15,8 @@ const PUBLIC_PATHS = [
   "/api/v1",
   "/auth/callback",
   "/auth/confirm",
+  "/mfa-challenge",
+  "/mfa-enroll",
 ];
 
 function isPublicPath(pathname: string) {
@@ -59,6 +61,21 @@ export async function middleware(request: NextRequest) {
   if (!user) {
     const signInUrl = new URL("/sign-in", request.url);
     return NextResponse.redirect(signInUrl);
+  }
+
+  // Check MFA assurance level — redirect to challenge if MFA enrolled but not verified
+  const { data: aal } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+  if (
+    aal?.nextLevel === "aal2" &&
+    aal.currentLevel !== "aal2" &&
+    !pathname.startsWith("/mfa-challenge") &&
+    !pathname.startsWith("/mfa-enroll")
+  ) {
+    const mfaChallengeUrl = new URL("/mfa-challenge", request.url);
+    mfaChallengeUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(mfaChallengeUrl);
   }
 
   // Redirect authenticated users without an org to onboarding
