@@ -127,6 +127,20 @@ enum EmailAutomationTrigger {
   INVOICE_OVERDUE
 }
 
+enum ReportType {
+  PROFIT_LOSS
+  AGING
+  UNPAID
+  EXPENSES
+  TAX_LIABILITY
+}
+
+enum ReportFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
 // ─── Core Models ──────────────────────────────────────────────────────────────
 
 model Organization {
@@ -196,6 +210,7 @@ model Organization {
   proposalTemplates       ProposalTemplate[]
   proposalContents        ProposalContent[]
   emailAutomations        EmailAutomation[]
+  scheduledReports        ScheduledReport[]
   lateFeeEntries          LateFeeEntry[]
   retainers               Retainer[]
 }
@@ -864,6 +879,28 @@ model EmailAutomationLog {
   @@index([automationId])
   @@index([invoiceId])
   @@unique([automationId, invoiceId])
+}
+
+// ─── Scheduled Reports ───────────────────────────────────────────────────────
+
+model ScheduledReport {
+  id              String          @id @default(cuid())
+  reportType      ReportType
+  frequency       ReportFrequency
+  dayOfWeek       Int?            // 0=Sunday...6=Saturday (for WEEKLY)
+  dayOfMonth      Int?            // 1-28 (for MONTHLY/QUARTERLY)
+  recipients      String[]        // email addresses
+  enabled         Boolean         @default(true)
+  lastSentAt      DateTime?
+
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([organizationId])
+  @@index([enabled])
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
