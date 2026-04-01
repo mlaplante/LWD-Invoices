@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
-import { PrismaClient, LineType } from "@/generated/prisma";
+import { PrismaClient, LineType, Prisma } from "@/generated/prisma";
 import {
   calculateLineTotals,
   calculateInvoiceTotals,
@@ -88,13 +88,20 @@ export const expensesRouter = router({
         taxId: z.string().optional(),
         categoryId: z.string().optional(),
         supplierId: z.string().optional(),
-        ocrRawResult: z.record(z.unknown()).optional(),
+        ocrRawResult: z.record(z.string(), z.unknown()).optional(),
         ocrConfidence: z.number().min(0).max(1).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const { ocrRawResult, ...rest } = input;
       return ctx.db.expense.create({
-        data: { ...input, organizationId: ctx.orgId },
+        data: {
+          ...rest,
+          organizationId: ctx.orgId,
+          ocrRawResult: ocrRawResult !== undefined
+            ? (ocrRawResult as Prisma.InputJsonValue)
+            : undefined,
+        },
         include: { tax: true, category: true, supplier: true, project: { select: { id: true, name: true } } },
       });
     }),
@@ -116,19 +123,24 @@ export const expensesRouter = router({
         reimbursable: z.boolean().optional(),
         projectId: z.string().nullable().optional(),
         receiptUrl: z.string().url().nullable().optional(),
-        ocrRawResult: z.record(z.unknown()).nullable().optional(),
+        ocrRawResult: z.record(z.string(), z.unknown()).nullable().optional(),
         ocrConfidence: z.number().min(0).max(1).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
+      const { id, ocrRawResult, ...rest } = input;
       const existing = await ctx.db.expense.findUnique({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.expense.update({
         where: { id, organizationId: ctx.orgId },
-        data,
+        data: {
+          ...rest,
+          ocrRawResult: ocrRawResult !== undefined
+            ? (ocrRawResult as Prisma.InputJsonValue | typeof Prisma.DbNull)
+            : undefined,
+        },
         include: { tax: true, category: true, supplier: true, project: { select: { id: true, name: true } } },
       });
     }),
