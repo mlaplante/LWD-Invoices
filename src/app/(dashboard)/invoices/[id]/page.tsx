@@ -22,6 +22,7 @@ import { IssueCreditNoteDialog } from "@/components/invoices/IssueCreditNoteDial
 import { CreditNoteActions } from "@/components/invoices/CreditNoteActions";
 import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
 import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButton";
+import { CopyPaymentLinkButton } from "@/components/invoices/CopyPaymentLinkButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -91,6 +92,7 @@ export default async function InvoiceDetailPage({
     headersList.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");
   const portalLink = `${proto}://${host}/portal/${invoice.portalToken}`;
+  const payLink = `${proto}://${host}/pay/${invoice.portalToken}`;
   const isPayable = PAYABLE_STATUSES.includes(invoice.status);
   const badge = STATUS_BADGE[invoice.status];
   const docType = TYPE_LABEL[invoice.type];
@@ -158,6 +160,7 @@ export default async function InvoiceDetailPage({
               <ExternalLink className="w-3 h-3 ml-1.5" />
             </a>
           </Button>
+          {isPayable && <CopyPaymentLinkButton payLink={payLink} />}
           {invoice.type === "CREDIT_NOTE" ? null : (
             <ApplyCreditNoteDialog
               invoiceId={invoice.id}
