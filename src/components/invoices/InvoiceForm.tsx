@@ -19,6 +19,7 @@ import { calculateInvoiceTotalsWithDiscount, type TaxInput } from "@/server/serv
 import { trpc } from "@/trpc/client";
 import { PaymentScheduleDialog, type PartialPaymentEntry } from "./PaymentScheduleDialog";
 import { CalendarRange, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 type InvoiceFormData = {
   id?: string;
@@ -41,6 +42,7 @@ type Props = {
   mode: "create" | "edit";
   initialData?: Partial<InvoiceFormData>;
   orgPaymentTermsDays: number;
+  orgDefaultDepositPercent: number | null;
   clients: { id: string; name: string; defaultPaymentTermsDays: number | null }[];
   currencies: { id: string; code: string; symbol: string; symbolPosition: string }[];
   taxes: { id: string; name: string; rate: number; isCompound: boolean }[];
@@ -55,7 +57,7 @@ const TYPE_LABELS: Record<InvoiceType, string> = {
 
 const REMINDER_DAY_OPTIONS = [1, 2, 3, 5, 7, 14, 30];
 
-export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, currencies, taxes }: Props) {
+export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefaultDepositPercent, clients, currencies, taxes }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const savingRef = useRef(false);
@@ -82,6 +84,12 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
   const [schedule, setSchedule] = useState<PartialPaymentEntry[]>(
     initialData?.partialPayments ?? []
   );
+
+  const [depositEnabled, setDepositEnabled] = useState(() => {
+    if (mode === "edit") return false;
+    return orgDefaultDepositPercent !== null;
+  });
+  const [depositPercent, setDepositPercent] = useState(orgDefaultDepositPercent ?? 50);
 
   const activeCurrency =
     currencies.find((c) => c.id === form.currencyId) ?? defaultCurrency;
@@ -138,6 +146,47 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
       const termsDays = client?.defaultPaymentTermsDays ?? orgPaymentTermsDays;
       return { ...p, date: newDate, dueDate: calcDueDate(newDate, termsDays) };
     });
+  }
+
+  function applyDepositSchedule(percent: number, dueDate: string | undefined) {
+    setSchedule([
+      {
+        sortOrder: 0,
+        amount: percent,
+        isPercentage: true,
+        dueDate: undefined,
+        notes: "Deposit — due on receipt",
+      },
+      {
+        sortOrder: 1,
+        amount: 100 - percent,
+        isPercentage: true,
+        dueDate: dueDate || undefined,
+        notes: "Balance",
+      },
+    ]);
+  }
+
+  function handleDepositToggle(enabled: boolean) {
+    setDepositEnabled(enabled);
+    if (enabled) {
+      applyDepositSchedule(depositPercent, form.dueDate);
+    } else {
+      setSchedule([]);
+    }
+  }
+
+  function handleDepositPercentChange(percent: number) {
+    setDepositPercent(percent);
+    if (depositEnabled) {
+      applyDepositSchedule(percent, form.dueDate);
+    }
+  }
+
+  const didInitDeposit = useRef(false);
+  if (mode === "create" && depositEnabled && schedule.length === 0 && !didInitDeposit.current) {
+    didInitDeposit.current = true;
+    queueMicrotask(() => applyDepositSchedule(depositPercent, form.dueDate));
   }
 
   function buildInput() {
@@ -382,7 +431,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
               {schedule.length} payment{schedule.length !== 1 ? "s" : ""} scheduled
               <button
                 type="button"
-                onClick={() => setSchedule([])}
+                onClick={() => { setSchedule([]); setDepositEnabled(false); }}
                 className="ml-0.5 hover:text-destructive transition-colors"
               >
                 <X className="w-3 h-3" />
@@ -390,6 +439,31 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
             </span>
           )}
         </div>
+
+        {/* Deposit toggle — visible when no custom schedule or deposit is active */}
+        {(schedule.length === 0 || depositEnabled) && (
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={depositEnabled}
+              onCheckedChange={handleDepositToggle}
+            />
+            <span className="text-sm">Require deposit</span>
+            {depositEnabled && (
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={depositPercent}
+                  onChange={(e) => handleDepositPercentChange(Number(e.target.value) || 50)}
+                  className="w-16 h-8 text-sm"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <Button
           type="button"
           variant="outline"
@@ -409,6 +483,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, clients, c
           existingSchedule={schedule}
           onSave={(s) => {
             setSchedule(s);
+            setDepositEnabled(false);
             setScheduleOpen(false);
           }}
         />

@@ -73,6 +73,7 @@ export default async function EditInvoicePage({
         mode="edit"
         initialData={initialData}
         orgPaymentTermsDays={org.defaultPaymentTermsDays}
+        orgDefaultDepositPercent={org.defaultDepositPercent}
         clients={clients.map((c) => ({ id: c.id, name: c.name, defaultPaymentTermsDays: c.defaultPaymentTermsDays }))}
         currencies={currencies.map((c) => ({ id: c.id, code: c.code, symbol: c.symbol, symbolPosition: c.symbolPosition }))}
         taxes={taxes.map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate), isCompound: t.isCompound }))}
