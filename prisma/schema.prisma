@@ -164,6 +164,8 @@ model Organization {
   lateFeeRecurring        Boolean @default(false)
   lateFeeMaxApplications  Int?
   lateFeeIntervalDays     Int     @default(30)
+  // ─── Two-Factor Authentication ──────────────────────────────────────────────
+  require2FA              Boolean @default(false)
   // ─── Portal Branding ────────────────────────────────────────────────────────
   portalTagline       String?
   portalFooterText    String?
