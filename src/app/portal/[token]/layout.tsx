@@ -95,6 +95,17 @@ export default async function PortalLayout({
       // Non-fatal
     });
 
+    // Fire automation event for INVOICE_VIEWED
+    try {
+      const { inngest: inngestClient } = await import("@/inngest/client");
+      await inngestClient.send({
+        name: "invoice/viewed",
+        data: { invoiceId: invoice.id, trigger: "INVOICE_VIEWED" },
+      });
+    } catch {
+      // Non-fatal
+    }
+
     // Email notification to org admins
     const adminEmails = invoice.organization.users
       .map((u) => u.email)

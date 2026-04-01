@@ -6,8 +6,9 @@ import { processPaymentReminders } from "@/inngest/functions/payment-reminders";
 import { cleanupPendingUsers } from "@/inngest/functions/cleanup-pending-users";
 import { processRecurringExpenses } from "@/inngest/functions/recurring-expenses";
 import { processEmailAutomations } from "@/inngest/functions/email-automations";
+import { handleAutomationEvent } from "@/inngest/functions/email-automation-events";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, cleanupPendingUsers, processRecurringExpenses, processEmailAutomations],
+  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, cleanupPendingUsers, processRecurringExpenses, processEmailAutomations, handleAutomationEvent],
 });
