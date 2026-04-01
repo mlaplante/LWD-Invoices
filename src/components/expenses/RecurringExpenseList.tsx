@@ -93,7 +93,8 @@ export function RecurringExpenseList() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Frequency</th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Next Run</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Last Run</th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">Generated</th>
                   <th className="px-6 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
                 </tr>
@@ -113,8 +114,11 @@ export function RecurringExpenseList() {
                       <td className="px-6 py-3.5 text-muted-foreground">
                         {item.isActive ? new Date(item.nextRunAt).toLocaleDateString() : "\u2014"}
                       </td>
+                      <td className="px-6 py-3.5 text-muted-foreground">
+                        {item.lastRunDate ? new Date(item.lastRunDate).toLocaleDateString() : "\u2014"}
+                      </td>
                       <td className="px-6 py-3.5 text-center text-muted-foreground tabular-nums">
-                        {item.occurrenceCount}
+                        {item.totalGenerated}
                       </td>
                       <td className="px-6 py-3.5 text-center">
                         {item.isActive ? (
