@@ -136,6 +136,8 @@ model Organization {
   brandColor        String?  @default("#2563eb")
   invoicePrefix     String   @default("INV")
   invoiceNextNumber Int      @default(1)
+  creditNotePrefix     String   @default("CN")
+  creditNoteNextNumber Int      @default(1)
   taskTimeInterval        Float    @default(0)
   defaultPaymentTermsDays Int      @default(30)
   paymentReminderDays     Int[]    @default([1, 3])
@@ -346,6 +348,10 @@ model Invoice {
   simpleAmount Decimal? @db.Decimal(20, 10)
 
   retainerApplied Decimal @default(0) @db.Decimal(20, 10)
+
+  // Credit note fields
+  sourceInvoiceId  String?
+  creditNoteStatus String?  // DRAFT | ISSUED | APPLIED | VOIDED
 
   notes                String?
   isArchived           Boolean @default(false)
