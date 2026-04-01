@@ -36,6 +36,11 @@ export default async function PortalLayout({
         select: {
           name: true,
           logoUrl: true,
+          brandColor: true,
+          portalTagline: true,
+          portalFooterText: true,
+          brandFont: true,
+          hidePoweredBy: true,
           users: {
             where: { role: "ADMIN" },
             select: { email: true },
