@@ -7,6 +7,10 @@ import {
   getStripeClient,
 } from "@/server/services/stripe";
 import { headers } from "next/headers";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+// 10 payment attempts per token per 5 minutes
+const payLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60_000 });
 
 const PAYABLE_STATUSES = ["SENT", "PARTIALLY_PAID", "OVERDUE"] as const;
 
@@ -23,6 +27,13 @@ export async function GET(
   const { token } = await params;
   const url = new URL(request.url);
   const partialPaymentId = url.searchParams.get("partialPaymentId");
+
+  if (payLimiter.isLimited(token)) {
+    return NextResponse.json(
+      { error: "Too many payment attempts. Please try again later." },
+      { status: 429 },
+    );
+  }
 
   const invoice = await db.invoice.findFirst({
     where: { portalToken: token },

@@ -6,7 +6,14 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     RESEND_API_KEY: z.string().min(1),
     RESEND_FROM_EMAIL: z.string().email().default("invoices@example.com"),
-    GATEWAY_ENCRYPTION_KEY: z.string().length(64).optional(),
+    GATEWAY_ENCRYPTION_KEY: z
+      .string()
+      .length(64)
+      .optional()
+      .refine(
+        (val) => process.env.NODE_ENV !== "production" || !!val,
+        "GATEWAY_ENCRYPTION_KEY is required in production",
+      ),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),

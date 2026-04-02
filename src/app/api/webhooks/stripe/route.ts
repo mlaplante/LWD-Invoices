@@ -7,6 +7,20 @@ import type { StripeConfig } from "@/server/services/gateway-config";
 import type Stripe from "stripe";
 import { getOwnerBcc } from "@/server/services/email-bcc";
 
+// Track processed Stripe event IDs to prevent duplicate processing.
+// Entries auto-expire after 24 hours. In-memory is sufficient because
+// the DB transaction is already idempotent — this is an optimization
+// to skip redundant DB work.
+const processedEvents = new Map<string, number>();
+const EVENT_TTL_MS = 24 * 60 * 60_000;
+
+function cleanExpiredEvents() {
+  const now = Date.now();
+  for (const [id, ts] of processedEvents) {
+    if (now - ts > EVENT_TTL_MS) processedEvents.delete(id);
+  }
+}
+
 export async function POST(req: NextRequest) {
   // Must use raw text — Stripe signature verification requires exact bytes
   const rawBody = await req.text();
@@ -63,6 +77,12 @@ export async function POST(req: NextRequest) {
   const verifiedOrgId = (event.data.object as { metadata?: Record<string, string> })?.metadata?.orgId;
   if (verifiedOrgId !== orgId) {
     return NextResponse.json({ error: "OrgId mismatch" }, { status: 400 });
+  }
+
+  // Idempotency: skip already-processed events
+  cleanExpiredEvents();
+  if (processedEvents.has(event.id)) {
+    return NextResponse.json({ received: true });
   }
 
   if (event.type === "checkout.session.completed") {
@@ -262,6 +282,9 @@ export async function POST(req: NextRequest) {
       console.error("[stripe-webhook] Failed to send payment receipt email:", err);
     }
   }
+
+  // Mark event as processed
+  processedEvents.set(event.id, Date.now());
 
   return NextResponse.json({ received: true });
 }
