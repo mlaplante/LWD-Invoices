@@ -10,6 +10,8 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
+      - name: Install pg client
+        run: npm install pg
       - name: Ping database
         run: |
           node -e "
