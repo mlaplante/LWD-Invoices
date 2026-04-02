@@ -18,6 +18,7 @@ export const teamRouter = router({
         firstName: true,
         lastName: true,
         role: true,
+        isActive: true,
         createdAt: true,
       },
       orderBy: { createdAt: "asc" },
@@ -299,6 +300,34 @@ export const teamRouter = router({
     });
 
     return { success: true };
+  }),
+
+  suspend: requireRole("OWNER", "ADMIN").input(
+    z.object({ userId: z.string() })
+  ).mutation(async ({ ctx, input }) => {
+    const targetUser = await ctx.db.user.findFirst({
+      where: { id: input.userId, organizationId: ctx.orgId },
+    });
+    if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+    if (targetUser.supabaseId === ctx.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot suspend yourself" });
+    if (targetUser.role === "OWNER") throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot suspend an owner" });
+    return ctx.db.user.update({
+      where: { id: input.userId },
+      data: { isActive: false },
+    });
+  }),
+
+  reactivate: requireRole("OWNER", "ADMIN").input(
+    z.object({ userId: z.string() })
+  ).mutation(async ({ ctx, input }) => {
+    const targetUser = await ctx.db.user.findFirst({
+      where: { id: input.userId, organizationId: ctx.orgId },
+    });
+    if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+    return ctx.db.user.update({
+      where: { id: input.userId },
+      data: { isActive: true },
+    });
   }),
 
   acceptInvite: protectedProcedure.input(

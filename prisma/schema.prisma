@@ -229,6 +229,7 @@ model User {
   firstName   String?
   lastName    String?
   role        UserRole @default(ADMIN)
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

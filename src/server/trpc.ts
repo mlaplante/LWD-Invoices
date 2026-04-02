@@ -39,6 +39,16 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.userId || !ctx.orgId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
+
+  // Check if user account is suspended
+  const user = await ctx.db.user.findFirst({
+    where: { supabaseId: ctx.userId, organizationId: ctx.orgId },
+    select: { isActive: true },
+  });
+  if (user && !user.isActive) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Your account has been suspended. Contact your administrator." });
+  }
+
   const orgId = ctx.orgId;
   return next({ ctx: { ...ctx, userId: ctx.userId, orgId, userRole: ctx.userRole } });
 });
