@@ -1,9 +1,9 @@
 import type { NextInstallmentInfo } from "@/emails/types";
-import type { Decimal } from "@/generated/prisma/runtime/library";
+import type { Prisma } from "@/generated/prisma";
 
 type PartialPaymentRecord = {
   sortOrder: number;
-  amount: Decimal;
+  amount: Prisma.Decimal;
   isPercentage: boolean;
   dueDate: Date | null;
   isPaid: boolean;
@@ -15,7 +15,7 @@ type PartialPaymentRecord = {
  */
 export function getNextInstallmentInfo(
   partialPayments: PartialPaymentRecord[],
-  invoiceTotal: Decimal,
+  invoiceTotal: Prisma.Decimal,
 ): NextInstallmentInfo | undefined {
   if (!partialPayments.length) return undefined;
 
