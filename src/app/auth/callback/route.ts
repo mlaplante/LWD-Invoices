@@ -16,6 +16,11 @@ export async function GET(request: NextRequest) {
     ? rawRedirect
     : null;
 
+  const type = searchParams.get("type");
+  if (type === "recovery") {
+    return NextResponse.redirect(`${origin}/reset-password`);
+  }
+
   if (!code) {
     return NextResponse.redirect(`${origin}/sign-in?error=missing_code`);
   }
