@@ -72,6 +72,9 @@ export const processReminderSequences = inngest.createFunction(
         client: true,
         organization: { select: { name: true } },
         currency: true,
+        partialPayments: {
+          orderBy: { sortOrder: "asc" },
+        },
       },
     });
 
@@ -149,14 +152,28 @@ export const processReminderSequences = inngest.createFunction(
       }
 
       try {
+        // Find the next unpaid installment
+        const nextUnpaidInstallment = invoice.partialPayments.find((p) => !p.isPaid);
+        const hasInstallments = invoice.partialPayments.length > 0;
+
         // Build template variables
         const vars = buildTemplateVariables({
           clientName: invoice.client.name,
           invoiceNumber: invoice.number,
-          amountDue: Number(invoice.total).toFixed(2),
-          dueDate: invoice.dueDate.toLocaleDateString(),
+          amountDue: nextUnpaidInstallment
+            ? nextUnpaidInstallment.amount.toFixed(2)
+            : Number(invoice.total).toFixed(2),
+          dueDate: nextUnpaidInstallment?.dueDate
+            ? nextUnpaidInstallment.dueDate.toLocaleDateString()
+            : invoice.dueDate.toLocaleDateString(),
           portalToken: invoice.portalToken,
           orgName: invoice.organization.name,
+          installmentNumber: nextUnpaidInstallment
+            ? String(invoice.partialPayments.indexOf(nextUnpaidInstallment) + 1)
+            : undefined,
+          totalInstallments: hasInstallments
+            ? String(invoice.partialPayments.length)
+            : undefined,
         });
 
         const subject = interpolateTemplate(fullStep.subject, vars);

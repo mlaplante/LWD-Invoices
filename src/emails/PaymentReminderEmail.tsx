@@ -4,6 +4,13 @@ import {
 } from "@react-email/components";
 import React from "react";
 
+type NextInstallmentInfo = {
+  amount: string;
+  dueDate: string;
+  installmentNumber: number;
+  totalInstallments: number;
+};
+
 type Props = {
   invoiceNumber: string;
   clientName: string;
@@ -16,14 +23,17 @@ type Props = {
   logoUrl?: string;
   brandColor?: string;
   hidePoweredBy?: boolean;
+  nextInstallment?: NextInstallmentInfo;
 };
 
 const ACCENT = "#d97706";
 
 export function PaymentReminderEmail({
-  invoiceNumber, clientName, total, currencySymbol, dueDate, daysUntilDue, orgName, portalLink, logoUrl, brandColor, hidePoweredBy,
+  invoiceNumber, clientName, total, currencySymbol, dueDate, daysUntilDue, orgName, portalLink, logoUrl, brandColor, hidePoweredBy, nextInstallment,
 }: Props) {
   const dayLabel = daysUntilDue === 1 ? "day" : "days";
+  const hasInstallments = !!nextInstallment;
+
   return (
     <Html lang="en">
       <Head />
@@ -51,7 +61,15 @@ export function PaymentReminderEmail({
               Hi {clientName},
             </Text>
             <Text style={{ color: "#4b5563", fontSize: 15, lineHeight: "1.6", margin: "0 0 24px" }}>
-              This is a friendly reminder that invoice <strong>#{invoiceNumber}</strong> is due in <strong>{daysUntilDue} {dayLabel}</strong>.
+              {hasInstallments ? (
+                <>
+                  This is a friendly reminder that <strong>installment {nextInstallment.installmentNumber} of {nextInstallment.totalInstallments}</strong> for invoice <strong>#{invoiceNumber}</strong> is due in <strong>{daysUntilDue} {dayLabel}</strong>.
+                </>
+              ) : (
+                <>
+                  This is a friendly reminder that invoice <strong>#{invoiceNumber}</strong> is due in <strong>{daysUntilDue} {dayLabel}</strong>.
+                </>
+              )}
             </Text>
 
             <Section style={{ backgroundColor: "#f8f8f7", borderRadius: 8, padding: "20px 24px", margin: "0 0 28px" }}>
@@ -61,10 +79,22 @@ export function PaymentReminderEmail({
                   <Text style={{ color: "#0f1628", fontSize: 15, fontWeight: "bold", margin: "0 0 16px" }}>#{invoiceNumber}</Text>
                 </Column>
                 <Column style={{ width: "50%", paddingLeft: 12, verticalAlign: "top" }}>
-                  <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px", fontWeight: "500" }}>Amount Due</Text>
-                  <Text style={{ color: "#0f1628", fontSize: 30, fontWeight: "bold", margin: "0 0 16px", letterSpacing: "-1px" }}>{currencySymbol}{total}</Text>
+                  <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px", fontWeight: "500" }}>
+                    {hasInstallments ? "Installment Amount" : "Amount Due"}
+                  </Text>
+                  <Text style={{ color: "#0f1628", fontSize: 30, fontWeight: "bold", margin: "0 0 16px", letterSpacing: "-1px" }}>
+                    {currencySymbol}{hasInstallments ? nextInstallment.amount : total}
+                  </Text>
                 </Column>
               </Row>
+              {hasInstallments && (
+                <>
+                  <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px", fontWeight: "500" }}>Payment Progress</Text>
+                  <Text style={{ color: "#0f1628", fontSize: 13, fontWeight: "600", margin: "0 0 16px" }}>
+                    Installment {nextInstallment.installmentNumber} of {nextInstallment.totalInstallments}
+                  </Text>
+                </>
+              )}
               <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px", fontWeight: "500" }}>Due Date</Text>
               <Row>
                 <Column style={{ verticalAlign: "middle" }}>

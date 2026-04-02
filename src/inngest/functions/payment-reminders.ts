@@ -44,6 +44,9 @@ export const processPaymentReminders = inngest.createFunction(
           select: { name: true, paymentReminderDays: true, logoUrl: true },
         },
         currency: true,
+        partialPayments: {
+          orderBy: { sortOrder: "asc" },
+        },
       },
     });
 
@@ -62,17 +65,29 @@ export const processPaymentReminders = inngest.createFunction(
         if (!shouldSendReminder(daysUntilDue, invoice.reminderDaysOverride, invoice.organization.paymentReminderDays)) return;
         const portalLink = `${process.env.NEXT_PUBLIC_APP_URL}/portal/${invoice.portalToken}`;
 
+        // Find the next unpaid installment
+        const nextUnpaidInstallment = invoice.partialPayments.find((p) => !p.isPaid);
+        const nextInstallmentInfo = nextUnpaidInstallment
+          ? {
+              amount: nextUnpaidInstallment.amount.toFixed(2),
+              dueDate: nextUnpaidInstallment.dueDate?.toLocaleDateString() ?? invoice.dueDate.toLocaleDateString(),
+              installmentNumber: invoice.partialPayments.indexOf(nextUnpaidInstallment) + 1,
+              totalInstallments: invoice.partialPayments.length,
+            }
+          : undefined;
+
         const html = await render(
           PaymentReminderEmail({
             invoiceNumber: invoice.number,
             clientName: invoice.client.name,
             total: invoice.total.toFixed(2),
             currencySymbol: invoice.currency.symbol,
-            dueDate: invoice.dueDate.toLocaleDateString(),
+            dueDate: nextInstallmentInfo?.dueDate ?? invoice.dueDate.toLocaleDateString(),
             orgName: invoice.organization.name,
             portalLink,
             daysUntilDue,
             logoUrl: invoice.organization.logoUrl ?? undefined,
+            nextInstallment: nextInstallmentInfo,
           }),
         );
 
