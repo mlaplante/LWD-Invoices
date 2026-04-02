@@ -101,7 +101,7 @@ export default async function InvoiceDetailPage({
     <div className="space-y-5">
 
       {/* ── Page header ──────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/invoices"
@@ -125,7 +125,7 @@ export default async function InvoiceDetailPage({
         </div>
 
         {/* Contextual actions */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 lg:flex-wrap lg:overflow-visible">
           {invoice.type !== "CREDIT_NOTE" && (
             <ReminderOverrideSelect
               invoiceId={invoice.id}

@@ -134,7 +134,7 @@ export default async function ClientDetailPage({
     <div className="space-y-5">
 
       {/* ── Page header ──────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/clients"
@@ -153,7 +153,7 @@ export default async function ClientDetailPage({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 lg:flex-wrap lg:overflow-visible">
           <Button asChild size="sm">
             <Link href={`/invoices/new?clientId=${client.id}`}>
               <Receipt className="w-3.5 h-3.5 mr-1.5" />
