@@ -6,7 +6,6 @@ import type { PayPalConfig } from "@/server/services/gateway-config";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { CheckCircle2, CreditCard } from "lucide-react";
-import Image from "next/image";
 import { formatCurrency, formatDateLong } from "@/lib/format";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
@@ -24,6 +23,7 @@ export default async function PayPage({
       organization: true,
       currency: true,
       payments: { select: { amount: true } },
+      partialPayments: { orderBy: { sortOrder: "asc" } },
     },
   });
 
@@ -68,24 +68,45 @@ export default async function PayPage({
     (g) => g.gatewayType === GatewayType.PAYPAL,
   );
 
-  // Build PayPal URL
-  let paypalUrl: string | undefined;
+  // PayPal config for building URLs per installment
+  let paypalConfig: PayPalConfig | undefined;
   if (paypalGw) {
     try {
-      const config = decryptJson<PayPalConfig>(paypalGw.configJson);
-      const chargedAmount = (
-        remaining *
-        (1 + paypalGw.surcharge.toNumber() / 100)
-      ).toFixed(2);
-      paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(config.email)}&amount=${chargedAmount}&currency_code=${invoice.currency.code}&item_name=${encodeURIComponent(`Invoice ${invoice.number}`)}&return=${encodeURIComponent(`${appUrl}/pay/${token}/success`)}`;
+      paypalConfig = decryptJson<PayPalConfig>(paypalGw.configJson);
     } catch {
       // configJson not set yet
     }
   }
 
-  const hasGateways = !!stripeGw || !!paypalUrl;
+  function buildPaypalUrl(amount: number, label: string) {
+    if (!paypalConfig || !paypalGw) return undefined;
+    const chargedAmount = (
+      amount * (1 + paypalGw.surcharge.toNumber() / 100)
+    ).toFixed(2);
+    return `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(paypalConfig.email)}&amount=${chargedAmount}&currency_code=${invoice.currency.code}&item_name=${encodeURIComponent(label)}&return=${encodeURIComponent(`${appUrl}/pay/${token}/success`)}`;
+  }
+
+  const hasGateways = !!stripeGw || !!paypalConfig;
   const orgLogo = invoice.organization.logoUrl;
   const orgName = invoice.organization.name;
+
+  // Build installment list for split payments
+  const unpaidInstallments = invoice.partialPayments
+    .filter((pp) => !pp.isPaid)
+    .map((pp, idx) => {
+      const amount = pp.isPercentage
+        ? total * Number(pp.amount) / 100
+        : Number(pp.amount);
+      return {
+        id: pp.id,
+        label: `Installment #${idx + 1}`,
+        amount,
+        dueDate: pp.dueDate,
+        percentage: pp.isPercentage ? Number(pp.amount) : undefined,
+      };
+    });
+
+  const hasInstallments = invoice.partialPayments.length > 0;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-12">
@@ -94,12 +115,11 @@ export default async function PayPage({
           {/* Org branding */}
           <div className="flex flex-col items-center gap-3">
             {orgLogo && (
-              <Image
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
                 src={orgLogo}
                 alt={orgName}
-                width={48}
-                height={48}
-                className="rounded-lg object-contain"
+                className="h-12 w-auto max-w-[160px] rounded-lg object-contain"
               />
             )}
             <p className="text-sm font-medium text-muted-foreground">
@@ -125,7 +145,7 @@ export default async function PayPage({
           ) : (
             /* Payable state */
             <>
-              {/* Invoice label + amount */}
+              {/* Invoice label + total */}
               <div className="text-center space-y-1">
                 <p className="text-sm text-muted-foreground">
                   Invoice #{invoice.number}
@@ -140,8 +160,77 @@ export default async function PayPage({
                 )}
               </div>
 
-              {/* Payment buttons */}
-              {isPayable && hasGateways ? (
+              {/* Split payment installments */}
+              {isPayable && hasGateways && hasInstallments && unpaidInstallments.length > 0 ? (
+                <div className="space-y-4">
+                  {unpaidInstallments.map((inst) => {
+                    const stripeUrl = `/api/pay/${token}/stripe?partialPaymentId=${inst.id}`;
+                    const ppUrl = buildPaypalUrl(
+                      inst.amount,
+                      `Invoice #${invoice.number} — ${inst.label}`,
+                    );
+                    return (
+                      <div
+                        key={inst.id}
+                        className="rounded-xl border border-border/50 p-4 space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {inst.label}
+                              {inst.percentage != null && (
+                                <span className="text-muted-foreground font-normal">
+                                  {" "}({inst.percentage}%)
+                                </span>
+                              )}
+                            </p>
+                            {inst.dueDate && (
+                              <p className="text-xs text-muted-foreground">
+                                Due {formatDateLong(inst.dueDate)}
+                              </p>
+                            )}
+                          </div>
+                          <p className="text-lg font-bold text-foreground">
+                            {f(inst.amount)}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          {stripeGw && (
+                            <a
+                              href={stripeUrl}
+                              className="flex items-center justify-center gap-2 w-full rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                              Pay with Card
+                              {stripeGw.surcharge.toNumber() > 0 && (
+                                <span className="text-xs font-normal opacity-75">
+                                  (+{stripeGw.surcharge.toNumber()}% surcharge)
+                                </span>
+                              )}
+                            </a>
+                          )}
+                          {ppUrl && (
+                            <a
+                              href={ppUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-2 w-full rounded-lg border border-border px-3 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                            >
+                              Pay with PayPal
+                              {paypalGw && paypalGw.surcharge.toNumber() > 0 && (
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  (+{paypalGw.surcharge.toNumber()}% surcharge)
+                                </span>
+                              )}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : isPayable && hasGateways ? (
+                /* No installments — single payment */
                 <div className="space-y-3">
                   {stripeGw && (
                     <a
@@ -157,22 +246,24 @@ export default async function PayPage({
                       )}
                     </a>
                   )}
-                  {paypalUrl && (
-                    <a
-                      href={paypalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
-                    >
-                      Pay with PayPal
-                      {paypalGw &&
-                        paypalGw.surcharge.toNumber() > 0 && (
+                  {(() => {
+                    const ppUrl = buildPaypalUrl(remaining, `Invoice #${invoice.number}`);
+                    return ppUrl ? (
+                      <a
+                        href={ppUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                      >
+                        Pay with PayPal
+                        {paypalGw && paypalGw.surcharge.toNumber() > 0 && (
                           <span className="text-xs font-normal text-muted-foreground">
                             (+{paypalGw.surcharge.toNumber()}% surcharge)
                           </span>
                         )}
-                    </a>
-                  )}
+                      </a>
+                    ) : null;
+                  })()}
                 </div>
               ) : isPayable ? (
                 <p className="text-center text-sm text-muted-foreground">

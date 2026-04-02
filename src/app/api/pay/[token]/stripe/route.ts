@@ -17,16 +17,19 @@ type StripeConfig = {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
+  const url = new URL(request.url);
+  const partialPaymentId = url.searchParams.get("partialPaymentId");
 
   const invoice = await db.invoice.findFirst({
     where: { portalToken: token },
     include: {
       currency: true,
       payments: { select: { amount: true } },
+      partialPayments: true,
     },
   });
 
@@ -68,7 +71,18 @@ export async function GET(
     return NextResponse.redirect(new URL(`/pay/${token}`, appUrl), 303);
   }
 
-  const { url } = await createCheckoutSession({
+  // Determine payment amount: installment or full remaining
+  let payAmount = remaining;
+  if (partialPaymentId) {
+    const pp = invoice.partialPayments.find((p) => p.id === partialPaymentId);
+    if (pp && !pp.isPaid) {
+      payAmount = pp.isPercentage
+        ? invoice.total.toNumber() * Number(pp.amount) / 100
+        : Number(pp.amount);
+    }
+  }
+
+  const { url: checkoutUrl } = await createCheckoutSession({
     stripeClient,
     invoice: {
       id: invoice.id,
@@ -80,12 +94,13 @@ export async function GET(
     },
     surcharge: gatewaySetting.surcharge.toNumber(),
     appUrl,
-    amountOverride: remaining,
+    partialPaymentId: partialPaymentId ?? undefined,
+    amountOverride: payAmount,
     successUrl: `${appUrl}/pay/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${appUrl}/pay/${token}`,
   });
 
-  return NextResponse.redirect(url, 303);
+  return NextResponse.redirect(checkoutUrl, 303);
 }
 
 function getAppUrl(hdrs: Headers): string {
