@@ -244,6 +244,18 @@ export function ModernTemplate({ invoice, config }: TemplateProps) {
                   {line.description}
                 </Text>
               ) : null}
+              {Number(line.discount) > 0 ? (
+                <Text style={{ fontSize: 8, color: "#059669", marginTop: 1 }}>
+                  {line.discountIsPercentage
+                    ? `${Number(line.discount)}% discount `
+                    : "Discount "}
+                  (-{fmt(
+                    line.discountIsPercentage
+                      ? Number(line.qty) * Number(line.rate) * Number(line.discount) / 100
+                      : Number(line.discount)
+                  )})
+                </Text>
+              ) : null}
             </View>
             <Text style={styles.colQty}>{Number(line.qty).toFixed(2)}</Text>
             <Text style={styles.colRate}>{fmt(line.rate)}</Text>

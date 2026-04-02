@@ -322,6 +322,18 @@ export default async function InvoiceDetailPage({
                         {line.description}
                       </p>
                     )}
+                    {Number(line.discount) > 0 && (
+                      <p className="text-xs text-emerald-600 mt-0.5">
+                        {line.discountIsPercentage
+                          ? `${Number(line.discount)}% discount `
+                          : "Discount "}
+                        (-{f(
+                          line.discountIsPercentage
+                            ? Number(line.qty) * Number(line.rate) * Number(line.discount) / 100
+                            : Number(line.discount)
+                        )})
+                      </p>
+                    )}
                   </td>
                   <td className="py-4 text-right text-muted-foreground">
                     {f(line.rate)}

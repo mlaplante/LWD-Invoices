@@ -166,6 +166,18 @@ export function MinimalTemplate({ invoice, config }: TemplateProps) {
               <Text style={{ fontSize: 9, color: "#9ca3af", marginTop: 1 }}>
                 {Number(line.qty).toFixed(2)} x {fmt(line.rate)}
               </Text>
+              {Number(line.discount) > 0 ? (
+                <Text style={{ fontSize: 9, color: "#059669", marginTop: 1 }}>
+                  {line.discountIsPercentage
+                    ? `${Number(line.discount)}% discount `
+                    : "Discount "}
+                  (-{fmt(
+                    line.discountIsPercentage
+                      ? Number(line.qty) * Number(line.rate) * Number(line.discount) / 100
+                      : Number(line.discount)
+                  )})
+                </Text>
+              ) : null}
             </View>
             <Text style={{ fontFamily: boldFamily, color: "#111827" }}>
               {fmt(line.subtotal)}
@@ -178,6 +190,18 @@ export function MinimalTemplate({ invoice, config }: TemplateProps) {
         {Number(invoice.taxTotal) > 0 && (
           <Text style={{ fontSize: 9, color: "#9ca3af", marginBottom: 2 }}>
             Includes {fmt(invoice.taxTotal)} tax
+          </Text>
+        )}
+        {invoice.discountType && Number(invoice.discountAmount) > 0 && (
+          <Text style={{ fontSize: 9, color: "#9ca3af", marginBottom: 2 }}>
+            {invoice.discountType === "percentage"
+              ? `${Number(invoice.discountAmount)}% discount `
+              : "Discount "}
+            (-{fmt(
+              invoice.discountType === "percentage"
+                ? (Number(invoice.subtotal) * Number(invoice.discountAmount)) / 100
+                : Number(invoice.discountAmount)
+            )})
           </Text>
         )}
         <Text style={styles.totalLabel}>Total</Text>
