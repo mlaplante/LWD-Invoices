@@ -39,8 +39,6 @@ export const expensesRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      await generateDueExpenses(ctx.db, ctx.orgId);
-
       return ctx.db.expense.findMany({
         where: {
           organizationId: ctx.orgId,
@@ -55,6 +53,12 @@ export const expensesRouter = router({
         },
         orderBy: { createdAt: "desc" },
       });
+    }),
+
+  generateRecurring: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      await generateDueExpenses(ctx.db, ctx.orgId);
+      return { success: true };
     }),
 
   getById: protectedProcedure
@@ -231,57 +235,56 @@ export const expensesRouter = router({
 
       return ctx.db.$transaction(async (tx) => {
         const txClient = tx as unknown as PrismaClient;
-        const createdLineIds: { expenseId: string; lineId: string }[] = [];
-
-        for (let i = 0; i < expenses.length; i++) {
-          const expense = expenses[i];
-          const taxIds = expense.tax ? [expense.tax.id] : [];
-          const applicableTaxes = taxInputs.filter((t) => taxIds.includes(t.id));
-          const lineInput = {
-            qty: expense.qty,
-            rate: expense.rate.toNumber(),
-            lineType: LineType.EXPENSE,
-            discount: 0,
-            discountIsPercentage: false,
-            taxIds,
-          };
-          const result = calculateLineTotals(lineInput, applicableTaxes);
-
-          const line = await txClient.invoiceLine.create({
-            data: {
-              sort: nextSort + i,
-              lineType: LineType.EXPENSE,
-              name: expense.name,
-              description: expense.description ?? undefined,
+        const createdLines = await Promise.all(
+          expenses.map((expense, i) => {
+            const taxIds = expense.tax ? [expense.tax.id] : [];
+            const applicableTaxes = taxInputs.filter((t) => taxIds.includes(t.id));
+            const lineInput = {
               qty: expense.qty,
-              rate: expense.rate,
-              subtotal: result.subtotal,
-              taxTotal: result.taxTotal,
-              total: result.total,
-              sourceTable: "Expense",
-              sourceId: expense.id,
-              invoiceId: input.invoiceId,
-              taxes: taxIds.length
-                ? {
-                    create: result.taxBreakdown.map((tb) => ({
-                      taxId: tb.taxId,
-                      taxAmount: tb.taxAmount,
-                    })),
-                  }
-                : undefined,
-            },
-          });
+              rate: expense.rate.toNumber(),
+              lineType: LineType.EXPENSE,
+              discount: 0,
+              discountIsPercentage: false,
+              taxIds,
+            };
+            const result = calculateLineTotals(lineInput, applicableTaxes);
 
-          createdLineIds.push({ expenseId: expense.id, lineId: line.id });
-        }
+            return txClient.invoiceLine.create({
+              data: {
+                sort: nextSort + i,
+                lineType: LineType.EXPENSE,
+                name: expense.name,
+                description: expense.description ?? undefined,
+                qty: expense.qty,
+                rate: expense.rate,
+                subtotal: result.subtotal,
+                taxTotal: result.taxTotal,
+                total: result.total,
+                sourceTable: "Expense",
+                sourceId: expense.id,
+                invoiceId: input.invoiceId,
+                taxes: taxIds.length
+                  ? {
+                      create: result.taxBreakdown.map((tb) => ({
+                        taxId: tb.taxId,
+                        taxAmount: tb.taxAmount,
+                      })),
+                    }
+                  : undefined,
+              },
+            });
+          })
+        );
 
         // Mark expenses as billed
-        for (const { expenseId, lineId } of createdLineIds) {
-          await txClient.expense.update({
-            where: { id: expenseId },
-            data: { invoiceLineId: lineId },
-          });
-        }
+        await Promise.all(
+          createdLines.map((line, i) =>
+            txClient.expense.update({
+              where: { id: expenses[i].id },
+              data: { invoiceLineId: line.id },
+            })
+          )
+        );
 
         // Recalculate invoice totals
         const allLines = await txClient.invoiceLine.findMany({

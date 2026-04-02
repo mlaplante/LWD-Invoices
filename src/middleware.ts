@@ -49,16 +49,17 @@ export async function middleware(request: NextRequest) {
     },
   );
 
+  const { pathname } = request.nextUrl;
+
+  // Skip auth check entirely for public paths — saves a Supabase round-trip
+  if (isPublicPath(pathname)) {
+    return supabaseResponse;
+  }
+
   // Refresh session — MUST be called before any redirect logic
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
-
-  if (isPublicPath(pathname)) {
-    return supabaseResponse;
-  }
 
   if (!user) {
     const signInUrl = new URL("/sign-in", request.url);

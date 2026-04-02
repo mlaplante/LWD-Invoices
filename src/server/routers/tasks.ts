@@ -170,46 +170,45 @@ export const tasksRouter = router({
 
       return ctx.db.$transaction(async (tx) => {
         const txClient = tx as unknown as PrismaClient;
-        const createdLineIds: { taskId: string; lineId: string }[] = [];
-
-        for (let i = 0; i < tasks.length; i++) {
-          const task = tasks[i];
-          const lineInput = {
-            qty: task.projectedHours,
-            rate: task.rate.toNumber(),
-            lineType: LineType.TIME_ENTRY,
-            discount: 0,
-            discountIsPercentage: false,
-            taxIds: [] as string[],
-          };
-          const result = calculateLineTotals(lineInput, []);
-
-          const line = await txClient.invoiceLine.create({
-            data: {
-              sort: nextSort + i,
-              lineType: LineType.TIME_ENTRY,
-              name: task.name,
+        const createdLines = await Promise.all(
+          tasks.map((task, i) => {
+            const lineInput = {
               qty: task.projectedHours,
-              rate: task.rate,
-              subtotal: result.subtotal,
-              taxTotal: result.taxTotal,
-              total: result.total,
-              sourceTable: "ProjectTask",
-              sourceId: task.id,
-              invoiceId: input.invoiceId,
-            },
-          });
+              rate: task.rate.toNumber(),
+              lineType: LineType.TIME_ENTRY,
+              discount: 0,
+              discountIsPercentage: false,
+              taxIds: [] as string[],
+            };
+            const result = calculateLineTotals(lineInput, []);
 
-          createdLineIds.push({ taskId: task.id, lineId: line.id });
-        }
+            return txClient.invoiceLine.create({
+              data: {
+                sort: nextSort + i,
+                lineType: LineType.TIME_ENTRY,
+                name: task.name,
+                qty: task.projectedHours,
+                rate: task.rate,
+                subtotal: result.subtotal,
+                taxTotal: result.taxTotal,
+                total: result.total,
+                sourceTable: "ProjectTask",
+                sourceId: task.id,
+                invoiceId: input.invoiceId,
+              },
+            });
+          })
+        );
 
         // Mark tasks as billed
-        for (const { taskId, lineId } of createdLineIds) {
-          await txClient.projectTask.update({
-            where: { id: taskId },
-            data: { invoiceLineId: lineId },
-          });
-        }
+        await Promise.all(
+          createdLines.map((line, i) =>
+            txClient.projectTask.update({
+              where: { id: tasks[i].id },
+              data: { invoiceLineId: line.id },
+            })
+          )
+        );
 
         // Recalculate invoice totals
         const allLines = await txClient.invoiceLine.findMany({

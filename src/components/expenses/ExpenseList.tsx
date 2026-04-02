@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,10 @@ export function ExpenseList() {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   const utils = trpc.useUtils();
+  const generateRecurring = trpc.expenses.generateRecurring.useMutation({
+    onSuccess: () => utils.expenses.list.invalidate(),
+  });
+  useEffect(() => { generateRecurring.mutate(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { data: expenses = [] } = trpc.expenses.list.useQuery({});
   const { data: recurringExpenses = [] } = trpc.recurringExpenses.list.useQuery();
   const { data: categories = [] } = trpc.expenseCategories.list.useQuery();

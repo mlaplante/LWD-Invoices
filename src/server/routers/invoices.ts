@@ -102,7 +102,7 @@ async function updateEstimateStatus(
 
 // Full include for get/detail queries
 const fullInvoiceInclude = {
-  client: true,
+  client: { select: { id: true, name: true, email: true, address: true } },
   currency: true,
   organization: true,
   lines: {

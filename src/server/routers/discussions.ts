@@ -6,10 +6,8 @@ export const discussionsRouter = router({
   list: protectedProcedure
     .input(z.object({ projectId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.discussion.findMany({
-        where: { projectId: input.projectId, organizationId: org.id },
+        where: { projectId: input.projectId, organizationId: ctx.orgId },
         include: { replies: { orderBy: { createdAt: "asc" } } },
         orderBy: { createdAt: "desc" },
       });
@@ -18,11 +16,9 @@ export const discussionsRouter = router({
   create: protectedProcedure
     .input(z.object({ projectId: z.string(), subject: z.string().min(1), body: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       // Verify project belongs to org
       const project = await ctx.db.project.findFirst({
-        where: { id: input.projectId, organizationId: org.id },
+        where: { id: input.projectId, organizationId: ctx.orgId },
       });
       if (!project) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.discussion.create({
@@ -32,7 +28,7 @@ export const discussionsRouter = router({
           body: input.body,
           isStaff: true,
           authorId: ctx.userId,
-          organizationId: org.id,
+          organizationId: ctx.orgId,
         },
         include: { replies: true },
       });
@@ -41,11 +37,9 @@ export const discussionsRouter = router({
   reply: protectedProcedure
     .input(z.object({ discussionId: z.string(), body: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       // Verify discussion belongs to org
       const discussion = await ctx.db.discussion.findFirst({
-        where: { id: input.discussionId, organizationId: org.id },
+        where: { id: input.discussionId, organizationId: ctx.orgId },
       });
       if (!discussion) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.discussionReply.create({

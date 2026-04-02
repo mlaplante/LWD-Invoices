@@ -152,49 +152,48 @@ export const timeEntriesRouter = router({
 
       return ctx.db.$transaction(async (tx) => {
         const txClient = tx as unknown as PrismaClient;
-        const createdLineIds: { entryId: string; lineId: string }[] = [];
-
-        for (let i = 0; i < entries.length; i++) {
-          const entry = entries[i];
-          const rate = entry.task?.rate?.toNumber() ?? entry.project.rate.toNumber();
-          const qty = entry.minutes.toNumber() / 60; // convert minutes to hours
-          const lineInput = {
-            qty,
-            rate,
-            lineType: LineType.TIME_ENTRY,
-            discount: 0,
-            discountIsPercentage: false,
-            taxIds: [] as string[],
-          };
-          const result = calculateLineTotals(lineInput, []);
-
-          const line = await txClient.invoiceLine.create({
-            data: {
-              sort: nextSort + i,
-              lineType: LineType.TIME_ENTRY,
-              name: entry.task?.name ?? entry.project.name,
-              description: entry.note ?? undefined,
+        const createdLines = await Promise.all(
+          entries.map((entry, i) => {
+            const rate = entry.task?.rate?.toNumber() ?? entry.project.rate.toNumber();
+            const qty = entry.minutes.toNumber() / 60; // convert minutes to hours
+            const lineInput = {
               qty,
               rate,
-              subtotal: result.subtotal,
-              taxTotal: result.taxTotal,
-              total: result.total,
-              sourceTable: "TimeEntry",
-              sourceId: entry.id,
-              invoiceId: input.invoiceId,
-            },
-          });
+              lineType: LineType.TIME_ENTRY,
+              discount: 0,
+              discountIsPercentage: false,
+              taxIds: [] as string[],
+            };
+            const result = calculateLineTotals(lineInput, []);
 
-          createdLineIds.push({ entryId: entry.id, lineId: line.id });
-        }
+            return txClient.invoiceLine.create({
+              data: {
+                sort: nextSort + i,
+                lineType: LineType.TIME_ENTRY,
+                name: entry.task?.name ?? entry.project.name,
+                description: entry.note ?? undefined,
+                qty,
+                rate,
+                subtotal: result.subtotal,
+                taxTotal: result.taxTotal,
+                total: result.total,
+                sourceTable: "TimeEntry",
+                sourceId: entry.id,
+                invoiceId: input.invoiceId,
+              },
+            });
+          })
+        );
 
         // Mark entries as billed
-        for (const { entryId, lineId } of createdLineIds) {
-          await txClient.timeEntry.update({
-            where: { id: entryId },
-            data: { invoiceLineId: lineId },
-          });
-        }
+        await Promise.all(
+          createdLines.map((line, i) =>
+            txClient.timeEntry.update({
+              where: { id: entries[i].id },
+              data: { invoiceLineId: line.id },
+            })
+          )
+        );
 
         // Recalculate invoice totals
         const allLines = await txClient.invoiceLine.findMany({

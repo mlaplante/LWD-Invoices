@@ -10,11 +10,9 @@ export const ticketsRouter = router({
       clientId: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.ticket.findMany({
         where: {
-          organizationId: org.id,
+          organizationId: ctx.orgId,
           ...(input.status ? { status: input.status } : {}),
           ...(input.clientId ? { clientId: input.clientId } : {}),
         },
@@ -26,10 +24,8 @@ export const ticketsRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       const ticket = await ctx.db.ticket.findFirst({
-        where: { id: input.id, organizationId: org.id },
+        where: { id: input.id, organizationId: ctx.orgId },
         include: { client: true, messages: { orderBy: { createdAt: "asc" } } },
       });
       if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
@@ -44,11 +40,8 @@ export const ticketsRouter = router({
       clientId: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
-
       const lastTicket = await ctx.db.ticket.findFirst({
-        where: { organizationId: org.id },
+        where: { organizationId: ctx.orgId },
         orderBy: { number: "desc" },
         select: { number: true },
       });
@@ -61,7 +54,7 @@ export const ticketsRouter = router({
             subject: input.subject,
             priority: input.priority,
             clientId: input.clientId,
-            organizationId: org.id,
+            organizationId: ctx.orgId,
             messages: {
               create: {
                 body: input.body,
@@ -84,11 +77,8 @@ export const ticketsRouter = router({
   reply: requireRole("OWNER", "ADMIN")
     .input(z.object({ ticketId: z.string(), body: z.string().min(1), isStaff: z.boolean().default(true) }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
-      // Verify ticket belongs to org before replying
       const ticket = await ctx.db.ticket.findFirst({
-        where: { id: input.ticketId, organizationId: org.id },
+        where: { id: input.ticketId, organizationId: ctx.orgId },
       });
       if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.ticketMessage.create({
@@ -104,10 +94,8 @@ export const ticketsRouter = router({
   updateStatus: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string(), status: z.nativeEnum(TicketStatus) }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       const result = await ctx.db.ticket.updateMany({
-        where: { id: input.id, organizationId: org.id },
+        where: { id: input.id, organizationId: ctx.orgId },
         data: { status: input.status },
       });
       if (result.count === 0) throw new TRPCError({ code: "NOT_FOUND" });
