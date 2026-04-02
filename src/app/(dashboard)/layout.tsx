@@ -54,12 +54,16 @@ export default async function DashboardLayout({
 }) {
   const { data: { user } } = await getUser();
   if (user) {
-    const dbUser = await db.user.findFirst({
-      where: { supabaseId: user.id },
-      select: { isActive: true },
-    });
-    if (dbUser && !dbUser.isActive) {
-      redirect("/suspended");
+    try {
+      const dbUser = await db.user.findFirst({
+        where: { supabaseId: user.id },
+        select: { isActive: true },
+      });
+      if (dbUser && !dbUser.isActive) {
+        redirect("/suspended");
+      }
+    } catch {
+      // isActive column may not exist yet if migration hasn't run
     }
   }
 

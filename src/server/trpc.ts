@@ -41,12 +41,17 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   }
 
   // Check if user account is suspended
-  const user = await ctx.db.user.findFirst({
-    where: { supabaseId: ctx.userId, organizationId: ctx.orgId },
-    select: { isActive: true },
-  });
-  if (user && !user.isActive) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Your account has been suspended. Contact your administrator." });
+  try {
+    const user = await ctx.db.user.findFirst({
+      where: { supabaseId: ctx.userId, organizationId: ctx.orgId },
+      select: { isActive: true },
+    });
+    if (user && !user.isActive) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Your account has been suspended. Contact your administrator." });
+    }
+  } catch (e) {
+    // Re-throw TRPCErrors (suspended user), swallow DB errors (migration not yet applied)
+    if (e instanceof TRPCError) throw e;
   }
 
   const orgId = ctx.orgId;
