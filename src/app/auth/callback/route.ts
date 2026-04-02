@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
     : null;
 
   const type = searchParams.get("type");
-  if (type === "recovery") {
+  if (type === "recovery" && code) {
+    const supabase = await createClient();
+    await supabase.auth.exchangeCodeForSession(code);
     return NextResponse.redirect(`${origin}/reset-password`);
   }
 
