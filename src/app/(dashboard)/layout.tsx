@@ -6,6 +6,7 @@ import { SidebarNav } from "@/components/layout/SidebarNav";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { db } from "@/server/db";
 import { Plus } from "lucide-react";
+import { CommandPalette, SearchTriggerButton } from "@/components/layout/CommandPalette";
 
 export default async function DashboardLayout({
   children,
@@ -68,6 +69,7 @@ export default async function DashboardLayout({
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <SearchTriggerButton />
           <NotificationBell />
           <UserMenu
             email={user?.email}
@@ -80,6 +82,7 @@ export default async function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0 lg:p-5 lg:pl-0">
         {/* Desktop top bar */}
         <header className="hidden lg:flex items-center justify-end gap-3 mb-5 px-1 print:hidden">
+          <SearchTriggerButton />
           <NotificationBell />
           <UserMenu
             email={user?.email}
@@ -97,6 +100,8 @@ export default async function DashboardLayout({
 
       {/* ── Mobile bottom navigation ────────────────────────── */}
       <div className="print:hidden"><MobileNav orgName={orgName} /></div>
+
+      <CommandPalette />
     </div>
   );
 }

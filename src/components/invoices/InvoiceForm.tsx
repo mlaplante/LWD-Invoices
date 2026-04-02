@@ -154,14 +154,14 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
         sortOrder: 0,
         amount: percent,
         isPercentage: true,
-        dueDate: undefined,
+        dueDate: "",
         notes: "Deposit — due on receipt",
       },
       {
         sortOrder: 1,
         amount: 100 - percent,
         isPercentage: true,
-        dueDate: dueDate || undefined,
+        dueDate: dueDate || "",
         notes: "Balance",
       },
     ]);

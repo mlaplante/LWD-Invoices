@@ -52,6 +52,13 @@ const reports = [
     icon: <Scale className="w-4 h-4" />,
     color: "bg-orange-50 text-orange-600",
   },
+  {
+    href: "/reports/year-end",
+    label: "Year-End Export",
+    description: "P&L, expenses, payments, and tax reports for your accountant.",
+    icon: <Download className="w-4 h-4" />,
+    color: "bg-rose-50 text-rose-600",
+  },
 ];
 
 // ── Revenue chart helpers ─────────────────────────────────────────────────────

@@ -51,15 +51,15 @@ export const processReminderSequences = inngest.createFunction(
       orgSequences.set(seq.organizationId, list);
     }
 
+    // 2. Fetch unpaid invoices with due dates for these orgs
+    const orgIds = [...orgSequences.keys()];
+
     // Pre-fetch smart reminder settings for all orgs
     const orgSettings = await db.organization.findMany({
       where: { id: { in: orgIds } },
       select: { id: true, smartRemindersEnabled: true, smartRemindersThreshold: true },
     });
     const orgSettingsMap = new Map(orgSettings.map((o) => [o.id, o]));
-
-    // 2. Fetch unpaid invoices with due dates for these orgs
-    const orgIds = [...orgSequences.keys()];
     const invoices = await db.invoice.findMany({
       where: {
         organizationId: { in: orgIds },

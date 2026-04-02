@@ -96,7 +96,47 @@ export function TimesheetTable({ projects }: Props) {
         <p className="text-sm text-muted-foreground">No time entries found.</p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border">
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-2">
+            {entries.map((entry) => (
+              <div
+                key={entry.id}
+                className="rounded-xl border border-border/50 bg-card p-4 space-y-1"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-sm truncate">{entry.project.name}</p>
+                  {entry.invoiceLineId ? (
+                    <span className="shrink-0 inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                      Billed
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-xs text-muted-foreground">Unbilled</span>
+                  )}
+                </div>
+                {entry.task && (
+                  <p className="text-xs text-muted-foreground">{entry.task.name}</p>
+                )}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(entry.date).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm font-medium tabular-nums">
+                    {formatMinutes(entry.roundedMinutes)}
+                  </p>
+                </div>
+                {entry.note && (
+                  <p className="text-xs text-muted-foreground truncate">{entry.note}</p>
+                )}
+              </div>
+            ))}
+            <div className="rounded-xl border border-border/50 bg-muted/30 p-4 flex items-center justify-between">
+              <p className="text-sm font-medium">Totals</p>
+              <p className="text-sm font-semibold tabular-nums">{formatMinutes(totalRounded)}</p>
+            </div>
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto rounded-lg border">
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/50">
                 <tr>

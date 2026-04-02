@@ -136,7 +136,36 @@ export default async function ProjectsPage({
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        {/* Mobile cards */}
+        <div className="sm:hidden space-y-2">
+          {paginated.map((p) => {
+            const badge = STATUS_BADGE[p.status];
+            return (
+              <Link
+                key={p.id}
+                href={`/projects/${p.id}`}
+                className="block rounded-xl border border-border/50 bg-card p-4 space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-sm truncate">{p.name}</p>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-semibold shrink-0 ml-2",
+                      badge.className
+                    )}
+                  >
+                    {badge.label}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{p.client?.name ?? "No client"}</p>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
@@ -256,6 +285,7 @@ export default async function ProjectsPage({
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );

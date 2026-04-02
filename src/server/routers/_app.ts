@@ -38,9 +38,11 @@ import { retainersRouter } from "./retainers";
 import { scheduledReportsRouter } from "./scheduledReports";
 import { reminderSequencesRouter } from "./reminderSequences";
 import { dashboardRouter } from "./dashboard";
+import { searchRouter } from "./search";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
+  search: searchRouter,
   organization: organizationRouter,
   clients: clientsRouter,
   currencies: currenciesRouter,
