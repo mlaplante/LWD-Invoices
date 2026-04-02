@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
 import { getOwnerBcc } from "@/server/services/email-bcc";
+import { getNextInstallmentInfo } from "@/server/services/partial-payments";
 
 export function calcDaysUntilDue(now: Date, dueDate: Date): number {
   const nowMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -44,6 +45,7 @@ export const processPaymentReminders = inngest.createFunction(
           select: { name: true, paymentReminderDays: true, logoUrl: true },
         },
         currency: true,
+        partialPayments: true,
       },
     });
 
@@ -62,6 +64,9 @@ export const processPaymentReminders = inngest.createFunction(
         if (!shouldSendReminder(daysUntilDue, invoice.reminderDaysOverride, invoice.organization.paymentReminderDays)) return;
         const portalLink = `${process.env.NEXT_PUBLIC_APP_URL}/portal/${invoice.portalToken}`;
 
+        // Find next unpaid installment for split payment invoices
+        const nextInstallment = getNextInstallmentInfo(invoice.partialPayments ?? [], invoice.total);
+
         const html = await render(
           PaymentReminderEmail({
             invoiceNumber: invoice.number,
@@ -73,6 +78,7 @@ export const processPaymentReminders = inngest.createFunction(
             portalLink,
             daysUntilDue,
             logoUrl: invoice.organization.logoUrl ?? undefined,
+            nextInstallment,
           }),
         );
 

@@ -2,6 +2,7 @@ import { inngest } from "../client";
 import { db } from "@/server/db";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 import { getOwnerBcc } from "@/server/services/email-bcc";
+import { getNextInstallmentInfo } from "@/server/services/partial-payments";
 
 export function calcDaysOverdue(now: Date, dueDate: Date): number {
   return Math.floor((now.getTime() - dueDate.getTime()) / 86400000);
@@ -24,6 +25,7 @@ export const processOverdueInvoices = inngest.createFunction(
         client: true,
         organization: true,
         currency: true,
+        partialPayments: true,
       },
     });
 
@@ -45,6 +47,9 @@ export const processOverdueInvoices = inngest.createFunction(
             const { OverdueEmail } = await import("@/emails/OverdueEmail");
             const resend = new Resend(process.env.RESEND_API_KEY);
 
+            // Find next unpaid installment for split payment invoices
+            const nextInstallment = getNextInstallmentInfo(invoice.partialPayments ?? [], invoice.total);
+
             const html = await render(
               OverdueEmail({
                 invoiceNumber: invoice.number,
@@ -56,6 +61,7 @@ export const processOverdueInvoices = inngest.createFunction(
                 orgName: invoice.organization.name,
                 portalLink,
                 logoUrl: invoice.organization.logoUrl ?? undefined,
+                nextInstallment,
               }),
             );
 

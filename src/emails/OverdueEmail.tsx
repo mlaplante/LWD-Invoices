@@ -3,6 +3,7 @@ import {
   Text, Button, Hr, Img, Preview,
 } from "@react-email/components";
 import React from "react";
+import type { NextInstallmentInfo } from "./types";
 
 type Props = {
   invoiceNumber: string;
@@ -16,14 +17,17 @@ type Props = {
   logoUrl?: string;
   brandColor?: string;
   hidePoweredBy?: boolean;
+  nextInstallment?: NextInstallmentInfo;
 };
 
 const ACCENT = "#e11d48";
 
 export function OverdueEmail({
-  invoiceNumber, clientName, total, currencySymbol, dueDate, daysOverdue, orgName, portalLink, logoUrl, brandColor, hidePoweredBy,
+  invoiceNumber, clientName, total, currencySymbol, dueDate, daysOverdue, orgName, portalLink, logoUrl, brandColor, hidePoweredBy, nextInstallment,
 }: Props) {
   const dayLabel = daysOverdue === 1 ? "day" : "days";
+  const displayAmount = nextInstallment ? nextInstallment.amount : total;
+  const displayDueDate = (nextInstallment?.dueDate) ?? dueDate;
   return (
     <Html lang="en">
       <Head />
@@ -52,6 +56,9 @@ export function OverdueEmail({
             </Text>
             <Text style={{ color: "#4b5563", fontSize: 15, lineHeight: "1.6", margin: "0 0 24px" }}>
               Invoice <strong>#{invoiceNumber}</strong> is now <strong style={{ color: ACCENT }}>{daysOverdue} {dayLabel} overdue</strong>. Please arrange payment as soon as possible.
+              {nextInstallment && (
+                <> Payment {nextInstallment.installmentNumber} of {nextInstallment.totalInstallments} is past due.</>
+              )}
             </Text>
 
             <Section style={{ backgroundColor: "#f8f8f7", borderRadius: 8, padding: "20px 24px", margin: "0 0 28px" }}>
@@ -61,14 +68,16 @@ export function OverdueEmail({
                   <Text style={{ color: "#0f1628", fontSize: 15, fontWeight: "bold", margin: "0 0 16px" }}>#{invoiceNumber}</Text>
                 </Column>
                 <Column style={{ width: "50%", paddingLeft: 12, verticalAlign: "top" }}>
-                  <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px", fontWeight: "500" }}>Amount Overdue</Text>
-                  <Text style={{ color: ACCENT, fontSize: 30, fontWeight: "bold", margin: "0 0 16px", letterSpacing: "-1px" }}>{currencySymbol}{total}</Text>
+                  <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px", fontWeight: "500" }}>
+                    {nextInstallment ? `Installment ${nextInstallment.installmentNumber} of ${nextInstallment.totalInstallments}` : "Amount Overdue"}
+                  </Text>
+                  <Text style={{ color: ACCENT, fontSize: 30, fontWeight: "bold", margin: "0 0 16px", letterSpacing: "-1px" }}>{currencySymbol}{displayAmount}</Text>
                 </Column>
               </Row>
               <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px", fontWeight: "500" }}>Was Due</Text>
               <Row>
                 <Column style={{ verticalAlign: "middle" }}>
-                  <Text style={{ color: "#0f1628", fontSize: 15, fontWeight: "bold", margin: 0 }}>{dueDate}</Text>
+                  <Text style={{ color: "#0f1628", fontSize: 15, fontWeight: "bold", margin: 0 }}>{displayDueDate}</Text>
                 </Column>
                 <Column style={{ textAlign: "right", verticalAlign: "middle" }}>
                   <Text style={{ color: "#ffffff", backgroundColor: ACCENT, fontSize: 12, fontWeight: "bold", padding: "3px 10px", borderRadius: 20, margin: 0, display: "inline-block" }}>
