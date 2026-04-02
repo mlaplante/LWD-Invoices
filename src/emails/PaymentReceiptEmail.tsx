@@ -15,12 +15,15 @@ type Props = {
   logoUrl?: string;
   brandColor?: string;
   hidePoweredBy?: boolean;
+  installmentNumber?: number;
+  totalInstallments?: number;
+  remainingBalance?: string;
 };
 
 const ACCENT = "#059669";
 
 export function PaymentReceiptEmail({
-  invoiceNumber, clientName, amountPaid, currencySymbol, paidAt, orgName, portalLink, logoUrl, brandColor, hidePoweredBy,
+  invoiceNumber, clientName, amountPaid, currencySymbol, paidAt, orgName, portalLink, logoUrl, brandColor, hidePoweredBy, installmentNumber, totalInstallments, remainingBalance,
 }: Props) {
   return (
     <Html lang="en">
@@ -49,7 +52,7 @@ export function PaymentReceiptEmail({
               Hi {clientName},
             </Text>
             <Text style={{ color: "#4b5563", fontSize: 15, lineHeight: "1.6", margin: "0 0 24px" }}>
-              We&apos;ve received your payment for invoice <strong>#{invoiceNumber}</strong>. Thank you — it&apos;s much appreciated!
+              We&apos;ve received your payment{installmentNumber && totalInstallments ? ` (installment ${installmentNumber} of ${totalInstallments})` : ""} for invoice <strong>#{invoiceNumber}</strong>. Thank you — it&apos;s much appreciated!
             </Text>
 
             <Section style={{ backgroundColor: "#f8f8f7", borderRadius: 8, padding: "20px 24px", margin: "0 0 28px" }}>
@@ -65,6 +68,13 @@ export function PaymentReceiptEmail({
               </Row>
               <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px", fontWeight: "500" }}>Payment Date</Text>
               <Text style={{ color: "#0f1628", fontSize: 15, fontWeight: "bold", margin: 0 }}>{paidAt}</Text>
+              {remainingBalance && parseFloat(remainingBalance) > 0 && (
+                <>
+                  <Hr style={{ borderColor: "#e5e7eb", margin: "16px 0" }} />
+                  <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px", fontWeight: "500" }}>Remaining Balance</Text>
+                  <Text style={{ color: "#d97706", fontSize: 18, fontWeight: "bold", margin: 0 }}>{currencySymbol}{remainingBalance}</Text>
+                </>
+              )}
             </Section>
 
             {portalLink && (

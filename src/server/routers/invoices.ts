@@ -625,7 +625,7 @@ export const invoicesRouter = router({
           status: InvoiceStatus.DRAFT,
           type: { notIn: [InvoiceType.CREDIT_NOTE] },
         },
-        include: { client: true, organization: true, currency: true },
+        include: { client: true, organization: true, currency: true, partialPayments: true },
       });
 
       if (invoices.length === 0) {
@@ -657,6 +657,21 @@ export const invoicesRouter = router({
               const { render } = await import("@react-email/render");
               const { InvoiceSentEmail } = await import("@/emails/InvoiceSentEmail");
               const resend = new Resend(env.RESEND_API_KEY);
+
+              // Format partial payments for email
+              const partialPayments = invoice.partialPayments
+                ?.sort((a, b) => a.sortOrder - b.sortOrder)
+                .map((pp) => {
+                  const amount = pp.isPercentage
+                    ? ((pp.amount.toNumber() / 100) * invoice.total.toNumber()).toFixed(2)
+                    : pp.amount.toNumber().toFixed(2);
+                  return {
+                    amount,
+                    dueDate: pp.dueDate?.toLocaleDateString() ?? null,
+                    isPaid: pp.isPaid,
+                  };
+                });
+
               const html = await render(
                 InvoiceSentEmail({
                   invoiceNumber: invoice.number,
@@ -667,6 +682,7 @@ export const invoicesRouter = router({
                   orgName: invoice.organization.name,
                   portalLink: `${appUrl}/portal/${invoice.portalToken}`,
                   logoUrl: invoice.organization.logoUrl ?? undefined,
+                  partialPayments: partialPayments && partialPayments.length > 0 ? partialPayments : undefined,
                 })
               );
 
@@ -779,7 +795,7 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
-        include: { client: true, organization: true, currency: true },
+        include: { client: true, organization: true, currency: true, partialPayments: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -804,6 +820,21 @@ export const invoicesRouter = router({
           const { render } = await import("@react-email/render");
           const { InvoiceSentEmail } = await import("@/emails/InvoiceSentEmail");
           const resend = new Resend(env.RESEND_API_KEY);
+
+          // Format partial payments for email
+          const partialPayments = invoice.partialPayments
+            ?.sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((pp) => {
+              const amount = pp.isPercentage
+                ? ((pp.amount.toNumber() / 100) * invoice.total.toNumber()).toFixed(2)
+                : pp.amount.toNumber().toFixed(2);
+              return {
+                amount,
+                dueDate: pp.dueDate?.toLocaleDateString() ?? null,
+                isPaid: pp.isPaid,
+              };
+            });
+
           const html = await render(
             InvoiceSentEmail({
               invoiceNumber: invoice.number,
@@ -814,6 +845,7 @@ export const invoicesRouter = router({
               orgName: invoice.organization.name,
               portalLink: `${appUrl}/portal/${invoice.portalToken}`,
               logoUrl: invoice.organization.logoUrl ?? undefined,
+              partialPayments: partialPayments && partialPayments.length > 0 ? partialPayments : undefined,
             })
           );
 

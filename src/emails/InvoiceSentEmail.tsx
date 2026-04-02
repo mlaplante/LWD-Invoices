@@ -4,6 +4,12 @@ import {
 } from "@react-email/components";
 import React from "react";
 
+type PartialPaymentInfo = {
+  amount: string;
+  dueDate: string | null;
+  isPaid: boolean;
+};
+
 type Props = {
   invoiceNumber: string;
   clientName: string;
@@ -15,10 +21,11 @@ type Props = {
   logoUrl?: string;
   brandColor?: string;
   hidePoweredBy?: boolean;
+  partialPayments?: PartialPaymentInfo[];
 };
 
 export function InvoiceSentEmail({
-  invoiceNumber, clientName, total, currencySymbol, dueDate, orgName, portalLink, logoUrl, brandColor, hidePoweredBy,
+  invoiceNumber, clientName, total, currencySymbol, dueDate, orgName, portalLink, logoUrl, brandColor, hidePoweredBy, partialPayments,
 }: Props) {
   const ACCENT = brandColor ?? "#2563eb";
   return (
@@ -73,6 +80,34 @@ export function InvoiceSentEmail({
                 </>
               )}
             </Section>
+
+            {/* Payment Schedule (if split payments exist) */}
+            {partialPayments && partialPayments.length > 0 && (
+              <Section style={{ margin: "0 0 28px" }}>
+                <Text style={{ color: "#9ca3af", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 12px", fontWeight: "500" }}>Payment Schedule</Text>
+                {partialPayments.map((payment, index) => (
+                  <Section key={index} style={{ backgroundColor: payment.isPaid ? "#f0fdf4" : "#f8f8f7", borderRadius: 6, padding: "12px 16px", margin: "0 0 8px", borderLeft: payment.isPaid ? "3px solid #22c55e" : "none" }}>
+                    <Row>
+                      <Column style={{ width: "60%", verticalAlign: "middle" }}>
+                        <Text style={{ color: "#0f1628", fontSize: 14, fontWeight: "600", margin: "0 0 2px" }}>
+                          Payment {index + 1} {payment.isPaid ? "✓" : ""}
+                        </Text>
+                        {payment.dueDate && (
+                          <Text style={{ color: "#6b7280", fontSize: 12, margin: 0 }}>
+                            Due: {payment.dueDate}
+                          </Text>
+                        )}
+                      </Column>
+                      <Column style={{ width: "40%", textAlign: "right", verticalAlign: "middle" }}>
+                        <Text style={{ color: payment.isPaid ? "#22c55e" : "#0f1628", fontSize: 16, fontWeight: "bold", margin: 0 }}>
+                          {currencySymbol}{payment.amount}
+                        </Text>
+                      </Column>
+                    </Row>
+                  </Section>
+                ))}
+              </Section>
+            )}
 
             <Button
               href={portalLink}

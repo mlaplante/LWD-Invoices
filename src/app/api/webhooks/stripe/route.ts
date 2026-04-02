@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
     try {
       const fullInvoice = await db.invoice.findUnique({
         where: { id: invoiceId },
-        include: { client: true, organization: true, currency: true },
+        include: { client: true, organization: true, currency: true, partialPayments: true },
       });
 
       if (fullInvoice?.client.email) {
@@ -196,6 +196,40 @@ export async function POST(req: NextRequest) {
         const { render } = await import("@react-email/render");
         const { PaymentReceiptEmail } = await import("@/emails/PaymentReceiptEmail");
         const resend = new Resend(process.env.RESEND_API_KEY);
+
+        // Calculate installment info if partial payments exist
+        let installmentNumber: number | undefined;
+        let totalInstallments: number | undefined;
+        let remainingBalance: string | undefined;
+
+        if (fullInvoice.partialPayments && fullInvoice.partialPayments.length > 0) {
+          const sortedPayments = fullInvoice.partialPayments.sort((a, b) => a.sortOrder - b.sortOrder);
+          totalInstallments = sortedPayments.length;
+
+          // Find which installment was just paid
+          if (partialPaymentId) {
+            const paidInstallmentIndex = sortedPayments.findIndex(pp => pp.id === partialPaymentId);
+            if (paidInstallmentIndex !== -1) {
+              installmentNumber = paidInstallmentIndex + 1;
+            }
+          }
+
+          // Calculate remaining balance
+          const totalInvoiceAmount = fullInvoice.total.toNumber();
+          const totalPaid = sortedPayments
+            .filter(pp => pp.isPaid)
+            .reduce((sum, pp) => {
+              const amount = pp.isPercentage
+                ? (pp.amount.toNumber() / 100) * totalInvoiceAmount
+                : pp.amount.toNumber();
+              return sum + amount;
+            }, 0);
+
+          const remaining = totalInvoiceAmount - totalPaid;
+          if (remaining > 0.01) { // Only show if more than 1 cent remaining
+            remainingBalance = remaining.toFixed(2);
+          }
+        }
 
         const html = await render(
           PaymentReceiptEmail({
@@ -209,6 +243,9 @@ export async function POST(req: NextRequest) {
               ? `${process.env.NEXT_PUBLIC_APP_URL}/portal/${fullInvoice.portalToken}`
               : undefined,
             logoUrl: fullInvoice.organization.logoUrl ?? undefined,
+            installmentNumber,
+            totalInstallments,
+            remainingBalance,
           })
         );
 
