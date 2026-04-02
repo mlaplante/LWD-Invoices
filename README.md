@@ -1,6 +1,26 @@
 # LaPlante Web Development Invoices
 
-A modern invoicing and business management app — rebuilt from a legacy PHP application as a full-stack Next.js SaaS with multi-tenant organization support.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
+
+A modern, open-source invoicing and business management application — rebuilt from a legacy PHP application as a full-stack Next.js SaaS with multi-tenant organization support.
+
+**Perfect for freelancers, consultants, and small businesses who need professional invoicing, time tracking, and client management.**
+
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Quick Start](#setup)
+  - [Environment Variables](#environment-variables)
+- [Project Structure](#project-structure)
+- [Architecture Notes](#architecture-notes)
+- [Self-Hosting Guide](#self-hosting-guide)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -333,3 +353,41 @@ For a small business (< 100 invoices/month):
 **Email not sending:**
 - Verify domain is verified in Resend dashboard
 - Check API key permissions and rate limits
+
+## Contributing
+
+We welcome contributions from the community! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.
+
+**Quick Start:**
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Make your changes and commit: `git commit -m "feat: add new feature"`
+4. Push to your fork: `git push origin feature/your-feature-name`
+5. Open a pull request
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
+- Code style and conventions
+- Testing requirements
+- Pull request process
+- Commit message format
+
+## Support
+
+- **Documentation**: Check the [Self-Hosting Guide](#self-hosting-guide) above
+- **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/mlaplante/LWD-Invoices/issues)
+- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/mlaplante/LWD-Invoices/discussions)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built with [Next.js](https://nextjs.org/), [tRPC](https://trpc.io/), and [Prisma](https://www.prisma.io/)
+- Authentication powered by [Supabase](https://supabase.com/)
+- Email delivery by [Resend](https://resend.com/)
+- Background jobs by [Inngest](https://www.inngest.com/)
+
+---
+
+**Made with ❤️ for freelancers and small businesses**
