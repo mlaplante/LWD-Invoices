@@ -23,6 +23,18 @@ export const teamRouter = router({
     });
   }),
 
+  updateProfile: protectedProcedure.input(
+    z.object({
+      firstName: z.string().min(1).max(100),
+      lastName: z.string().max(100).optional(),
+    })
+  ).mutation(async ({ ctx, input }) => {
+    return ctx.db.user.updateMany({
+      where: { supabaseId: ctx.userId, organizationId: ctx.orgId },
+      data: { firstName: input.firstName, lastName: input.lastName ?? null },
+    });
+  }),
+
   invite: requireRole("OWNER", "ADMIN").input(
     z.object({
       email: z.string().email(),

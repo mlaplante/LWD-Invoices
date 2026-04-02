@@ -6,11 +6,18 @@ import { BrandingForm } from "@/components/settings/BrandingForm";
 import { PortalBrandingForm } from "@/components/settings/PortalBrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell, Shield } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell, Shield, User } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
 const subPages = [
+  {
+    href: "/settings/account",
+    label: "Account",
+    description: "Update your name and profile information.",
+    icon: <User className="w-4 h-4" />,
+    color: "bg-slate-50 text-slate-600",
+  },
   {
     href: "/settings/security",
     label: "Security",
