@@ -30,6 +30,11 @@ export function TeamMemberList({ members: initialMembers }: { members: Member[] 
     onError: (err) => toast.error(err.message),
   });
 
+  const resetPasswordMutation = trpc.team.sendPasswordReset.useMutation({
+    onSuccess: () => toast.success("Password reset email sent"),
+    onError: (err) => toast.error(err.message),
+  });
+
   const removeMutation = trpc.team.removeMember.useMutation({
     onSuccess: () => {
       toast.success("Member removed");
@@ -82,6 +87,14 @@ export function TeamMemberList({ members: initialMembers }: { members: Member[] 
               <td className="px-6 py-3.5 text-right">
                 {m.role !== "OWNER" && (
                   <>
+                    <button
+                      type="button"
+                      onClick={() => resetPasswordMutation.mutate({ userId: m.id })}
+                      disabled={resetPasswordMutation.isPending}
+                      className="text-xs text-primary hover:text-primary/80 transition-colors mr-3"
+                    >
+                      {resetPasswordMutation.isPending ? "Sending\u2026" : "Reset password"}
+                    </button>
                     {removingId === m.id ? (
                       <span className="space-x-2">
                         <button type="button" onClick={() => removeMutation.mutate({ userId: m.id })} className="text-xs text-destructive font-medium">Confirm</button>

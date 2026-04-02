@@ -4,6 +4,7 @@ import { router, protectedProcedure, requireRole, publicProcedure } from "../trp
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import TeamInviteEmail from "@/emails/TeamInviteEmail";
+import PasswordResetEmail from "@/emails/PasswordResetEmail";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -254,6 +255,50 @@ export const teamRouter = router({
     }
 
     return ctx.db.user.delete({ where: { id: input.userId } });
+  }),
+
+  sendPasswordReset: requireRole("OWNER", "ADMIN").input(
+    z.object({ userId: z.string() })
+  ).mutation(async ({ ctx, input }) => {
+    const targetUser = await ctx.db.user.findFirst({
+      where: { id: input.userId, organizationId: ctx.orgId },
+    });
+    if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+    if (targetUser.supabaseId === ctx.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "Use settings to change your own password" });
+    if (!targetUser.supabaseId) throw new TRPCError({ code: "BAD_REQUEST", message: "User has no auth account linked" });
+
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const adminClient = createAdminClient();
+
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+      type: "recovery",
+      email: targetUser.email,
+      options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password` },
+    });
+
+    if (linkError || !linkData?.properties?.action_link) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to generate reset link" });
+    }
+
+    const org = await ctx.db.organization.findFirst({
+      where: { id: ctx.orgId },
+      select: { name: true, logoUrl: true },
+    });
+
+    const html = await render(PasswordResetEmail({
+      resetUrl: linkData.properties.action_link,
+      orgName: org?.name ?? "your organization",
+      logoUrl: org?.logoUrl,
+    }));
+
+    await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL!,
+      to: targetUser.email,
+      subject: `Password reset for ${org?.name ?? "your organization"}`,
+      html,
+    });
+
+    return { success: true };
   }),
 
   acceptInvite: protectedProcedure.input(
