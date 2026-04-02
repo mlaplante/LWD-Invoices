@@ -1,1 +1,0 @@
-<?php include FCPATH.'system/pancake/errors/error_php_custom.php';

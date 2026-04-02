@@ -1,1 +1,0 @@
-<?php include FCPATH.'system/pancake/core/Pancake_Exceptions.php';

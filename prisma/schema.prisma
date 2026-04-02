@@ -1,0 +1,1144 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  OWNER
+  ADMIN
+  ACCOUNTANT
+  VIEWER
+}
+
+enum GatewayType {
+  STRIPE
+  PAYPAL
+  BANK_TRANSFER
+  CASH
+  CHECK
+  MONEY_ORDER
+}
+
+enum InvoiceType {
+  SIMPLE
+  DETAILED
+  ESTIMATE
+  CREDIT_NOTE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  ACCEPTED
+  REJECTED
+}
+
+enum LineType {
+  STANDARD
+  TIME_ENTRY
+  FLAT_RATE
+  EXPENSE
+  PERCENTAGE_DISCOUNT
+  FIXED_DISCOUNT
+  PERIOD_DAY
+  PERIOD_WEEK
+  PERIOD_MONTH
+  PERIOD_YEAR
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum RecurringFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum AttachmentContext {
+  INVOICE
+  PROJECT
+  CLIENT
+  TICKET
+}
+
+enum NotificationType {
+  INVOICE_SENT
+  INVOICE_VIEWED
+  INVOICE_PAID
+  INVOICE_OVERDUE
+  INVOICE_COMMENT
+  ESTIMATE_ACCEPTED
+  ESTIMATE_REJECTED
+  RECURRING_INVOICE_GENERATED
+  RECURRING_EXPENSE_GENERATED
+  TICKET_CREATED
+  TICKET_REPLIED
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  STATUS_CHANGED
+  PAYMENT_RECEIVED
+  SENT
+  VIEWED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum EmailAutomationTrigger {
+  PAYMENT_RECEIVED
+  INVOICE_SENT
+  INVOICE_VIEWED
+  INVOICE_OVERDUE
+}
+
+enum ReportType {
+  PROFIT_LOSS
+  AGING
+  UNPAID
+  EXPENSES
+  TAX_LIABILITY
+}
+
+enum ReportFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
+// ─── Core Models ──────────────────────────────────────────────────────────────
+
+model Organization {
+  id                String   @id
+  name              String
+  slug              String?  @unique
+  logoUrl           String?
+  brandColor        String?  @default("#2563eb")
+  invoicePrefix     String   @default("INV")
+  invoiceNextNumber Int      @default(1)
+  creditNotePrefix     String   @default("CN")
+  creditNoteNextNumber Int      @default(1)
+  taskTimeInterval        Float    @default(0)
+  defaultPaymentTermsDays Int      @default(30)
+  paymentReminderDays     Int[]    @default([1, 3])
+  defaultDepositPercent   Int?
+  smartRemindersEnabled   Boolean  @default(false)
+  smartRemindersThreshold Int      @default(80)
+  emailBccOwner           Boolean  @default(true)
+  lateFeeEnabled          Boolean @default(false)
+  lateFeeType             String?
+  lateFeeAmount           Decimal @default(0) @db.Decimal(10, 4)
+  lateFeeGraceDays        Int     @default(0)
+  lateFeeRecurring        Boolean @default(false)
+  lateFeeMaxApplications  Int?
+  lateFeeIntervalDays     Int     @default(30)
+  // ─── Two-Factor Authentication ──────────────────────────────────────────────
+  require2FA              Boolean @default(false)
+  // ─── Portal Branding ────────────────────────────────────────────────────────
+  portalTagline       String?
+  portalFooterText    String?
+  brandFont           String?  // "inter" | "georgia" | "system"
+  hidePoweredBy       Boolean  @default(false)
+  // ─── Invoice Templates ──────────────────────────────────────────────────────
+  invoiceTemplate      String   @default("modern")  // "modern" | "classic" | "minimal" | "compact"
+  invoiceFontFamily    String?  // "helvetica" | "georgia" | "courier"
+  invoiceAccentColor   String?  // hex color, falls back to brandColor
+  invoiceShowLogo      Boolean  @default(true)
+  invoiceFooterText    String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  users             User[]
+  invitations       Invitation[]
+  clients           Client[]
+  currencies        Currency[]
+  taxes             Tax[]
+  items             Item[]
+  invoices          Invoice[]
+  partialPayments   PartialPayment[]
+  payments          Payment[]
+  gateways          GatewaySetting[]
+  comments          Comment[]
+  projects          Project[]
+  milestones        Milestone[]
+  tasks             ProjectTask[]
+  taskStatuses      TaskStatus[]
+  projectTemplates  ProjectTemplate[]
+  timeEntries       TimeEntry[]
+  timers            Timer[]
+  expenses                Expense[]
+  expenseCategories       ExpenseCategory[]
+  expenseSuppliers        ExpenseSupplier[]
+  recurringExpenses       RecurringExpense[]
+  recurringInvoices       RecurringInvoice[]
+  creditNoteApplications  CreditNoteApplication[]
+  attachments             Attachment[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  tickets                 Ticket[]
+  discussions             Discussion[]
+  proposalTemplates       ProposalTemplate[]
+  proposalContents        ProposalContent[]
+  emailAutomations        EmailAutomation[]
+  scheduledReports        ScheduledReport[]
+  lateFeeEntries          LateFeeEntry[]
+  retainers               Retainer[]
+  reminderSequences       ReminderSequence[]
+}
+
+model User {
+  id          String   @id @default(cuid())
+  clerkId     String?  @unique
+  supabaseId  String?  @unique
+  email       String   @unique
+  firstName   String?
+  lastName    String?
+  role        UserRole @default(ADMIN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  invitationsSent Invitation[] @relation("InvitedBy")
+}
+
+model Invitation {
+  id        String           @id @default(cuid())
+  email     String
+  role      UserRole         @default(VIEWER)
+  token     String           @unique @default(cuid())
+  expiresAt DateTime
+  status    InvitationStatus @default(PENDING)
+
+  invitedById    String
+  invitedBy      User         @relation("InvitedBy", fields: [invitedById], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([email, organizationId])
+}
+
+model Client {
+  id               String   @id @default(cuid())
+  name             String
+  email            String?
+  phone            String?
+  address          String?
+  city             String?
+  state            String?
+  zip              String?
+  country          String?
+  taxId            String?
+  notes                   String?
+  defaultPaymentTermsDays Int?
+  portalToken             String   @unique @default(cuid())
+  portalPassphraseHash String?
+  isArchived       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices       Invoice[]
+  projects       Project[]
+  tickets        Ticket[]
+  portalSessions ClientPortalSession[]
+  retainer       Retainer?
+}
+
+model ClientPortalSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ipAddress String?
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([clientId])
+  @@index([expiresAt])
+}
+
+model Currency {
+  id             String   @id @default(cuid())
+  code           String
+  name           String
+  symbol         String
+  symbolPosition String   @default("before")
+  exchangeRate   Decimal  @default(1) @db.Decimal(18, 6)
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices       Invoice[]
+  projects       Project[]
+
+  @@unique([organizationId, code])
+}
+
+model Tax {
+  id         String   @id @default(cuid())
+  name       String
+  rate       Decimal  @db.Decimal(8, 4)
+  isCompound Boolean  @default(false)
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  organizationId   String
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceLineTaxes InvoiceLineTax[]
+  expenses              Expense[]
+  recurringExpenses     RecurringExpense[] @relation("RecurringExpenseTax")
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  rate        Decimal? @db.Decimal(18, 6)
+  unit        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// ─── Invoice Models ───────────────────────────────────────────────────────────
+
+model Invoice {
+  id         String        @id @default(cuid())
+  number     String
+  type       InvoiceType   @default(DETAILED)
+  status     InvoiceStatus @default(DRAFT)
+  date       DateTime      @default(now())
+  dueDate    DateTime?
+  lastSent   DateTime?
+  lastViewed DateTime?
+
+  // Cached totals (recalculated on every save)
+  subtotal      Decimal @default(0) @db.Decimal(20, 10)
+  discountTotal Decimal @default(0) @db.Decimal(20, 10)
+  taxTotal      Decimal @default(0) @db.Decimal(20, 10)
+  total         Decimal @default(0) @db.Decimal(20, 10)
+
+  // Currency
+  currencyId   String
+  currency     Currency @relation(fields: [currencyId], references: [id])
+  exchangeRate Decimal  @default(1) @db.Decimal(10, 5)
+
+  // Invoice-level discount
+  discountType        String?  // "percentage" | "fixed" | null
+  discountAmount      Decimal  @default(0) @db.Decimal(20, 10)
+  discountDescription String?
+
+  // SIMPLE type only
+  simpleAmount Decimal? @db.Decimal(20, 10)
+
+  retainerApplied Decimal @default(0) @db.Decimal(20, 10)
+
+  // Credit note fields
+  sourceInvoiceId  String?
+  creditNoteStatus String?  // DRAFT | ISSUED | APPLIED | VOIDED
+
+  notes                String?
+  isArchived           Boolean @default(false)
+  reminderDaysOverride Int[]   @default([])
+
+  // Optional per-invoice reminder sequence override
+  reminderSequenceId  String?
+  reminderSequence    ReminderSequence? @relation(fields: [reminderSequenceId], references: [id], onDelete: SetNull)
+
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  portalToken String @unique @default(cuid())
+
+  // E-signature fields (for proposals/estimates)
+  signedAt       DateTime?
+  signedByName   String?
+  signedByEmail  String?
+  signedByIp     String?
+  signatureData  String?   // Encrypted base64 PNG or SVG path data
+
+  lines           InvoiceLine[]
+  partialPayments PartialPayment[]
+  payments        Payment[]
+  comments        Comment[]
+  recurringInvoice        RecurringInvoice?
+  creditNotesIssued       CreditNoteApplication[] @relation("CreditNoteSource")
+  creditNotesReceived     CreditNoteApplication[] @relation("CreditNoteTarget")
+  proposalContent         ProposalContent?
+  signatureAuditLogs      SignatureAuditLog[]
+  lateFeeEntries          LateFeeEntry[]
+  retainerTransactions    RetainerTransaction[]
+  reminderLogs            ReminderLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, number])
+}
+
+model InvoiceLine {
+  id                   String   @id @default(cuid())
+  sort                 Int      @default(0)
+  lineType             LineType @default(STANDARD)
+  name                 String
+  description          String?
+  qty                  Decimal  @default(1) @db.Decimal(10, 4)
+  rate                 Decimal  @default(0) @db.Decimal(20, 10)
+  period               Decimal? @db.Decimal(10, 2)
+  discount             Decimal  @default(0) @db.Decimal(20, 10)
+  discountIsPercentage Boolean  @default(false)
+
+  // Cached calculated values (recomputed on save)
+  subtotal Decimal @default(0) @db.Decimal(20, 10)
+  taxTotal Decimal @default(0) @db.Decimal(20, 10)
+  total    Decimal @default(0) @db.Decimal(20, 10)
+
+  // Source tracking (time entries, expenses, etc.)
+  sourceTable String?
+  sourceId    String?
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  taxes InvoiceLineTax[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InvoiceLineTax {
+  id        String  @id @default(cuid())
+  taxAmount Decimal @default(0) @db.Decimal(20, 10)
+
+  invoiceLineId String
+  invoiceLine   InvoiceLine @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
+  taxId         String
+  tax           Tax         @relation(fields: [taxId], references: [id])
+
+  @@unique([invoiceLineId, taxId])
+}
+
+model PartialPayment {
+  id            String    @id @default(cuid())
+  sortOrder     Int       @default(0)
+  amount        Decimal   @db.Decimal(20, 10)
+  isPercentage  Boolean   @default(false)
+  dueDate       DateTime?
+  notes         String?
+  isPaid        Boolean   @default(false)
+  paidAt        DateTime?
+  paymentMethod String?
+  transactionId String?
+  gatewayFee    Decimal   @default(0) @db.Decimal(20, 10)
+
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  amount          Decimal  @db.Decimal(20, 10)
+  gatewayFee      Decimal  @default(0) @db.Decimal(20, 10)
+  surchargeAmount Decimal  @default(0) @db.Decimal(20, 10)
+  method          String
+  transactionId   String?
+  notes           String?
+  paidAt          DateTime @default(now())
+
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model GatewaySetting {
+  id          String      @id @default(cuid())
+  gatewayType GatewayType
+  isEnabled   Boolean     @default(false)
+  configJson  String
+  surcharge   Decimal     @default(0) @db.Decimal(5, 2)
+  label       String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, gatewayType])
+}
+
+model Comment {
+  id             String   @id @default(cuid())
+  body           String
+  isPrivate      Boolean  @default(false)
+  authorUserId   String?
+  authorClientId String?
+  authorName     String?
+
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Project Models ───────────────────────────────────────────────────────────
+
+model TaskStatus {
+  id              String  @id @default(cuid())
+  title           String
+  backgroundColor String  @default("#e5e7eb")
+  fontColor       String  @default("#111827")
+  sortOrder       Int     @default(0)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks           ProjectTask[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id                  String        @id @default(cuid())
+  name                String
+  description         String?
+  status              ProjectStatus @default(ACTIVE)
+  dueDate             DateTime?
+  rate                Decimal       @default(0) @db.Decimal(20, 10)
+  projectedHours      Float         @default(0)
+  isFlatRate          Boolean       @default(false)
+  isViewable          Boolean       @default(false)
+  isTimesheetViewable Boolean       @default(false)
+  currencyId          String
+  currency            Currency      @relation(fields: [currencyId], references: [id])
+  clientId            String
+  client              Client        @relation(fields: [clientId], references: [id])
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  milestones          Milestone[]
+  tasks               ProjectTask[]
+  timeEntries         TimeEntry[]
+  expenses            Expense[]
+  recurringExpenses   RecurringExpense[] @relation("RecurringExpenseProject")
+  discussions         Discussion[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Milestone {
+  id             String    @id @default(cuid())
+  name           String
+  description    String?
+  color          String    @default("#3b82f6")
+  targetDate     DateTime?
+  sortOrder      Int       @default(0)
+  isViewable     Boolean   @default(false)
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks          ProjectTask[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectTask {
+  id                  String        @id @default(cuid())
+  name                String
+  notes               String?
+  sortOrder           Int           @default(0)
+  isCompleted         Boolean       @default(false)
+  isViewable          Boolean       @default(false)
+  isTimesheetViewable Boolean       @default(false)
+  isFlatRate          Boolean       @default(false)
+  projectedHours      Float         @default(0)
+  rate                Decimal       @default(0) @db.Decimal(20, 10)
+  dueDate             DateTime?
+  invoiceLineId       String?
+  assignedUserId      String?
+  parentId            String?
+  parent              ProjectTask?  @relation("TaskChildren", fields: [parentId], references: [id])
+  children            ProjectTask[] @relation("TaskChildren")
+  milestoneId         String?
+  milestone           Milestone?    @relation(fields: [milestoneId], references: [id])
+  taskStatusId        String?
+  taskStatus          TaskStatus?   @relation(fields: [taskStatusId], references: [id])
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  timeEntries         TimeEntry[]
+  timer               Timer?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectTemplate {
+  id             String  @id @default(cuid())
+  name           String
+  description    String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks          ProjectTemplateTask[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectTemplateTask {
+  id              String  @id @default(cuid())
+  name            String
+  notes           String?
+  sortOrder       Int     @default(0)
+  projectedHours  Float   @default(0)
+  rate            Decimal @default(0) @db.Decimal(20, 10)
+  parentSortOrder Int?
+  templateId      String
+  template        ProjectTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model TimeEntry {
+  id             String   @id @default(cuid())
+  date           DateTime @default(now())
+  startTime      String?
+  endTime        String?
+  minutes        Decimal  @db.Decimal(16, 8)
+  note           String?
+  invoiceLineId  String?
+  userId         String
+  taskId         String?
+  task           ProjectTask? @relation(fields: [taskId], references: [id])
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Timer {
+  id             String   @id @default(cuid())
+  startedAt      DateTime
+  lastModifiedAt DateTime
+  currentSeconds Int      @default(0)
+  isPaused       Boolean  @default(false)
+  isOver         Boolean  @default(false)
+  pausesJson     String   @default("[]")
+  userId         String
+  taskId         String   @unique
+  task           ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExpenseCategory {
+  id             String  @id @default(cuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expenses             Expense[]
+  recurringExpenses    RecurringExpense[] @relation("RecurringExpenseCategory")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExpenseSupplier {
+  id             String  @id @default(cuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expenses             Expense[]
+  recurringExpenses    RecurringExpense[] @relation("RecurringExpenseSupplier")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Expense {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  qty            Int      @default(1)
+  rate           Decimal  @db.Decimal(20, 10)
+  dueDate        DateTime?
+  paymentDetails String?
+  paidAt         DateTime?
+  reimbursable   Boolean  @default(false)
+  receiptUrl     String?
+  ocrRawResult   Json?
+  ocrConfidence  Float?
+  invoiceLineId  String?
+  taxId          String?
+  tax            Tax?     @relation(fields: [taxId], references: [id])
+  categoryId     String?
+  category       ExpenseCategory? @relation(fields: [categoryId], references: [id])
+  supplierId     String?
+  supplier       ExpenseSupplier? @relation(fields: [supplierId], references: [id])
+  projectId      String?
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  recurringExpenseId String?
+  recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([recurringExpenseId])
+}
+
+// ─── Recurring Expenses ──────────────────────────────────────────────────────
+
+model RecurringExpense {
+  id              String             @id @default(cuid())
+  name            String
+  description     String?
+  qty             Int                @default(1)
+  rate            Decimal            @db.Decimal(20, 10)
+  reimbursable    Boolean            @default(false)
+
+  frequency       RecurringFrequency
+  interval        Int                @default(1)
+  startDate       DateTime
+  nextRunAt       DateTime
+  endDate         DateTime?
+  maxOccurrences  Int?
+  occurrenceCount Int                @default(0)
+  isActive        Boolean            @default(true)
+  lastRunDate     DateTime?
+  totalGenerated  Int                @default(0)
+
+  taxId          String?
+  tax            Tax?             @relation("RecurringExpenseTax", fields: [taxId], references: [id])
+  categoryId     String?
+  category       ExpenseCategory? @relation("RecurringExpenseCategory", fields: [categoryId], references: [id])
+  supplierId     String?
+  supplier       ExpenseSupplier? @relation("RecurringExpenseSupplier", fields: [supplierId], references: [id])
+  projectId      String?
+  project        Project?         @relation("RecurringExpenseProject", fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  generatedExpenses Expense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([isActive, nextRunAt])
+}
+
+// ─── Recurring Invoices ───────────────────────────────────────────────────────
+
+model RecurringInvoice {
+  id              String             @id @default(cuid())
+  frequency       RecurringFrequency
+  interval        Int                @default(1)
+  startDate       DateTime
+  nextRunAt       DateTime
+  endDate         DateTime?
+  maxOccurrences  Int?
+  occurrenceCount Int                @default(0)
+  isActive        Boolean            @default(true)
+  autoSend        Boolean            @default(false)
+
+  invoiceId      String       @unique
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Credit Note Applications ─────────────────────────────────────────────────
+
+model CreditNoteApplication {
+  id     String  @id @default(cuid())
+  amount Decimal @db.Decimal(20, 10)
+
+  creditNoteId   String
+  creditNote     Invoice      @relation("CreditNoteSource", fields: [creditNoteId], references: [id])
+  invoiceId      String
+  invoice        Invoice      @relation("CreditNoteTarget", fields: [invoiceId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── File Attachments ─────────────────────────────────────────────────────────
+
+model Attachment {
+  id           String            @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  storageUrl   String
+  context      AttachmentContext
+  contextId    String
+  uploadedById String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id     String           @id @default(cuid())
+  type   NotificationType
+  title  String
+  body   String
+  isRead Boolean          @default(false)
+  link   String?
+  userId String
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Email Automations ────────────────────────────────────────────────────────
+
+model EmailAutomation {
+  id              String                  @id @default(cuid())
+  trigger         EmailAutomationTrigger
+  delayDays       Int                     @default(0)
+  templateSubject String
+  templateBody    String
+  enabled         Boolean                 @default(true)
+  organizationId  String
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  logs            EmailAutomationLog[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  @@index([organizationId, trigger])
+  @@index([enabled])
+}
+
+model EmailAutomationLog {
+  id              String          @id @default(cuid())
+  automationId    String
+  automation      EmailAutomation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  invoiceId       String
+  recipientEmail  String
+  sentAt          DateTime        @default(now())
+  @@index([automationId])
+  @@index([invoiceId])
+  @@unique([automationId, invoiceId])
+}
+
+// ─── Scheduled Reports ───────────────────────────────────────────────────────
+
+model ScheduledReport {
+  id              String          @id @default(cuid())
+  reportType      ReportType
+  frequency       ReportFrequency
+  dayOfWeek       Int?            // 0=Sunday...6=Saturday (for WEEKLY)
+  dayOfMonth      Int?            // 1-28 (for MONTHLY/QUARTERLY)
+  recipients      String[]        // email addresses
+  enabled         Boolean         @default(true)
+  lastSentAt      DateTime?
+
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([organizationId])
+  @@index([enabled])
+}
+
+// ─── Reminder Sequences ──────────────────────────────────────────────────────
+
+model ReminderSequence {
+  id              String   @id @default(cuid())
+  name            String
+  isDefault       Boolean  @default(false)
+  enabled         Boolean  @default(true)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  steps           ReminderStep[]
+  invoices        Invoice[]
+
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+}
+
+model ReminderStep {
+  id                  String   @id @default(cuid())
+  daysRelativeToDue   Int      // negative = before due, 0 = on due, positive = after due
+  subject             String
+  body                String
+  sort                Int      @default(0)
+
+  sequenceId          String
+  sequence            ReminderSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  logs                ReminderLog[]
+
+  createdAt           DateTime @default(now())
+
+  @@index([sequenceId])
+}
+
+model ReminderLog {
+  id         String   @id @default(cuid())
+  sentAt     DateTime @default(now())
+
+  stepId     String
+  step       ReminderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  invoiceId  String
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([stepId, invoiceId])   // prevents double-sends
+  @@index([invoiceId])
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  entityType  String
+  entityId    String
+  entityLabel String?
+  diff        Json?
+  userId      String?
+  userLabel   String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model SignatureAuditLog {
+  id              String   @id @default(cuid())
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId  String
+  signedByName    String
+  signedByEmail   String
+  signedByIp      String
+  userAgent       String?
+  documentHash    String   // SHA-256 hash of proposal content at time of signing
+  signatureHash   String   // SHA-256 hash of signature data
+
+  createdAt       DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([organizationId])
+}
+
+// ─── Support Tickets ──────────────────────────────────────────────────────────
+
+model Ticket {
+  id       String         @id @default(cuid())
+  number   Int
+  subject  String
+  status   TicketStatus   @default(OPEN)
+  priority TicketPriority @default(NORMAL)
+
+  clientId     String?
+  client       Client?         @relation(fields: [clientId], references: [id])
+  assignedToId String?
+  messages     TicketMessage[]
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, number])
+}
+
+model TicketMessage {
+  id         String  @id @default(cuid())
+  body       String
+  isStaff    Boolean @default(true)
+  authorId   String?
+  authorName String?
+
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Project Discussions ──────────────────────────────────────────────────────
+
+model Discussion {
+  id         String  @id @default(cuid())
+  subject    String
+  body       String
+  isStaff    Boolean @default(true)
+  authorId   String?
+  authorName String?
+
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  replies        DiscussionReply[]
+
+  createdAt DateTime @default(now())
+}
+
+model DiscussionReply {
+  id         String  @id @default(cuid())
+  body       String
+  isStaff    Boolean @default(true)
+  authorId   String?
+  authorName String?
+
+  discussionId String
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Proposal Templates ──────────────────────────────────────────────────────
+
+model ProposalTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  sections        Json     // Array of { key, title, content } objects
+  isDefault       Boolean  @default(false)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  proposals       ProposalContent[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ProposalContent {
+  id              String   @id @default(cuid())
+  invoiceId       String   @unique
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  templateId      String?
+  template        ProposalTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  sections        Json     // Array of { key, title, content } objects
+  fileUrl         String?  // Supabase Storage path for uploaded proposal file
+  fileName        String?  // Original filename (e.g., "proposal-v2.pdf")
+  version         String   @default("1.0")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── Late Fee Entries ─────────────────────────────────────────────────────────
+
+model LateFeeEntry {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(20, 10)
+  feeType   String
+  feeRate   Decimal  @db.Decimal(10, 4)
+  isWaived  Boolean  @default(false)
+  waivedAt  DateTime?
+  waivedBy  String?
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// ─── Retainers / Deposits ────────────────────────────────────────────────────
+
+model Retainer {
+  id             String   @id @default(cuid())
+  balance        Decimal  @default(0) @db.Decimal(20, 10)
+  clientId       String   @unique
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transactions   RetainerTransaction[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([clientId, organizationId])
+}
+
+model RetainerTransaction {
+  id          String   @id @default(cuid())
+  type        String   // "deposit" | "drawdown" | "refund"
+  amount      Decimal  @db.Decimal(20, 10)
+  description String?
+  method      String?
+  retainerId  String
+  retainer    Retainer @relation(fields: [retainerId], references: [id], onDelete: Cascade)
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+}

@@ -1,1 +1,0 @@
-<?php include FCPATH.'system/pancake/libraries/HTTP_Request.php';

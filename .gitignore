@@ -1,0 +1,69 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# netlify
+.netlify
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
+
+# clerk configuration (can include secrets)
+/.clerk/
+
+# claude-mem plugin auto-generated context files
+CLAUDE.md
+deno.lock
+# AI stack artifacts
+.ai-stack/paperclip-company.yaml
+results.tsv
+run.log
+.gstack/
+.worktrees/
+
+# AI development plans and internal docs
+docs/plans/
+docs/test-coverage-*.md
+.claude/plans/
+.claude/settings.local.json
+.claude/skills/
+node-compile-cache/
+.playwright-mcp/

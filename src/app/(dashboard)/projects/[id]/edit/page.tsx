@@ -1,0 +1,46 @@
+import { api } from "@/trpc/server";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { ProjectForm } from "@/components/projects/ProjectForm";
+
+interface Props {
+  params: Promise<{ id: string }>;
+}
+
+export default async function EditProjectPage({ params }: Props) {
+  const { id } = await params;
+
+  const [project, { items: clients }, currencies] = await Promise.all([
+    api.projects.get({ id }).catch(() => null),
+    api.clients.list({ includeArchived: false, pageSize: 100 }),
+    api.currencies.list(),
+  ]);
+
+  if (!project) notFound();
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 min-w-0">
+        <Link
+          href={`/projects/${id}`}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          {project.name}
+        </Link>
+        <span className="text-border/70">/</span>
+        <h1 className="text-xl font-bold tracking-tight">Edit Project</h1>
+      </div>
+      <div className="rounded-2xl border border-border/50 bg-card p-6">
+        <ProjectForm
+          mode="edit"
+          project={project}
+          clients={clients}
+          currencies={currencies}
+          templates={[]}
+        />
+      </div>
+    </div>
+  );
+}
