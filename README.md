@@ -57,6 +57,7 @@ A modern, open-source invoicing and business management application — rebuilt 
 - **Reliable Payer Badge** — Visual indicator for clients with consistently on-time payments
 - **Expenses** — Categorized expense tracking with suppliers and file attachments
 - **Reports** — Revenue, payment, and unpaid invoice reports
+- **Year-End Export Pack** — Financial reports for accountants (P&L, Expense Ledger, Payment Ledger, Tax Liability) with CSV, PDF, and ZIP downloads
 - **Support Tickets** — Internal ticket system with threaded discussions
 - **Items** — Saved line item library for quick invoice creation
 - **Currencies** — Multi-currency support
@@ -65,12 +66,14 @@ A modern, open-source invoicing and business management application — rebuilt 
 ### Platform
 - **Multi-tenancy** — Full organization isolation via Supabase Auth; users can belong to multiple organizations
 - **Authentication** — Supabase Auth with support for email/password and optional MFA (TOTP)
+- **Global Search** — Command palette with Cmd+K (or Ctrl+K) for quick navigation across invoices, clients, projects, expenses, and tickets
 - **Audit Log** — Organization-scoped activity log for all mutations
 - **REST API v1** — Bearer-token authenticated API for external integrations (clients, invoices, projects)
 - **File Attachments** — File uploads via Supabase Storage for invoices, expenses, and proposals
 - **Notifications** — In-app and email notifications for invoice sends, payments, and overdue reminders
 - **Onboarding** — Guided setup flow for new organizations
 - **Background Jobs** — 10+ automated processes including recurring invoices, payment reminders, overdue notifications, late fees, and scheduled reports
+- **Mobile Responsive** — Optimized layouts for mobile devices across all pages
 
 ## Tech Stack
 
