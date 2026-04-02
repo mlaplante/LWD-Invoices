@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getUser } from "@/lib/supabase/server";
+import { db } from "@/server/db";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { SidebarNav } from "@/components/layout/SidebarNav";
@@ -45,11 +47,22 @@ async function MobileNavSection() {
 
 const UserMenuFallback = () => <Skeleton className="h-8 w-8 rounded-full" />;
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { data: { user } } = await getUser();
+  if (user) {
+    const dbUser = await db.user.findFirst({
+      where: { supabaseId: user.id },
+      select: { isActive: true },
+    });
+    if (dbUser && !dbUser.isActive) {
+      redirect("/suspended");
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       {/* ── Desktop sidebar (static shell, pre-rendered) ──── */}

@@ -12,6 +12,7 @@ type Member = {
   lastName: string | null;
   role: UserRole;
   createdAt: Date;
+  isActive: boolean;
 };
 
 export function TeamMemberList({ members: initialMembers }: { members: Member[] }) {
@@ -44,6 +45,16 @@ export function TeamMemberList({ members: initialMembers }: { members: Member[] 
     onError: (err) => toast.error(err.message),
   });
 
+  const suspendMutation = trpc.team.suspend.useMutation({
+    onSuccess: () => { toast.success("Member suspended"); utils.team.list.invalidate(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const reactivateMutation = trpc.team.reactivate.useMutation({
+    onSuccess: () => { toast.success("Member reactivated"); utils.team.list.invalidate(); },
+    onError: (err) => toast.error(err.message),
+  });
+
   return (
     <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
       <div className="px-6 py-4 border-b border-border/50">
@@ -67,6 +78,11 @@ export function TeamMemberList({ members: initialMembers }: { members: Member[] 
                 {m.firstName || m.lastName
                   ? `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim()
                   : "\u2014"}
+                {!m.isActive && (
+                  <span className="ml-2 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-red-50 text-red-600">
+                    Suspended
+                  </span>
+                )}
               </td>
               <td className="px-6 py-3.5 text-muted-foreground">{m.email}</td>
               <td className="px-6 py-3.5">
@@ -87,6 +103,15 @@ export function TeamMemberList({ members: initialMembers }: { members: Member[] 
               <td className="px-6 py-3.5 text-right">
                 {m.role !== "OWNER" && (
                   <>
+                    {m.isActive ? (
+                      <button type="button" onClick={() => suspendMutation.mutate({ userId: m.id })} className="text-xs text-amber-600 hover:text-amber-700 transition-colors mr-3">
+                        Suspend
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => reactivateMutation.mutate({ userId: m.id })} className="text-xs text-emerald-600 hover:text-emerald-700 transition-colors mr-3">
+                        Reactivate
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => resetPasswordMutation.mutate({ userId: m.id })}
