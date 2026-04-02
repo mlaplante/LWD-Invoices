@@ -1,6 +1,8 @@
 import { api, HydrateClient } from "@/trpc/server";
 import { TimesheetTable } from "@/components/timesheets/TimesheetTable";
 
+export const dynamic = "force-dynamic";
+
 export default async function TimesheetsPage() {
   const { items: projects } = await api.projects.list({ includeArchived: true, pageSize: 100 });
 
