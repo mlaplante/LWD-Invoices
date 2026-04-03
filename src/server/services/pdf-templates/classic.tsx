@@ -315,9 +315,31 @@ export function ClassicTemplate({ invoice, config }: TemplateProps) {
         )}
 
         <View style={styles.totalFinal}>
-          <Text style={styles.totalFinalLabel}>Total Due</Text>
+          <Text style={styles.totalFinalLabel}>Total</Text>
           <Text style={styles.totalFinalValue}>{fmt(invoice.total)}</Text>
         </View>
+
+        {/* Amount Paid / Balance Due — shown when any payments exist */}
+        {invoice.payments.length > 0 && (() => {
+          const totalPaid = invoice.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+          const balanceDue = Number(invoice.total) - totalPaid;
+          return (
+            <>
+              <View style={[styles.totalsRow, { marginTop: 6 }]}>
+                <Text style={styles.totalsLabel}>Amount Paid</Text>
+                <Text style={[styles.totalsValue, { color: "#059669" }]}>
+                  -{fmt(totalPaid)}
+                </Text>
+              </View>
+              <View style={styles.totalFinal}>
+                <Text style={styles.totalFinalLabel}>Balance Due</Text>
+                <Text style={styles.totalFinalValue}>
+                  {fmt(Math.max(0, balanceDue))}
+                </Text>
+              </View>
+            </>
+          );
+        })()}
       </View>
 
       {/* Notes */}

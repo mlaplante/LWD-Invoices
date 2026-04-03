@@ -224,6 +224,22 @@ export function MinimalTemplate({ invoice, config }: TemplateProps) {
         )}
         <Text style={styles.totalLabel}>Total</Text>
         <Text style={styles.totalValue}>{fmt(invoice.total)}</Text>
+
+        {/* Amount Paid / Balance Due — shown when any payments exist */}
+        {invoice.payments.length > 0 && (() => {
+          const totalPaid = invoice.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+          const balanceDue = Number(invoice.total) - totalPaid;
+          return (
+            <>
+              <Text style={[styles.totalLabel, { marginTop: 8 }]}>Amount Paid</Text>
+              <Text style={{ fontSize: 16, fontFamily: boldFamily, color: "#059669" }}>
+                -{fmt(totalPaid)}
+              </Text>
+              <Text style={[styles.totalLabel, { marginTop: 8 }]}>Balance Due</Text>
+              <Text style={styles.totalValue}>{fmt(Math.max(0, balanceDue))}</Text>
+            </>
+          );
+        })()}
       </View>
 
       {/* Notes */}
