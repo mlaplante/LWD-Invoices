@@ -6,6 +6,7 @@ import { constructStripeEvent } from "@/server/services/stripe";
 import type { StripeConfig } from "@/server/services/gateway-config";
 import type Stripe from "stripe";
 import { getOwnerBcc } from "@/server/services/email-bcc";
+import { logAudit } from "@/server/services/audit";
 
 // Track processed Stripe event IDs to prevent duplicate processing.
 // Entries auto-expire after 24 hours. In-memory is sufficient because
@@ -202,6 +203,20 @@ export async function POST(req: NextRequest) {
           data: { status: InvoiceStatus.PAID },
         });
       }
+    });
+
+    await logAudit({
+      action: "PAYMENT_RECEIVED",
+      entityType: "Invoice",
+      entityId: invoiceId,
+      entityLabel: `Invoice #${invoice.number}`,
+      diff: {
+        method: "stripe",
+        amount: chargedAmount,
+        transactionId,
+        ...(partialPaymentId ? { partialPaymentId } : {}),
+      },
+      organizationId: orgId,
     });
 
     // Send payment receipt email

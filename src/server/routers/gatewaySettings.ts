@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { GatewayType } from "@/generated/prisma";
 import { encryptJson, decryptJson } from "../services/encryption";
+import { logAudit } from "../services/audit";
 import type { StripeConfig, PayPalConfig } from "../services/gateway-config";
 
 const stripeConfigSchema = z.object({
@@ -105,7 +106,7 @@ export const gatewaySettingsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const configJson = encryptJson(input.config);
 
-      return ctx.db.gatewaySetting.upsert({
+      const result = await ctx.db.gatewaySetting.upsert({
         where: {
           organizationId_gatewayType: {
             organizationId: ctx.orgId,
@@ -127,6 +128,17 @@ export const gatewaySettingsRouter = router({
           configJson,
         },
       });
+
+      await logAudit({
+        action: "UPDATED",
+        entityType: "GatewaySetting",
+        entityId: result.id,
+        entityLabel: input.gatewayType,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      });
+
+      return result;
     }),
 
   toggle: requireRole("OWNER", "ADMIN")
@@ -142,9 +154,20 @@ export const gatewaySettingsRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return ctx.db.gatewaySetting.update({
+      const result = await ctx.db.gatewaySetting.update({
         where: { id: existing.id },
         data: { isEnabled: input.isEnabled },
       });
+
+      await logAudit({
+        action: "UPDATED",
+        entityType: "GatewaySetting",
+        entityId: result.id,
+        entityLabel: `${input.gatewayType} ${input.isEnabled ? "enabled" : "disabled"}`,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      });
+
+      return result;
     }),
 });
