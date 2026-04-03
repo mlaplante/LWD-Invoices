@@ -1083,6 +1083,28 @@ export const invoicesRouter = router({
       return result;
     }),
 
+  sendReceipt: requireRole("OWNER", "ADMIN")
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+        include: { payments: { orderBy: { paidAt: "desc" }, take: 1 } },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+      if (invoice.status !== InvoiceStatus.PAID && invoice.status !== InvoiceStatus.PARTIALLY_PAID) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice has no payments" });
+      }
+
+      const lastPayment = invoice.payments[0];
+      await sendPaymentReceiptEmail({
+        invoiceId: input.id,
+        amountPaid: lastPayment?.amount.toNumber() ?? invoice.total.toNumber(),
+        organizationId: ctx.orgId,
+      });
+
+      return { sent: true };
+    }),
+
   acceptEstimate: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => updateEstimateStatus(ctx, input.id, "ACCEPTED")),

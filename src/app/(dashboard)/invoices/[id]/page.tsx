@@ -21,6 +21,7 @@ import { ApplyRetainerDialog } from "@/components/invoices/ApplyRetainerDialog";
 import { IssueCreditNoteDialog } from "@/components/invoices/IssueCreditNoteDialog";
 import { CreditNoteActions } from "@/components/invoices/CreditNoteActions";
 import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
+import { SendReceiptButton } from "@/components/invoices/SendReceiptButton";
 import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButton";
 import { CopyPaymentLinkButton } from "@/components/invoices/CopyPaymentLinkButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
@@ -185,6 +186,9 @@ export default async function InvoiceDetailPage({
               invoiceId={invoice.id}
               invoiceTotal={Number(invoice.total)}
             />
+          )}
+          {(invoice.status === "PAID" || invoice.status === "PARTIALLY_PAID") && (
+            <SendReceiptButton invoiceId={invoice.id} />
           )}
           {invoice.type !== "CREDIT_NOTE" && (
             <PaymentScheduleButton
