@@ -1,19 +1,36 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { organizationRouter } from "@/server/routers/organization";
 import { createMockContext } from "./mocks/trpc-context";
+
+// Mock the audit service (it uses a global db import, not ctx.db)
+vi.mock("@/server/services/audit", () => ({
+  logAudit: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock the supabase admin import (called when name or require2FA changes)
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    auth: {
+      admin: {
+        updateUserById: vi.fn().mockResolvedValue({}),
+      },
+    },
+  }),
+}));
 
 describe("Organization Router Procedures", () => {
   let ctx: any;
   let caller: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     ctx = createMockContext();
     caller = organizationRouter.createCaller(ctx);
   });
 
   describe("get", () => {
     it("returns organization with all settings", async () => {
-      ctx.db.organization.findUnique.mockResolvedValue({
+      const mockOrg = {
         id: "test-org-123",
         name: "Test Organization",
         slug: "test-org",
@@ -24,7 +41,30 @@ describe("Organization Router Procedures", () => {
         taskTimeInterval: 15,
         defaultPaymentTermsDays: 30,
         paymentReminderDays: [3, 7, 14],
-      });
+        emailBccOwner: false,
+        portalTagline: null,
+        portalFooterText: null,
+        brandFont: null,
+        hidePoweredBy: false,
+        invoiceTemplate: "modern",
+        invoiceFontFamily: null,
+        invoiceAccentColor: null,
+        invoiceShowLogo: true,
+        invoiceFooterText: null,
+        lateFeeEnabled: false,
+        lateFeeType: null,
+        lateFeeAmount: 0,
+        lateFeeGraceDays: 0,
+        lateFeeRecurring: false,
+        lateFeeMaxApplications: null,
+        lateFeeIntervalDays: 30,
+        require2FA: false,
+        defaultDepositPercent: null,
+        smartRemindersEnabled: false,
+        smartRemindersThreshold: 80,
+      };
+
+      ctx.db.organization.findUnique.mockResolvedValue(mockOrg);
 
       const result = await caller.get();
 
@@ -39,7 +79,7 @@ describe("Organization Router Procedures", () => {
       expect(result.paymentReminderDays).toEqual([3, 7, 14]);
       expect(ctx.db.organization.findUnique).toHaveBeenCalledWith({
         where: { id: "test-org-123" },
-        select: {
+        select: expect.objectContaining({
           id: true,
           name: true,
           slug: true,
@@ -50,7 +90,7 @@ describe("Organization Router Procedures", () => {
           taskTimeInterval: true,
           defaultPaymentTermsDays: true,
           paymentReminderDays: true,
-        },
+        }),
       });
     });
 
@@ -67,6 +107,12 @@ describe("Organization Router Procedures", () => {
   });
 
   describe("update", () => {
+    // Helper: for update tests that don't change name/require2FA,
+    // we still need user.findMany mocked (the router queries org users for metadata sync).
+    function mockUpdateDeps() {
+      ctx.db.user.findMany.mockResolvedValue([]);
+    }
+
     it("updates organization name, logoUrl, and brandColor", async () => {
       ctx.db.organization.update.mockResolvedValue({
         id: "test-org-123",
@@ -82,6 +128,7 @@ describe("Organization Router Procedures", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+      mockUpdateDeps();
 
       const result = await caller.update({
         name: "Updated Org Name",
@@ -117,6 +164,7 @@ describe("Organization Router Procedures", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+      mockUpdateDeps();
 
       const result = await caller.update({
         brandColor: "#1A2B3C",
@@ -151,6 +199,7 @@ describe("Organization Router Procedures", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+      mockUpdateDeps();
 
       const result = await caller.update({
         defaultPaymentTermsDays: 60,
@@ -178,6 +227,7 @@ describe("Organization Router Procedures", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+      mockUpdateDeps();
 
       const result = await caller.update({
         paymentReminderDays: [1, 5, 10, 15],
@@ -205,6 +255,7 @@ describe("Organization Router Procedures", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+      mockUpdateDeps();
 
       const result = await caller.update({
         name: "Updated Name Only",
@@ -232,6 +283,7 @@ describe("Organization Router Procedures", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+      mockUpdateDeps();
 
       const result = await caller.update({
         logoUrl: null,

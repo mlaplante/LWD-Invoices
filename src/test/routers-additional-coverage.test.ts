@@ -282,12 +282,12 @@ describe("Discussions Router", () => {
       expect(result[0]?.subject).toBe("Project kickoff");
     });
 
-    it("throws NOT_FOUND when organization missing", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
+    it("returns empty list when no discussions found", async () => {
+      ctx.db.discussion.findMany.mockResolvedValue([]);
 
-      await expect(caller.list({ projectId: "proj_1" })).rejects.toThrow(
-        "NOT_FOUND"
-      );
+      const result = await caller.list({ projectId: "proj_1" });
+
+      expect(result).toHaveLength(0);
     });
 
     it("includes replies in results", async () => {
@@ -1485,10 +1485,12 @@ describe("Tickets Router", () => {
       );
     });
 
-    it("throws NOT_FOUND when organization missing", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
+    it("returns empty list when no tickets found", async () => {
+      ctx.db.ticket.findMany.mockResolvedValue([]);
 
-      await expect(caller.list({})).rejects.toThrow("NOT_FOUND");
+      const result = await caller.list({});
+
+      expect(result).toHaveLength(0);
     });
   });
 
@@ -1541,15 +1543,23 @@ describe("Tickets Router", () => {
       expect(result.subject).toBe("New issue");
     });
 
-    it("throws NOT_FOUND when organization missing", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
+    it("starts numbering at 1 when no prior tickets exist", async () => {
+      ctx.db.ticket.findFirst.mockResolvedValueOnce(null);
+      ctx.db.ticket.create.mockResolvedValue({
+        id: "ticket_1",
+        number: 1,
+        subject: "First issue",
+        body: "Description",
+        organizationId: "test-org-123",
+        messages: [{ id: "msg_1", body: "Description" }],
+      });
 
-      await expect(
-        caller.create({
-          subject: "Issue",
-          body: "Description",
-        })
-      ).rejects.toThrow("NOT_FOUND");
+      const result = await caller.create({
+        subject: "First issue",
+        body: "Description",
+      });
+
+      expect(result.number).toBe(1);
     });
   });
 

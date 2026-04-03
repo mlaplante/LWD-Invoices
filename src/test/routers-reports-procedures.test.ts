@@ -20,22 +20,19 @@ describe("Reports Router Procedures", () => {
           status: InvoiceStatus.SENT,
           isArchived: false,
           organizationId: "test-org-123",
-          client: { id: "c_1", name: "Client A", email: "a@test.com" },
-          currency: { code: "USD" },
+          client: { id: "c_1", name: "Client A" },
+          currency: { id: "cur_1", code: "USD", symbol: "$", symbolPosition: "before" },
         },
         {
           id: "inv_2",
           status: InvoiceStatus.PARTIALLY_PAID,
           isArchived: false,
           organizationId: "test-org-123",
-          client: { id: "c_2", name: "Client B", email: "b@test.com" },
-          currency: { code: "USD" },
+          client: { id: "c_2", name: "Client B" },
+          currency: { id: "cur_1", code: "USD", symbol: "$", symbolPosition: "before" },
         },
       ];
 
-      ctx.db.organization.findFirst.mockResolvedValue({
-        id: "test-org-123",
-      });
       ctx.db.invoice.findMany.mockResolvedValue(mockInvoices);
 
       const result = await caller.unpaidInvoices({});
@@ -49,9 +46,6 @@ describe("Reports Router Procedures", () => {
       const from = new Date("2026-01-01");
       const to = new Date("2026-01-31");
 
-      ctx.db.organization.findFirst.mockResolvedValue({
-        id: "test-org-123",
-      });
       ctx.db.invoice.findMany.mockResolvedValue([]);
 
       await caller.unpaidInvoices({ from, to });
@@ -68,16 +62,7 @@ describe("Reports Router Procedures", () => {
       );
     });
 
-    it("throws NOT_FOUND when organization does not exist", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
-
-      await expect(caller.unpaidInvoices({})).rejects.toThrow("NOT_FOUND");
-    });
-
     it("excludes archived invoices", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue({
-        id: "test-org-123",
-      });
       ctx.db.invoice.findMany.mockResolvedValue([]);
 
       await caller.unpaidInvoices({});
@@ -100,14 +85,11 @@ describe("Reports Router Procedures", () => {
           status: InvoiceStatus.OVERDUE,
           isArchived: false,
           organizationId: "test-org-123",
-          client: { id: "c_1", name: "Client A", email: "a@test.com" },
-          currency: { code: "USD" },
+          client: { id: "c_1", name: "Client A" },
+          currency: { id: "cur_1", code: "USD", symbol: "$", symbolPosition: "before" },
         },
       ];
 
-      ctx.db.organization.findFirst.mockResolvedValue({
-        id: "test-org-123",
-      });
       ctx.db.invoice.findMany.mockResolvedValue(mockInvoices);
 
       const result = await caller.overdueInvoices();
@@ -116,16 +98,7 @@ describe("Reports Router Procedures", () => {
       expect(result[0]?.status).toBe(InvoiceStatus.OVERDUE);
     });
 
-    it("throws NOT_FOUND when organization not found", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
-
-      await expect(caller.overdueInvoices()).rejects.toThrow("NOT_FOUND");
-    });
-
     it("excludes archived invoices", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue({
-        id: "test-org-123",
-      });
       ctx.db.invoice.findMany.mockResolvedValue([]);
 
       await caller.overdueInvoices();
@@ -141,28 +114,17 @@ describe("Reports Router Procedures", () => {
   });
 
   describe("paymentsByGateway", () => {
-    it("aggregates payments by gateway", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue({
-        id: "test-org-123",
-      });
-      ctx.db.payment.findMany.mockResolvedValue([
+    it("aggregates payments by gateway using groupBy", async () => {
+      ctx.db.payment.groupBy.mockResolvedValue([
         {
           method: "stripe",
-          amount: BigInt(10000),
-          gatewayFee: BigInt(290),
-          organizationId: "test-org-123",
-        },
-        {
-          method: "stripe",
-          amount: BigInt(20000),
-          gatewayFee: BigInt(580),
-          organizationId: "test-org-123",
+          _count: 2,
+          _sum: { amount: BigInt(30000), gatewayFee: BigInt(870) },
         },
         {
           method: "paypal",
-          amount: BigInt(15000),
-          gatewayFee: BigInt(525),
-          organizationId: "test-org-123",
+          _count: 1,
+          _sum: { amount: BigInt(15000), gatewayFee: BigInt(525) },
         },
       ]);
 
@@ -184,14 +146,11 @@ describe("Reports Router Procedures", () => {
       const from = new Date("2026-01-01");
       const to = new Date("2026-01-31");
 
-      ctx.db.organization.findFirst.mockResolvedValue({
-        id: "test-org-123",
-      });
-      ctx.db.payment.findMany.mockResolvedValue([]);
+      ctx.db.payment.groupBy.mockResolvedValue([]);
 
       await caller.paymentsByGateway({ from, to });
 
-      expect(ctx.db.payment.findMany).toHaveBeenCalledWith(
+      expect(ctx.db.payment.groupBy).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             paidAt: {
@@ -203,10 +162,12 @@ describe("Reports Router Procedures", () => {
       );
     });
 
-    it("throws NOT_FOUND when organization not found", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
+    it("returns empty object when no payments", async () => {
+      ctx.db.payment.groupBy.mockResolvedValue([]);
 
-      await expect(caller.paymentsByGateway({})).rejects.toThrow("NOT_FOUND");
+      const result = await caller.paymentsByGateway({});
+
+      expect(result).toEqual({});
     });
   });
 
@@ -231,9 +192,6 @@ describe("Reports Router Procedures", () => {
         },
       ];
 
-      ctx.db.organization.findFirst.mockResolvedValue({
-        id: "test-org-123",
-      });
       ctx.db.expense.findMany.mockResolvedValue(mockExpenses);
 
       const result = await caller.expenseBreakdown({});
@@ -247,9 +205,6 @@ describe("Reports Router Procedures", () => {
       const from = new Date("2026-01-01");
       const to = new Date("2026-01-31");
 
-      ctx.db.organization.findFirst.mockResolvedValue({
-        id: "test-org-123",
-      });
       ctx.db.expense.findMany.mockResolvedValue([]);
 
       await caller.expenseBreakdown({ from, to });
@@ -264,12 +219,6 @@ describe("Reports Router Procedures", () => {
           }),
         })
       );
-    });
-
-    it("throws NOT_FOUND when organization not found", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
-
-      await expect(caller.expenseBreakdown({})).rejects.toThrow("NOT_FOUND");
     });
   });
 });

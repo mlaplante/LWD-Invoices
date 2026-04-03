@@ -15,6 +15,8 @@ export function createMockPrismaClient() {
       update: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
+      groupBy: vi.fn(),
+      aggregate: vi.fn(),
     },
     invoiceLine: {
       deleteMany: vi.fn(),
@@ -34,6 +36,8 @@ export function createMockPrismaClient() {
     payment: {
       create: vi.fn(),
       findMany: vi.fn(),
+      aggregate: vi.fn(),
+      groupBy: vi.fn(),
     },
     partialPayment: {
       findUnique: vi.fn(),
@@ -46,6 +50,7 @@ export function createMockPrismaClient() {
       findMany: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      count: vi.fn(),
     },
     project: {
       create: vi.fn(),
@@ -54,6 +59,7 @@ export function createMockPrismaClient() {
       findFirst: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      count: vi.fn(),
     },
     expense: {
       create: vi.fn(),
@@ -250,6 +256,9 @@ export function createMockPrismaClient() {
     },
   };
 
+  // Mock $queryRaw for raw SQL queries
+  mockClient.$queryRaw = vi.fn().mockResolvedValue([]);
+
   // Mock $transaction to handle both callback and array patterns
   mockClient.$transaction = vi.fn(async (input) => {
     if (typeof input === "function") {
@@ -269,6 +278,7 @@ export interface MockTRPCContext {
   db: PrismaClient;
   orgId: string;
   userId: string;
+  userRole: string;
 }
 
 /**
@@ -282,6 +292,7 @@ export function createMockContext(
     db: createMockPrismaClient(),
     orgId: "test-org-123",
     userId: "test-user-456",
+    userRole: "OWNER",
     ...overrides,
   };
 }

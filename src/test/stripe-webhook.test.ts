@@ -4,6 +4,7 @@ vi.mock("@/server/db", () => ({
   db: {
     gatewaySetting: { findUnique: vi.fn() },
     invoice: { findUnique: vi.fn() },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn(),
   },
 }));

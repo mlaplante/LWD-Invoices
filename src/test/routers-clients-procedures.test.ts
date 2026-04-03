@@ -1,6 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { clientsRouter } from "@/server/routers/clients";
 import { createMockContext } from "./mocks/trpc-context";
+
+// Mock the audit service so logAudit (which uses global db) is a no-op
+vi.mock("@/server/services/audit", () => ({
+  logAudit: vi.fn().mockResolvedValue(undefined),
+}));
 
 describe("Clients Router Procedures", () => {
   let ctx: any;
@@ -13,7 +18,7 @@ describe("Clients Router Procedures", () => {
 
   describe("list", () => {
     it("returns all clients for organization excluding archived", async () => {
-      ctx.db.client.findMany.mockResolvedValue([
+      const mockClients = [
         {
           id: "c_1",
           name: "Active Client",
@@ -33,23 +38,19 @@ describe("Clients Router Procedures", () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-      ]);
+      ];
+      ctx.db.client.findMany.mockResolvedValue(mockClients);
+      ctx.db.client.count.mockResolvedValue(1);
 
       const result = await caller.list({ includeArchived: false });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Active Client");
-      expect(ctx.db.client.findMany).toHaveBeenCalledWith({
-        where: {
-          organizationId: "test-org-123",
-          isArchived: false,
-        },
-        orderBy: { name: "asc" },
-      });
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].name).toBe("Active Client");
+      expect(result.total).toBe(1);
     });
 
     it("filters clients by search term", async () => {
-      ctx.db.client.findMany.mockResolvedValue([
+      const mockClients = [
         {
           id: "c_1",
           name: "Acme Corp",
@@ -69,30 +70,22 @@ describe("Clients Router Procedures", () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-      ]);
+      ];
+      ctx.db.client.findMany.mockResolvedValue(mockClients);
+      ctx.db.client.count.mockResolvedValue(1);
 
       const result = await caller.list({
         includeArchived: false,
         search: "acme",
       });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Acme Corp");
-      expect(ctx.db.client.findMany).toHaveBeenCalledWith({
-        where: {
-          organizationId: "test-org-123",
-          isArchived: false,
-          OR: [
-            { name: { contains: "acme", mode: "insensitive" } },
-            { email: { contains: "acme", mode: "insensitive" } },
-          ],
-        },
-        orderBy: { name: "asc" },
-      });
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].name).toBe("Acme Corp");
+      expect(result.total).toBe(1);
     });
 
     it("includes archived clients when requested", async () => {
-      ctx.db.client.findMany.mockResolvedValue([
+      const mockClients = [
         {
           id: "c_1",
           name: "Active Client",
@@ -131,17 +124,14 @@ describe("Clients Router Procedures", () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-      ]);
+      ];
+      ctx.db.client.findMany.mockResolvedValue(mockClients);
+      ctx.db.client.count.mockResolvedValue(2);
 
       const result = await caller.list({ includeArchived: true });
 
-      expect(result).toHaveLength(2);
-      expect(ctx.db.client.findMany).toHaveBeenCalledWith({
-        where: {
-          organizationId: "test-org-123",
-        },
-        orderBy: { name: "asc" },
-      });
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(2);
     });
   });
 

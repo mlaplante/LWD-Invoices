@@ -10,6 +10,11 @@ vi.mock("@/server/services/encryption", () => ({
   decryptJson: vi.fn(),
 }));
 
+// Mock the audit service (logAudit uses its own db import, not ctx.db)
+vi.mock("@/server/services/audit", () => ({
+  logAudit: vi.fn().mockResolvedValue(undefined),
+}));
+
 describe("Gateway Settings Router Procedures", () => {
   let ctx: any;
   let caller: any;

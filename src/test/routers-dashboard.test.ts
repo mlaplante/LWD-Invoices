@@ -13,23 +13,13 @@ describe("Dashboard Router", () => {
 
   describe("summary", () => {
     it("returns aggregated metrics (revenue this/last month, outstanding, overdue, expenses)", async () => {
-      ctx.db.payment.findMany
-        .mockResolvedValueOnce([
-          { amount: 5000 },
-          { amount: 3000 },
-        ]) // this month payments
-        .mockResolvedValueOnce([
-          { amount: 4000 },
-        ]); // last month payments
+      ctx.db.payment.aggregate
+        .mockResolvedValueOnce({ _sum: { amount: 8000 } }) // this month
+        .mockResolvedValueOnce({ _sum: { amount: 4000 } }); // last month
 
-      ctx.db.invoice.findMany
-        .mockResolvedValueOnce([
-          { total: 2000 },
-          { total: 1500 },
-        ]) // outstanding
-        .mockResolvedValueOnce([
-          { total: 1500 },
-        ]); // overdue
+      ctx.db.invoice.aggregate
+        .mockResolvedValueOnce({ _sum: { total: 3500 }, _count: 2 }) // outstanding
+        .mockResolvedValueOnce({ _sum: { total: 1500 }, _count: 1 }); // overdue
 
       ctx.db.expense.findMany.mockResolvedValue([
         { rate: 100, qty: 2 },
@@ -50,13 +40,13 @@ describe("Dashboard Router", () => {
     });
 
     it("handles zero revenue last month (revenueChange = null)", async () => {
-      ctx.db.payment.findMany
-        .mockResolvedValueOnce([{ amount: 1000 }]) // this month
-        .mockResolvedValueOnce([]); // last month - zero
+      ctx.db.payment.aggregate
+        .mockResolvedValueOnce({ _sum: { amount: 1000 } }) // this month
+        .mockResolvedValueOnce({ _sum: { amount: null } }); // last month - zero
 
-      ctx.db.invoice.findMany
-        .mockResolvedValueOnce([]) // outstanding
-        .mockResolvedValueOnce([]); // overdue
+      ctx.db.invoice.aggregate
+        .mockResolvedValueOnce({ _sum: { total: null }, _count: 0 }) // outstanding
+        .mockResolvedValueOnce({ _sum: { total: null }, _count: 0 }); // overdue
 
       ctx.db.expense.findMany.mockResolvedValue([]);
 
@@ -70,8 +60,10 @@ describe("Dashboard Router", () => {
 
   describe("revenueChart", () => {
     it("returns 12 months of data", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([
-        { amount: 5000, paidAt: new Date() },
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      ctx.db.$queryRaw.mockResolvedValue([
+        { month: currentMonth, total: 5000 },
       ]);
 
       const result = await caller.revenueChart();
@@ -86,14 +78,11 @@ describe("Dashboard Router", () => {
 
   describe("invoiceStatusBreakdown", () => {
     it("groups by status", async () => {
-      ctx.db.invoice.findMany.mockResolvedValue([
-        { status: "DRAFT" },
-        { status: "DRAFT" },
-        { status: "SENT" },
-        { status: "PAID" },
-        { status: "PAID" },
-        { status: "PAID" },
-        { status: "OVERDUE" },
+      ctx.db.invoice.groupBy.mockResolvedValue([
+        { status: "DRAFT", _count: 2 },
+        { status: "SENT", _count: 1 },
+        { status: "PAID", _count: 3 },
+        { status: "OVERDUE", _count: 1 },
       ]);
 
       const result = await caller.invoiceStatusBreakdown();
@@ -111,8 +100,7 @@ describe("Dashboard Router", () => {
 
   describe("expensesVsRevenue", () => {
     it("returns 6 months of data", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
+      ctx.db.$queryRaw.mockResolvedValue([]);
 
       const result = await caller.expensesVsRevenue();
 

@@ -1,4 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { vi, describe, it, expect, beforeEach } from "vitest";
+
+vi.mock("@/server/services/audit", () => ({
+  logAudit: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { creditNotesRouter, validateCreditApplication } from "@/server/routers/creditNotes";
 import { createMockContext } from "./mocks/trpc-context";
 import { InvoiceType } from "@/generated/prisma";
@@ -71,6 +76,7 @@ describe("Credit Notes Router Procedures", () => {
           creditNotesIssued: true,
           currency: true,
         },
+        orderBy: { createdAt: "desc" },
       });
     });
 
@@ -112,10 +118,12 @@ describe("Credit Notes Router Procedures", () => {
           id: "cn_1",
           type: InvoiceType.CREDIT_NOTE,
           total: 1000,
+          creditNoteStatus: "ISSUED",
           creditNotesIssued: [],
         })
         .mockResolvedValueOnce({
           id: "inv_1",
+          number: "INV-001",
           total: 5000,
           payments: [],
           creditNotesReceived: [],
@@ -130,6 +138,8 @@ describe("Credit Notes Router Procedures", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+
+      ctx.db.auditLog.create.mockResolvedValue({});
 
       const result = await caller.applyToInvoice({
         creditNoteId: "cn_1",
@@ -152,6 +162,7 @@ describe("Credit Notes Router Procedures", () => {
           id: "cn_1",
           type: InvoiceType.CREDIT_NOTE,
           total: 1000,
+          creditNoteStatus: "ISSUED",
           creditNotesIssued: [
             { amount: 800, id: "cna_1", creditNoteId: "cn_1", invoiceId: "inv_x" },
           ],
@@ -186,6 +197,7 @@ describe("Credit Notes Router Procedures", () => {
           id: "cn_1",
           type: InvoiceType.CREDIT_NOTE,
           total: 1000,
+          creditNoteStatus: "ISSUED",
           creditNotesIssued: [],
         })
         .mockResolvedValueOnce({

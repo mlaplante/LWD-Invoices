@@ -137,7 +137,9 @@ describe("Router Helper Functions", () => {
     });
 
     it("handles edge case: one limit is zero", () => {
-      expect(() => validateCreditApplication(0, 0, 100)).not.toThrow();
+      expect(() => validateCreditApplication(0, 0, 100)).toThrow(
+        "Credit note has no remaining balance"
+      );
     });
   });
 

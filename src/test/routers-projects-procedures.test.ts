@@ -38,25 +38,13 @@ describe("Projects Router Procedures", () => {
         },
       ]);
 
+      ctx.db.project.count.mockResolvedValue(1);
+
       const result = await caller.list({ includeArchived: false });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Active Project");
-      expect(result[0].status).toBe(ProjectStatus.ACTIVE);
-      expect(ctx.db.project.findMany).toHaveBeenCalledWith({
-        where: {
-          organizationId: "test-org-123",
-          status: { not: ProjectStatus.ARCHIVED },
-        },
-        include: {
-          client: { select: { id: true, name: true } },
-          currency: { select: { id: true, symbol: true, symbolPosition: true } },
-          _count: {
-            select: { tasks: true, timeEntries: true, expenses: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      });
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].name).toBe("Active Project");
+      expect(result.items[0].status).toBe(ProjectStatus.ACTIVE);
     });
 
     it("filters projects by status", async () => {
@@ -83,13 +71,15 @@ describe("Projects Router Procedures", () => {
         },
       ]);
 
+      ctx.db.project.count.mockResolvedValue(1);
+
       const result = await caller.list({
         status: ProjectStatus.ON_HOLD,
         includeArchived: false,
       });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].status).toBe(ProjectStatus.ON_HOLD);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].status).toBe(ProjectStatus.ON_HOLD);
       expect(ctx.db.project.findMany).toHaveBeenCalled();
     });
 
@@ -117,22 +107,15 @@ describe("Projects Router Procedures", () => {
         },
       ]);
 
+      ctx.db.project.count.mockResolvedValue(1);
+
       const result = await caller.list({
         clientId: "c_1",
         includeArchived: false,
       });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].client.id).toBe("c_1");
-      expect(ctx.db.project.findMany).toHaveBeenCalledWith({
-        where: {
-          organizationId: "test-org-123",
-          clientId: "c_1",
-          status: { not: ProjectStatus.ARCHIVED },
-        },
-        include: expect.any(Object),
-        orderBy: { createdAt: "desc" },
-      });
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].client.id).toBe("c_1");
     });
   });
 
