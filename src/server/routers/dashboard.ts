@@ -54,8 +54,8 @@ export const dashboardRouter = router({
       const [
         thisMonthPaymentAgg,
         lastMonthPaymentAgg,
-        outstandingAgg,
-        overdueAgg,
+        outstandingInvoices,
+        overdueInvoices,
         thisMonthExpenses,
       ] = await Promise.all([
         ctx.db.payment.aggregate({
@@ -66,15 +66,20 @@ export const dashboardRouter = router({
           where: { organizationId: ctx.orgId, paidAt: { gte: lastMonthStart, lte: lastMonthEnd } },
           _sum: { amount: true },
         }),
-        ctx.db.invoice.aggregate({
+        // Fetch outstanding invoices with payments to calculate true balance
+        ctx.db.invoice.findMany({
           where: outstandingWhere,
-          _sum: { total: true },
-          _count: true,
+          select: {
+            total: true,
+            payments: { select: { amount: true } },
+          },
         }),
-        ctx.db.invoice.aggregate({
+        ctx.db.invoice.findMany({
           where: overdueWhere,
-          _sum: { total: true },
-          _count: true,
+          select: {
+            total: true,
+            payments: { select: { amount: true } },
+          },
         }),
         // Expenses need rate * qty per row — can't aggregate in SQL via Prisma
         ctx.db.expense.findMany({
@@ -95,8 +100,21 @@ export const dashboardRouter = router({
             )
           : null;
 
-      const outstandingTotal = Number(outstandingAgg._sum.total ?? 0);
-      const overdueTotal = Number(overdueAgg._sum.total ?? 0);
+      // Calculate true outstanding = invoice total minus payments received
+      let outstandingTotal = 0;
+      for (const inv of outstandingInvoices) {
+        const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+        const balance = Number(inv.total) - paid;
+        if (balance > 0) outstandingTotal += balance;
+      }
+
+      let overdueTotal = 0;
+      for (const inv of overdueInvoices) {
+        const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+        const balance = Number(inv.total) - paid;
+        if (balance > 0) overdueTotal += balance;
+      }
+
       const expensesThisMonth = thisMonthExpenses.reduce(
         (s, e) => s + Number(e.rate) * e.qty,
         0
@@ -106,9 +124,9 @@ export const dashboardRouter = router({
         revenueThisMonth,
         revenueLastMonth,
         revenueChange,
-        outstandingCount: outstandingAgg._count,
+        outstandingCount: outstandingInvoices.length,
         outstandingTotal,
-        overdueCount: overdueAgg._count,
+        overdueCount: overdueInvoices.length,
         overdueTotal,
         cashCollected: revenueThisMonth,
         expensesThisMonth,
