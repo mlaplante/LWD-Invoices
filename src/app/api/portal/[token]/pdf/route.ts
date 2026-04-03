@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server";
 import { db } from "@/server/db";
+import { fullInvoiceInclude } from "@/server/services/invoice-pdf";
 
 export async function GET(
   _req: NextRequest,
@@ -9,17 +10,7 @@ export async function GET(
 
   const invoice = await db.invoice.findUnique({
     where: { portalToken: token },
-    include: {
-      client: true,
-      currency: true,
-      organization: true,
-      lines: {
-        include: { taxes: { include: { tax: true } } },
-        orderBy: { sort: "asc" },
-      },
-      payments: { orderBy: { paidAt: "asc" } },
-      partialPayments: { orderBy: { sortOrder: "asc" } },
-    },
+    include: fullInvoiceInclude,
   });
 
   if (!invoice) {

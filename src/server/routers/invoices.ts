@@ -634,7 +634,12 @@ export const invoicesRouter = router({
           status: InvoiceStatus.DRAFT,
           type: { notIn: [InvoiceType.CREDIT_NOTE] },
         },
-        include: { client: true, organization: true, currency: true, partialPayments: true },
+        include: {
+          client: true, organization: true, currency: true, partialPayments: true,
+          lines: { include: { taxes: { include: { tax: true } } }, orderBy: { sort: "asc" } },
+          payments: { orderBy: { paidAt: "asc" } },
+          lateFeeEntries: { orderBy: { createdAt: "asc" } },
+        },
       });
 
       if (invoices.length === 0) {
@@ -695,6 +700,9 @@ export const invoicesRouter = router({
                 })
               );
 
+              const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
+              const pdfBuffer = await generateInvoicePDF(invoice);
+
               const bcc = await getOwnerBcc(invoice.organizationId);
               await resend.emails.send({
                 from: env.RESEND_FROM_EMAIL,
@@ -702,6 +710,7 @@ export const invoicesRouter = router({
                 subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
                 html,
                 ...(bcc ? { bcc } : {}),
+                attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
               });
             } catch (err) {
               console.error(`[invoices.sendMany] Failed to email invoice ${invoice.number}:`, err);
@@ -804,7 +813,12 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
-        include: { client: true, organization: true, currency: true, partialPayments: true },
+        include: {
+          client: true, organization: true, currency: true, partialPayments: true,
+          lines: { include: { taxes: { include: { tax: true } } }, orderBy: { sort: "asc" } },
+          payments: { orderBy: { paidAt: "asc" } },
+          lateFeeEntries: { orderBy: { createdAt: "asc" } },
+        },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -858,6 +872,9 @@ export const invoicesRouter = router({
             })
           );
 
+          const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
+          const pdfBuffer = await generateInvoicePDF(invoice);
+
           const bcc = await getOwnerBcc(invoice.organizationId);
           await resend.emails.send({
             from: env.RESEND_FROM_EMAIL,
@@ -865,6 +882,7 @@ export const invoicesRouter = router({
             subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
             html,
             ...(bcc ? { bcc } : {}),
+            attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
           });
         } catch (err) {
           console.error("[invoices.send] Failed to send invoice email:", err);

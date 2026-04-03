@@ -40,11 +40,12 @@ export const processPaymentReminders = inngest.createFunction(
       },
       include: {
         client: true,
-        organization: {
-          select: { name: true, paymentReminderDays: true, logoUrl: true },
-        },
+        organization: true,
         currency: true,
         partialPayments: true,
+        lines: { include: { taxes: { include: { tax: true } } }, orderBy: { sort: "asc" } },
+        payments: { orderBy: { paidAt: "asc" } },
+        lateFeeEntries: { orderBy: { createdAt: "asc" } },
       },
     });
 
@@ -81,6 +82,9 @@ export const processPaymentReminders = inngest.createFunction(
           }),
         );
 
+        const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
+        const pdfBuffer = await generateInvoicePDF(invoice);
+
         const bcc = await getOwnerBcc(invoice.organizationId);
         await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
@@ -88,6 +92,7 @@ export const processPaymentReminders = inngest.createFunction(
           subject: `Payment reminder — Invoice #${invoice.number} due in ${daysUntilDue} ${daysUntilDue === 1 ? "day" : "days"}`,
           html,
           ...(bcc ? { bcc } : {}),
+          attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
         });
       }),
     );

@@ -25,6 +25,9 @@ export const processOverdueInvoices = inngest.createFunction(
         organization: true,
         currency: true,
         partialPayments: true,
+        lines: { include: { taxes: { include: { tax: true } } }, orderBy: { sort: "asc" } },
+        payments: { orderBy: { paidAt: "asc" } },
+        lateFeeEntries: { orderBy: { createdAt: "asc" } },
       },
     });
 
@@ -64,6 +67,9 @@ export const processOverdueInvoices = inngest.createFunction(
               }),
             );
 
+            const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
+            const pdfBuffer = await generateInvoicePDF(invoice);
+
             const bcc = await getOwnerBcc(invoice.organizationId);
             await resend.emails.send({
               from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
@@ -71,6 +77,7 @@ export const processOverdueInvoices = inngest.createFunction(
               subject: `OVERDUE — Invoice #${invoice.number} is ${daysOverdue} ${daysOverdue === 1 ? "day" : "days"} past due`,
               html,
               ...(bcc ? { bcc } : {}),
+              attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
             });
           } catch {
             // Email failure is non-fatal

@@ -4,6 +4,7 @@ import {
 } from "@react-pdf/renderer";
 import React from "react";
 import type { Invoice, InvoiceLine, InvoiceLineTax, Tax, Client, Currency, Organization, Payment, PartialPayment, LateFeeEntry } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma";
 import { getInvoiceTemplateConfig } from "./invoice-template-config";
 import { TEMPLATE_REGISTRY } from "./pdf-templates";
 
@@ -16,6 +17,20 @@ export type FullInvoice = Invoice & {
   partialPayments: PartialPayment[];
   lateFeeEntries?: LateFeeEntry[];
 };
+
+/** Prisma include clause that loads everything needed for PDF generation */
+export const fullInvoiceInclude = {
+  client: true,
+  currency: true,
+  organization: true,
+  lines: {
+    include: { taxes: { include: { tax: true } } },
+    orderBy: { sort: "asc" },
+  },
+  payments: { orderBy: { paidAt: "asc" } },
+  partialPayments: { orderBy: { sortOrder: "asc" } },
+  lateFeeEntries: { orderBy: { createdAt: "asc" } },
+} satisfies Prisma.InvoiceInclude;
 
 function InvoiceDocument({ invoice }: { invoice: FullInvoice }) {
   const config = getInvoiceTemplateConfig(invoice.organization);
