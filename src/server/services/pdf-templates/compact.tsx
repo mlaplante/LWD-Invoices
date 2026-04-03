@@ -168,6 +168,24 @@ export function CompactTemplate({ invoice, config }: TemplateProps) {
           <Text style={[styles.value, { fontFamily: boldFamily }]}>
             {invoice.organization.name}
           </Text>
+          {invoice.organization.addressLine1 ? (
+            <Text style={styles.value}>{invoice.organization.addressLine1}</Text>
+          ) : null}
+          {invoice.organization.addressLine2 ? (
+            <Text style={styles.value}>{invoice.organization.addressLine2}</Text>
+          ) : null}
+          {(invoice.organization.city || invoice.organization.state || invoice.organization.postalCode) ? (
+            <Text style={styles.value}>
+              {[invoice.organization.city, invoice.organization.state].filter(Boolean).join(", ")}
+              {invoice.organization.postalCode ? ` ${invoice.organization.postalCode}` : ""}
+            </Text>
+          ) : null}
+          {invoice.organization.country ? (
+            <Text style={styles.value}>{invoice.organization.country}</Text>
+          ) : null}
+          {invoice.organization.phone ? (
+            <Text style={styles.value}>{invoice.organization.phone}</Text>
+          ) : null}
         </View>
         <View style={styles.infoBox}>
           <Text style={styles.label}>Bill To</Text>

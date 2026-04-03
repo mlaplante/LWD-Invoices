@@ -175,6 +175,24 @@ export function ModernTemplate({ invoice, config }: TemplateProps) {
             />
           ) : null}
           <Text style={styles.orgName}>{invoice.organization.name}</Text>
+          {invoice.organization.addressLine1 ? (
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>{invoice.organization.addressLine1}</Text>
+          ) : null}
+          {invoice.organization.addressLine2 ? (
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>{invoice.organization.addressLine2}</Text>
+          ) : null}
+          {(invoice.organization.city || invoice.organization.state || invoice.organization.postalCode) ? (
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>
+              {[invoice.organization.city, invoice.organization.state].filter(Boolean).join(", ")}
+              {invoice.organization.postalCode ? ` ${invoice.organization.postalCode}` : ""}
+            </Text>
+          ) : null}
+          {invoice.organization.country ? (
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>{invoice.organization.country}</Text>
+          ) : null}
+          {invoice.organization.phone ? (
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>{invoice.organization.phone}</Text>
+          ) : null}
         </View>
         <View style={styles.invoiceMeta}>
           <Text style={[styles.invoiceTitle, { color: accentColor }]}>

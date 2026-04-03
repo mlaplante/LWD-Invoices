@@ -14,6 +14,13 @@ type Org = {
   defaultPaymentTermsDays: number;
   paymentReminderDays: number[];
   emailBccOwner: boolean;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+  phone: string | null;
 };
 
 const PAYMENT_TERM_OPTIONS = [
@@ -40,6 +47,13 @@ export function OrgSettingsForm({ org }: { org: Org }) {
     defaultPaymentTermsDays: org.defaultPaymentTermsDays,
     paymentReminderDays: org.paymentReminderDays,
     emailBccOwner: org.emailBccOwner,
+    addressLine1: org.addressLine1 ?? "",
+    addressLine2: org.addressLine2 ?? "",
+    city: org.city ?? "",
+    state: org.state ?? "",
+    postalCode: org.postalCode ?? "",
+    country: org.country ?? "",
+    phone: org.phone ?? "",
   });
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +73,13 @@ export function OrgSettingsForm({ org }: { org: Org }) {
         defaultPaymentTermsDays: form.defaultPaymentTermsDays,
         paymentReminderDays: form.paymentReminderDays,
         emailBccOwner: form.emailBccOwner,
+        addressLine1: form.addressLine1 || null,
+        addressLine2: form.addressLine2 || null,
+        city: form.city || null,
+        state: form.state || null,
+        postalCode: form.postalCode || null,
+        country: form.country || null,
+        phone: form.phone || null,
       },
       {
         onSuccess: () => {
@@ -194,6 +215,76 @@ export function OrgSettingsForm({ org }: { org: Org }) {
         <p className="text-xs text-muted-foreground mt-1">
           Send a blind copy of all client-facing emails (invoices, payment receipts, reminders, overdue notices) to the organization owner.
         </p>
+      </div>
+
+      {/* ─── Organization Address ──────────────────────────────────────── */}
+      <div className="border-t pt-4 mt-4">
+        <h3 className="text-sm font-semibold mb-3">Organization Address</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium">Address Line 1</label>
+            <Input
+              value={form.addressLine1}
+              onChange={(e) => setForm((p) => ({ ...p, addressLine1: e.target.value }))}
+              placeholder="123 Main Street"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Address Line 2</label>
+            <Input
+              value={form.addressLine2}
+              onChange={(e) => setForm((p) => ({ ...p, addressLine2: e.target.value }))}
+              placeholder="Suite 100"
+              className="mt-1"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">City</label>
+              <Input
+                value={form.city}
+                onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">State / Province</label>
+              <Input
+                value={form.state}
+                onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Postal Code</label>
+              <Input
+                value={form.postalCode}
+                onChange={(e) => setForm((p) => ({ ...p, postalCode: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Country</label>
+              <Input
+                value={form.country}
+                onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Phone</label>
+            <Input
+              value={form.phone}
+              onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+              placeholder="(555) 123-4567"
+              className="mt-1"
+            />
+          </div>
+        </div>
       </div>
 
       <Button type="submit" disabled={updateMutation.isPending}>

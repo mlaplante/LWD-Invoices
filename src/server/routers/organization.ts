@@ -39,6 +39,13 @@ export const organizationRouter = router({
         defaultDepositPercent: true,
         smartRemindersEnabled: true,
         smartRemindersThreshold: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        postalCode: true,
+        country: true,
+        phone: true,
       },
     });
     if (!org) throw new TRPCError({ code: "NOT_FOUND" });
@@ -77,6 +84,13 @@ export const organizationRouter = router({
         defaultDepositPercent: z.number().int().min(1).max(100).nullable().optional(),
         smartRemindersEnabled: z.boolean().optional(),
         smartRemindersThreshold: z.number().int().min(50).max(100).optional(),
+        addressLine1: z.string().max(200).nullable().optional(),
+        addressLine2: z.string().max(200).nullable().optional(),
+        city: z.string().max(100).nullable().optional(),
+        state: z.string().max(100).nullable().optional(),
+        postalCode: z.string().max(20).nullable().optional(),
+        country: z.string().max(100).nullable().optional(),
+        phone: z.string().max(30).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
