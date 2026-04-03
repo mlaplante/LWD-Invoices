@@ -4,6 +4,7 @@ import React, { useRef } from "react";
 import { LineType } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -208,11 +209,12 @@ function SortableLineItem({
             </button>
           </div>
           {expandedDescriptions.has(index) && (
-            <Input
+            <Textarea
               placeholder="Description (optional)"
               value={line.description ?? ""}
               onChange={(e) => onUpdate(index, { description: e.target.value })}
-              className="h-7 text-xs text-muted-foreground"
+              className="min-h-[56px] text-xs text-muted-foreground resize-y"
+              rows={2}
             />
           )}
         </div>
