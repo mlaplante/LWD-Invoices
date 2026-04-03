@@ -54,8 +54,7 @@ const REPORT_TYPE_LABELS: Record<string, string> = {
 };
 
 export const processScheduledReports = inngest.createFunction(
-  { id: "process-scheduled-reports", name: "Process Scheduled Reports" },
-  { cron: "0 7 * * *" }, // daily at 7am UTC
+  { id: "process-scheduled-reports", name: "Process Scheduled Reports", triggers: [{ cron: "0 7 * * *" }] }, // daily at 7am UTC
   async () => {
     const now = new Date();
 

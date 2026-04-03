@@ -9,8 +9,7 @@ import {
 } from "@/server/services/late-fees";
 
 export const processLateFees = inngest.createFunction(
-  { id: "process-late-fees", name: "Process Late Fees" },
-  { cron: "30 7 * * *" }, // daily at 7:30am UTC
+  { id: "process-late-fees", name: "Process Late Fees", triggers: [{ cron: "30 7 * * *" }] }, // daily at 7:30am UTC
   async () => {
     const now = new Date();
 

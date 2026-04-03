@@ -24,12 +24,12 @@ export const handleAutomationEvent = inngest.createFunction(
   {
     id: "handle-automation-event",
     name: "Handle Automation Event",
+    triggers: [
+      { event: "invoice/payment.received" },
+      { event: "invoice/sent" },
+      { event: "invoice/viewed" },
+    ],
   },
-  [
-    { event: "invoice/payment.received" },
-    { event: "invoice/sent" },
-    { event: "invoice/viewed" },
-  ],
   async ({ event }) => {
     const { invoiceId } = event.data as { invoiceId: string; trigger: string };
     const trigger = EVENT_TO_TRIGGER[event.name];

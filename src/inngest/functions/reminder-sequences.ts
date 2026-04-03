@@ -30,8 +30,7 @@ export function getStepDueToday(
 }
 
 export const processReminderSequences = inngest.createFunction(
-  { id: "process-reminder-sequences", name: "Process Reminder Sequences" },
-  { cron: "0 8 * * *" }, // daily at 8am UTC
+  { id: "process-reminder-sequences", name: "Process Reminder Sequences", triggers: [{ cron: "0 8 * * *" }] }, // daily at 8am UTC
   async () => {
     const now = new Date();
 

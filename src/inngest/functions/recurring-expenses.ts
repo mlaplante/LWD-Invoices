@@ -3,8 +3,7 @@ import { db } from "@/server/db";
 import { generateExpensesForRecurring } from "@/server/services/recurring-expense-generator";
 
 export const processRecurringExpenses = inngest.createFunction(
-  { id: "process-recurring-expenses", name: "Process Recurring Expenses" },
-  { cron: "0 6 * * *" },
+  { id: "process-recurring-expenses", name: "Process Recurring Expenses", triggers: [{ cron: "0 6 * * *" }] },
   async () => {
     const now = new Date();
 

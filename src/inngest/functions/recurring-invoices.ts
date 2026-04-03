@@ -26,8 +26,7 @@ export function computeNextRunAt(
 }
 
 export const processRecurringInvoices = inngest.createFunction(
-  { id: "process-recurring-invoices", name: "Process Recurring Invoices" },
-  { cron: "0 6 * * *" }, // daily at 6am UTC
+  { id: "process-recurring-invoices", name: "Process Recurring Invoices", triggers: [{ cron: "0 6 * * *" }] }, // daily at 6am UTC
   async () => {
     const now = new Date();
 

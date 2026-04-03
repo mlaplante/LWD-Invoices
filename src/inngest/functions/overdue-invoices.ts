@@ -9,8 +9,7 @@ export function calcDaysOverdue(now: Date, dueDate: Date): number {
 }
 
 export const processOverdueInvoices = inngest.createFunction(
-  { id: "process-overdue-invoices", name: "Process Overdue Invoices" },
-  { cron: "0 7 * * *" }, // daily at 7am UTC
+  { id: "process-overdue-invoices", name: "Process Overdue Invoices", triggers: [{ cron: "0 7 * * *" }] }, // daily at 7am UTC
   async () => {
     const now = new Date();
 

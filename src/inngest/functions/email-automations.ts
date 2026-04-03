@@ -59,8 +59,7 @@ export function getEligibleInvoicesForTrigger(
 }
 
 export const processEmailAutomations = inngest.createFunction(
-  { id: "process-email-automations", name: "Process Email Automations" },
-  { cron: "0 9 * * *" }, // daily at 9am UTC
+  { id: "process-email-automations", name: "Process Email Automations", triggers: [{ cron: "0 9 * * *" }] }, // daily at 9am UTC
   async () => {
     const now = new Date();
 

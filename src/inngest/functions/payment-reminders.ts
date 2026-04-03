@@ -26,8 +26,7 @@ export function shouldSendReminder(daysUntilDue: number, override: number[], org
 }
 
 export const processPaymentReminders = inngest.createFunction(
-  { id: "process-payment-reminders", name: "Process Payment Reminders" },
-  { cron: "0 8 * * *" }, // daily at 8am UTC
+  { id: "process-payment-reminders", name: "Process Payment Reminders", triggers: [{ cron: "0 8 * * *" }] }, // daily at 8am UTC
   async () => {
     const now = new Date();
     const { from, to } = getQueryWindow(now);
