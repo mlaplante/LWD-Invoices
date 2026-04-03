@@ -17,6 +17,7 @@ import { Resend } from "resend";
 import { env } from "@/lib/env";
 import { headers } from "next/headers";
 import { getOwnerBcc } from "../services/email-bcc";
+import { sendPaymentReceiptEmail } from "../services/payment-receipt-email";
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
 
@@ -805,23 +806,35 @@ export const invoicesRouter = router({
         }
       });
 
-      // Fire automation events for successful payments
+      // Fire automation events and send receipt emails for successful payments
       if (paid > 0) {
+        const successInvoices = invoices.filter((_, i) => results[i]!.status === "fulfilled");
+
         try {
           const { inngest: inngestClient } = await import("@/inngest/client");
-          const successIds = invoices
-            .filter((_, i) => results[i]!.status === "fulfilled")
-            .map((inv) => inv.id);
           await Promise.all(
-            successIds.map((id) =>
+            successInvoices.map((inv) =>
               inngestClient.send({
                 name: "invoice/payment.received",
-                data: { invoiceId: id, trigger: "PAYMENT_RECEIVED" },
+                data: { invoiceId: inv.id, trigger: "PAYMENT_RECEIVED" },
               })
             )
           );
         } catch {
           // Non-fatal
+        }
+
+        // Send receipt emails directly (with BCC to owner)
+        for (const inv of successInvoices) {
+          try {
+            await sendPaymentReceiptEmail({
+              invoiceId: inv.id,
+              amountPaid: inv.total.toNumber(),
+              organizationId: ctx.orgId,
+            });
+          } catch (err) {
+            console.error("[markPaidMany] Failed to send receipt email:", err);
+          }
         }
       }
 
@@ -990,6 +1003,17 @@ export const invoicesRouter = router({
         // Non-fatal
       }
 
+      // Send payment receipt email directly (with BCC to owner)
+      try {
+        await sendPaymentReceiptEmail({
+          invoiceId: input.id,
+          amountPaid: input.amount,
+          organizationId: ctx.orgId,
+        });
+      } catch (err) {
+        console.error("[markPaid] Failed to send payment receipt email:", err);
+      }
+
       return result;
     }),
 
@@ -1039,6 +1063,21 @@ export const invoicesRouter = router({
         });
       } catch {
         // Non-fatal
+      }
+
+      // Send payment receipt email directly (with BCC to owner)
+      try {
+        const installmentAmount = partial.isPercentage
+          ? (partial.amount.toNumber() / 100) * partial.invoice.total.toNumber()
+          : partial.amount.toNumber();
+        await sendPaymentReceiptEmail({
+          invoiceId: partial.invoiceId,
+          amountPaid: installmentAmount,
+          organizationId: ctx.orgId,
+          partialPaymentId: input.partialPaymentId,
+        });
+      } catch (err) {
+        console.error("[recordPartialPayment] Failed to send receipt email:", err);
       }
 
       return result;

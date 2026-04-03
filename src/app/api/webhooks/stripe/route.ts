@@ -5,8 +5,8 @@ import { decryptJson } from "@/server/services/encryption";
 import { constructStripeEvent } from "@/server/services/stripe";
 import type { StripeConfig } from "@/server/services/gateway-config";
 import type Stripe from "stripe";
-import { getOwnerBcc } from "@/server/services/email-bcc";
 import { logAudit } from "@/server/services/audit";
+import { sendPaymentReceiptEmail } from "@/server/services/payment-receipt-email";
 
 // Track processed Stripe event IDs to prevent duplicate processing.
 // Entries auto-expire after 24 hours. In-memory is sufficient because
@@ -221,78 +221,12 @@ export async function POST(req: NextRequest) {
 
     // Send payment receipt email
     try {
-      const fullInvoice = await db.invoice.findUnique({
-        where: { id: invoiceId },
-        include: { client: true, organization: true, currency: true, partialPayments: true },
+      await sendPaymentReceiptEmail({
+        invoiceId,
+        amountPaid: chargedAmount,
+        organizationId: orgId,
+        partialPaymentId: partialPaymentId ?? undefined,
       });
-
-      if (fullInvoice?.client.email) {
-        const { Resend } = await import("resend");
-        const { render } = await import("@react-email/render");
-        const { PaymentReceiptEmail } = await import("@/emails/PaymentReceiptEmail");
-        const resend = new Resend(process.env.RESEND_API_KEY);
-
-        // Calculate installment info if partial payments exist
-        let installmentNumber: number | undefined;
-        let totalInstallments: number | undefined;
-        let remainingBalance: string | undefined;
-
-        if (fullInvoice.partialPayments && fullInvoice.partialPayments.length > 0) {
-          const sortedPayments = fullInvoice.partialPayments.sort((a, b) => a.sortOrder - b.sortOrder);
-          totalInstallments = sortedPayments.length;
-
-          // Find which installment was just paid
-          if (partialPaymentId) {
-            const paidInstallmentIndex = sortedPayments.findIndex(pp => pp.id === partialPaymentId);
-            if (paidInstallmentIndex !== -1) {
-              installmentNumber = paidInstallmentIndex + 1;
-            }
-          }
-
-          // Calculate remaining balance
-          const totalInvoiceAmount = fullInvoice.total.toNumber();
-          const totalPaid = sortedPayments
-            .filter(pp => pp.isPaid)
-            .reduce((sum, pp) => {
-              const amount = pp.isPercentage
-                ? (pp.amount.toNumber() / 100) * totalInvoiceAmount
-                : pp.amount.toNumber();
-              return sum + amount;
-            }, 0);
-
-          const remaining = totalInvoiceAmount - totalPaid;
-          if (remaining > 0.01) { // Only show if more than 1 cent remaining
-            remainingBalance = remaining.toFixed(2);
-          }
-        }
-
-        const html = await render(
-          PaymentReceiptEmail({
-            invoiceNumber: fullInvoice.number,
-            clientName: fullInvoice.client.name,
-            amountPaid: chargedAmount.toFixed(2),
-            currencySymbol: fullInvoice.currency.symbol,
-            orgName: fullInvoice.organization.name,
-            paidAt: new Date().toLocaleDateString(),
-            portalLink: fullInvoice.portalToken
-              ? `${process.env.NEXT_PUBLIC_APP_URL}/portal/${fullInvoice.portalToken}`
-              : undefined,
-            logoUrl: fullInvoice.organization.logoUrl ?? undefined,
-            installmentNumber,
-            totalInstallments,
-            remainingBalance,
-          })
-        );
-
-        const bcc = await getOwnerBcc(orgId);
-        await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
-          to: fullInvoice.client.email,
-          subject: `Payment received — Invoice #${fullInvoice.number}`,
-          html,
-          ...(bcc ? { bcc } : {}),
-        });
-      }
     } catch (err) {
       console.error("[stripe-webhook] Failed to send payment receipt email:", err);
     }
