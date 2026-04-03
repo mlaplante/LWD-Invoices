@@ -18,20 +18,9 @@ export default function GlobalError({
             Error ID: {error.digest}
           </p>
         )}
-        <pre style={{
-          background: "#f4f4f4",
-          padding: "1rem",
-          borderRadius: "0.5rem",
-          fontSize: "0.75rem",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-          marginBottom: "1rem",
-          border: "1px solid #ddd",
-        }}>
-          {error.message}
-          {"\n\n"}
-          {error.stack}
-        </pre>
+        <p style={{ fontSize: "0.875rem", color: "#444", marginBottom: "1rem" }}>
+          An unexpected error occurred. Please try again or contact support if the problem persists.
+        </p>
         <button
           onClick={reset}
           style={{
