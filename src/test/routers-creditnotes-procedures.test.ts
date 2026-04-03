@@ -4,9 +4,14 @@ vi.mock("@/server/services/audit", () => ({
   logAudit: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/server/services/credit-note-numbering", () => ({
+  generateCreditNoteNumber: vi.fn().mockResolvedValue("CN-0001"),
+  formatCreditNoteNumber: vi.fn(),
+}));
+
 import { creditNotesRouter, validateCreditApplication } from "@/server/routers/creditNotes";
 import { createMockContext } from "./mocks/trpc-context";
-import { InvoiceType } from "@/generated/prisma";
+import { InvoiceType, InvoiceStatus } from "@/generated/prisma";
 
 describe("Credit Notes Router Procedures", () => {
   let ctx: any;
@@ -104,6 +109,437 @@ describe("Credit Notes Router Procedures", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].isArchived).toBe(false);
+    });
+  });
+
+  describe("get", () => {
+    it("returns a credit note with includes", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+
+      const mockCreditNote = {
+        id: "cn_1",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        organizationId: "test-org-123",
+        status: "DRAFT",
+        creditNoteStatus: "DRAFT",
+        total: 500,
+        lines: [
+          {
+            id: "line_1",
+            sort: 0,
+            name: "Service",
+            qty: 1,
+            rate: 500,
+            taxes: [{ taxId: "tax_1", taxAmount: 50, tax: { id: "tax_1", name: "GST", rate: 10 } }],
+          },
+        ],
+        client: { id: "c_1", name: "Test Client" },
+        currency: { id: "usd", symbol: "$", code: "USD" },
+        organization: { id: "test-org-123", name: "Test Org" },
+        creditNotesIssued: [],
+      };
+
+      ctx.db.invoice.findFirst.mockResolvedValue(mockCreditNote);
+
+      const result = await caller.get({ id: "cn_1" });
+
+      expect(result.id).toBe("cn_1");
+      expect(result.number).toBe("CN-0001");
+      expect(result.lines).toHaveLength(1);
+      expect(result.client.name).toBe("Test Client");
+      expect(ctx.db.invoice.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: "cn_1",
+          organizationId: "test-org-123",
+          type: InvoiceType.CREDIT_NOTE,
+        },
+        include: {
+          lines: { include: { taxes: { include: { tax: true } } }, orderBy: { sort: "asc" } },
+          client: true,
+          currency: true,
+          organization: true,
+          creditNotesIssued: {
+            include: {
+              invoice: { select: { id: true, number: true, total: true } },
+            },
+          },
+        },
+      });
+    });
+
+    it("throws NOT_FOUND when credit note does not exist", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue(null);
+
+      try {
+        await caller.get({ id: "cn_nonexistent" });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+      }
+    });
+  });
+
+  describe("create", () => {
+    const sourceInvoice = {
+      id: "inv_1",
+      number: "INV-001",
+      type: InvoiceType.STANDARD,
+      organizationId: "test-org-123",
+      clientId: "c_1",
+      currencyId: "usd",
+      exchangeRate: 1,
+      lines: [
+        {
+          id: "line_1",
+          sort: 0,
+          lineType: "SERVICE",
+          name: "Consulting",
+          description: "Consulting work",
+          qty: 2,
+          rate: 100,
+          period: null,
+          discount: 0,
+          discountIsPercentage: false,
+          subtotal: 200,
+          taxTotal: 20,
+          total: 220,
+          taxes: [
+            {
+              taxId: "tax_1",
+              taxAmount: 20,
+              tax: { id: "tax_1", name: "GST", rate: 10, isCompound: false },
+            },
+          ],
+        },
+        {
+          id: "line_2",
+          sort: 1,
+          lineType: "SERVICE",
+          name: "Design",
+          description: "Design work",
+          qty: 1,
+          rate: 300,
+          period: null,
+          discount: 0,
+          discountIsPercentage: false,
+          subtotal: 300,
+          taxTotal: 30,
+          total: 330,
+          taxes: [
+            {
+              taxId: "tax_1",
+              taxAmount: 30,
+              tax: { id: "tax_1", name: "GST", rate: 10, isCompound: false },
+            },
+          ],
+        },
+      ],
+      currency: { id: "usd", symbol: "$", code: "USD" },
+    };
+
+    it("creates a credit note from source invoice with selected lines", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue(sourceInvoice);
+
+      const createdCreditNote = {
+        id: "cn_new",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        status: InvoiceStatus.DRAFT,
+        creditNoteStatus: "DRAFT",
+        sourceInvoiceId: "inv_1",
+        clientId: "c_1",
+        organizationId: "test-org-123",
+        total: 220,
+        lines: [
+          { id: "cnline_1", sort: 0, name: "Consulting", qty: 2, rate: 100 },
+        ],
+      };
+
+      ctx.db.invoice.create.mockResolvedValue(createdCreditNote);
+
+      const result = await caller.create({
+        sourceInvoiceId: "inv_1",
+        lineIds: ["line_1"],
+        notes: "Refund for consulting",
+      });
+
+      expect(result.id).toBe("cn_new");
+      expect(result.number).toBe("CN-0001");
+      expect(result.sourceInvoiceId).toBe("inv_1");
+      expect(ctx.db.invoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            number: "CN-0001",
+            type: InvoiceType.CREDIT_NOTE,
+            status: InvoiceStatus.DRAFT,
+            creditNoteStatus: "DRAFT",
+            sourceInvoiceId: "inv_1",
+            clientId: "c_1",
+            organizationId: "test-org-123",
+            currencyId: "usd",
+            notes: "Refund for consulting",
+          }),
+        }),
+      );
+    });
+
+    it("throws NOT_FOUND when source invoice does not exist", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue(null);
+
+      try {
+        await caller.create({
+          sourceInvoiceId: "inv_nonexistent",
+          lineIds: ["line_1"],
+        });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+        expect(err.message).toContain("Source invoice not found");
+      }
+    });
+
+    it("throws BAD_REQUEST when source is a credit note", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue({
+        ...sourceInvoice,
+        type: InvoiceType.CREDIT_NOTE,
+      });
+
+      try {
+        await caller.create({
+          sourceInvoiceId: "inv_1",
+          lineIds: ["line_1"],
+        });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("BAD_REQUEST");
+        expect(err.message).toContain("Cannot create credit note from a credit note");
+      }
+    });
+
+    it("throws BAD_REQUEST when no valid lines selected", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue(sourceInvoice);
+
+      try {
+        await caller.create({
+          sourceInvoiceId: "inv_1",
+          lineIds: ["nonexistent_line"],
+        });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("BAD_REQUEST");
+        expect(err.message).toContain("No valid lines selected");
+      }
+    });
+  });
+
+  describe("issue", () => {
+    it("issues a DRAFT credit note successfully", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue({
+        id: "cn_1",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        creditNoteStatus: "DRAFT",
+        organizationId: "test-org-123",
+      });
+
+      const updatedCn = {
+        id: "cn_1",
+        number: "CN-0001",
+        creditNoteStatus: "ISSUED",
+        status: InvoiceStatus.SENT,
+      };
+      ctx.db.invoice.update.mockResolvedValue(updatedCn);
+
+      const result = await caller.issue({ id: "cn_1" });
+
+      expect(result.creditNoteStatus).toBe("ISSUED");
+      expect(ctx.db.invoice.update).toHaveBeenCalledWith({
+        where: { id: "cn_1" },
+        data: {
+          creditNoteStatus: "ISSUED",
+          status: InvoiceStatus.SENT,
+        },
+      });
+    });
+
+    it("throws NOT_FOUND when credit note does not exist", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue(null);
+
+      try {
+        await caller.issue({ id: "cn_nonexistent" });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+      }
+    });
+
+    it("throws BAD_REQUEST when credit note is already ISSUED", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue({
+        id: "cn_1",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        creditNoteStatus: "ISSUED",
+        organizationId: "test-org-123",
+      });
+
+      try {
+        await caller.issue({ id: "cn_1" });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("BAD_REQUEST");
+        expect(err.message).toContain("Cannot issue a credit note with status ISSUED");
+      }
+    });
+
+    it("throws BAD_REQUEST when credit note is VOIDED", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue({
+        id: "cn_1",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        creditNoteStatus: "VOIDED",
+        organizationId: "test-org-123",
+      });
+
+      try {
+        await caller.issue({ id: "cn_1" });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("BAD_REQUEST");
+        expect(err.message).toContain("Cannot issue a credit note with status VOIDED");
+      }
+    });
+  });
+
+  describe("void", () => {
+    it("voids a DRAFT credit note successfully", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue({
+        id: "cn_1",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        creditNoteStatus: "DRAFT",
+        organizationId: "test-org-123",
+        creditNotesIssued: [],
+      });
+
+      const updatedCn = {
+        id: "cn_1",
+        number: "CN-0001",
+        creditNoteStatus: "VOIDED",
+      };
+      ctx.db.invoice.update.mockResolvedValue(updatedCn);
+
+      const result = await caller.void({ id: "cn_1" });
+
+      expect(result.creditNoteStatus).toBe("VOIDED");
+      expect(ctx.db.invoice.update).toHaveBeenCalledWith({
+        where: { id: "cn_1" },
+        data: { creditNoteStatus: "VOIDED" },
+      });
+    });
+
+    it("voids an ISSUED credit note with no applications", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue({
+        id: "cn_1",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        creditNoteStatus: "ISSUED",
+        organizationId: "test-org-123",
+        creditNotesIssued: [],
+      });
+
+      ctx.db.invoice.update.mockResolvedValue({
+        id: "cn_1",
+        creditNoteStatus: "VOIDED",
+      });
+
+      const result = await caller.void({ id: "cn_1" });
+      expect(result.creditNoteStatus).toBe("VOIDED");
+    });
+
+    it("throws NOT_FOUND when credit note does not exist", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue(null);
+
+      try {
+        await caller.void({ id: "cn_nonexistent" });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+      }
+    });
+
+    it("throws BAD_REQUEST when credit note is APPLIED", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue({
+        id: "cn_1",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        creditNoteStatus: "APPLIED",
+        organizationId: "test-org-123",
+        creditNotesIssued: [],
+      });
+
+      try {
+        await caller.void({ id: "cn_1" });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("BAD_REQUEST");
+        expect(err.message).toContain("Cannot void a credit note that has been applied");
+      }
+    });
+
+    it("throws BAD_REQUEST when credit note is already VOIDED", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue({
+        id: "cn_1",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        creditNoteStatus: "VOIDED",
+        organizationId: "test-org-123",
+        creditNotesIssued: [],
+      });
+
+      try {
+        await caller.void({ id: "cn_1" });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("BAD_REQUEST");
+        expect(err.message).toContain("Credit note is already voided");
+      }
+    });
+
+    it("throws BAD_REQUEST when credit note has existing applications", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+      ctx.db.invoice.findFirst.mockResolvedValue({
+        id: "cn_1",
+        number: "CN-0001",
+        type: InvoiceType.CREDIT_NOTE,
+        creditNoteStatus: "ISSUED",
+        organizationId: "test-org-123",
+        creditNotesIssued: [
+          { id: "cna_1", amount: 200, creditNoteId: "cn_1", invoiceId: "inv_1" },
+        ],
+      });
+
+      try {
+        await caller.void({ id: "cn_1" });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("BAD_REQUEST");
+        expect(err.message).toContain("Cannot void a credit note with existing applications");
+      }
     });
   });
 

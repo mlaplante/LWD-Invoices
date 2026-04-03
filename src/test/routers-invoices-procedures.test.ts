@@ -4,6 +4,48 @@ import { createMockContext } from "./mocks/trpc-context";
 import { InvoiceStatus, InvoiceType, LineType } from "@/generated/prisma";
 import { Decimal } from "@prisma/client-runtime-utils";
 
+// Mock external services used by procedures
+vi.mock("@/server/services/audit", () => ({
+  logAudit: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/server/services/notifications", () => ({
+  notifyOrgAdmins: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/server/services/invoice-numbering", () => ({
+  generateInvoiceNumber: vi.fn().mockResolvedValue("INV-2026-0200"),
+}));
+
+vi.mock("@/server/services/email-bcc", () => ({
+  getOwnerBcc: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock("next/headers", () => ({
+  headers: vi.fn().mockResolvedValue(
+    new Map([
+      ["host", "localhost:3000"],
+      ["x-forwarded-proto", "http"],
+    ])
+  ),
+}));
+
+vi.mock("resend", () => ({
+  Resend: vi.fn().mockImplementation(() => ({
+    emails: {
+      send: vi.fn().mockResolvedValue({ id: "email_123" }),
+    },
+  })),
+}));
+
+vi.mock("@react-email/render", () => ({
+  render: vi.fn().mockResolvedValue("<html>mock email</html>"),
+}));
+
+vi.mock("@/emails/InvoiceSentEmail", () => ({
+  InvoiceSentEmail: vi.fn().mockReturnValue("mock-email-component"),
+}));
+
 describe("Invoices Router Procedures", () => {
   let ctx: any;
   let caller: any;
@@ -658,6 +700,352 @@ describe("Invoices Router Procedures", () => {
           }),
         })
       );
+    });
+  });
+
+  describe("archive", () => {
+    it("archives an invoice", async () => {
+      ctx.db.invoice.update.mockResolvedValue({
+        id: "inv_123",
+        isArchived: true,
+      });
+
+      const result = await caller.archive({ id: "inv_123", isArchived: true });
+
+      expect(result.isArchived).toBe(true);
+      expect(ctx.db.invoice.update).toHaveBeenCalledWith({
+        where: { id: "inv_123", organizationId: "test-org-123" },
+        data: { isArchived: true },
+      });
+    });
+
+    it("unarchives an invoice", async () => {
+      ctx.db.invoice.update.mockResolvedValue({
+        id: "inv_123",
+        isArchived: false,
+      });
+
+      const result = await caller.archive({ id: "inv_123", isArchived: false });
+
+      expect(result.isArchived).toBe(false);
+      expect(ctx.db.invoice.update).toHaveBeenCalledWith({
+        where: { id: "inv_123", organizationId: "test-org-123" },
+        data: { isArchived: false },
+      });
+    });
+
+    it("throws when invoice not found", async () => {
+      ctx.db.invoice.update.mockRejectedValue(
+        new Error("Record to update not found.")
+      );
+
+      await expect(
+        caller.archive({ id: "inv_nonexistent", isArchived: true })
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("markPaid (single)", () => {
+    it("marks an invoice as paid with payment record", async () => {
+      ctx.db.invoice.findUnique.mockResolvedValue({
+        id: "inv_123",
+        status: InvoiceStatus.SENT,
+      });
+
+      // $transaction mock passes mockClient as tx, so these mock the tx calls
+      ctx.db.payment.create.mockResolvedValue({
+        id: "pay_123",
+        amount: 1000,
+        method: "manual",
+        invoiceId: "inv_123",
+      });
+
+      ctx.db.invoice.update.mockResolvedValue({
+        id: "inv_123",
+        status: InvoiceStatus.PAID,
+      });
+
+      const result = await caller.markPaid({
+        id: "inv_123",
+        amount: 1000,
+        method: "manual",
+        paidAt: new Date("2026-03-01"),
+      });
+
+      expect(result.status).toBe(InvoiceStatus.PAID);
+      expect(ctx.db.payment.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          amount: 1000,
+          method: "manual",
+          invoiceId: "inv_123",
+          organizationId: "test-org-123",
+        }),
+      });
+    });
+
+    it("throws NOT_FOUND for nonexistent invoice", async () => {
+      ctx.db.invoice.findUnique.mockResolvedValue(null);
+
+      try {
+        await caller.markPaid({
+          id: "inv_nonexistent",
+          amount: 500,
+        });
+        expect.fail("Should have thrown an error");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+      }
+    });
+  });
+
+  describe("duplicate", () => {
+    it("duplicates an invoice with lines and taxes", async () => {
+      const sourceInvoice = {
+        id: "inv_source",
+        number: "INV-2026-0100",
+        type: InvoiceType.DETAILED,
+        status: InvoiceStatus.SENT,
+        date: new Date("2026-01-15"),
+        dueDate: new Date("2026-02-15"),
+        currencyId: "usd",
+        exchangeRate: 1,
+        simpleAmount: null,
+        notes: "Test notes",
+        clientId: "client_123",
+        organizationId: "test-org-123",
+        subtotal: 1000,
+        discountTotal: 0,
+        taxTotal: 100,
+        total: 1100,
+        lines: [
+          {
+            sort: 0,
+            lineType: LineType.STANDARD,
+            name: "Web Development",
+            description: "Frontend work",
+            qty: 10,
+            rate: 100,
+            period: null,
+            discount: 0,
+            discountIsPercentage: false,
+            sourceTable: null,
+            sourceId: null,
+            subtotal: 1000,
+            taxTotal: 100,
+            total: 1100,
+            taxes: [
+              { taxId: "tax_1", taxAmount: 100 },
+            ],
+          },
+        ],
+      };
+
+      ctx.db.invoice.findUnique.mockResolvedValue(sourceInvoice);
+
+      const duplicatedInvoice = {
+        id: "inv_dup",
+        number: "INV-2026-0200",
+        type: InvoiceType.DETAILED,
+        status: InvoiceStatus.DRAFT,
+        date: expect.any(Date),
+        dueDate: new Date("2026-02-15"),
+        currencyId: "usd",
+        exchangeRate: 1,
+        simpleAmount: null,
+        notes: "Test notes",
+        clientId: "client_123",
+        organizationId: "test-org-123",
+        subtotal: 1000,
+        discountTotal: 0,
+        taxTotal: 100,
+        total: 1100,
+        isArchived: false,
+        lines: [
+          {
+            name: "Web Development",
+            taxes: [{ taxId: "tax_1", taxAmount: 100 }],
+          },
+        ],
+        client: { id: "client_123", name: "Test Client" },
+        currency: { id: "usd", symbol: "$", symbolPosition: "LEFT" },
+        payments: [],
+        partialPayments: [],
+        organization: { id: "test-org-123", name: "Test Org" },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      ctx.db.invoice.create.mockResolvedValue(duplicatedInvoice);
+
+      const result = await caller.duplicate({ id: "inv_source" });
+
+      expect(result.id).toBe("inv_dup");
+      expect(result.status).toBe(InvoiceStatus.DRAFT);
+      expect(ctx.db.invoice.findUnique).toHaveBeenCalledWith({
+        where: { id: "inv_source", organizationId: "test-org-123" },
+        include: { lines: { include: { taxes: true } } },
+      });
+      expect(ctx.db.invoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            number: "INV-2026-0200",
+            status: InvoiceStatus.DRAFT,
+            clientId: "client_123",
+          }),
+        })
+      );
+    });
+
+    it("throws NOT_FOUND when source invoice does not exist", async () => {
+      ctx.db.invoice.findUnique.mockResolvedValue(null);
+
+      try {
+        await caller.duplicate({ id: "inv_nonexistent" });
+        expect.fail("Should have thrown an error");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+      }
+    });
+  });
+
+  describe("send", () => {
+    const mockInvoice = {
+      id: "inv_123",
+      number: "INV-2026-0100",
+      type: InvoiceType.DETAILED,
+      status: InvoiceStatus.DRAFT,
+      total: new Decimal("1100"),
+      portalToken: "portal_abc",
+      dueDate: new Date("2026-03-15"),
+      organizationId: "test-org-123",
+      client: {
+        id: "client_123",
+        name: "Test Client",
+        email: "client@example.com",
+      },
+      organization: {
+        id: "test-org-123",
+        name: "Test Org",
+        logoUrl: null,
+      },
+      currency: {
+        id: "usd",
+        symbol: "$",
+        symbolPosition: "LEFT",
+      },
+      partialPayments: [],
+    };
+
+    it("sends an invoice and updates status to SENT", async () => {
+      ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
+      ctx.db.invoice.update.mockResolvedValue({
+        ...mockInvoice,
+        status: InvoiceStatus.SENT,
+        lastSent: new Date(),
+      });
+
+      const result = await caller.send({ id: "inv_123" });
+
+      expect(result.status).toBe(InvoiceStatus.SENT);
+      expect(ctx.db.invoice.update).toHaveBeenCalledWith({
+        where: { id: "inv_123", organizationId: "test-org-123" },
+        data: { status: InvoiceStatus.SENT, lastSent: expect.any(Date) },
+      });
+    });
+
+    it("handles client with no email gracefully", async () => {
+      const invoiceNoEmail = {
+        ...mockInvoice,
+        client: { id: "client_123", name: "Test Client", email: null },
+      };
+
+      ctx.db.invoice.findUnique.mockResolvedValue(invoiceNoEmail);
+      ctx.db.invoice.update.mockResolvedValue({
+        ...invoiceNoEmail,
+        status: InvoiceStatus.SENT,
+        lastSent: new Date(),
+      });
+
+      // Should not throw even though client has no email
+      const result = await caller.send({ id: "inv_123" });
+
+      expect(result.status).toBe(InvoiceStatus.SENT);
+      // Invoice is still updated to SENT even without email
+      expect(ctx.db.invoice.update).toHaveBeenCalled();
+    });
+
+    it("throws NOT_FOUND for nonexistent invoice", async () => {
+      ctx.db.invoice.findUnique.mockResolvedValue(null);
+
+      try {
+        await caller.send({ id: "inv_nonexistent" });
+        expect.fail("Should have thrown an error");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+      }
+    });
+  });
+
+  describe("markPaidMany", () => {
+    it("marks multiple invoices as paid", async () => {
+      ctx.db.invoice.findMany.mockResolvedValue([
+        { id: "inv_1", total: 1000, number: "INV-001" },
+        { id: "inv_2", total: 2000, number: "INV-002" },
+      ]);
+
+      ctx.db.payment.create.mockResolvedValue({});
+      ctx.db.invoice.update.mockResolvedValue({});
+
+      const result = await caller.markPaidMany({
+        ids: ["inv_1", "inv_2"],
+        method: "manual",
+        paidAt: new Date("2026-03-01"),
+      });
+
+      expect(result.paid).toBe(2);
+      expect(result.failed).toBe(0);
+      expect(result.skipped).toBe(0);
+    });
+
+    it("skips invoices not in eligible status", async () => {
+      // findMany returns empty because none match the status filter
+      ctx.db.invoice.findMany.mockResolvedValue([]);
+
+      const result = await caller.markPaidMany({
+        ids: ["inv_draft_1", "inv_draft_2"],
+        method: "manual",
+      });
+
+      expect(result.paid).toBe(0);
+      expect(result.failed).toBe(0);
+      expect(result.skipped).toBe(2);
+    });
+
+    it("reports partial failures", async () => {
+      ctx.db.invoice.findMany.mockResolvedValue([
+        { id: "inv_1", total: 1000, number: "INV-001" },
+        { id: "inv_2", total: 2000, number: "INV-002" },
+      ]);
+
+      // First call succeeds, second fails
+      let callCount = 0;
+      ctx.db.payment.create.mockImplementation(async () => {
+        callCount++;
+        if (callCount === 2) {
+          throw new Error("DB error");
+        }
+        return {};
+      });
+      ctx.db.invoice.update.mockResolvedValue({});
+
+      const result = await caller.markPaidMany({
+        ids: ["inv_1", "inv_2"],
+        method: "manual",
+      });
+
+      // One succeeded, one failed
+      expect(result.paid + result.failed).toBe(2);
+      expect(result.errors.length).toBe(result.failed);
     });
   });
 });
