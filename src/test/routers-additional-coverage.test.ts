@@ -1592,6 +1592,186 @@ describe("Tickets Router", () => {
       ).rejects.toThrow("NOT_FOUND");
     });
   });
+
+  describe("create – additional cases", () => {
+    it("creates ticket with priority and clientId", async () => {
+      ctx.db.ticket.findFirst.mockResolvedValueOnce({ number: 10 });
+      ctx.db.ticket.create.mockResolvedValue({
+        id: "ticket_2",
+        number: 11,
+        subject: "Priority issue",
+        priority: TicketPriority.URGENT,
+        clientId: "cli_1",
+        organizationId: "test-org-123",
+        messages: [{ id: "msg_1", body: "Urgent body" }],
+      });
+
+      const result = await caller.create({
+        subject: "Priority issue",
+        body: "Urgent body",
+        priority: TicketPriority.URGENT,
+        clientId: "cli_1",
+      });
+
+      expect(result.number).toBe(11);
+      expect(result.priority).toBe(TicketPriority.URGENT);
+      expect(result.clientId).toBe("cli_1");
+      expect(ctx.db.ticket.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            number: 11,
+            subject: "Priority issue",
+            priority: TicketPriority.URGENT,
+            clientId: "cli_1",
+            organizationId: "test-org-123",
+          }),
+        })
+      );
+    });
+
+    it("throws CONFLICT on P2002 unique constraint error", async () => {
+      ctx.db.ticket.findFirst.mockResolvedValueOnce({ number: 5 });
+      const p2002Error = new Error("Unique constraint failed");
+      (p2002Error as any).code = "P2002";
+      ctx.db.ticket.create.mockRejectedValue(p2002Error);
+
+      await expect(
+        caller.create({ subject: "Dup", body: "Body" })
+      ).rejects.toThrow("Ticket number conflict");
+    });
+
+    it("rethrows non-P2002 errors", async () => {
+      ctx.db.ticket.findFirst.mockResolvedValueOnce({ number: 5 });
+      ctx.db.ticket.create.mockRejectedValue(new Error("DB down"));
+
+      await expect(
+        caller.create({ subject: "Fail", body: "Body" })
+      ).rejects.toThrow("DB down");
+    });
+
+    it("defaults priority to NORMAL when omitted", async () => {
+      ctx.db.ticket.findFirst.mockResolvedValueOnce(null);
+      ctx.db.ticket.create.mockResolvedValue({
+        id: "ticket_3",
+        number: 1,
+        subject: "Default priority",
+        priority: TicketPriority.NORMAL,
+        organizationId: "test-org-123",
+        messages: [{ id: "msg_1", body: "Body" }],
+      });
+
+      await caller.create({ subject: "Default priority", body: "Body" });
+
+      expect(ctx.db.ticket.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            priority: TicketPriority.NORMAL,
+          }),
+        })
+      );
+    });
+  });
+
+  describe("reply – additional cases", () => {
+    it("passes isStaff and authorId correctly", async () => {
+      ctx.db.ticket.findFirst.mockResolvedValue({ id: "ticket_1" });
+      ctx.db.ticketMessage.create.mockResolvedValue({
+        id: "msg_2",
+        body: "Client reply",
+        isStaff: false,
+        authorId: "test-user-456",
+      });
+
+      await caller.reply({
+        ticketId: "ticket_1",
+        body: "Client reply",
+        isStaff: false,
+      });
+
+      expect(ctx.db.ticketMessage.create).toHaveBeenCalledWith({
+        data: {
+          ticketId: "ticket_1",
+          body: "Client reply",
+          isStaff: false,
+          authorId: "test-user-456",
+        },
+      });
+    });
+
+    it("defaults isStaff to true when omitted", async () => {
+      ctx.db.ticket.findFirst.mockResolvedValue({ id: "ticket_1" });
+      ctx.db.ticketMessage.create.mockResolvedValue({
+        id: "msg_3",
+        body: "Staff reply",
+        isStaff: true,
+        authorId: "test-user-456",
+      });
+
+      await caller.reply({ ticketId: "ticket_1", body: "Staff reply" });
+
+      expect(ctx.db.ticketMessage.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ isStaff: true }),
+      });
+    });
+  });
+
+  describe("updateStatus", () => {
+    it("updates ticket status successfully", async () => {
+      ctx.db.ticket.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await caller.updateStatus({
+        id: "ticket_1",
+        status: TicketStatus.CLOSED,
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(ctx.db.ticket.updateMany).toHaveBeenCalledWith({
+        where: { id: "ticket_1", organizationId: "test-org-123" },
+        data: { status: TicketStatus.CLOSED },
+      });
+    });
+
+    it("throws NOT_FOUND when ticket does not exist", async () => {
+      ctx.db.ticket.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        caller.updateStatus({ id: "nonexistent", status: TicketStatus.OPEN })
+      ).rejects.toThrow("NOT_FOUND");
+    });
+
+    it("can set status to IN_PROGRESS", async () => {
+      ctx.db.ticket.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await caller.updateStatus({
+        id: "ticket_1",
+        status: TicketStatus.IN_PROGRESS,
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(ctx.db.ticket.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { status: TicketStatus.IN_PROGRESS },
+        })
+      );
+    });
+
+    it("scopes update to organization", async () => {
+      ctx.db.ticket.updateMany.mockResolvedValue({ count: 1 });
+
+      await caller.updateStatus({
+        id: "ticket_1",
+        status: TicketStatus.CLOSED,
+      });
+
+      expect(ctx.db.ticket.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "test-org-123",
+          }),
+        })
+      );
+    });
+  });
 });
 
 // ============================================================================

@@ -551,4 +551,327 @@ describe("Tasks Router Procedures", () => {
       });
     });
   });
+
+  describe("delete", () => {
+    it("deletes existing task", async () => {
+      const existingTask = {
+        id: "task_1",
+        projectId: "proj_123",
+        organizationId: "test-org-123",
+        name: "Task to Delete",
+        notes: null,
+        sortOrder: 0,
+        projectedHours: new Decimal("8"),
+        rate: new Decimal("100"),
+        dueDate: null,
+        parentId: null,
+        milestoneId: null,
+        taskStatusId: null,
+        assignedUserId: null,
+        isFlatRate: false,
+        isViewable: false,
+        isTimesheetViewable: false,
+        isCompleted: false,
+        invoiceLineId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      ctx.db.projectTask.findUnique.mockResolvedValue(existingTask);
+      ctx.db.projectTask.delete.mockResolvedValue(existingTask);
+
+      const result = await caller.delete({ id: "task_1" });
+
+      expect(result.id).toBe("task_1");
+      expect(ctx.db.projectTask.findUnique).toHaveBeenCalledWith({
+        where: { id: "task_1", organizationId: "test-org-123" },
+      });
+      expect(ctx.db.projectTask.delete).toHaveBeenCalledWith({
+        where: { id: "task_1", organizationId: "test-org-123" },
+      });
+    });
+
+    it("throws NOT_FOUND when task doesn't exist", async () => {
+      ctx.db.projectTask.findUnique.mockResolvedValue(null);
+
+      await expect(
+        caller.delete({ id: "nonexistent_task" })
+      ).rejects.toThrow("NOT_FOUND");
+
+      expect(ctx.db.projectTask.findUnique).toHaveBeenCalledWith({
+        where: { id: "nonexistent_task", organizationId: "test-org-123" },
+      });
+      expect(ctx.db.projectTask.delete).not.toHaveBeenCalled();
+    });
+
+    it("respects organization isolation", async () => {
+      const otherOrgCtx = createMockContext({ orgId: "other-org-999" });
+      const otherCaller = tasksRouter.createCaller(otherOrgCtx);
+
+      otherOrgCtx.db.projectTask.findUnique.mockResolvedValue(null);
+
+      await expect(
+        otherCaller.delete({ id: "task_1" })
+      ).rejects.toThrow("NOT_FOUND");
+
+      expect((otherOrgCtx.db as any).projectTask.findUnique).toHaveBeenCalledWith({
+        where: { id: "task_1", organizationId: "other-org-999" },
+      });
+    });
+  });
+
+  describe("reorder", () => {
+    it("reorders tasks by updating sortOrder", async () => {
+      ctx.db.projectTask.updateMany.mockResolvedValue({ count: 1 });
+
+      await caller.reorder(["task_3", "task_1", "task_2"]);
+
+      expect(ctx.db.$transaction).toHaveBeenCalled();
+      expect(ctx.db.projectTask.updateMany).toHaveBeenCalledTimes(3);
+      expect(ctx.db.projectTask.updateMany).toHaveBeenCalledWith({
+        where: { id: "task_3", organizationId: "test-org-123" },
+        data: { sortOrder: 0 },
+      });
+      expect(ctx.db.projectTask.updateMany).toHaveBeenCalledWith({
+        where: { id: "task_1", organizationId: "test-org-123" },
+        data: { sortOrder: 1 },
+      });
+      expect(ctx.db.projectTask.updateMany).toHaveBeenCalledWith({
+        where: { id: "task_2", organizationId: "test-org-123" },
+        data: { sortOrder: 2 },
+      });
+    });
+
+    it("handles single task reorder", async () => {
+      ctx.db.projectTask.updateMany.mockResolvedValue({ count: 1 });
+
+      await caller.reorder(["task_1"]);
+
+      expect(ctx.db.$transaction).toHaveBeenCalled();
+      expect(ctx.db.projectTask.updateMany).toHaveBeenCalledTimes(1);
+      expect(ctx.db.projectTask.updateMany).toHaveBeenCalledWith({
+        where: { id: "task_1", organizationId: "test-org-123" },
+        data: { sortOrder: 0 },
+      });
+    });
+
+    it("handles empty array", async () => {
+      await caller.reorder([]);
+
+      expect(ctx.db.$transaction).toHaveBeenCalled();
+      expect(ctx.db.projectTask.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("billToInvoice", () => {
+    it("creates invoice lines from unbilled tasks and updates totals", async () => {
+      const mockInvoice = {
+        id: "inv_1",
+        organizationId: "test-org-123",
+        lines: [],
+        currency: { id: "cur_1", symbol: "$", code: "USD" },
+      };
+      const mockTasks = [
+        {
+          id: "task_1",
+          name: "Design work",
+          projectedHours: 8,
+          rate: new Decimal("100"),
+          invoiceLineId: null,
+          organizationId: "test-org-123",
+        },
+        {
+          id: "task_2",
+          name: "Development",
+          projectedHours: 16,
+          rate: new Decimal("75"),
+          invoiceLineId: null,
+          organizationId: "test-org-123",
+        },
+      ];
+
+      ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
+      ctx.db.projectTask.findMany.mockResolvedValue(mockTasks);
+      ctx.db.tax.findMany.mockResolvedValue([]);
+
+      // Mock transaction pass-through (uses same db client)
+      ctx.db.invoiceLine.create.mockImplementation(({ data }: any) =>
+        Promise.resolve({ id: `line_${data.sort}`, ...data })
+      );
+      ctx.db.projectTask.update.mockResolvedValue({});
+      ctx.db.invoiceLine.findMany.mockResolvedValue([]);
+      ctx.db.invoice.update.mockImplementation(({ data }: any) =>
+        Promise.resolve({ id: "inv_1", ...data })
+      );
+
+      const result = await caller.billToInvoice({
+        invoiceId: "inv_1",
+        taskIds: ["task_1", "task_2"],
+      });
+
+      expect(ctx.db.invoice.findUnique).toHaveBeenCalledWith({
+        where: { id: "inv_1", organizationId: "test-org-123" },
+        include: {
+          lines: { include: { taxes: true } },
+          currency: true,
+        },
+      });
+      expect(ctx.db.projectTask.findMany).toHaveBeenCalledWith({
+        where: {
+          id: { in: ["task_1", "task_2"] },
+          organizationId: "test-org-123",
+          invoiceLineId: null,
+        },
+      });
+      expect(ctx.db.invoiceLine.create).toHaveBeenCalledTimes(2);
+      // First task line
+      expect(ctx.db.invoiceLine.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          sort: 0,
+          name: "Design work",
+          qty: 8,
+          invoiceId: "inv_1",
+          sourceTable: "ProjectTask",
+          sourceId: "task_1",
+        }),
+      });
+      // Second task line
+      expect(ctx.db.invoiceLine.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          sort: 1,
+          name: "Development",
+          qty: 16,
+          invoiceId: "inv_1",
+          sourceTable: "ProjectTask",
+          sourceId: "task_2",
+        }),
+      });
+      // Tasks marked as billed
+      expect(ctx.db.projectTask.update).toHaveBeenCalledTimes(2);
+      // Invoice totals recalculated
+      expect(ctx.db.invoice.update).toHaveBeenCalledWith({
+        where: { id: "inv_1" },
+        data: expect.objectContaining({
+          subtotal: expect.any(Number),
+          taxTotal: expect.any(Number),
+          total: expect.any(Number),
+        }),
+      });
+    });
+
+    it("throws NOT_FOUND when invoice doesn't exist", async () => {
+      ctx.db.invoice.findUnique.mockResolvedValue(null);
+
+      await expect(
+        caller.billToInvoice({
+          invoiceId: "nonexistent_inv",
+          taskIds: ["task_1"],
+        })
+      ).rejects.toThrow("Invoice not found");
+    });
+
+    it("throws BAD_REQUEST when no unbilled tasks found", async () => {
+      const mockInvoice = {
+        id: "inv_1",
+        organizationId: "test-org-123",
+        lines: [],
+        currency: { id: "cur_1", symbol: "$", code: "USD" },
+      };
+
+      ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
+      ctx.db.projectTask.findMany.mockResolvedValue([]);
+
+      await expect(
+        caller.billToInvoice({
+          invoiceId: "inv_1",
+          taskIds: ["task_already_billed"],
+        })
+      ).rejects.toThrow("No unbilled tasks found");
+    });
+
+    it("starts line sort from existing line count", async () => {
+      const existingLines = [
+        { id: "line_0", sort: 0, taxes: [] },
+        { id: "line_1", sort: 1, taxes: [] },
+      ];
+      const mockInvoice = {
+        id: "inv_1",
+        organizationId: "test-org-123",
+        lines: existingLines,
+        currency: { id: "cur_1", symbol: "$", code: "USD" },
+      };
+      const mockTasks = [
+        {
+          id: "task_1",
+          name: "New task",
+          projectedHours: 4,
+          rate: new Decimal("50"),
+          invoiceLineId: null,
+          organizationId: "test-org-123",
+        },
+      ];
+
+      ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
+      ctx.db.projectTask.findMany.mockResolvedValue(mockTasks);
+      ctx.db.tax.findMany.mockResolvedValue([]);
+      ctx.db.invoiceLine.create.mockImplementation(({ data }: any) =>
+        Promise.resolve({ id: `line_${data.sort}`, ...data })
+      );
+      ctx.db.projectTask.update.mockResolvedValue({});
+      ctx.db.invoiceLine.findMany.mockResolvedValue([]);
+      ctx.db.invoice.update.mockResolvedValue({ id: "inv_1" });
+
+      await caller.billToInvoice({
+        invoiceId: "inv_1",
+        taskIds: ["task_1"],
+      });
+
+      // Sort should start at 2 (existing line count)
+      expect(ctx.db.invoiceLine.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          sort: 2,
+        }),
+      });
+    });
+
+    it("fetches org taxes for invoice total calculation", async () => {
+      const mockInvoice = {
+        id: "inv_1",
+        organizationId: "test-org-123",
+        lines: [],
+        currency: { id: "cur_1", symbol: "$", code: "USD" },
+      };
+      const mockTasks = [
+        {
+          id: "task_1",
+          name: "Task",
+          projectedHours: 2,
+          rate: new Decimal("100"),
+          invoiceLineId: null,
+          organizationId: "test-org-123",
+        },
+      ];
+
+      ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
+      ctx.db.projectTask.findMany.mockResolvedValue(mockTasks);
+      ctx.db.tax.findMany.mockResolvedValue([
+        { id: "tax_1", rate: new Decimal("10"), isCompound: false },
+      ]);
+      ctx.db.invoiceLine.create.mockImplementation(({ data }: any) =>
+        Promise.resolve({ id: "line_0", ...data })
+      );
+      ctx.db.projectTask.update.mockResolvedValue({});
+      ctx.db.invoiceLine.findMany.mockResolvedValue([]);
+      ctx.db.invoice.update.mockResolvedValue({ id: "inv_1" });
+
+      await caller.billToInvoice({
+        invoiceId: "inv_1",
+        taskIds: ["task_1"],
+      });
+
+      expect(ctx.db.tax.findMany).toHaveBeenCalledWith({
+        where: { organizationId: "test-org-123" },
+      });
+    });
+  });
 });

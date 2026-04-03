@@ -66,7 +66,9 @@ export function createMockPrismaClient() {
       findUnique: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
       groupBy: vi.fn(),
     },
     timeEntry: {
@@ -100,6 +102,13 @@ export function createMockPrismaClient() {
     },
     creditNoteApplication: {
       create: vi.fn(),
+      findMany: vi.fn(),
+    },
+    invoiceLineTax: {
+      findMany: vi.fn(),
+    },
+    retainer: {
+      findMany: vi.fn(),
     },
     recurringExpense: {
       findFirst: vi.fn(),
@@ -223,6 +232,7 @@ export function createMockPrismaClient() {
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     ticketMessage: {
       create: vi.fn(),

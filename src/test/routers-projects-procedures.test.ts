@@ -445,4 +445,324 @@ describe("Projects Router Procedures", () => {
       }
     });
   });
+
+  describe("list – additional cases", () => {
+    it("paginates results correctly", async () => {
+      ctx.db.project.findMany.mockResolvedValue([
+        {
+          id: "p_3",
+          name: "Page 2 Project",
+          status: ProjectStatus.ACTIVE,
+          organizationId: "test-org-123",
+          client: { id: "c_1", name: "Client" },
+          currency: { id: "usd", symbol: "$", symbolPosition: "LEFT" },
+          _count: { tasks: 0, timeEntries: 0, expenses: 0 },
+        },
+      ]);
+      ctx.db.project.count.mockResolvedValue(3);
+
+      const result = await caller.list({ page: 2, pageSize: 1, includeArchived: false });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(3);
+      const callArgs = ctx.db.project.findMany.mock.calls[0][0];
+      expect(callArgs.skip).toBe(1);
+      expect(callArgs.take).toBe(1);
+    });
+
+    it("includes archived projects when includeArchived is true", async () => {
+      ctx.db.project.findMany.mockResolvedValue([]);
+      ctx.db.project.count.mockResolvedValue(0);
+
+      await caller.list({ includeArchived: true });
+
+      const callArgs = ctx.db.project.findMany.mock.calls[0][0];
+      expect(callArgs.where).not.toHaveProperty("status");
+    });
+
+    it("excludes archived projects by default", async () => {
+      ctx.db.project.findMany.mockResolvedValue([]);
+      ctx.db.project.count.mockResolvedValue(0);
+
+      await caller.list({ includeArchived: false });
+
+      const callArgs = ctx.db.project.findMany.mock.calls[0][0];
+      expect(callArgs.where.status).toEqual({ not: ProjectStatus.ARCHIVED });
+    });
+
+    it("status filter takes precedence over includeArchived exclusion", async () => {
+      ctx.db.project.findMany.mockResolvedValue([]);
+      ctx.db.project.count.mockResolvedValue(0);
+
+      await caller.list({ status: ProjectStatus.ARCHIVED, includeArchived: false });
+
+      const callArgs = ctx.db.project.findMany.mock.calls[0][0];
+      // Both filters are spread into the where clause
+      expect(callArgs.where.organizationId).toBe("test-org-123");
+    });
+  });
+
+  describe("get – additional cases", () => {
+    it("handles null aggregate sums gracefully", async () => {
+      ctx.db.project.findUnique.mockResolvedValue({
+        id: "p_empty",
+        name: "Empty Project",
+        status: ProjectStatus.ACTIVE,
+        organizationId: "test-org-123",
+        client: { id: "c_1", name: "Client" },
+        currency: { id: "usd", symbol: "$", symbolPosition: "LEFT", code: "USD" },
+        milestones: [],
+        tasks: [],
+        _count: { tasks: 0, timeEntries: 0, expenses: 0 },
+      });
+
+      ctx.db.timeEntry.aggregate.mockResolvedValue({
+        _sum: { minutes: null },
+      });
+      ctx.db.expense.aggregate = vi.fn().mockResolvedValue({
+        _sum: { rate: null },
+      });
+
+      const result = await caller.get({ id: "p_empty" });
+
+      expect(result.summary.totalMinutes).toBe(0);
+      expect(result.summary.totalExpenses).toBe(0);
+    });
+  });
+
+  describe("create – template with tasks", () => {
+    it("creates tasks from template with parent-child relationships", async () => {
+      ctx.db.$transaction.mockImplementation(async (fn) => {
+        return await fn(ctx.db);
+      });
+
+      ctx.db.project.create.mockResolvedValue({
+        id: "p_tmpl",
+        name: "Template Project",
+        status: ProjectStatus.ACTIVE,
+        organizationId: "test-org-123",
+        client: { id: "c_1", name: "Client" },
+        currency: { id: "usd", symbol: "$", symbolPosition: "LEFT", code: "USD" },
+        milestones: [],
+        tasks: [],
+        _count: { tasks: 0, timeEntries: 0, expenses: 0 },
+      });
+
+      ctx.db.projectTemplate.findUnique.mockResolvedValue({
+        id: "t_1",
+        organizationId: "test-org-123",
+        name: "Dev Template",
+        tasks: [
+          { name: "Parent Task", notes: "Notes", sortOrder: 0, projectedHours: 10, rate: 100, parentSortOrder: null },
+          { name: "Child Task", notes: null, sortOrder: 1, projectedHours: 5, rate: 50, parentSortOrder: 0 },
+        ],
+      });
+
+      let createCallCount = 0;
+      ctx.db.projectTask.create.mockImplementation(async () => {
+        createCallCount++;
+        return { id: `task_${createCallCount}`, name: createCallCount === 1 ? "Parent Task" : "Child Task" };
+      });
+
+      await caller.create({
+        name: "Template Project",
+        clientId: "c_1",
+        currencyId: "usd",
+        templateId: "t_1",
+      });
+
+      expect(ctx.db.projectTask.create).toHaveBeenCalledTimes(2);
+
+      // First call: parent task (no parentId)
+      const firstCall = ctx.db.projectTask.create.mock.calls[0][0];
+      expect(firstCall.data.name).toBe("Parent Task");
+      expect(firstCall.data.parentId).toBeNull();
+
+      // Second call: child task (parentId = task_1)
+      const secondCall = ctx.db.projectTask.create.mock.calls[1][0];
+      expect(secondCall.data.name).toBe("Child Task");
+      expect(secondCall.data.parentId).toBe("task_1");
+    });
+
+    it("skips task creation when template not found", async () => {
+      ctx.db.$transaction.mockImplementation(async (fn) => {
+        return await fn(ctx.db);
+      });
+
+      ctx.db.project.create.mockResolvedValue({
+        id: "p_no_tmpl",
+        name: "No Template",
+        status: ProjectStatus.ACTIVE,
+        organizationId: "test-org-123",
+        client: { id: "c_1", name: "Client" },
+        currency: { id: "usd", symbol: "$", symbolPosition: "LEFT", code: "USD" },
+        milestones: [],
+        tasks: [],
+        _count: { tasks: 0, timeEntries: 0, expenses: 0 },
+      });
+
+      ctx.db.projectTemplate.findUnique.mockResolvedValue(null);
+
+      await caller.create({
+        name: "No Template",
+        clientId: "c_1",
+        currencyId: "usd",
+        templateId: "t_missing",
+      });
+
+      expect(ctx.db.projectTask.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("archive", () => {
+    it("archives an existing project", async () => {
+      ctx.db.project.findUnique.mockResolvedValue({
+        id: "p_1",
+        status: ProjectStatus.ACTIVE,
+        organizationId: "test-org-123",
+      });
+      ctx.db.project.update.mockResolvedValue({
+        id: "p_1",
+        status: ProjectStatus.ARCHIVED,
+        organizationId: "test-org-123",
+      });
+
+      const result = await caller.archive({ id: "p_1", status: ProjectStatus.ARCHIVED });
+
+      expect(result.status).toBe(ProjectStatus.ARCHIVED);
+      expect(ctx.db.project.update).toHaveBeenCalledWith({
+        where: { id: "p_1", organizationId: "test-org-123" },
+        data: { status: ProjectStatus.ARCHIVED },
+      });
+    });
+
+    it("unarchives a project back to ACTIVE", async () => {
+      ctx.db.project.findUnique.mockResolvedValue({
+        id: "p_1",
+        status: ProjectStatus.ARCHIVED,
+        organizationId: "test-org-123",
+      });
+      ctx.db.project.update.mockResolvedValue({
+        id: "p_1",
+        status: ProjectStatus.ACTIVE,
+        organizationId: "test-org-123",
+      });
+
+      const result = await caller.archive({ id: "p_1", status: ProjectStatus.ACTIVE });
+
+      expect(result.status).toBe(ProjectStatus.ACTIVE);
+    });
+
+    it("throws NOT_FOUND when project does not exist", async () => {
+      ctx.db.project.findUnique.mockResolvedValue(null);
+
+      try {
+        await caller.archive({ id: "p_nonexistent", status: ProjectStatus.ARCHIVED });
+        expect.fail("Should have thrown an error");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+      }
+    });
+
+    it("can set status to COMPLETED", async () => {
+      ctx.db.project.findUnique.mockResolvedValue({
+        id: "p_1",
+        status: ProjectStatus.ACTIVE,
+        organizationId: "test-org-123",
+      });
+      ctx.db.project.update.mockResolvedValue({
+        id: "p_1",
+        status: ProjectStatus.COMPLETED,
+        organizationId: "test-org-123",
+      });
+
+      const result = await caller.archive({ id: "p_1", status: ProjectStatus.COMPLETED });
+
+      expect(result.status).toBe(ProjectStatus.COMPLETED);
+    });
+  });
+
+  describe("delete", () => {
+    it("deletes a project with no billed time entries", async () => {
+      ctx.db.project.findUnique.mockResolvedValue({
+        id: "p_1",
+        organizationId: "test-org-123",
+      });
+      ctx.db.timeEntry.count.mockResolvedValue(0);
+      ctx.db.project.delete.mockResolvedValue({
+        id: "p_1",
+        name: "Deleted Project",
+        organizationId: "test-org-123",
+      });
+
+      const result = await caller.delete({ id: "p_1" });
+
+      expect(result.id).toBe("p_1");
+      expect(ctx.db.project.delete).toHaveBeenCalledWith({
+        where: { id: "p_1", organizationId: "test-org-123" },
+      });
+    });
+
+    it("throws NOT_FOUND when project does not exist", async () => {
+      ctx.db.project.findUnique.mockResolvedValue(null);
+
+      try {
+        await caller.delete({ id: "p_nonexistent" });
+        expect.fail("Should have thrown an error");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+      }
+    });
+
+    it("throws BAD_REQUEST when project has billed time entries", async () => {
+      ctx.db.project.findUnique.mockResolvedValue({
+        id: "p_1",
+        organizationId: "test-org-123",
+      });
+      ctx.db.timeEntry.count.mockResolvedValue(3);
+
+      try {
+        await caller.delete({ id: "p_1" });
+        expect.fail("Should have thrown an error");
+      } catch (err: any) {
+        expect(err.code).toBe("BAD_REQUEST");
+        expect(err.message).toContain("billed time entries");
+      }
+    });
+
+    it("does not delete when billed entries exist", async () => {
+      ctx.db.project.findUnique.mockResolvedValue({
+        id: "p_1",
+        organizationId: "test-org-123",
+      });
+      ctx.db.timeEntry.count.mockResolvedValue(1);
+
+      try {
+        await caller.delete({ id: "p_1" });
+      } catch {
+        // expected
+      }
+
+      expect(ctx.db.project.delete).not.toHaveBeenCalled();
+    });
+
+    it("checks billed entries scoped to org and project", async () => {
+      ctx.db.project.findUnique.mockResolvedValue({
+        id: "p_1",
+        organizationId: "test-org-123",
+      });
+      ctx.db.timeEntry.count.mockResolvedValue(0);
+      ctx.db.project.delete.mockResolvedValue({ id: "p_1" });
+
+      await caller.delete({ id: "p_1" });
+
+      expect(ctx.db.timeEntry.count).toHaveBeenCalledWith({
+        where: {
+          projectId: "p_1",
+          organizationId: "test-org-123",
+          invoiceLineId: { not: null },
+        },
+      });
+    });
+  });
 });
