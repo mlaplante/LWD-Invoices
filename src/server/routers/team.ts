@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole, publicProcedure } from "../trpc";
 import { Resend } from "resend";
+import { logAudit } from "../services/audit";
 import { render } from "@react-email/render";
 import TeamInviteEmail from "@/emails/TeamInviteEmail";
 import PasswordResetEmail from "@/emails/PasswordResetEmail";
@@ -101,6 +102,15 @@ export const teamRouter = router({
       to: input.email,
       subject: `${inviterName} invited you to join ${org?.name ?? "their organization"} on Pancake`,
       html,
+    });
+
+    await logAudit({
+      action: "CREATED",
+      entityType: "Invitation",
+      entityId: invitation.id,
+      entityLabel: `Invited ${input.email} as ${input.role}`,
+      userId: ctx.userId,
+      organizationId: ctx.orgId,
     });
 
     return { inviteUrl: acceptUrl, invitation };
@@ -234,6 +244,15 @@ export const teamRouter = router({
       });
     }
 
+    await logAudit({
+      action: "UPDATED",
+      entityType: "User",
+      entityId: input.userId,
+      entityLabel: `Role changed to ${input.role}`,
+      userId: ctx.userId,
+      organizationId: ctx.orgId,
+    });
+
     return updated;
   }),
 
@@ -255,7 +274,18 @@ export const teamRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot remove an owner. Demote them first." });
     }
 
-    return ctx.db.user.delete({ where: { id: input.userId } });
+    const deleted = await ctx.db.user.delete({ where: { id: input.userId } });
+
+    await logAudit({
+      action: "DELETED",
+      entityType: "User",
+      entityId: input.userId,
+      entityLabel: `Member removed`,
+      userId: ctx.userId,
+      organizationId: ctx.orgId,
+    });
+
+    return deleted;
   }),
 
   sendPasswordReset: requireRole("OWNER", "ADMIN").input(
@@ -311,10 +341,21 @@ export const teamRouter = router({
     if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     if (targetUser.supabaseId === ctx.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot suspend yourself" });
     if (targetUser.role === "OWNER") throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot suspend an owner" });
-    return ctx.db.user.update({
+    const suspended = await ctx.db.user.update({
       where: { id: input.userId },
       data: { isActive: false },
     });
+
+    await logAudit({
+      action: "UPDATED",
+      entityType: "User",
+      entityId: input.userId,
+      entityLabel: "User suspended",
+      userId: ctx.userId,
+      organizationId: ctx.orgId,
+    });
+
+    return suspended;
   }),
 
   reactivate: requireRole("OWNER", "ADMIN").input(
@@ -324,10 +365,21 @@ export const teamRouter = router({
       where: { id: input.userId, organizationId: ctx.orgId },
     });
     if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
-    return ctx.db.user.update({
+    const reactivated = await ctx.db.user.update({
       where: { id: input.userId },
       data: { isActive: true },
     });
+
+    await logAudit({
+      action: "UPDATED",
+      entityType: "User",
+      entityId: input.userId,
+      entityLabel: "User reactivated",
+      userId: ctx.userId,
+      organizationId: ctx.orgId,
+    });
+
+    return reactivated;
   }),
 
   acceptInvite: protectedProcedure.input(

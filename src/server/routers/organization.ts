@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { TRPCError } from "@trpc/server";
+import { logAudit } from "../services/audit";
 
 export const organizationRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
@@ -79,9 +80,18 @@ export const organizationRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.update({
+      const result = await ctx.db.organization.update({
         where: { id: ctx.orgId },
         data: input,
+      });
+
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Organization",
+        entityId: result.id,
+        entityLabel: result.name,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
       });
 
       // Sync changed metadata to all org users' app_metadata
@@ -109,6 +119,6 @@ export const organizationRouter = router({
         );
       }
 
-      return org;
+      return result;
     }),
 });

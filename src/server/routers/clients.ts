@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { Prisma } from "@/generated/prisma";
 import bcrypt from "bcryptjs";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { logAudit } from "../services/audit";
 
 const clientSchema = z.object({
   name: z.string().min(1),
@@ -79,9 +80,18 @@ export const clientsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { portalPassphrase, ...rest } = input;
       const passHash = await hashPassphraseIfProvided({ portalPassphrase });
-      return ctx.db.client.create({
+      const result = await ctx.db.client.create({
         data: { ...rest, ...passHash, organizationId: ctx.orgId },
       });
+      await logAudit({
+        action: "CREATED",
+        entityType: "Client",
+        entityId: result.id,
+        entityLabel: result.name,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      });
+      return result;
     }),
 
   update: requireRole("OWNER", "ADMIN")
@@ -91,26 +101,53 @@ export const clientsRouter = router({
       const passHash = removePassphrase
         ? { portalPassphraseHash: null }
         : await hashPassphraseIfProvided({ portalPassphrase });
-      return ctx.db.client.update({
+      const result = await ctx.db.client.update({
         where: { id, organizationId: ctx.orgId },
         data: { ...rest, ...passHash },
       });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Client",
+        entityId: result.id,
+        entityLabel: result.name,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      });
+      return result;
     }),
 
   archive: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string(), isArchived: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.client.update({
+      const result = await ctx.db.client.update({
         where: { id: input.id, organizationId: ctx.orgId },
         data: { isArchived: input.isArchived },
       });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Client",
+        entityId: result.id,
+        entityLabel: `${result.name} ${input.isArchived ? "archived" : "unarchived"}`,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      });
+      return result;
     }),
 
   delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.client.delete({
+      const result = await ctx.db.client.delete({
         where: { id: input.id, organizationId: ctx.orgId },
       });
+      await logAudit({
+        action: "DELETED",
+        entityType: "Client",
+        entityId: result.id,
+        entityLabel: result.name,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      });
+      return result;
     }),
 });
