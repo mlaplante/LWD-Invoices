@@ -67,3 +67,6 @@ docs/test-coverage-*.md
 .claude/skills/
 node-compile-cache/
 .playwright-mcp/
+
+# Supabase CLI
+supabase/
