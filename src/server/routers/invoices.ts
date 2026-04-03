@@ -805,6 +805,26 @@ export const invoicesRouter = router({
         }
       });
 
+      // Fire automation events for successful payments
+      if (paid > 0) {
+        try {
+          const { inngest: inngestClient } = await import("@/inngest/client");
+          const successIds = invoices
+            .filter((_, i) => results[i]!.status === "fulfilled")
+            .map((inv) => inv.id);
+          await Promise.all(
+            successIds.map((id) =>
+              inngestClient.send({
+                name: "invoice/payment.received",
+                data: { invoiceId: id, trigger: "PAYMENT_RECEIVED" },
+              })
+            )
+          );
+        } catch {
+          // Non-fatal
+        }
+      }
+
       return { paid, failed, skipped: input.ids.length - invoices.length, errors };
     }),
 
@@ -906,6 +926,17 @@ export const invoicesRouter = router({
         }).catch(() => {}),
       ]);
 
+      // Fire automation event for invoice sent
+      try {
+        const { inngest: inngestClient } = await import("@/inngest/client");
+        await inngestClient.send({
+          name: "invoice/sent",
+          data: { invoiceId: invoice.id, trigger: "INVOICE_SENT" },
+        });
+      } catch {
+        // Non-fatal
+      }
+
       return updated;
     }),
 
@@ -928,7 +959,7 @@ export const invoicesRouter = router({
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return ctx.db.$transaction(async (tx) => {
+      const result = await ctx.db.$transaction(async (tx) => {
         await tx.payment.create({
           data: {
             amount: input.amount,
@@ -947,6 +978,19 @@ export const invoicesRouter = router({
           data: { status: InvoiceStatus.PAID },
         });
       });
+
+      // Fire automation event for payment receipt emails
+      try {
+        const { inngest: inngestClient } = await import("@/inngest/client");
+        await inngestClient.send({
+          name: "invoice/payment.received",
+          data: { invoiceId: input.id, trigger: "PAYMENT_RECEIVED" },
+        });
+      } catch {
+        // Non-fatal
+      }
+
+      return result;
     }),
 
   recordPartialPayment: requireRole("OWNER", "ADMIN")
@@ -962,7 +1006,7 @@ export const invoicesRouter = router({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      return ctx.db.$transaction(
+      const result = await ctx.db.$transaction(
         async (tx) => {
           await tx.partialPayment.update({
             where: { id: input.partialPaymentId },
@@ -985,6 +1029,19 @@ export const invoicesRouter = router({
         },
         { isolationLevel: "Serializable" },
       );
+
+      // Fire automation event for payment received
+      try {
+        const { inngest: inngestClient } = await import("@/inngest/client");
+        await inngestClient.send({
+          name: "invoice/payment.received",
+          data: { invoiceId: partial.invoiceId, trigger: "PAYMENT_RECEIVED" },
+        });
+      } catch {
+        // Non-fatal
+      }
+
+      return result;
     }),
 
   acceptEstimate: requireRole("OWNER", "ADMIN")

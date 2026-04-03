@@ -296,6 +296,17 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("[stripe-webhook] Failed to send payment receipt email:", err);
     }
+
+    // Fire automation event for payment received
+    try {
+      const { inngest: inngestClient } = await import("@/inngest/client");
+      await inngestClient.send({
+        name: "invoice/payment.received",
+        data: { invoiceId, trigger: "PAYMENT_RECEIVED" },
+      });
+    } catch {
+      // Non-fatal
+    }
   }
 
   // Mark event as processed
