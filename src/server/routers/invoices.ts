@@ -13,7 +13,7 @@ import {
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
-import { headers } from "next/headers";
+import { getAppUrl } from "@/lib/app-url";
 import { sendPaymentReceiptEmail } from "../services/payment-receipt-email";
 import { fullInvoiceInclude as emailInvoiceInclude } from "@/server/lib/invoice-includes";
 
@@ -640,12 +640,7 @@ export const invoicesRouter = router({
         return { sent: 0, failed: 0, skipped: input.ids.length, errors: [] as string[] };
       }
 
-      const hdrs = await headers();
-      const host = hdrs.get("host") ?? "localhost:3000";
-      const proto =
-        hdrs.get("x-forwarded-proto") ??
-        (host.startsWith("localhost") ? "http" : "https");
-      const appUrl = `${proto}://${host}`;
+      const appUrl = await getAppUrl();
 
       const errors: string[] = [];
       const results = await Promise.allSettled(
@@ -807,13 +802,7 @@ export const invoicesRouter = router({
         data: { status: newStatus, lastSent: new Date() },
       });
 
-      // Derive app URL from request headers (works correctly on Netlify)
-      const hdrs = await headers();
-      const host = hdrs.get("host") ?? "localhost:3000";
-      const proto =
-        hdrs.get("x-forwarded-proto") ??
-        (host.startsWith("localhost") ? "http" : "https");
-      const appUrl = `${proto}://${host}`;
+      const appUrl = await getAppUrl();
 
       try {
         const { sendInvoiceSentEmail } = await import("@/server/services/invoice-sent-email");
