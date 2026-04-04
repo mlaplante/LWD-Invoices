@@ -13,10 +13,7 @@ import {
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
-import { Resend } from "resend";
-import { env } from "@/lib/env";
 import { headers } from "next/headers";
-import { getOwnerBcc } from "../services/email-bcc";
 import { sendPaymentReceiptEmail } from "../services/payment-receipt-email";
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
@@ -671,7 +668,7 @@ export const invoicesRouter = router({
             try {
               const { render } = await import("@react-email/render");
               const { InvoiceSentEmail } = await import("@/emails/InvoiceSentEmail");
-              const resend = new Resend(env.RESEND_API_KEY);
+              const { sendEmail } = await import("@/server/services/email-sender");
 
               // Format partial payments for email
               const partialPayments = invoice.partialPayments
@@ -704,13 +701,11 @@ export const invoicesRouter = router({
               const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
               const pdfBuffer = await generateInvoicePDF(invoice);
 
-              const bcc = await getOwnerBcc(invoice.organizationId);
-              await resend.emails.send({
-                from: env.RESEND_FROM_EMAIL,
+              await sendEmail({
+                organizationId: invoice.organizationId,
                 to: invoice.client.email,
                 subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
                 html,
-                ...(bcc ? { bcc } : {}),
                 attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
               });
             } catch (err) {
@@ -875,7 +870,7 @@ export const invoicesRouter = router({
         try {
           const { render } = await import("@react-email/render");
           const { InvoiceSentEmail } = await import("@/emails/InvoiceSentEmail");
-          const resend = new Resend(env.RESEND_API_KEY);
+          const { sendEmail } = await import("@/server/services/email-sender");
 
           // Format partial payments for email
           const partialPayments = invoice.partialPayments
@@ -908,13 +903,11 @@ export const invoicesRouter = router({
           const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
           const pdfBuffer = await generateInvoicePDF(invoice);
 
-          const bcc = await getOwnerBcc(invoice.organizationId);
-          await resend.emails.send({
-            from: env.RESEND_FROM_EMAIL,
+          await sendEmail({
+            organizationId: invoice.organizationId,
             to: invoice.client.email,
             subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
             html,
-            ...(bcc ? { bcc } : {}),
             attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
           });
         } catch (err) {

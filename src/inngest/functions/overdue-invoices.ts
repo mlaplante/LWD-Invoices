@@ -1,7 +1,7 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
 import { notifyOrgAdmins } from "@/server/services/notifications";
-import { getOwnerBcc } from "@/server/services/email-bcc";
+import { sendEmail } from "@/server/services/email-sender";
 import { getNextInstallmentInfo } from "@/server/services/partial-payments";
 
 export function calcDaysOverdue(now: Date, dueDate: Date): number {
@@ -54,10 +54,8 @@ export const processOverdueInvoices = inngest.createFunction(
         // Send overdue email — non-fatal
         if (invoice.client.email) {
           try {
-            const { Resend } = await import("resend");
             const { render } = await import("@react-email/render");
             const { OverdueEmail } = await import("@/emails/OverdueEmail");
-            const resend = new Resend(process.env.RESEND_API_KEY);
 
             // Find next unpaid installment for split payment invoices
             const nextInstallment = getNextInstallmentInfo(invoice.partialPayments ?? [], invoice.total);
@@ -80,13 +78,11 @@ export const processOverdueInvoices = inngest.createFunction(
             const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
             const pdfBuffer = await generateInvoicePDF(invoice);
 
-            const bcc = await getOwnerBcc(invoice.organizationId);
-            await resend.emails.send({
-              from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
+            await sendEmail({
+              organizationId: invoice.organizationId,
               to: invoice.client.email,
               subject: `OVERDUE — Invoice #${invoice.number} is ${daysOverdue} ${daysOverdue === 1 ? "day" : "days"} past due`,
               html,
-              ...(bcc ? { bcc } : {}),
               attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
             });
           } catch {

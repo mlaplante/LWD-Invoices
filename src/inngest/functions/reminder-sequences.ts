@@ -1,6 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
-import { getOwnerBcc } from "@/server/services/email-bcc";
+import { sendEmail } from "@/server/services/email-sender";
 import {
   interpolateTemplate,
   buildTemplateVariables,
@@ -168,16 +168,11 @@ export const processReminderSequences = inngest.createFunction(
         const subject = interpolateTemplate(fullStep.subject, vars);
         const body = interpolateTemplate(fullStep.body, vars);
 
-        const { Resend } = await import("resend");
-        const resend = new Resend(process.env.RESEND_API_KEY);
-
-        const bcc = await getOwnerBcc(invoice.organizationId);
-        await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL ?? "reminders@example.com",
+        await sendEmail({
+          organizationId: invoice.organizationId,
           to: invoice.client.email,
           subject,
           html: body,
-          ...(bcc ? { bcc } : {}),
         });
 
         // Log the send to prevent double-sends

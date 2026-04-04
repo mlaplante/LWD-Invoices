@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import { getOwnerBcc } from "./email-bcc";
+import { sendEmail } from "./email-sender";
 
 /**
  * Sends a payment receipt email to the client with BCC to the org owner.
@@ -23,10 +23,8 @@ export async function sendPaymentReceiptEmail({
 
   if (!fullInvoice?.client.email) return;
 
-  const { Resend } = await import("resend");
   const { render } = await import("@react-email/render");
   const { PaymentReceiptEmail } = await import("@/emails/PaymentReceiptEmail");
-  const resend = new Resend(process.env.RESEND_API_KEY);
 
   // Calculate installment info if partial payments exist
   let installmentNumber: number | undefined;
@@ -78,12 +76,10 @@ export async function sendPaymentReceiptEmail({
     })
   );
 
-  const bcc = await getOwnerBcc(organizationId);
-  await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
+  await sendEmail({
+    organizationId,
     to: fullInvoice.client.email,
     subject: `Payment received — Invoice #${fullInvoice.number}`,
     html,
-    ...(bcc ? { bcc } : {}),
   });
 }

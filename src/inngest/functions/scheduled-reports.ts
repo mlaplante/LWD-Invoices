@@ -1,6 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
-import { getOwnerBcc } from "@/server/services/email-bcc";
+import { sendEmail } from "@/server/services/email-sender";
 import { generateReportHtml } from "@/server/services/report-pdf-generator";
 
 /**
@@ -76,13 +76,8 @@ export const processScheduledReports = inngest.createFunction(
       try {
         const reportData = await generateReportHtml(schedule.organizationId, schedule.reportType);
 
-        const { Resend } = await import("resend");
-        const resend = new Resend(process.env.RESEND_API_KEY);
-
-        const bcc = await getOwnerBcc(schedule.organizationId);
-
-        await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL ?? "reports@example.com",
+        await sendEmail({
+          organizationId: schedule.organizationId,
           to: schedule.recipients,
           subject: `${REPORT_TYPE_LABELS[schedule.reportType] ?? schedule.reportType} Report - ${schedule.organization.name}`,
           html: `
@@ -95,7 +90,6 @@ export const processScheduledReports = inngest.createFunction(
               </p>
             </div>
           `,
-          ...(bcc ? { bcc } : {}),
         });
 
         await db.scheduledReport.update({

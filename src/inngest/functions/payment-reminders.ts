@@ -1,6 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
-import { getOwnerBcc } from "@/server/services/email-bcc";
+import { sendEmail } from "@/server/services/email-sender";
 import { getNextInstallmentInfo, getEffectiveDueDate } from "@/server/services/partial-payments";
 
 export function calcDaysUntilDue(now: Date, dueDate: Date): number {
@@ -49,10 +49,8 @@ export const processPaymentReminders = inngest.createFunction(
       },
     });
 
-    const { Resend } = await import("resend");
     const { render } = await import("@react-email/render");
     const { PaymentReminderEmail } = await import("@/emails/PaymentReminderEmail");
-    const resend = new Resend(process.env.RESEND_API_KEY);
 
     const results = await Promise.allSettled(
       invoices.map(async (invoice) => {
@@ -90,13 +88,11 @@ export const processPaymentReminders = inngest.createFunction(
         const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
         const pdfBuffer = await generateInvoicePDF(invoice);
 
-        const bcc = await getOwnerBcc(invoice.organizationId);
-        await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
+        await sendEmail({
+          organizationId: invoice.organizationId,
           to: invoice.client.email,
           subject: `Payment reminder — Invoice #${invoice.number} due in ${daysUntilDue} ${daysUntilDue === 1 ? "day" : "days"}`,
           html,
-          ...(bcc ? { bcc } : {}),
           attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
         });
       }),
