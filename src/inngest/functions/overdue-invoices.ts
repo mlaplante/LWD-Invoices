@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 import { sendEmail } from "@/server/services/email-sender";
 import { getNextInstallmentInfo } from "@/server/services/partial-payments";
+import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
 
 export function calcDaysOverdue(now: Date, dueDate: Date): number {
   return Math.floor((now.getTime() - dueDate.getTime()) / 86400000);
@@ -20,15 +21,7 @@ export const processOverdueInvoices = inngest.createFunction(
         type: { in: ["SIMPLE", "DETAILED"] },
         isArchived: false,
       },
-      include: {
-        client: true,
-        organization: true,
-        currency: true,
-        partialPayments: true,
-        lines: { include: { taxes: { include: { tax: true } } }, orderBy: { sort: "asc" } },
-        payments: { orderBy: { paidAt: "asc" } },
-        lateFeeEntries: { orderBy: { createdAt: "asc" } },
-      },
+      include: fullInvoiceInclude,
     });
 
     const results = await Promise.allSettled(

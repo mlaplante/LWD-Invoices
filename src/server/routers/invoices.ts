@@ -15,6 +15,7 @@ import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
 import { headers } from "next/headers";
 import { sendPaymentReceiptEmail } from "../services/payment-receipt-email";
+import { fullInvoiceInclude as emailInvoiceInclude } from "@/server/lib/invoice-includes";
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ async function updateEstimateStatus(
 }
 
 // Full include for get/detail queries
-const fullInvoiceInclude = {
+const detailInvoiceInclude = {
   client: { select: { id: true, name: true, email: true, address: true } },
   currency: true,
   organization: true,
@@ -184,7 +185,7 @@ export const invoicesRouter = router({
     .query(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
-        include: fullInvoiceInclude,
+        include: detailInvoiceInclude,
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
       return invoice;
@@ -287,7 +288,7 @@ export const invoicesRouter = router({
               })),
             },
           },
-          include: fullInvoiceInclude,
+          include: detailInvoiceInclude,
         });
 
         if (input.partialPayments && input.partialPayments.length > 0) {
@@ -396,13 +397,13 @@ export const invoicesRouter = router({
                 })),
               },
             },
-            include: fullInvoiceInclude,
+            include: detailInvoiceInclude,
           });
         } else {
           updated = await tx.invoice.update({
             where: { id, organizationId: ctx.orgId },
             data: rest,
-            include: fullInvoiceInclude,
+            include: detailInvoiceInclude,
           });
         }
 
@@ -497,7 +498,7 @@ export const invoicesRouter = router({
               })),
             },
           },
-          include: fullInvoiceInclude,
+          include: detailInvoiceInclude,
         });
       });
     }),
@@ -557,7 +558,7 @@ export const invoicesRouter = router({
               })),
             },
           },
-          include: fullInvoiceInclude,
+          include: detailInvoiceInclude,
         });
       });
     }),
@@ -632,12 +633,7 @@ export const invoicesRouter = router({
           status: InvoiceStatus.DRAFT,
           type: { notIn: [InvoiceType.CREDIT_NOTE] },
         },
-        include: {
-          client: true, organization: true, currency: true, partialPayments: true,
-          lines: { include: { taxes: { include: { tax: true } } }, orderBy: { sort: "asc" } },
-          payments: { orderBy: { paidAt: "asc" } },
-          lateFeeEntries: { orderBy: { createdAt: "asc" } },
-        },
+        include: emailInvoiceInclude,
       });
 
       if (invoices.length === 0) {
@@ -841,12 +837,7 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
-        include: {
-          client: true, organization: true, currency: true, partialPayments: true,
-          lines: { include: { taxes: { include: { tax: true } } }, orderBy: { sort: "asc" } },
-          payments: { orderBy: { paidAt: "asc" } },
-          lateFeeEntries: { orderBy: { createdAt: "asc" } },
-        },
+        include: emailInvoiceInclude,
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 

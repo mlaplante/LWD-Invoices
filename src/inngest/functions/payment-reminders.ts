@@ -2,6 +2,7 @@ import { inngest } from "../client";
 import { db } from "@/server/db";
 import { sendEmail } from "@/server/services/email-sender";
 import { getNextInstallmentInfo, getEffectiveDueDate } from "@/server/services/partial-payments";
+import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
 
 export function calcDaysUntilDue(now: Date, dueDate: Date): number {
   const nowMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -38,15 +39,7 @@ export const processPaymentReminders = inngest.createFunction(
         type: { in: ["SIMPLE", "DETAILED"] },
         isArchived: false,
       },
-      include: {
-        client: true,
-        organization: true,
-        currency: true,
-        partialPayments: true,
-        lines: { include: { taxes: { include: { tax: true } } }, orderBy: { sort: "asc" } },
-        payments: { orderBy: { paidAt: "asc" } },
-        lateFeeEntries: { orderBy: { createdAt: "asc" } },
-      },
+      include: fullInvoiceInclude,
     });
 
     const { render } = await import("@react-email/render");

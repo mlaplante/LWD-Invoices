@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db";
+import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
 
 export async function GET(_req: NextRequest) {
   const supabase = await createClient();
@@ -16,18 +17,7 @@ export async function GET(_req: NextRequest) {
   const invoice = await db.invoice.findFirst({
     where: { organizationId: orgId },
     orderBy: { createdAt: "desc" },
-    include: {
-      client: true,
-      currency: true,
-      organization: true,
-      lines: {
-        include: { taxes: { include: { tax: true } } },
-        orderBy: { sort: "asc" },
-      },
-      payments: { orderBy: { paidAt: "asc" } },
-      partialPayments: { orderBy: { sortOrder: "asc" } },
-      lateFeeEntries: { orderBy: { createdAt: "asc" } },
-    },
+    include: fullInvoiceInclude,
   });
 
   if (!invoice) {
