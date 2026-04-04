@@ -1,6 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
-import { NextResponse } from "next/server";
 
 function csvEscape(value: string | null | undefined): string {
   if (value == null) return "";
@@ -12,10 +11,9 @@ function csvEscape(value: string | null | undefined): string {
 }
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const orgId = user?.app_metadata?.organizationId as string | undefined;
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await getAuthenticatedOrg();
+  if (isAuthError(auth)) return auth;
+  const { orgId } = auth;
 
   const { searchParams } = new URL(request.url);
   const fromParam = searchParams.get("from");

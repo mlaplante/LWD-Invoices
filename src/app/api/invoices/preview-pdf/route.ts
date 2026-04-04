@@ -1,17 +1,12 @@
 import { type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
 
 export async function GET(_req: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const orgId = user?.app_metadata?.organizationId as string | undefined;
-  if (!orgId) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const auth = await getAuthenticatedOrg();
+  if (isAuthError(auth)) return auth;
+  const { orgId } = auth;
 
   // Find the most recent invoice for this org, or build a sample
   const invoice = await db.invoice.findFirst({

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { NextResponse } from "next/server";
 import {
@@ -28,12 +28,9 @@ type Report = (typeof VALID_REPORTS)[number];
 
 export async function GET(request: Request) {
   // 1. Auth
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const orgId = user?.app_metadata?.organizationId as string | undefined;
-  if (!orgId) return new Response("Unauthorized", { status: 401 });
+  const auth = await getAuthenticatedOrg();
+  if (isAuthError(auth)) return auth;
+  const { orgId } = auth;
 
   // 2. Parse & validate params
   const { searchParams } = new URL(request.url);

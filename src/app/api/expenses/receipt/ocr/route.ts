@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { parseReceiptWithOCR } from "@/server/services/receipt-ocr";
 import { NextResponse } from "next/server";
@@ -14,13 +14,9 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const orgId = user?.app_metadata?.organizationId as string | undefined;
-    if (!orgId)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await getAuthenticatedOrg();
+    if (isAuthError(auth)) return auth;
+    const { orgId } = auth;
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

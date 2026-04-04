@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { NextResponse } from "next/server";
 import type { StatementData } from "@/server/services/client-statement-pdf";
@@ -9,10 +9,9 @@ interface Params {
 
 export async function GET(req: Request, { params }: Params) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const orgId = user?.app_metadata?.organizationId as string | undefined;
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await getAuthenticatedOrg();
+    if (isAuthError(auth)) return auth;
+    const { orgId } = auth;
 
     const { id: clientId } = await params;
     const { searchParams } = new URL(req.url);

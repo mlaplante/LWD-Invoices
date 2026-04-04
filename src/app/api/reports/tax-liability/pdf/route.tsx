@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { NextResponse } from "next/server";
 import { InvoiceStatus } from "@/generated/prisma";
@@ -197,10 +197,9 @@ function TaxLiabilityPdf({
 }
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const orgId = user?.app_metadata?.organizationId as string | undefined;
-  if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await getAuthenticatedOrg();
+  if (isAuthError(auth)) return auth;
+  const { orgId } = auth;
 
   const org = await db.organization.findFirst({ where: { id: orgId } });
   if (!org) return NextResponse.json({ error: "Not found" }, { status: 404 });

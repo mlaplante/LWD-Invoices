@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 
 function escapeCsv(val: string | number | null | undefined): string {
@@ -13,12 +13,9 @@ function escapeCsv(val: string | number | null | undefined): string {
 }
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const orgId = user?.app_metadata?.organizationId as string | undefined;
-  if (!orgId) return new Response("Unauthorized", { status: 401 });
+  const auth = await getAuthenticatedOrg();
+  if (isAuthError(auth)) return auth;
+  const { orgId } = auth;
 
   const invoices = await db.invoice.findMany({
     where: { organizationId: orgId, isArchived: false },
