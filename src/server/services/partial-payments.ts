@@ -10,6 +10,24 @@ type PartialPaymentRecord = {
 };
 
 /**
+ * Returns the effective due date for an invoice with installments.
+ * For PARTIALLY_PAID invoices, this is the next unpaid installment's dueDate.
+ * Falls back to the provided invoiceDueDate if no installment date exists.
+ */
+export function getEffectiveDueDate(
+  partialPayments: PartialPaymentRecord[],
+  invoiceDueDate: Date,
+): Date {
+  if (!partialPayments.length) return invoiceDueDate;
+
+  const sorted = [...partialPayments].sort((a, b) => a.sortOrder - b.sortOrder);
+  const nextUnpaid = sorted.find((pp) => !pp.isPaid);
+  if (!nextUnpaid?.dueDate) return invoiceDueDate;
+
+  return nextUnpaid.dueDate;
+}
+
+/**
  * Returns info about the next unpaid installment for a split-payment invoice,
  * or undefined if the invoice has no partial payments.
  */

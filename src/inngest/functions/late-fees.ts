@@ -7,6 +7,7 @@ import {
   type LateFeeConfig,
   type InvoiceFeeContext,
 } from "@/server/services/late-fees";
+import { getEffectiveDueDate } from "@/server/services/partial-payments";
 
 export const processLateFees = inngest.createFunction(
   { id: "process-late-fees", name: "Process Late Fees", triggers: [{ cron: "30 7 * * *" }] }, // daily at 7:30am UTC
@@ -57,14 +58,18 @@ export const processLateFees = inngest.createFunction(
           },
           currency: true,
           client: true,
+          partialPayments: true,
         },
       });
 
       for (const invoice of invoices) {
         totalProcessed++;
 
+        // Use the overdue installment's due date for grace period calculation
+        const effectiveDueDate = getEffectiveDueDate(invoice.partialPayments ?? [], invoice.dueDate!);
+
         const ctx: InvoiceFeeContext = {
-          dueDate: invoice.dueDate!,
+          dueDate: effectiveDueDate,
           existingFeeCount: invoice.lateFeeEntries.length,
           lastFeeDate:
             invoice.lateFeeEntries.length > 0

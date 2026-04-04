@@ -6,6 +6,7 @@ import {
   buildTemplateVariables,
 } from "@/server/services/automation-template";
 import { isReliablePayer } from "@/server/services/client-payment-score";
+import { getEffectiveDueDate } from "@/server/services/partial-payments";
 
 /**
  * Determines which step fires today for a given invoice.
@@ -71,6 +72,7 @@ export const processReminderSequences = inngest.createFunction(
         client: true,
         organization: { select: { name: true } },
         currency: true,
+        partialPayments: true,
       },
     });
 
@@ -117,8 +119,13 @@ export const processReminderSequences = inngest.createFunction(
         continue;
       }
 
+      // For installment invoices, anchor step schedule to next unpaid installment's due date
+      const effectiveDueDate = invoice.status === "PARTIALLY_PAID"
+        ? getEffectiveDueDate(invoice.partialPayments ?? [], invoice.dueDate)
+        : invoice.dueDate;
+
       const sentStepIds = sentMap.get(invoice.id) ?? new Set();
-      const step = getStepDueToday(now, invoice.dueDate, sequence.steps, sentStepIds);
+      const step = getStepDueToday(now, effectiveDueDate, sequence.steps, sentStepIds);
 
       if (!step) {
         skipped++;

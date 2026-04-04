@@ -1,7 +1,7 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
 import { getOwnerBcc } from "@/server/services/email-bcc";
-import { getNextInstallmentInfo } from "@/server/services/partial-payments";
+import { getNextInstallmentInfo, getEffectiveDueDate } from "@/server/services/partial-payments";
 
 export function calcDaysUntilDue(now: Date, dueDate: Date): number {
   const nowMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -59,7 +59,12 @@ export const processPaymentReminders = inngest.createFunction(
         if (!invoice.client.email) return;
         if (!invoice.dueDate) return;
 
-        const daysUntilDue = calcDaysUntilDue(now, invoice.dueDate);
+        // For installment invoices, use the next unpaid installment's due date
+        const effectiveDueDate = invoice.status === "PARTIALLY_PAID"
+          ? getEffectiveDueDate(invoice.partialPayments ?? [], invoice.dueDate)
+          : invoice.dueDate;
+
+        const daysUntilDue = calcDaysUntilDue(now, effectiveDueDate);
 
         if (!shouldSendReminder(daysUntilDue, invoice.reminderDaysOverride, invoice.organization.paymentReminderDays)) return;
         const portalLink = `${process.env.NEXT_PUBLIC_APP_URL}/portal/${invoice.portalToken}`;
