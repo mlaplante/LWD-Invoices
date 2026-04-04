@@ -660,53 +660,11 @@ export const invoicesRouter = router({
           });
 
           // Send email if client has email
-          if (invoice.client.email) {
-            try {
-              const { render } = await import("@react-email/render");
-              const { InvoiceSentEmail } = await import("@/emails/InvoiceSentEmail");
-              const { sendEmail } = await import("@/server/services/email-sender");
-
-              // Format partial payments for email
-              const partialPayments = invoice.partialPayments
-                ?.sort((a, b) => a.sortOrder - b.sortOrder)
-                .map((pp) => {
-                  const amount = pp.isPercentage
-                    ? ((pp.amount.toNumber() / 100) * invoice.total.toNumber()).toFixed(2)
-                    : pp.amount.toNumber().toFixed(2);
-                  return {
-                    amount,
-                    dueDate: pp.dueDate?.toLocaleDateString() ?? null,
-                    isPaid: pp.isPaid,
-                  };
-                });
-
-              const html = await render(
-                InvoiceSentEmail({
-                  invoiceNumber: invoice.number,
-                  clientName: invoice.client.name,
-                  total: Number(invoice.total).toFixed(2),
-                  currencySymbol: invoice.currency.symbol,
-                  dueDate: invoice.dueDate?.toLocaleDateString() ?? null,
-                  orgName: invoice.organization.name,
-                  portalLink: `${appUrl}/portal/${invoice.portalToken}`,
-                  logoUrl: invoice.organization.logoUrl ?? undefined,
-                  partialPayments: partialPayments && partialPayments.length > 0 ? partialPayments : undefined,
-                })
-              );
-
-              const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
-              const pdfBuffer = await generateInvoicePDF(invoice);
-
-              await sendEmail({
-                organizationId: invoice.organizationId,
-                to: invoice.client.email,
-                subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
-                html,
-                attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
-              });
-            } catch (err) {
-              console.error(`[invoices.sendMany] Failed to email invoice ${invoice.number}:`, err);
-            }
+          try {
+            const { sendInvoiceSentEmail } = await import("@/server/services/invoice-sent-email");
+            await sendInvoiceSentEmail(invoice, appUrl);
+          } catch (err) {
+            console.error(`[invoices.sendMany] Failed to email invoice ${invoice.number}:`, err);
           }
 
           // Audit + notification (non-blocking)
@@ -857,53 +815,11 @@ export const invoicesRouter = router({
         (host.startsWith("localhost") ? "http" : "https");
       const appUrl = `${proto}://${host}`;
 
-      if (invoice.client.email) {
-        try {
-          const { render } = await import("@react-email/render");
-          const { InvoiceSentEmail } = await import("@/emails/InvoiceSentEmail");
-          const { sendEmail } = await import("@/server/services/email-sender");
-
-          // Format partial payments for email
-          const partialPayments = invoice.partialPayments
-            ?.sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((pp) => {
-              const amount = pp.isPercentage
-                ? ((pp.amount.toNumber() / 100) * invoice.total.toNumber()).toFixed(2)
-                : pp.amount.toNumber().toFixed(2);
-              return {
-                amount,
-                dueDate: pp.dueDate?.toLocaleDateString() ?? null,
-                isPaid: pp.isPaid,
-              };
-            });
-
-          const html = await render(
-            InvoiceSentEmail({
-              invoiceNumber: invoice.number,
-              clientName: invoice.client.name,
-              total: Number(invoice.total).toFixed(2),
-              currencySymbol: invoice.currency.symbol,
-              dueDate: invoice.dueDate?.toLocaleDateString() ?? null,
-              orgName: invoice.organization.name,
-              portalLink: `${appUrl}/portal/${invoice.portalToken}`,
-              logoUrl: invoice.organization.logoUrl ?? undefined,
-              partialPayments: partialPayments && partialPayments.length > 0 ? partialPayments : undefined,
-            })
-          );
-
-          const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
-          const pdfBuffer = await generateInvoicePDF(invoice);
-
-          await sendEmail({
-            organizationId: invoice.organizationId,
-            to: invoice.client.email,
-            subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
-            html,
-            attachments: [{ filename: `invoice-${invoice.number}.pdf`, content: pdfBuffer }],
-          });
-        } catch (err) {
-          console.error("[invoices.send] Failed to send invoice email:", err);
-        }
+      try {
+        const { sendInvoiceSentEmail } = await import("@/server/services/invoice-sent-email");
+        await sendInvoiceSentEmail(invoice, appUrl);
+      } catch (err) {
+        console.error("[invoices.send] Failed to send invoice email:", err);
       }
 
       await Promise.all([
