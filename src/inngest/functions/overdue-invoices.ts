@@ -33,6 +33,16 @@ export const processOverdueInvoices = inngest.createFunction(
 
     const results = await Promise.allSettled(
       invoices.map(async (invoice) => {
+        // For partially paid invoices with installments, check the next
+        // unpaid installment's due date — not the top-level invoice due date.
+        if (invoice.status === "PARTIALLY_PAID" && invoice.partialPayments.length > 0) {
+          const sorted = [...invoice.partialPayments].sort((a, b) => a.sortOrder - b.sortOrder);
+          const nextUnpaid = sorted.find((pp) => !pp.isPaid);
+          if (nextUnpaid?.dueDate && nextUnpaid.dueDate > now) {
+            return; // next installment not yet due, skip
+          }
+        }
+
         await db.invoice.update({
           where: { id: invoice.id },
           data: { status: "OVERDUE" },
