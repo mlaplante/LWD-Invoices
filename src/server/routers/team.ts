@@ -49,13 +49,6 @@ export const teamRouter = router({
       throw new TRPCError({ code: "CONFLICT", message: "This person is already a member of your organization" });
     }
 
-    const userInOtherOrg = await ctx.db.user.findFirst({
-      where: { email: input.email, organizationId: { not: ctx.orgId } },
-    });
-    if (userInOtherOrg) {
-      throw new TRPCError({ code: "CONFLICT", message: "This person already belongs to another organization" });
-    }
-
     await ctx.db.invitation.updateMany({
       where: { email: input.email, organizationId: ctx.orgId, status: "PENDING" },
       data: { status: "REVOKED" },
@@ -403,24 +396,28 @@ export const teamRouter = router({
       where: { supabaseId: ctx.userId },
     });
 
-    if (existingUser && existingUser.organizationId !== invitation.organizationId) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "You already belong to another organization. Please leave it first.",
-      });
-    }
-
     if (existingUser) {
-      await ctx.db.user.update({
-        where: { id: existingUser.id },
-        data: { role: invitation.role },
+      // Check if user is already a member of this specific org
+      const existingMembership = await ctx.db.userOrganization.findFirst({
+        where: { userId: existingUser.id, organizationId: invitation.organizationId },
+      });
+      if (existingMembership) {
+        throw new TRPCError({ code: "CONFLICT", message: "You are already a member of this organization" });
+      }
+
+      await ctx.db.userOrganization.create({
+        data: {
+          userId: existingUser.id,
+          organizationId: invitation.organizationId,
+          role: invitation.role,
+        },
       });
     } else {
       const { createClient } = await import("@/lib/supabase/server");
       const supabase = await createClient();
       const { data: { user } } = await supabase.auth.getUser();
 
-      await ctx.db.user.create({
+      const newUser = await ctx.db.user.create({
         data: {
           supabaseId: ctx.userId,
           email: invitation.email,
@@ -428,6 +425,14 @@ export const teamRouter = router({
           lastName: user?.user_metadata?.lastName ?? null,
           role: invitation.role,
           organizationId: invitation.organizationId,
+        },
+      });
+
+      await ctx.db.userOrganization.create({
+        data: {
+          userId: newUser.id,
+          organizationId: invitation.organizationId,
+          role: invitation.role,
         },
       });
     }
@@ -451,6 +456,16 @@ export const teamRouter = router({
     await ctx.db.invitation.update({
       where: { id: invitation.id },
       data: { status: "ACCEPTED" },
+    });
+
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    cookieStore.set("activeOrgId", invitation.organizationId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
     });
 
     return { organizationName: invitation.organization.name };
