@@ -37,7 +37,7 @@ export default function OnboardingPage() {
     // JWT cookie before the middleware checks it on the next navigation.
     await supabase.auth.refreshSession();
 
-    router.push("/");
+    window.location.href = "/";
   }
 
   return (
