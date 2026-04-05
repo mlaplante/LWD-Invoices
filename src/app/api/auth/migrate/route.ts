@@ -52,7 +52,7 @@ export async function POST() {
     include: { organization: { select: { id: true, name: true } } },
     orderBy: { createdAt: "asc" },
   });
-  const organizationId = membership?.organization.id ?? existingUser.organizationId;
+  const organizationId = membership?.organization.id ?? null;
 
   // Store organizationId in Supabase app_metadata
   const admin = createAdminClient();
@@ -60,7 +60,7 @@ export async function POST() {
     app_metadata: {
       organizationId,
       orgName: membership?.organization.name ?? null,
-      userRole: membership?.role ?? existingUser.role,
+      userRole: membership?.role ?? null,
     },
   });
 

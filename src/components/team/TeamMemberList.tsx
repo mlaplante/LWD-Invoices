@@ -13,6 +13,7 @@ type Member = {
   role: UserRole;
   createdAt: Date;
   isActive: boolean;
+  membershipId: string;
 };
 
 export function TeamMemberList({ members: initialMembers }: { members: Member[] }) {

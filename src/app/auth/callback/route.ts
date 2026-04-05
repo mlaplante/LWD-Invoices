@@ -75,9 +75,9 @@ export async function GET(request: NextRequest) {
         const admin = createAdminClient();
         await admin.auth.admin.updateUserById(user.id, {
           app_metadata: {
-            organizationId: membership?.organization.id ?? existingUser.organizationId,
+            organizationId: membership?.organization.id ?? null,
             orgName: membership?.organization.name ?? null,
-            userRole: membership?.role ?? existingUser.role,
+            userRole: membership?.role ?? null,
           },
         });
 

@@ -169,10 +169,11 @@ export const organizationRouter = router({
         const { createAdminClient } = await import("@/lib/supabase/admin");
         const adminSupabase = createAdminClient();
 
-        const orgUsers = await ctx.db.user.findMany({
+        const orgMemberships = await ctx.db.userOrganization.findMany({
           where: { organizationId: ctx.orgId },
-          select: { supabaseId: true },
+          include: { user: { select: { supabaseId: true } } },
         });
+        const orgUsers = orgMemberships.map((m) => m.user);
 
         await Promise.all(
           orgUsers
