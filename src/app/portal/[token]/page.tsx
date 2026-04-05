@@ -106,7 +106,7 @@ export default async function PortalInvoicePage({
 
   return (
     <PortalShell branding={branding}>
-      <div className="space-y-6" data-template={invoice.organization.invoiceTemplate ?? "modern"}>
+      <main aria-label="Invoice details" className="space-y-6" data-template={invoice.organization.invoiceTemplate ?? "modern"}>
         {/* Invoice card */}
         <div className={cn(
           "border border-border/50 bg-card overflow-hidden",
@@ -124,7 +124,8 @@ export default async function PortalInvoicePage({
                 <p className="text-3xl font-bold mt-1">#{invoice.number}</p>
               </div>
               <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium", STATUS_BADGE[invoice.status].className)}>
-                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_BADGE[invoice.status].dot)} />
+                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_BADGE[invoice.status].dot)} aria-hidden="true" />
+                <span className="sr-only">Status: </span>
                 {STATUS_BADGE[invoice.status].label}
               </span>
             </div>
@@ -153,7 +154,7 @@ export default async function PortalInvoicePage({
             </div>
 
             {/* Line items */}
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Invoice line items">
               <thead>
                 <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground pb-3">
                   <th className="pb-3 font-semibold">Description</th>
@@ -310,12 +311,12 @@ export default async function PortalInvoicePage({
               <h2 className="text-base font-semibold text-foreground">Payment History</h2>
               <Button asChild variant="ghost" size="sm">
                 <a href={`/api/portal/${token}/pdf`} download>
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
                   Download Receipt
                 </a>
               </Button>
             </div>
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Payment history">
               <thead>
                 <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <th className="pb-3 font-semibold">Date</th>
@@ -342,7 +343,7 @@ export default async function PortalInvoicePage({
         {invoice.partialPayments.length > 0 && (
           <div className="rounded-2xl border border-border/50 bg-card p-6">
             <h2 className="text-base font-semibold text-foreground mb-4">Payment Schedule</h2>
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Payment schedule">
               <thead>
                 <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <th className="pb-3 font-semibold">#</th>
@@ -450,7 +451,7 @@ export default async function PortalInvoicePage({
             createdAt: c.createdAt.toISOString(),
           }))}
         />
-      </div>
+      </main>
     </PortalShell>
   );
 }

@@ -109,7 +109,7 @@ export default async function PayPage({
   const hasInstallments = invoice.partialPayments.length > 0;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-12">
+    <main aria-label="Payment" className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-12">
       <div className="w-full max-w-md rounded-2xl border border-border/50 bg-card shadow-lg overflow-hidden">
         <div className="p-8 space-y-6">
           {/* Org branding */}
@@ -288,6 +288,6 @@ export default async function PayPage({
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
