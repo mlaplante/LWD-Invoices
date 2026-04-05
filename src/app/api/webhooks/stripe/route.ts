@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
-import { GatewayType, InvoiceStatus } from "@/generated/prisma";
+import { GatewayType, InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { decryptJson } from "@/server/services/encryption";
 import { constructStripeEvent } from "@/server/services/stripe";
 import type { StripeConfig } from "@/server/services/gateway-config";
@@ -204,6 +204,14 @@ export async function POST(req: NextRequest) {
         });
       }
     });
+
+    // Credit client balance for deposit invoices (full payment only)
+    if (!partialPaymentId && invoice.type === InvoiceType.DEPOSIT) {
+      await db.client.update({
+        where: { id: invoice.clientId },
+        data: { creditBalance: { increment: invoice.total } },
+      });
+    }
 
     // Save Stripe Customer ID on the client for future auto-charges
     const clientId = session.metadata?.clientId;

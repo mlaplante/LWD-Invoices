@@ -61,6 +61,7 @@ const partialPaymentInputSchema = z.object({
 
 const invoiceWriteWithScheduleSchema = invoiceWriteSchema.extend({
   partialPayments: z.array(partialPaymentInputSchema).optional(),
+  applyCreditBalance: z.boolean().optional(),
 });
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -299,6 +300,46 @@ export const invoicesRouter = router({
               organizationId: ctx.orgId,
             })),
           });
+        }
+
+        if (input.applyCreditBalance) {
+          const clientRecord = await tx.client.findUnique({
+            where: { id: input.clientId },
+            select: { creditBalance: true },
+          });
+
+          if (clientRecord && clientRecord.creditBalance.toNumber() > 0) {
+            const creditToApply = Math.min(
+              clientRecord.creditBalance.toNumber(),
+              created.total.toNumber(),
+            );
+
+            await tx.invoice.update({
+              where: { id: created.id },
+              data: { creditApplied: creditToApply },
+            });
+
+            await tx.client.update({
+              where: { id: input.clientId },
+              data: { creditBalance: { decrement: creditToApply } },
+            });
+
+            // If credit covers the full amount, auto-mark as paid
+            if (creditToApply >= created.total.toNumber()) {
+              await tx.invoice.update({
+                where: { id: created.id },
+                data: { status: InvoiceStatus.PAID },
+              });
+              await tx.payment.create({
+                data: {
+                  amount: creditToApply,
+                  method: "credit",
+                  invoiceId: created.id,
+                  organizationId: ctx.orgId,
+                },
+              });
+            }
+          }
         }
 
         return created;
@@ -714,7 +755,7 @@ export const invoicesRouter = router({
           organizationId: ctx.orgId,
           status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
         },
-        select: { id: true, total: true, number: true },
+        select: { id: true, total: true, number: true, type: true, clientId: true },
       });
 
       if (invoices.length === 0) {
@@ -739,6 +780,14 @@ export const invoicesRouter = router({
               data: { status: InvoiceStatus.PAID },
             });
           });
+
+          // Credit client balance for deposit invoices
+          if (invoice.type === "DEPOSIT") {
+            await ctx.db.client.update({
+              where: { id: invoice.clientId },
+              data: { creditBalance: { increment: invoice.total } },
+            });
+          }
         })
       );
 
@@ -910,7 +959,7 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
-        select: { status: true },
+        select: { status: true, type: true, clientId: true, total: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -933,6 +982,14 @@ export const invoicesRouter = router({
           data: { status: InvoiceStatus.PAID },
         });
       });
+
+      // Credit client balance for deposit invoices
+      if (invoice.type === "DEPOSIT") {
+        await ctx.db.client.update({
+          where: { id: invoice.clientId },
+          data: { creditBalance: { increment: invoice.total } },
+        });
+      }
 
       // Fire automation event for payment receipt emails
       try {

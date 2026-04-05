@@ -234,6 +234,22 @@ export default async function PortalInvoicePage({
                   <span>Total</span>
                   <span className="font-display">{f(invoice.total)}</span>
                 </div>
+                {Number(invoice.creditApplied) > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Credit Applied</span>
+                      <span className="text-emerald-600">
+                        -{sym}{Number(invoice.creditApplied).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm font-semibold border-t border-border/50 pt-1.5">
+                      <span>Balance Due</span>
+                      <span>
+                        {sym}{(Number(invoice.total) - Number(invoice.creditApplied)).toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

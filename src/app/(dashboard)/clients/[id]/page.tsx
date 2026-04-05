@@ -191,9 +191,17 @@ export default async function ClientDetailPage({
                 autoChargeEnabled={client.autoChargeEnabled}
               />
             </div>
+            {Number(client.creditBalance) > 0 && (
+              <div className="flex items-center gap-1.5 text-sm mt-2">
+                <span className="text-muted-foreground">Credit Balance:</span>
+                <span className="font-semibold text-emerald-600">
+                  ${Number(client.creditBalance).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Quick contact grid */}
+            {/* Quick contact grid */}
           {(client.phone || client.city || client.country || client.taxId) && (
             <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm self-start shrink-0">
               {client.phone && (
