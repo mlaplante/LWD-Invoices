@@ -70,7 +70,8 @@ export function PaymentButtons({ token, gateways, total, orgName, partialPayment
           <Button
             onClick={handleStripe}
             disabled={loading !== null}
-            className="w-full py-6 gap-2"
+            className="w-full py-6 gap-2 text-white hover:opacity-90"
+            style={{ backgroundColor: "var(--portal-brand)" }}
           >
             {loading === "stripe" ? (
               <Loader2 className="w-4 h-4 animate-spin" />
