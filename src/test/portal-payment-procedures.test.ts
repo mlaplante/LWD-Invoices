@@ -117,6 +117,7 @@ describe("Portal Payment Procedures", () => {
     vi.mocked(createCheckoutSession).mockResolvedValue({
       url: "https://checkout.stripe.com/session/test",
       sessionId: "cs_test_123",
+      customerId: undefined,
     });
   });
 

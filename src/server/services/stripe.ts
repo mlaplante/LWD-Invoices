@@ -15,6 +15,7 @@ export async function createCheckoutSession(opts: {
     currency: { code: string };
     portalToken: string;
     organizationId: string;
+    clientId: string;
   };
   surcharge: number;
   appUrl: string;
@@ -22,7 +23,10 @@ export async function createCheckoutSession(opts: {
   amountOverride?: number;
   successUrl?: string;
   cancelUrl?: string;
-}): Promise<{ url: string; sessionId: string }> {
+  clientEmail?: string | null;
+  clientName?: string;
+  stripeCustomerId?: string | null;
+}): Promise<{ url: string; sessionId: string; customerId: string | undefined }> {
   const { stripeClient, invoice, surcharge, appUrl, partialPaymentId, amountOverride, successUrl, cancelUrl } = opts;
 
   const baseAmount = amountOverride ?? invoice.total.toNumber();
@@ -34,8 +38,21 @@ export async function createCheckoutSession(opts: {
     ? `Invoice #${invoice.number} — Installment`
     : `Invoice #${invoice.number}`;
 
+  let customer: string | undefined;
+  if (opts.stripeCustomerId) {
+    customer = opts.stripeCustomerId;
+  } else if (opts.clientEmail) {
+    const newCustomer = await stripeClient.customers.create({
+      email: opts.clientEmail,
+      name: opts.clientName,
+      metadata: { orgId: invoice.organizationId },
+    });
+    customer = newCustomer.id;
+  }
+
   const session = await stripeClient.checkout.sessions.create({
     mode: "payment",
+    ...(customer ? { customer } : {}),
     line_items: [
       {
         quantity: 1,
@@ -48,10 +65,14 @@ export async function createCheckoutSession(opts: {
         },
       },
     ],
+    payment_intent_data: {
+      setup_future_usage: "off_session",
+    },
     metadata: {
       invoiceId: invoice.id,
       orgId: invoice.organizationId,
       portalToken: invoice.portalToken,
+      clientId: invoice.clientId,
       ...(partialPaymentId ? { partialPaymentId } : {}),
     },
     success_url: successUrl ?? `${appUrl}/portal/${invoice.portalToken}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -60,7 +81,7 @@ export async function createCheckoutSession(opts: {
 
   if (!session.url) throw new Error("Stripe session URL missing");
 
-  return { url: session.url, sessionId: session.id };
+  return { url: session.url, sessionId: session.id, customerId: customer };
 }
 
 export function constructStripeEvent(

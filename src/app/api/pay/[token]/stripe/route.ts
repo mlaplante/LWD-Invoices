@@ -41,6 +41,7 @@ export async function GET(
       currency: true,
       payments: { select: { amount: true } },
       partialPayments: true,
+      client: { select: { email: true, name: true, stripeCustomerId: true } },
     },
   });
 
@@ -102,6 +103,7 @@ export async function GET(
       currency: invoice.currency,
       portalToken: invoice.portalToken!,
       organizationId: invoice.organizationId,
+      clientId: invoice.clientId,
     },
     surcharge: gatewaySetting.surcharge.toNumber(),
     appUrl,
@@ -109,6 +111,9 @@ export async function GET(
     amountOverride: payAmount,
     successUrl: `${appUrl}/pay/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${appUrl}/pay/${token}`,
+    clientEmail: invoice.client?.email,
+    clientName: invoice.client?.name,
+    stripeCustomerId: invoice.client?.stripeCustomerId,
   });
 
   return NextResponse.redirect(checkoutUrl, 303);

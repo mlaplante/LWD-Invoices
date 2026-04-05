@@ -89,6 +89,7 @@ describe("Stripe Service", () => {
         currency: { code: "USD" },
         portalToken: "portal_token_123",
         organizationId: "org_123",
+        clientId: "client_123",
       };
 
       const result = await createCheckoutSession({
@@ -118,6 +119,7 @@ describe("Stripe Service", () => {
         currency: { code: "EUR" },
         portalToken: "portal_token_456",
         organizationId: "org_456",
+        clientId: "client_456",
       };
 
       await createCheckoutSession({
@@ -133,6 +135,7 @@ describe("Stripe Service", () => {
         invoiceId: "inv_456",
         orgId: "org_456",
         portalToken: "portal_token_456",
+        clientId: "client_456",
       });
     });
 
@@ -151,6 +154,7 @@ describe("Stripe Service", () => {
         currency: { code: "USD" },
         portalToken: "portal_token_789",
         organizationId: "org_789",
+        clientId: "client_789",
       };
 
       await createCheckoutSession({
@@ -179,6 +183,7 @@ describe("Stripe Service", () => {
         currency: { code: "USD" },
         portalToken: "portal_token_111",
         organizationId: "org_111",
+        clientId: "client_111",
       };
 
       await expect(
@@ -203,6 +208,7 @@ describe("Stripe Service", () => {
         currency: { code: "USD" },
         portalToken: "portal_token_222",
         organizationId: "org_222",
+        clientId: "client_222",
       };
 
       await expect(
@@ -230,6 +236,7 @@ describe("Stripe Service", () => {
         currency: { code: "GBP" },
         portalToken: "portal_token_333",
         organizationId: "org_333",
+        clientId: "client_333",
       };
 
       await createCheckoutSession({
@@ -261,6 +268,7 @@ describe("Stripe Service", () => {
         currency: { code: "JPY" }, // Uppercase in database
         portalToken: "portal_token_444",
         organizationId: "org_444",
+        clientId: "client_444",
       };
 
       await createCheckoutSession({

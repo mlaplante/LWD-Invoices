@@ -280,6 +280,8 @@ model Client {
   defaultPaymentTermsDays Int?
   portalToken             String   @unique @default(cuid())
   portalPassphraseHash String?
+  stripeCustomerId   String?
+  autoChargeEnabled  Boolean @default(false)
   isArchived       Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

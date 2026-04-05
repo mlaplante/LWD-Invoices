@@ -163,11 +163,15 @@ export const portalRouter = router({
           currency: invoice.currency,
           portalToken: invoice.portalToken,
           organizationId: invoice.organizationId,
+          clientId: invoice.clientId,
         },
         surcharge: gateway.surcharge.toNumber(),
         appUrl,
         partialPaymentId,
         amountOverride,
+        clientEmail: invoice.client.email,
+        clientName: invoice.client.name,
+        stripeCustomerId: invoice.client.stripeCustomerId,
       });
 
       return { url };
