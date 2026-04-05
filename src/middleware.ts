@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { getRateLimiters, getBucketForPath } from "@/lib/rate-limiter";
 
 const PUBLIC_PATHS = [
   "/sign-in",
@@ -52,6 +53,30 @@ export async function middleware(request: NextRequest) {
   );
 
   const { pathname } = request.nextUrl;
+
+  // Rate limiting for public endpoints
+  const bucket = getBucketForPath(request.nextUrl.pathname);
+  if (bucket) {
+    const limiters = getRateLimiters();
+    if (limiters) {
+      // Use Netlify's trusted IP header first, fall back to last x-forwarded-for entry
+      const ip = request.headers.get("x-nf-client-connection-ip")
+        ?? request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim()
+        ?? request.headers.get("x-real-ip")
+        ?? "unknown";
+      const { success, limit, remaining, reset } = await limiters[bucket].limit(ip);
+      if (!success) {
+        return new NextResponse("Too Many Requests", {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((reset - Date.now()) / 1000)),
+            "X-RateLimit-Limit": String(limit),
+            "X-RateLimit-Remaining": "0",
+          },
+        });
+      }
+    }
+  }
 
   // Skip auth check entirely for public paths — saves a Supabase round-trip
   if (isPublicPath(pathname)) {
