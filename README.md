@@ -10,6 +10,7 @@ A modern, open-source invoicing and business management application — rebuilt 
 
 ## Table of Contents
 
+- [Documentation](#documentation)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
@@ -21,6 +22,10 @@ A modern, open-source invoicing and business management application — rebuilt 
 - [Self-Hosting Guide](#self-hosting-guide)
 - [Contributing](#contributing)
 - [License](#license)
+
+## Documentation
+
+Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https://www.mintlify.com/mlaplante/LWD-Invoices)**.
 
 ## Features
 
@@ -380,7 +385,8 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
 
 ## Support
 
-- **Documentation**: Check the [Self-Hosting Guide](#self-hosting-guide) above
+- **Documentation**: [mintlify.com/mlaplante/LWD-Invoices](https://www.mintlify.com/mlaplante/LWD-Invoices)
+- **Self-Hosting**: See the [Self-Hosting Guide](#self-hosting-guide) above
 - **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/mlaplante/LWD-Invoices/issues)
 - **Discussions**: Ask questions in [GitHub Discussions](https://github.com/mlaplante/LWD-Invoices/discussions)
 
