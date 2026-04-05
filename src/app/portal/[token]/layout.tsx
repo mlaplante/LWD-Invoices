@@ -4,7 +4,7 @@ import { verifyPortalSession } from "@/lib/portal-session";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { Resend } from "resend";
+import { sendEmail } from "@/server/services/email-sender";
 
 export default async function PortalLayout({
   children,
@@ -119,7 +119,6 @@ export default async function PortalLayout({
     if (adminEmails.length > 0) {
       const { render } = await import("@react-email/render");
       const { InvoiceViewedEmail } = await import("@/emails/InvoiceViewedEmail");
-      const resend = new Resend(env.RESEND_API_KEY);
       const html = await render(
         InvoiceViewedEmail({
           invoiceNumber: invoice.number,
@@ -134,14 +133,12 @@ export default async function PortalLayout({
           hidePoweredBy: invoice.organization.hidePoweredBy ?? false,
         })
       );
-      resend.emails.send({
-        from: env.RESEND_FROM_EMAIL,
+      sendEmail({
+        organizationId: invoice.organizationId,
         to: adminEmails,
         subject: `${clientName} viewed Invoice #${invoice.number}`,
         html,
-      }).catch(() => {
-        // Non-fatal
-      });
+      }).catch(() => { /* Non-fatal */ });
     }
   }
 

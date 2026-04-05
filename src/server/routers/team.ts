@@ -1,13 +1,11 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole, publicProcedure } from "../trpc";
-import { Resend } from "resend";
 import { logAudit } from "../services/audit";
 import { render } from "@react-email/render";
 import TeamInviteEmail from "@/emails/TeamInviteEmail";
 import PasswordResetEmail from "@/emails/PasswordResetEmail";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmail } from "@/server/services/email-sender";
 
 export const teamRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -97,8 +95,8 @@ export const teamRouter = router({
       })
     );
 
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+    await sendEmail({
+      organizationId: ctx.orgId,
       to: input.email,
       subject: `${inviterName} invited you to join ${org?.name ?? "their organization"} on Pancake`,
       html,
@@ -175,8 +173,8 @@ export const teamRouter = router({
       })
     );
 
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+    await sendEmail({
+      organizationId: ctx.orgId,
       to: existing.email,
       subject: `${inviterName} invited you to join ${org?.name ?? "their organization"} on Pancake`,
       html,
@@ -322,8 +320,8 @@ export const teamRouter = router({
       logoUrl: org?.logoUrl,
     }));
 
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+    await sendEmail({
+      organizationId: ctx.orgId,
       to: targetUser.email,
       subject: `Password reset for ${org?.name ?? "your organization"}`,
       html,

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../trpc";
+import { sendEmail } from "@/server/services/email-sender";
 import { GatewayType, InvoiceStatus, InvoiceType, ProjectStatus } from "@/generated/prisma";
 import { decryptJson } from "../services/encryption";
 import { getStripeClient, createCheckoutSession } from "../services/stripe";
@@ -212,14 +213,12 @@ export const portalRouter = router({
 
       // Fire-and-forget notifications (non-fatal)
       try {
-        const { Resend } = await import("resend");
         const { render } = await import("@react-email/render");
         const { InvoiceCommentEmail } = await import("@/emails/InvoiceCommentEmail");
         const { notifyOrgAdmins } = await import("@/server/services/notifications");
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
         const invoiceLink = `${appUrl}/invoices/${invoice.id}`;
-        const resend = new Resend(process.env.RESEND_API_KEY);
 
         const html = await render(
           InvoiceCommentEmail({
@@ -233,18 +232,18 @@ export const portalRouter = router({
           }),
         );
 
-        await Promise.all(
-          invoice.organization.users
-            .filter((u) => u.email && u.role === "ADMIN")
-            .map((u) =>
-              resend.emails.send({
-                from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
-                to: u.email as string,
-                subject: `New comment on Invoice #${invoice.number} from ${input.authorName}`,
-                html,
-              }),
-            ),
-        );
+        const adminEmails = invoice.organization.users
+          .filter((u) => u.email && u.role === "ADMIN")
+          .map((u) => u.email as string);
+
+        if (adminEmails.length > 0) {
+          await sendEmail({
+            organizationId: invoice.organizationId,
+            to: adminEmails,
+            subject: `New comment on Invoice #${invoice.number} from ${input.authorName}`,
+            html,
+          });
+        }
 
         await notifyOrgAdmins(invoice.organizationId, {
           type: "INVOICE_COMMENT",
@@ -496,14 +495,11 @@ export const portalRouter = router({
 
       // Send email notification (non-fatal)
       try {
-        const { Resend } = await import("resend");
         const { render } = await import("@react-email/render");
         const { ProposalSignedEmail } = await import("@/emails/ProposalSignedEmail");
-        const { getOwnerBcc } = await import("@/server/services/email-bcc");
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
         const invoiceLink = `${appUrl}/invoices/${invoice.id}`;
-        const resend = new Resend(process.env.RESEND_API_KEY);
 
         const html = await render(
           ProposalSignedEmail({
@@ -528,13 +524,10 @@ export const portalRouter = router({
           .filter((u) => u.email && u.role === "ADMIN")
           .map((u) => u.email as string);
 
-        const bcc = await getOwnerBcc(invoice.organizationId);
-
         if (adminEmails.length > 0) {
-          await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
+          await sendEmail({
+            organizationId: invoice.organizationId,
             to: adminEmails,
-            ...(bcc ? { bcc } : {}),
             subject: `Proposal #${invoice.number} signed by ${input.signedByName}`,
             html,
           });
