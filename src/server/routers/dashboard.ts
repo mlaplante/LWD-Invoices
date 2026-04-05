@@ -258,4 +258,29 @@ export const dashboardRouter = router({
       },
     });
   }),
+
+  topClients: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const thisMonthStart = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+
+    const rows = await ctx.db.$queryRaw<
+      Array<{ clientId: string; clientName: string; invoiceCount: number; total: number }>
+    >`
+      SELECT
+        c.id AS "clientId",
+        c.name AS "clientName",
+        COUNT(DISTINCT p."invoiceId")::int AS "invoiceCount",
+        SUM(p.amount)::float AS total
+      FROM "Payment" p
+      JOIN "Invoice" i ON i.id = p."invoiceId"
+      JOIN "Client" c ON c.id = i."clientId"
+      WHERE p."organizationId" = ${ctx.orgId}
+        AND p."paidAt" >= ${thisMonthStart}
+      GROUP BY c.id, c.name
+      ORDER BY total DESC
+      LIMIT 5
+    `;
+
+    return rows;
+  }),
 });
