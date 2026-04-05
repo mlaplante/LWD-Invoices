@@ -785,6 +785,59 @@ export const invoicesRouter = router({
       return { paid, failed, skipped: input.ids.length - invoices.length, errors };
     }),
 
+  previewEmail: requireRole("OWNER", "ADMIN")
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+        include: {
+          client: true,
+          organization: true,
+          currency: true,
+          partialPayments: { orderBy: { sortOrder: "asc" } },
+        },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const { render } = await import("@react-email/render");
+      const { InvoiceSentEmail } = await import("@/emails/InvoiceSentEmail");
+      const { getAppUrl } = await import("@/lib/app-url");
+      const appUrl = await getAppUrl();
+
+      const partialPayments = invoice.partialPayments
+        ?.sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((pp) => {
+          const amount = pp.isPercentage
+            ? ((pp.amount.toNumber() / 100) * invoice.total.toNumber()).toFixed(2)
+            : pp.amount.toNumber().toFixed(2);
+          return {
+            amount,
+            dueDate: pp.dueDate?.toLocaleDateString() ?? null,
+            isPaid: pp.isPaid,
+          };
+        });
+
+      const html = await render(
+        InvoiceSentEmail({
+          invoiceNumber: invoice.number,
+          clientName: invoice.client.name,
+          total: invoice.total.toNumber().toFixed(2),
+          currencySymbol: invoice.currency.symbol,
+          dueDate: invoice.dueDate?.toLocaleDateString() ?? null,
+          orgName: invoice.organization.name,
+          portalLink: `${appUrl}/portal/${invoice.portalToken}`,
+          logoUrl: invoice.organization.logoUrl ?? undefined,
+          partialPayments: partialPayments && partialPayments.length > 0 ? partialPayments : undefined,
+        })
+      );
+
+      return {
+        to: invoice.client.email ?? "(no email)",
+        subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
+        html,
+      };
+    }),
+
   send: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
