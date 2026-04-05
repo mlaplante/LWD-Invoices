@@ -41,9 +41,9 @@ export default async function PortalLayout({
           portalFooterText: true,
           brandFont: true,
           hidePoweredBy: true,
-          users: {
+          members: {
             where: { role: "ADMIN" },
-            select: { email: true },
+            include: { user: { select: { email: true } } },
           },
         },
       },
@@ -112,8 +112,8 @@ export default async function PortalLayout({
     }
 
     // Email notification to org admins
-    const adminEmails = invoice.organization.users
-      .map((u) => u.email)
+    const adminEmails = invoice.organization.members
+      .map((m) => m.user.email)
       .filter(Boolean) as string[];
 
     if (adminEmails.length > 0) {

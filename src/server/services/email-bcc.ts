@@ -9,14 +9,14 @@ export async function getOwnerBcc(organizationId: string): Promise<string | unde
     where: { id: organizationId },
     select: {
       emailBccOwner: true,
-      users: {
+      members: {
         where: { role: "OWNER" },
-        select: { email: true },
+        include: { user: { select: { email: true } } },
         take: 1,
       },
     },
   });
 
-  if (!org?.emailBccOwner || !org.users[0]?.email) return undefined;
-  return org.users[0].email;
+  if (!org?.emailBccOwner || !org.members[0]?.user.email) return undefined;
+  return org.members[0].user.email;
 }
