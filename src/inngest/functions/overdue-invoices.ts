@@ -14,6 +14,32 @@ export const processOverdueInvoices = inngest.createFunction(
   async () => {
     const now = new Date();
 
+    // Self-healing: revert OVERDUE → PARTIALLY_PAID for installment invoices
+    // whose next installment isn't due yet (fixes incorrectly marked invoices)
+    const wronglyOverdue = await db.invoice.findMany({
+      where: {
+        status: "OVERDUE",
+        type: { in: ["SIMPLE", "DETAILED"] },
+        isArchived: false,
+      },
+      include: { partialPayments: true },
+    });
+
+    let reverted = 0;
+    for (const invoice of wronglyOverdue) {
+      if (invoice.partialPayments.length > 0) {
+        const sorted = [...invoice.partialPayments].sort((a, b) => a.sortOrder - b.sortOrder);
+        const nextUnpaid = sorted.find((pp) => !pp.isPaid);
+        if (nextUnpaid?.dueDate && nextUnpaid.dueDate > now) {
+          await db.invoice.update({
+            where: { id: invoice.id },
+            data: { status: "PARTIALLY_PAID" },
+          });
+          reverted++;
+        }
+      }
+    }
+
     const invoices = await db.invoice.findMany({
       where: {
         status: { in: ["SENT", "PARTIALLY_PAID"] },
@@ -94,6 +120,7 @@ export const processOverdueInvoices = inngest.createFunction(
     );
 
     return {
+      reverted,
       processed: invoices.length,
       succeeded: results.filter((r) => r.status === "fulfilled").length,
       failed: results.filter((r) => r.status === "rejected").length,
