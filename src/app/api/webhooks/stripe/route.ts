@@ -205,6 +205,16 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    // Save Stripe Customer ID on the client for future auto-charges
+    const clientId = session.metadata?.clientId;
+    const customerId = session.customer as string | null;
+    if (clientId && customerId) {
+      await db.client.update({
+        where: { id: clientId, organizationId: orgId },
+        data: { stripeCustomerId: customerId },
+      });
+    }
+
     await logAudit({
       action: "PAYMENT_RECEIVED",
       entityType: "Invoice",

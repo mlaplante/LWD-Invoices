@@ -7,6 +7,7 @@ import { ClientForm } from "@/components/clients/ClientForm";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
 import { ClientStatementButton } from "@/components/clients/ClientStatementButton";
 import { RetainerPanel } from "@/components/clients/RetainerPanel";
+import { AutoChargeBadge } from "@/components/clients/AutoChargeBadge";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, ExternalLink, FileText, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -182,6 +183,13 @@ export default async function ClientDetailPage({
             {client.email && (
               <p className="text-sm text-muted-foreground mt-0.5">{client.email}</p>
             )}
+            <div className="mt-2">
+              <AutoChargeBadge
+                clientId={client.id}
+                stripeCustomerId={client.stripeCustomerId}
+                autoChargeEnabled={client.autoChargeEnabled}
+              />
+            </div>
           </div>
 
           {/* Quick contact grid */}

@@ -150,4 +150,13 @@ export const clientsRouter = router({
       });
       return result;
     }),
+
+  toggleAutoCharge: requireRole("OWNER", "ADMIN")
+    .input(z.object({ clientId: z.string(), enabled: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.client.update({
+        where: { id: input.clientId, organizationId: ctx.orgId },
+        data: { autoChargeEnabled: input.enabled },
+      });
+    }),
 });
