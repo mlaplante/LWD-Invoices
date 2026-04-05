@@ -283,4 +283,49 @@ export const dashboardRouter = router({
 
     return rows;
   }),
+
+  agingReceivables: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+
+    const invoices = await ctx.db.invoice.findMany({
+      where: {
+        organizationId: ctx.orgId,
+        isArchived: false,
+        status: { in: ["SENT", "PARTIALLY_PAID", "OVERDUE"] },
+      },
+      select: {
+        total: true,
+        dueDate: true,
+        payments: { select: { amount: true } },
+      },
+    });
+
+    const buckets = [
+      { label: "Current", min: -Infinity, max: 0, total: 0, count: 0 },
+      { label: "1–30 days", min: 1, max: 30, total: 0, count: 0 },
+      { label: "31–60 days", min: 31, max: 60, total: 0, count: 0 },
+      { label: "61–90 days", min: 61, max: 90, total: 0, count: 0 },
+      { label: "90+ days", min: 91, max: Infinity, total: 0, count: 0 },
+    ];
+
+    for (const inv of invoices) {
+      const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+      const balance = Number(inv.total) - paid;
+      if (balance <= 0) continue;
+
+      const daysOverdue = inv.dueDate
+        ? Math.floor((now.getTime() - inv.dueDate.getTime()) / 86400000)
+        : 0;
+
+      for (const bucket of buckets) {
+        if (daysOverdue >= bucket.min && daysOverdue <= bucket.max) {
+          bucket.total += balance;
+          bucket.count++;
+          break;
+        }
+      }
+    }
+
+    return buckets.map(({ label, total, count }) => ({ label, total, count }));
+  }),
 });
