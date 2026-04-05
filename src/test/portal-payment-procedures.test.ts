@@ -204,8 +204,8 @@ describe("Portal Payment Procedures", () => {
       ).rejects.toThrow("Invoice is not payable");
     });
 
-    it("throws BAD_REQUEST for non-payable invoice (CANCELLED)", async () => {
-      const invoice = makeInvoice({ status: InvoiceStatus.CANCELLED });
+    it("throws BAD_REQUEST for non-payable invoice (REJECTED)", async () => {
+      const invoice = makeInvoice({ status: InvoiceStatus.REJECTED });
       ctx.db.invoice.findUnique.mockResolvedValue(invoice);
 
       await expect(

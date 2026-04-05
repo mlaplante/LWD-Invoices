@@ -185,7 +185,7 @@ describe("Credit Notes Router Procedures", () => {
     const sourceInvoice = {
       id: "inv_1",
       number: "INV-001",
-      type: InvoiceType.STANDARD,
+      type: InvoiceType.SIMPLE,
       organizationId: "test-org-123",
       clientId: "c_1",
       currencyId: "usd",
