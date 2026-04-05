@@ -13,38 +13,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Already has an org in app_metadata
-  if (user.app_metadata?.organizationId) {
-    return NextResponse.json({ error: "Organization already exists" }, { status: 400 });
-  }
-
-  // Also check DB — handles the case where a previous request created the org
-  // but failed before writing app_metadata (race condition recovery).
-  // Use email as fallback in case supabaseId column hasn't been migrated yet.
-  let existingDbUser = null;
-  try {
-    existingDbUser = await db.user.findFirst({
-      where: { supabaseId: user.id },
-      select: { organizationId: true },
-    });
-  } catch {
-    // supabaseId column may not exist yet — fall back to email lookup
-    if (user.email) {
-      existingDbUser = await db.user.findFirst({
-        where: { email: user.email },
-        select: { organizationId: true },
-      });
-    }
-  }
-  if (existingDbUser?.organizationId) {
-    // Org exists in DB but wasn't written to app_metadata — fix that now
-    const admin = createAdminClient();
-    await admin.auth.admin.updateUserById(user.id, {
-      app_metadata: { organizationId: existingDbUser.organizationId },
-    });
-    return NextResponse.json({ organizationId: existingDbUser.organizationId });
-  }
-
   const body = await req.json().catch(() => ({}));
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) {
@@ -105,33 +73,41 @@ export async function POST(req: Request) {
   ]);
 
   // Upsert user record — handle case where supabaseId column doesn't exist yet
+  let dbUser: { id: string };
   try {
-    await db.user.upsert({
+    dbUser = await db.user.upsert({
       where: { supabaseId: user.id },
-      update: { organizationId: org.id, role: "OWNER" },
+      update: {},
       create: {
         supabaseId: user.id,
         email: user.email!,
         firstName: user.user_metadata?.firstName ?? null,
         lastName: user.user_metadata?.lastName ?? null,
-        organizationId: org.id,
-        role: "OWNER",
       },
+      select: { id: true },
     });
   } catch {
     // supabaseId column missing — upsert by email instead
-    await db.user.upsert({
+    dbUser = await db.user.upsert({
       where: { email: user.email! },
-      update: { organizationId: org.id, role: "OWNER" },
+      update: {},
       create: {
         email: user.email!,
         firstName: user.user_metadata?.firstName ?? null,
         lastName: user.user_metadata?.lastName ?? null,
-        organizationId: org.id,
-        role: "OWNER",
       },
+      select: { id: true },
     });
   }
+
+  // Create UserOrganization membership for this org
+  await db.userOrganization.create({
+    data: {
+      userId: dbUser.id,
+      organizationId: org.id,
+      role: "OWNER",
+    },
+  });
 
   // Store organizationId in Supabase app_metadata
   const admin = createAdminClient();
@@ -143,6 +119,17 @@ export async function POST(req: Request) {
     console.error("[onboarding] Failed to set app_metadata:", metaError.message);
     return NextResponse.json({ error: "Failed to configure account" }, { status: 500 });
   }
+
+  // Set activeOrgId cookie so the user is switched into the new org immediately
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  cookieStore.set("activeOrgId", org.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
 
   return NextResponse.json({ organizationId: org.id });
 }

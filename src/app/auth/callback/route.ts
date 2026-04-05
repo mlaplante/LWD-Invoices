@@ -67,16 +67,17 @@ export async function GET(request: NextRequest) {
         }
 
         // Store org info in app_metadata to avoid DB lookups on every request
-        const org = await db.organization.findUnique({
-          where: { id: existingUser.organizationId },
-          select: { name: true },
+        const membership = await db.userOrganization.findFirst({
+          where: { userId: existingUser.id },
+          include: { organization: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "asc" },
         });
         const admin = createAdminClient();
         await admin.auth.admin.updateUserById(user.id, {
           app_metadata: {
-            organizationId: existingUser.organizationId,
-            orgName: org?.name ?? null,
-            userRole: existingUser.role,
+            organizationId: membership?.organization.id ?? null,
+            orgName: membership?.organization.name ?? null,
+            userRole: membership?.role ?? null,
           },
         });
 

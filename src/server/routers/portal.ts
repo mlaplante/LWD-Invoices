@@ -197,7 +197,7 @@ export const portalRouter = router({
             select: {
               name: true,
               logoUrl: true,
-              users: { select: { email: true, supabaseId: true, id: true, role: true } },
+              members: { select: { role: true, user: { select: { email: true } } } },
             },
           },
         },
@@ -236,9 +236,9 @@ export const portalRouter = router({
           }),
         );
 
-        const adminEmails = invoice.organization.users
-          .filter((u) => u.email && u.role === "ADMIN")
-          .map((u) => u.email as string);
+        const adminEmails = invoice.organization.members
+          .filter((m) => m.user.email && m.role === "ADMIN")
+          .map((m) => m.user.email as string);
 
         if (adminEmails.length > 0) {
           await sendEmail({
@@ -418,7 +418,7 @@ export const portalRouter = router({
           organization: {
             select: {
               name: true,
-              users: { select: { email: true, id: true, role: true } },
+              members: { select: { role: true, user: { select: { email: true } } } },
             },
           },
         },
@@ -524,9 +524,9 @@ export const portalRouter = router({
           }),
         );
 
-        const adminEmails = invoice.organization.users
-          .filter((u) => u.email && u.role === "ADMIN")
-          .map((u) => u.email as string);
+        const adminEmails = invoice.organization.members
+          .filter((m) => m.user.email && m.role === "ADMIN")
+          .map((m) => m.user.email as string);
 
         if (adminEmails.length > 0) {
           await sendEmail({

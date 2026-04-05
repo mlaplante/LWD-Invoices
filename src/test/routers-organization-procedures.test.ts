@@ -108,9 +108,9 @@ describe("Organization Router Procedures", () => {
 
   describe("update", () => {
     // Helper: for update tests that don't change name/require2FA,
-    // we still need user.findMany mocked (the router queries org users for metadata sync).
+    // we still need userOrganization.findMany mocked (the router queries org members for metadata sync).
     function mockUpdateDeps() {
-      ctx.db.user.findMany.mockResolvedValue([]);
+      ctx.db.userOrganization.findMany.mockResolvedValue([]);
     }
 
     it("updates organization name, logoUrl, and brandColor", async () => {

@@ -9,19 +9,27 @@ import { sendEmail } from "@/server/services/email-sender";
 
 export const teamRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.user.findMany({
+    const memberships = await ctx.db.userOrganization.findMany({
       where: { organizationId: ctx.orgId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isActive: true,
+            createdAt: true,
+          },
+        },
       },
       orderBy: { createdAt: "asc" },
     });
+    return memberships.map((m) => ({
+      ...m.user,
+      role: m.role,
+      membershipId: m.id,
+    }));
   }),
 
   updateProfile: protectedProcedure.input(
@@ -31,7 +39,7 @@ export const teamRouter = router({
     })
   ).mutation(async ({ ctx, input }) => {
     return ctx.db.user.updateMany({
-      where: { supabaseId: ctx.userId, organizationId: ctx.orgId },
+      where: { supabaseId: ctx.userId },
       data: { firstName: input.firstName, lastName: input.lastName ?? null },
     });
   }),
@@ -42,18 +50,11 @@ export const teamRouter = router({
       role: z.enum(["ADMIN", "ACCOUNTANT", "VIEWER"]),
     })
   ).mutation(async ({ ctx, input }) => {
-    const existingUser = await ctx.db.user.findFirst({
-      where: { email: input.email, organizationId: ctx.orgId },
+    const existingMember = await ctx.db.userOrganization.findFirst({
+      where: { organizationId: ctx.orgId, user: { email: input.email } },
     });
-    if (existingUser) {
+    if (existingMember) {
       throw new TRPCError({ code: "CONFLICT", message: "This person is already a member of your organization" });
-    }
-
-    const userInOtherOrg = await ctx.db.user.findFirst({
-      where: { email: input.email, organizationId: { not: ctx.orgId } },
-    });
-    if (userInOtherOrg) {
-      throw new TRPCError({ code: "CONFLICT", message: "This person already belongs to another organization" });
     }
 
     await ctx.db.invitation.updateMany({
@@ -204,19 +205,20 @@ export const teamRouter = router({
       role: z.enum(["OWNER", "ADMIN", "ACCOUNTANT", "VIEWER"]),
     })
   ).mutation(async ({ ctx, input }) => {
-    const targetUser = await ctx.db.user.findFirst({
-      where: { id: input.userId, organizationId: ctx.orgId },
+    const targetMembership = await ctx.db.userOrganization.findFirst({
+      where: { userId: input.userId, organizationId: ctx.orgId },
+      include: { user: { select: { id: true, supabaseId: true, email: true } } },
     });
-    if (!targetUser) {
+    if (!targetMembership) {
       throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     }
 
-    if (targetUser.supabaseId === ctx.userId) {
+    if (targetMembership.user.supabaseId === ctx.userId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot change your own role" });
     }
 
-    if (targetUser.role === "OWNER" && input.role !== "OWNER") {
-      const ownerCount = await ctx.db.user.count({
+    if (targetMembership.role === "OWNER" && input.role !== "OWNER") {
+      const ownerCount = await ctx.db.userOrganization.count({
         where: { organizationId: ctx.orgId, role: "OWNER" },
       });
       if (ownerCount <= 1) {
@@ -228,19 +230,12 @@ export const teamRouter = router({
       throw new TRPCError({ code: "FORBIDDEN", message: "Only owners can promote to owner" });
     }
 
-    const updated = await ctx.db.user.update({
-      where: { id: input.userId },
+    await ctx.db.userOrganization.update({
+      where: { id: targetMembership.id },
       data: { role: input.role },
     });
 
-    // Sync role to app_metadata so middleware/layout can read it without a DB query
-    if (updated.supabaseId) {
-      const { createAdminClient } = await import("@/lib/supabase/admin");
-      const adminClient = createAdminClient();
-      await adminClient.auth.admin.updateUserById(updated.supabaseId, {
-        app_metadata: { userRole: input.role },
-      });
-    }
+    const updated = targetMembership.user;
 
     await logAudit({
       action: "UPDATED",
@@ -257,22 +252,23 @@ export const teamRouter = router({
   removeMember: requireRole("OWNER", "ADMIN").input(
     z.object({ userId: z.string() })
   ).mutation(async ({ ctx, input }) => {
-    const targetUser = await ctx.db.user.findFirst({
-      where: { id: input.userId, organizationId: ctx.orgId },
+    const targetMembership = await ctx.db.userOrganization.findFirst({
+      where: { userId: input.userId, organizationId: ctx.orgId },
+      include: { user: { select: { id: true, supabaseId: true } } },
     });
-    if (!targetUser) {
+    if (!targetMembership) {
       throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     }
 
-    if (targetUser.supabaseId === ctx.userId) {
+    if (targetMembership.user.supabaseId === ctx.userId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot remove yourself" });
     }
 
-    if (targetUser.role === "OWNER") {
+    if (targetMembership.role === "OWNER") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot remove an owner. Demote them first." });
     }
 
-    const deleted = await ctx.db.user.delete({ where: { id: input.userId } });
+    const deleted = await ctx.db.userOrganization.delete({ where: { id: targetMembership.id } });
 
     await logAudit({
       action: "DELETED",
@@ -289,9 +285,11 @@ export const teamRouter = router({
   sendPasswordReset: requireRole("OWNER", "ADMIN").input(
     z.object({ userId: z.string() })
   ).mutation(async ({ ctx, input }) => {
-    const targetUser = await ctx.db.user.findFirst({
-      where: { id: input.userId, organizationId: ctx.orgId },
+    const membership = await ctx.db.userOrganization.findFirst({
+      where: { userId: input.userId, organizationId: ctx.orgId },
+      include: { user: true },
     });
+    const targetUser = membership?.user;
     if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     if (targetUser.supabaseId === ctx.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "Use settings to change your own password" });
     if (!targetUser.supabaseId) throw new TRPCError({ code: "BAD_REQUEST", message: "User has no auth account linked" });
@@ -333,12 +331,14 @@ export const teamRouter = router({
   suspend: requireRole("OWNER", "ADMIN").input(
     z.object({ userId: z.string() })
   ).mutation(async ({ ctx, input }) => {
-    const targetUser = await ctx.db.user.findFirst({
-      where: { id: input.userId, organizationId: ctx.orgId },
+    const membership = await ctx.db.userOrganization.findFirst({
+      where: { userId: input.userId, organizationId: ctx.orgId },
+      include: { user: true },
     });
+    const targetUser = membership?.user;
     if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     if (targetUser.supabaseId === ctx.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot suspend yourself" });
-    if (targetUser.role === "OWNER") throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot suspend an owner" });
+    if (membership?.role === "OWNER") throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot suspend an owner" });
     const suspended = await ctx.db.user.update({
       where: { id: input.userId },
       data: { isActive: false },
@@ -359,9 +359,11 @@ export const teamRouter = router({
   reactivate: requireRole("OWNER", "ADMIN").input(
     z.object({ userId: z.string() })
   ).mutation(async ({ ctx, input }) => {
-    const targetUser = await ctx.db.user.findFirst({
-      where: { id: input.userId, organizationId: ctx.orgId },
+    const membership = await ctx.db.userOrganization.findFirst({
+      where: { userId: input.userId, organizationId: ctx.orgId },
+      include: { user: true },
     });
+    const targetUser = membership?.user;
     if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     const reactivated = await ctx.db.user.update({
       where: { id: input.userId },
@@ -403,47 +405,41 @@ export const teamRouter = router({
       where: { supabaseId: ctx.userId },
     });
 
-    if (existingUser && existingUser.organizationId !== invitation.organizationId) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "You already belong to another organization. Please leave it first.",
-      });
-    }
-
     if (existingUser) {
-      await ctx.db.user.update({
-        where: { id: existingUser.id },
-        data: { role: invitation.role },
+      // Check if user is already a member of this specific org
+      const existingMembership = await ctx.db.userOrganization.findFirst({
+        where: { userId: existingUser.id, organizationId: invitation.organizationId },
+      });
+      if (existingMembership) {
+        throw new TRPCError({ code: "CONFLICT", message: "You are already a member of this organization" });
+      }
+
+      await ctx.db.userOrganization.create({
+        data: {
+          userId: existingUser.id,
+          organizationId: invitation.organizationId,
+          role: invitation.role,
+        },
       });
     } else {
       const { createClient } = await import("@/lib/supabase/server");
       const supabase = await createClient();
       const { data: { user } } = await supabase.auth.getUser();
 
-      await ctx.db.user.create({
+      const newUser = await ctx.db.user.create({
         data: {
           supabaseId: ctx.userId,
           email: invitation.email,
           firstName: user?.user_metadata?.firstName ?? null,
           lastName: user?.user_metadata?.lastName ?? null,
-          role: invitation.role,
-          organizationId: invitation.organizationId,
         },
       });
-    }
 
-    const { createAdminClient } = await import("@/lib/supabase/admin");
-    const adminClient = createAdminClient();
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-
-    if (authUser) {
-      await adminClient.auth.admin.updateUserById(authUser.id, {
-        app_metadata: {
+      await ctx.db.userOrganization.create({
+        data: {
+          userId: newUser.id,
           organizationId: invitation.organizationId,
-          orgName: invitation.organization.name,
-          userRole: invitation.role,
+          role: invitation.role,
         },
       });
     }
@@ -451,6 +447,16 @@ export const teamRouter = router({
     await ctx.db.invitation.update({
       where: { id: invitation.id },
       data: { status: "ACCEPTED" },
+    });
+
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    cookieStore.set("activeOrgId", invitation.organizationId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
     });
 
     return { organizationName: invitation.organization.name };

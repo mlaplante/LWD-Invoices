@@ -192,7 +192,7 @@ model Organization {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  users             User[]
+  members           UserOrganization[]
   invitations       Invitation[]
   clients           Client[]
   currencies        Currency[]
@@ -237,15 +237,25 @@ model User {
   email       String   @unique
   firstName   String?
   lastName    String?
-  role        UserRole @default(ADMIN)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
   invitationsSent Invitation[] @relation("InvitedBy")
+  memberships     UserOrganization[]
+}
+
+model UserOrganization {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           UserRole     @default(ADMIN)
+  createdAt      DateTime     @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
 }
 
 model Invitation {

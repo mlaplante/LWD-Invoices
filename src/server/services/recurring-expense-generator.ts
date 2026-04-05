@@ -65,17 +65,18 @@ export async function generateExpensesForRecurring(
       });
 
       // Create notification for org owner
-      const owner = await tx.user.findFirst({
+      const ownerMembership = await tx.userOrganization.findFirst({
         where: { organizationId: rec.organizationId, role: "OWNER" },
+        include: { user: { select: { id: true } } },
       });
 
-      if (owner) {
+      if (ownerMembership) {
         await tx.notification.create({
           data: {
             type: "RECURRING_EXPENSE_GENERATED",
             title: "Recurring expense generated",
             body: `"${rec.name}" expense was automatically created.`,
-            userId: owner.id,
+            userId: ownerMembership.user.id,
             organizationId: rec.organizationId,
             link: "/expenses",
           },

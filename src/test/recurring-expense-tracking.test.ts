@@ -45,10 +45,12 @@ describe("recurring expense generator - tracking, audit, notification", () => {
     });
     (db.recurringExpense.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
     (db.auditLog.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
-    (db.user.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: "user-owner",
-      role: "OWNER",
+    (db.userOrganization.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "membership-1",
+      userId: "user-owner",
       organizationId: "org-1",
+      role: "OWNER",
+      user: { id: "user-owner" },
     });
     (db.notification.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
   });
@@ -94,7 +96,7 @@ describe("recurring expense generator - tracking, audit, notification", () => {
 
     await generateExpensesForRecurring(db, rec, now);
 
-    expect(db.user.findFirst).toHaveBeenCalledWith(
+    expect(db.userOrganization.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { organizationId: "org-1", role: "OWNER" },
       }),

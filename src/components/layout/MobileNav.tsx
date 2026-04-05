@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -37,7 +38,7 @@ const moreItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export function MobileNav({ orgName }: { orgName?: string | null }) {
+export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; activeOrgId?: string }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
 
@@ -106,17 +107,10 @@ export function MobileNav({ orgName }: { orgName?: string | null }) {
           })}
         </div>
 
-        {/* Org pill */}
-        {orgName && (
-          <div className="mx-4 border-t border-sidebar-border pt-4">
-            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-sidebar-accent">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0 text-[11px] font-bold text-primary-foreground">
-                {orgName.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-xs text-sidebar-foreground/70 font-medium truncate">
-                {orgName}
-              </span>
-            </div>
+        {/* Org switcher */}
+        {activeOrgId && (
+          <div className="mx-4">
+            <OrgSwitcher currentOrgId={activeOrgId} />
           </div>
         )}
       </div>

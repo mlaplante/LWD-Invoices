@@ -46,10 +46,22 @@ export async function POST() {
     console.warn("[auth/migrate] Could not set supabaseId — run DB migration SQL:", err);
   }
 
+  // Look up primary org from UserOrganization join table
+  const membership = await db.userOrganization.findFirst({
+    where: { userId: existingUser.id },
+    include: { organization: { select: { id: true, name: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const organizationId = membership?.organization.id ?? null;
+
   // Store organizationId in Supabase app_metadata
   const admin = createAdminClient();
   const { error: metaError } = await admin.auth.admin.updateUserById(user.id, {
-    app_metadata: { organizationId: existingUser.organizationId },
+    app_metadata: {
+      organizationId,
+      orgName: membership?.organization.name ?? null,
+      userRole: membership?.role ?? null,
+    },
   });
 
   if (metaError) {
@@ -57,5 +69,5 @@ export async function POST() {
     return NextResponse.json({ error: "Failed to migrate account" }, { status: 500 });
   }
 
-  return NextResponse.json({ organizationId: existingUser.organizationId });
+  return NextResponse.json({ organizationId });
 }

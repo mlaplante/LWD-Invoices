@@ -20,15 +20,15 @@ export async function notifyOrgAdmins(
 ) {
   const org = await db.organization.findFirst({
     where: { id: orgId },
-    include: { users: { where: { role: "ADMIN" } } },
+    include: { members: { where: { role: "ADMIN" }, include: { user: true } } },
   });
   if (!org) return;
 
   await Promise.all(
-    org.users.map((u) =>
+    org.members.map((m) =>
       createNotification({
         ...notification,
-        userId: u.supabaseId ?? u.id,
+        userId: m.user.supabaseId ?? m.user.id,
         organizationId: org.id,
       }),
     ),
