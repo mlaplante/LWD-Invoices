@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DollarSign, FileText, AlertTriangle, Wallet } from "lucide-react";
+import { DollarSign, FileText, AlertTriangle, Wallet, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SummaryData = {
@@ -10,6 +10,8 @@ type SummaryData = {
   overdueCount: number;
   overdueTotal: number;
   cashCollected: number;
+  expensesThisMonth: number;
+  expensesChange: number | null;
 };
 
 type Props = {
@@ -76,10 +78,25 @@ export function SummaryCards({ summary }: Props) {
       color: "text-primary bg-primary/10",
       href: "/reports",
     },
+    {
+      icon: Receipt,
+      label: "Expenses",
+      value: fmt(summary.expensesThisMonth),
+      badge:
+        summary.expensesChange !== null
+          ? `${summary.expensesChange >= 0 ? "+" : ""}${summary.expensesChange}%`
+          : null,
+      badgeColor:
+        summary.expensesChange !== null && summary.expensesChange <= 0
+          ? "bg-emerald-50 text-emerald-600"
+          : "bg-red-50 text-red-600",
+      color: "text-violet-600 bg-violet-50",
+      href: "/expenses",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {cards.map((card) => (
         <Link
           key={card.label}

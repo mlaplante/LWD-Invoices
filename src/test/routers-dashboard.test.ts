@@ -17,14 +17,21 @@ describe("Dashboard Router", () => {
         .mockResolvedValueOnce({ _sum: { amount: 8000 } }) // this month
         .mockResolvedValueOnce({ _sum: { amount: 4000 } }); // last month
 
-      ctx.db.invoice.aggregate
-        .mockResolvedValueOnce({ _sum: { total: 3500 }, _count: 2 }) // outstanding
-        .mockResolvedValueOnce({ _sum: { total: 1500 }, _count: 1 }); // overdue
+      ctx.db.invoice.findMany
+        .mockResolvedValueOnce([ // outstanding invoices
+          { total: 2000, payments: [{ amount: 500 }] },
+          { total: 2000, payments: [] },
+        ])
+        .mockResolvedValueOnce([ // overdue invoices
+          { total: 1500, payments: [] },
+        ]);
 
-      ctx.db.expense.findMany.mockResolvedValue([
-        { rate: 100, qty: 2 },
-        { rate: 50, qty: 3 },
-      ]);
+      ctx.db.expense.findMany
+        .mockResolvedValueOnce([ // this month expenses
+          { rate: 100, qty: 2 },
+          { rate: 50, qty: 3 },
+        ])
+        .mockResolvedValueOnce([]); // last month expenses
 
       const result = await caller.summary({});
 
@@ -37,6 +44,7 @@ describe("Dashboard Router", () => {
       expect(result.overdueTotal).toBe(1500);
       expect(result.cashCollected).toBe(8000);
       expect(result.expensesThisMonth).toBe(350);
+      expect(result.expensesChange).toBeNull(); // last month was 0
     });
 
     it("handles zero revenue last month (revenueChange = null)", async () => {
@@ -44,9 +52,9 @@ describe("Dashboard Router", () => {
         .mockResolvedValueOnce({ _sum: { amount: 1000 } }) // this month
         .mockResolvedValueOnce({ _sum: { amount: null } }); // last month - zero
 
-      ctx.db.invoice.aggregate
-        .mockResolvedValueOnce({ _sum: { total: null }, _count: 0 }) // outstanding
-        .mockResolvedValueOnce({ _sum: { total: null }, _count: 0 }); // overdue
+      ctx.db.invoice.findMany
+        .mockResolvedValueOnce([]) // outstanding invoices
+        .mockResolvedValueOnce([]); // overdue invoices
 
       ctx.db.expense.findMany.mockResolvedValue([]);
 

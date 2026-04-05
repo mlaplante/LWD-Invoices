@@ -57,6 +57,7 @@ export const dashboardRouter = router({
         outstandingInvoices,
         overdueInvoices,
         thisMonthExpenses,
+        lastMonthExpenses,
       ] = await Promise.all([
         ctx.db.payment.aggregate({
           where: { organizationId: ctx.orgId, paidAt: { gte: thisMonthStart } },
@@ -86,6 +87,13 @@ export const dashboardRouter = router({
           where: {
             organizationId: ctx.orgId,
             createdAt: { gte: thisMonthStart },
+          },
+          select: { rate: true, qty: true },
+        }),
+        ctx.db.expense.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
           },
           select: { rate: true, qty: true },
         }),
@@ -119,6 +127,14 @@ export const dashboardRouter = router({
         (s, e) => s + Number(e.rate) * e.qty,
         0
       );
+      const expensesLastMonth = lastMonthExpenses.reduce(
+        (s, e) => s + Number(e.rate) * e.qty,
+        0
+      );
+      const expensesChange =
+        expensesLastMonth > 0
+          ? Math.round(((expensesThisMonth - expensesLastMonth) / expensesLastMonth) * 100)
+          : null;
 
       return {
         revenueThisMonth,
@@ -130,6 +146,7 @@ export const dashboardRouter = router({
         overdueTotal,
         cashCollected: revenueThisMonth,
         expensesThisMonth,
+        expensesChange,
       };
     }),
 
