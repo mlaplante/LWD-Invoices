@@ -7,6 +7,7 @@ import { UserMenu } from "@/components/layout/UserMenu";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { Plus } from "lucide-react";
 import { CommandPalette, SearchTriggerButton } from "@/components/layout/CommandPalette";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,26 +24,22 @@ async function UserMenuSection() {
   );
 }
 
-async function OrgBadge() {
+async function OrgSwitcherSection() {
   const { data: { user } } = await getUser();
-  const orgName = (user?.app_metadata?.orgName as string) ?? null;
-  if (!orgName) return null;
-  return (
-    <div className="mt-auto pt-3 border-t border-sidebar-border">
-      <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl bg-sidebar-accent">
-        <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0 text-[11px] font-bold text-primary-foreground shadow-sm">
-          {orgName.charAt(0).toUpperCase()}
-        </div>
-        <span className="text-xs text-sidebar-foreground/70 font-medium truncate">{orgName}</span>
-      </div>
-    </div>
-  );
+  const orgId = (user?.app_metadata?.organizationId as string) ?? "";
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const activeOrgId = cookieStore.get("activeOrgId")?.value ?? orgId;
+  return <OrgSwitcher currentOrgId={activeOrgId} />;
 }
 
 async function MobileNavSection() {
   const { data: { user } } = await getUser();
-  const orgName = (user?.app_metadata?.orgName as string) ?? null;
-  return <MobileNav orgName={orgName} />;
+  const orgId = (user?.app_metadata?.organizationId as string) ?? "";
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const activeOrgId = cookieStore.get("activeOrgId")?.value ?? orgId;
+  return <MobileNav activeOrgId={activeOrgId} />;
 }
 
 const UserMenuFallback = () => <Skeleton className="h-8 w-8 rounded-full" />;
@@ -93,7 +90,7 @@ export default async function DashboardLayout({
         </Suspense>
 
         <Suspense>
-          <OrgBadge />
+          <OrgSwitcherSection />
         </Suspense>
       </aside>
 
