@@ -26,6 +26,7 @@ const TYPE_LABELS: Record<InvoiceType, string> = {
   SIMPLE:   "Invoice",
   ESTIMATE: "Estimate",
   CREDIT_NOTE: "Credit Note",
+  DEPOSIT: "Deposit",
 };
 
 type Invoice = {

@@ -30,6 +30,7 @@ enum InvoiceType {
   DETAILED
   ESTIMATE
   CREDIT_NOTE
+  DEPOSIT
 }
 
 enum InvoiceStatus {
@@ -282,6 +283,7 @@ model Client {
   portalPassphraseHash String?
   stripeCustomerId   String?
   autoChargeEnabled  Boolean @default(false)
+  creditBalance    Decimal @default(0)
   isArchived       Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -392,6 +394,7 @@ model Invoice {
   simpleAmount Decimal? @db.Decimal(20, 10)
 
   retainerApplied Decimal @default(0) @db.Decimal(20, 10)
+  creditApplied   Decimal @default(0) @db.Decimal(20, 10)
 
   // Credit note fields
   sourceInvoiceId  String?

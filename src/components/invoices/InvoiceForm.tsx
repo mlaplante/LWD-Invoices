@@ -53,6 +53,7 @@ const TYPE_LABELS: Record<InvoiceType, string> = {
   [InvoiceType.SIMPLE]: "Invoice (Simple)",
   [InvoiceType.ESTIMATE]: "Estimate",
   [InvoiceType.CREDIT_NOTE]: "Credit Note",
+  [InvoiceType.DEPOSIT]: "Deposit",
 };
 
 const REMINDER_DAY_OPTIONS = [1, 2, 3, 5, 7, 14, 30];
