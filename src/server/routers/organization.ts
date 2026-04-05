@@ -52,6 +52,58 @@ export const organizationRouter = router({
     return org;
   }),
 
+  listMyOrgs: protectedProcedure.query(async ({ ctx }) => {
+    const dbUser = await ctx.db.user.findFirst({
+      where: { supabaseId: ctx.userId },
+      select: { id: true },
+    });
+    if (!dbUser) return [];
+
+    return ctx.db.userOrganization.findMany({
+      where: { userId: dbUser.id },
+      include: {
+        organization: {
+          select: { id: true, name: true, logoUrl: true },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+  }),
+
+  switchOrg: protectedProcedure
+    .input(z.object({ orgId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const dbUser = await ctx.db.user.findFirst({
+        where: { supabaseId: ctx.userId },
+        select: { id: true },
+      });
+      if (!dbUser) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const membership = await ctx.db.userOrganization.findUnique({
+        where: {
+          userId_organizationId: { userId: dbUser.id, organizationId: input.orgId },
+        },
+        include: { organization: { select: { id: true, name: true } } },
+      });
+
+      if (!membership) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not a member of this organization" });
+      }
+
+      // Set the cookie
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      cookieStore.set("activeOrgId", input.orgId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365, // 1 year
+      });
+
+      return membership;
+    }),
+
   update: requireRole("OWNER", "ADMIN")
     .input(
       z.object({
