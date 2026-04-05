@@ -83,8 +83,6 @@ export async function POST(req: Request) {
         email: user.email!,
         firstName: user.user_metadata?.firstName ?? null,
         lastName: user.user_metadata?.lastName ?? null,
-        organizationId: org.id,
-        role: "OWNER",
       },
       select: { id: true },
     });
@@ -97,8 +95,6 @@ export async function POST(req: Request) {
         email: user.email!,
         firstName: user.user_metadata?.firstName ?? null,
         lastName: user.user_metadata?.lastName ?? null,
-        organizationId: org.id,
-        role: "OWNER",
       },
       select: { id: true },
     });

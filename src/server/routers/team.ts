@@ -237,15 +237,6 @@ export const teamRouter = router({
 
     const updated = targetMembership.user;
 
-    // Sync role to app_metadata so middleware/layout can read it without a DB query
-    if (updated.supabaseId) {
-      const { createAdminClient } = await import("@/lib/supabase/admin");
-      const adminClient = createAdminClient();
-      await adminClient.auth.admin.updateUserById(updated.supabaseId, {
-        app_metadata: { userRole: input.role },
-      });
-    }
-
     await logAudit({
       action: "UPDATED",
       entityType: "User",
@@ -449,22 +440,6 @@ export const teamRouter = router({
           userId: newUser.id,
           organizationId: invitation.organizationId,
           role: invitation.role,
-        },
-      });
-    }
-
-    const { createAdminClient } = await import("@/lib/supabase/admin");
-    const adminClient = createAdminClient();
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-
-    if (authUser) {
-      await adminClient.auth.admin.updateUserById(authUser.id, {
-        app_metadata: {
-          organizationId: invitation.organizationId,
-          orgName: invitation.organization.name,
-          userRole: invitation.role,
         },
       });
     }
