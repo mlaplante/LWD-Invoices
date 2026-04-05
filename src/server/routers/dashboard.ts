@@ -284,6 +284,49 @@ export const dashboardRouter = router({
     return rows;
   }),
 
+  estimateConversion: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const thisMonthStart = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+    const lastMonthStart = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999);
+
+    const [thisMonth, lastMonth] = await Promise.all([
+      ctx.db.invoice.groupBy({
+        by: ["status"],
+        where: {
+          organizationId: ctx.orgId,
+          type: "ESTIMATE",
+          createdAt: { gte: thisMonthStart },
+        },
+        _count: true,
+      }),
+      ctx.db.invoice.groupBy({
+        by: ["status"],
+        where: {
+          organizationId: ctx.orgId,
+          type: "ESTIMATE",
+          createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
+        },
+        _count: true,
+      }),
+    ]);
+
+    function calc(groups: typeof thisMonth) {
+      let sent = 0;
+      let accepted = 0;
+      for (const g of groups) {
+        sent += g._count;
+        if (g.status === "ACCEPTED") accepted += g._count;
+      }
+      return { sent, accepted, rate: sent > 0 ? Math.round((accepted / sent) * 100) : null };
+    }
+
+    return {
+      thisMonth: calc(thisMonth),
+      lastMonth: calc(lastMonth),
+    };
+  }),
+
   agingReceivables: protectedProcedure.query(async ({ ctx }) => {
     const now = new Date();
 

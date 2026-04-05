@@ -5,6 +5,9 @@ import dynamic from "next/dynamic";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { TopClients } from "@/components/dashboard/TopClients";
+import { AgingReceivables } from "@/components/dashboard/AgingReceivables";
+import { EstimateConversion } from "@/components/dashboard/EstimateConversion";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Lazy-load chart components to defer the ~400KB Recharts bundle
@@ -48,6 +51,21 @@ async function ChartsSection() {
 async function ExpensesSection() {
   const data = await api.dashboard.expensesVsRevenue();
   return <ExpensesVsRevenueChart data={data} />;
+}
+
+async function InsightsSection() {
+  const [topClients, aging, conversion] = await Promise.all([
+    api.dashboard.topClients(),
+    api.dashboard.agingReceivables(),
+    api.dashboard.estimateConversion(),
+  ]);
+  return (
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <TopClients data={topClients} />
+      <AgingReceivables data={aging} />
+      <EstimateConversion data={conversion} />
+    </div>
+  );
 }
 
 async function ActivitySection() {
@@ -109,6 +127,11 @@ export default async function DashboardPage() {
 
       <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
         <ExpensesSection />
+      </Suspense>
+
+      {/* Insights — Top Clients, Aging, Conversion */}
+      <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
+        <InsightsSection />
       </Suspense>
 
       {/* Activity Feed */}
