@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma";
 import { router, protectedProcedure } from "../trpc";
-import { InvoiceStatus, InvoiceType } from "@/generated/prisma";
+import { InvoiceStatus, InvoiceType, RecurringFrequency } from "@/generated/prisma";
+import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 
 export function groupByMonth<T>(
   items: T[],
@@ -805,4 +806,113 @@ export const reportsRouter = router({
       totalLiability: total,
     };
   }),
+
+  revenueForecast: protectedProcedure
+    .input(z.object({ months: z.number().int().min(1).max(24).default(6) }))
+    .query(async ({ ctx, input }) => {
+      const now = new Date();
+      const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+
+      // Calculate horizon end date
+      const horizon = new Date(now);
+      horizon.setUTCMonth(horizon.getUTCMonth() + input.months);
+
+      // Step 1: Outstanding invoices (SENT + PARTIALLY_PAID)
+      const openInvoices = await ctx.db.invoice.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          status: { in: ["SENT", "PARTIALLY_PAID"] },
+          isArchived: false,
+        },
+        select: {
+          total: true,
+          dueDate: true,
+          payments: { select: { amount: true } },
+        },
+      });
+
+      const outstandingByMonth: Record<string, number> = {};
+      let overdueAmount = 0;
+
+      for (const inv of openInvoices) {
+        const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+        const remaining = Number(inv.total) - paid;
+        if (remaining <= 0) continue;
+
+        if (!inv.dueDate || inv.dueDate < now) {
+          // Overdue — bucket in current month
+          overdueAmount += remaining;
+          outstandingByMonth[currentMonth] = (outstandingByMonth[currentMonth] ?? 0) + remaining;
+        } else {
+          const month = `${inv.dueDate.getUTCFullYear()}-${String(inv.dueDate.getUTCMonth() + 1).padStart(2, "0")}`;
+          if (month <= `${horizon.getUTCFullYear()}-${String(horizon.getUTCMonth() + 1).padStart(2, "0")}`) {
+            outstandingByMonth[month] = (outstandingByMonth[month] ?? 0) + remaining;
+          }
+        }
+      }
+
+      // Step 2: Recurring invoice projections
+      const recurringInvoices = await ctx.db.recurringInvoice.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          isActive: true,
+        },
+        select: {
+          nextRunAt: true,
+          frequency: true,
+          interval: true,
+          endDate: true,
+          maxOccurrences: true,
+          occurrenceCount: true,
+          invoice: { select: { total: true } },
+        },
+      });
+
+      const recurringByMonth: Record<string, number> = {};
+
+      for (const rec of recurringInvoices) {
+        let runAt = new Date(rec.nextRunAt);
+        let count = rec.occurrenceCount;
+
+        while (runAt <= horizon) {
+          if (rec.endDate && runAt > rec.endDate) break;
+          if (rec.maxOccurrences !== null && count >= rec.maxOccurrences) break;
+
+          const month = `${runAt.getUTCFullYear()}-${String(runAt.getUTCMonth() + 1).padStart(2, "0")}`;
+          recurringByMonth[month] = (recurringByMonth[month] ?? 0) + Number(rec.invoice.total);
+
+          runAt = computeNextRunAt(runAt, rec.frequency as RecurringFrequency, rec.interval);
+          count++;
+        }
+      }
+
+      // Build monthly buckets
+      const allMonthKeys: string[] = [];
+      const cursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      for (let i = 0; i < input.months; i++) {
+        allMonthKeys.push(
+          `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`
+        );
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      }
+
+      const months = allMonthKeys.map((month) => {
+        const outstanding = Math.round((outstandingByMonth[month] ?? 0) * 100) / 100;
+        const recurring = Math.round((recurringByMonth[month] ?? 0) * 100) / 100;
+        return { month, outstanding, recurring, total: Math.round((outstanding + recurring) * 100) / 100 };
+      });
+
+      const totalOutstanding = months.reduce((s, m) => s + m.outstanding, 0);
+      const totalRecurring = months.reduce((s, m) => s + m.recurring, 0);
+
+      return {
+        months,
+        summary: {
+          totalOutstanding: Math.round(totalOutstanding * 100) / 100,
+          totalRecurring: Math.round(totalRecurring * 100) / 100,
+          grandTotal: Math.round((totalOutstanding + totalRecurring) * 100) / 100,
+          overdueAmount: Math.round(overdueAmount * 100) / 100,
+        },
+      };
+    }),
 });
