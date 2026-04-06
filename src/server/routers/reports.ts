@@ -817,11 +817,11 @@ export const reportsRouter = router({
       const horizon = new Date(now);
       horizon.setUTCMonth(horizon.getUTCMonth() + input.months);
 
-      // Step 1: Outstanding invoices (SENT + PARTIALLY_PAID)
+      // Step 1: Outstanding invoices (SENT + PARTIALLY_PAID + OVERDUE)
       const openInvoices = await ctx.db.invoice.findMany({
         where: {
           organizationId: ctx.orgId,
-          status: { in: ["SENT", "PARTIALLY_PAID"] },
+          status: { in: ["SENT", "PARTIALLY_PAID", "OVERDUE"] },
           isArchived: false,
         },
         select: {

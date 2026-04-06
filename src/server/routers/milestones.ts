@@ -53,7 +53,7 @@ export const milestonesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.milestone.update({ where: { id }, data });
+      return ctx.db.milestone.update({ where: { id, organizationId: ctx.orgId }, data });
     }),
 
   delete: protectedProcedure
@@ -70,7 +70,7 @@ export const milestonesRouter = router({
         data: { milestoneId: null },
       });
 
-      return ctx.db.milestone.delete({ where: { id: input.id } });
+      return ctx.db.milestone.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
   reorder: protectedProcedure
@@ -179,7 +179,7 @@ export const milestonesRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Milestone is not completed" });
       }
       return ctx.db.milestone.update({
-        where: { id: input.id },
+        where: { id: input.id, organizationId: ctx.orgId },
         data: { completedAt: null },
       });
     }),
