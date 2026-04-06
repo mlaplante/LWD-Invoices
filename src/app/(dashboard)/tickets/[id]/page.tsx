@@ -58,7 +58,7 @@ export default async function TicketDetailPage({
       {ticket.client && (
         <div className="rounded-2xl border border-border/50 bg-card px-6 py-4 flex items-center gap-6 text-sm">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Client</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Client</p>
             <p className="font-medium mt-0.5">{ticket.client.name}</p>
           </div>
         </div>
@@ -67,7 +67,7 @@ export default async function TicketDetailPage({
       {/* Thread */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Thread
           </p>
           <p className="text-base font-semibold mt-0.5">Conversation</p>

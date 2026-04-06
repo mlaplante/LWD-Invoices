@@ -214,85 +214,89 @@ export function PaymentScheduleDialog({
           {editableEntries.map((entry, relIdx) => {
             const absIdx = paidEntries.length + relIdx;
             return (
-              <div key={absIdx} className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 text-center text-sm font-medium text-muted-foreground">
+              <div key={absIdx} className="space-y-2 rounded-lg border border-border/50 p-3 sm:border-0 sm:p-0 sm:rounded-none">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  <span className="w-6 text-center text-sm font-medium text-muted-foreground shrink-0">
                     {absIdx + 1}
                   </span>
 
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={entry.amount || ""}
-                    onChange={(e) =>
-                      updateEntry(absIdx, { amount: parseFloat(e.target.value) || 0 })
-                    }
-                    className="w-28 h-8 text-sm"
-                    placeholder="Amount"
-                  />
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={entry.amount || ""}
+                      onChange={(e) =>
+                        updateEntry(absIdx, { amount: parseFloat(e.target.value) || 0 })
+                      }
+                      className="w-full sm:w-28 h-10 sm:h-8 text-sm"
+                      placeholder="Amount"
+                    />
 
-                  <div className="flex rounded-md border border-input overflow-hidden">
-                    <button
-                      type="button"
-                      className={`px-2 py-1 text-xs transition-colors ${
-                        !entry.isPercentage
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background text-muted-foreground hover:bg-muted"
-                      }`}
-                      onClick={() => updateEntry(absIdx, { isPercentage: false })}
-                    >
-                      {currencySymbol}
-                    </button>
-                    <button
-                      type="button"
-                      className={`px-2 py-1 text-xs transition-colors ${
-                        entry.isPercentage
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background text-muted-foreground hover:bg-muted"
-                      }`}
-                      onClick={() => updateEntry(absIdx, { isPercentage: true })}
-                    >
-                      %
-                    </button>
+                    <div className="flex rounded-md border border-input overflow-hidden shrink-0">
+                      <button
+                        type="button"
+                        className={`px-2.5 py-2 sm:py-1 text-xs transition-colors ${
+                          !entry.isPercentage
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background text-muted-foreground hover:bg-muted"
+                        }`}
+                        onClick={() => updateEntry(absIdx, { isPercentage: false })}
+                      >
+                        {currencySymbol}
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-2.5 py-2 sm:py-1 text-xs transition-colors ${
+                          entry.isPercentage
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background text-muted-foreground hover:bg-muted"
+                        }`}
+                        onClick={() => updateEntry(absIdx, { isPercentage: true })}
+                      >
+                        %
+                      </button>
+                    </div>
                   </div>
 
-                  <Input
-                    type="date"
-                    value={entry.dueDate}
-                    onChange={(e) => updateEntry(absIdx, { dueDate: e.target.value })}
-                    className="w-36 h-8 text-sm"
-                  />
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Input
+                      type="date"
+                      value={entry.dueDate}
+                      onChange={(e) => updateEntry(absIdx, { dueDate: e.target.value })}
+                      className="flex-1 sm:w-36 h-10 sm:h-8 text-sm"
+                    />
 
-                  <button
-                    type="button"
-                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => toggleNotes(absIdx)}
-                    title="Notes"
-                  >
-                    {expandedNotes.has(absIdx) ? (
-                      <ChevronDown className="w-4 h-4" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4" />
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      className="p-2 sm:p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                      onClick={() => toggleNotes(absIdx)}
+                      title="Notes"
+                    >
+                      {expandedNotes.has(absIdx) ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
+                      )}
+                    </button>
 
-                  <button
-                    type="button"
-                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                    onClick={() => removeEntry(absIdx)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <button
+                      type="button"
+                      className="p-2 sm:p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                      onClick={() => removeEntry(absIdx)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {expandedNotes.has(absIdx) && (
-                  <div className="pl-8">
+                  <div className="pl-0 sm:pl-8">
                     <Input
                       value={entry.notes}
                       onChange={(e) => updateEntry(absIdx, { notes: e.target.value })}
                       placeholder="Notes (optional)"
-                      className="h-7 text-xs"
+                      className="h-10 sm:h-7 text-sm sm:text-xs"
                     />
                   </div>
                 )}

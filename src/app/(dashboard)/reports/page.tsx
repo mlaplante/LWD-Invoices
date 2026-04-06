@@ -135,7 +135,7 @@ export default async function ReportsPage() {
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 pt-5 pb-4 border-b border-border/50 flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Revenue
             </p>
             <p className="text-base font-semibold mt-0.5">Last 12 Months</p>
@@ -155,7 +155,7 @@ export default async function ReportsPage() {
             <>
               {/* Max label */}
               <div className="flex items-end gap-0 mb-1">
-                <span className="text-[10px] text-muted-foreground w-10 shrink-0 text-right pr-2 pb-0.5">
+                <span className="text-xs text-muted-foreground w-10 shrink-0 text-right pr-2 pb-0.5">
                   {formatAmount(max)}
                 </span>
                 {/* Chart */}

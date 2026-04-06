@@ -85,7 +85,7 @@ export default async function ProfitabilityPage({
           { label: "Avg Margin %", value: null, pct: data.avgMarginPercent, color: data.avgMarginPercent >= 0 ? "text-primary" : "text-red-600" },
         ].map((s) => (
           <div key={s.label} className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               {s.label}
             </p>
             <p className={`text-2xl font-bold tabular-nums mt-1 ${s.color}`}>
@@ -102,9 +102,10 @@ export default async function ProfitabilityPage({
             No data for the selected period.
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-border/50">
-              <tr className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 <th className="px-5 py-3 text-left">
                   {tab === "client" ? "Client" : "Project"}
                 </th>
@@ -153,6 +154,7 @@ export default async function ProfitabilityPage({
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

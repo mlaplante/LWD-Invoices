@@ -81,7 +81,7 @@ export default async function ForecastPage({
           { label: "Overdue", value: data.summary.overdueAmount, color: "text-red-600" },
         ].map((s) => (
           <div key={s.label} className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               {s.label}
             </p>
             <p className={`text-2xl font-bold tabular-nums mt-1 ${s.color}`}>
@@ -159,9 +159,10 @@ export default async function ForecastPage({
 
       {/* Monthly table */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-border/50">
-            <tr className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               <th className="px-5 py-3 text-left">Month</th>
               <th className="px-5 py-3 text-right">Outstanding</th>
               <th className="px-5 py-3 text-right">Recurring</th>
@@ -187,6 +188,7 @@ export default async function ForecastPage({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

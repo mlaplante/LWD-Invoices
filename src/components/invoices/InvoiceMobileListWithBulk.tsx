@@ -111,7 +111,7 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
       {!selectMode && invoices.length > 0 && (
         <button
           type="button"
-          className="text-xs text-muted-foreground mb-2 underline"
+          className="text-sm text-muted-foreground mb-2 underline py-2 px-1"
           onClick={() => setSelectMode(true)}
         >
           Select
@@ -188,7 +188,7 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
                   <p className="font-semibold text-sm leading-tight flex items-center gap-1.5">
                     <span className="truncate">{TYPE_LABELS[inv.type]} #{inv.number}</span>
                     {inv.recurringInvoice?.isActive && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5 shrink-0">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5 shrink-0">
                         <RefreshCw className="w-2.5 h-2.5" />
                         {inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}
                       </span>

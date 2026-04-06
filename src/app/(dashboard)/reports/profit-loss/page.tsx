@@ -66,7 +66,7 @@ export default async function ProfitLossPage({
           { label: "Net Income", value: data.netIncome, color: data.netIncome >= 0 ? "text-primary" : "text-red-600" },
         ].map((s) => (
           <div key={s.label} className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.label}</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{s.label}</p>
             <p className={`text-2xl font-bold tabular-nums mt-1 ${s.color}`}>${s.value.toFixed(2)}</p>
           </div>
         ))}
@@ -103,7 +103,7 @@ export default async function ProfitLossPage({
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b border-border/50">
-            <tr className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               <th className="px-5 py-3 text-left">Month</th>
               <th className="px-5 py-3 text-right">Revenue</th>
               <th className="px-5 py-3 text-right">Expenses</th>

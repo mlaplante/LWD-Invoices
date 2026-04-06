@@ -53,7 +53,7 @@ export function ActivityFeed({ items }: Props) {
                 <span className="font-semibold">{item.entityLabel ?? "—"}</span>{" "}
                 <span className="text-muted-foreground">{cfg.label}</span>
               </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {relativeTime(item.createdAt)}
               </p>
             </div>

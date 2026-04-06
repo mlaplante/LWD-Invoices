@@ -6,6 +6,13 @@ import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const PAYMENT_TERM_OPTIONS = [
   { label: "Use org default", days: null },
@@ -258,20 +265,26 @@ export function ClientForm({ mode, client }: Props) {
 
         <div>
           <label className="text-sm font-medium">Default Payment Terms</label>
-          <select
-            value={form.defaultPaymentTermsDays ?? ""}
-            onChange={(e) =>
+          <Select
+            value={form.defaultPaymentTermsDays === null ? "default" : String(form.defaultPaymentTermsDays)}
+            onValueChange={(v) =>
               setForm((p) => ({
                 ...p,
-                defaultPaymentTermsDays: e.target.value === "" ? null : parseInt(e.target.value),
+                defaultPaymentTermsDays: v === "default" ? null : parseInt(v),
               }))
             }
-            className="mt-1 w-full border border-input rounded-md px-3 py-2 text-sm bg-background"
           >
-            {PAYMENT_TERM_OPTIONS.map((o) => (
-              <option key={o.days ?? "null"} value={o.days ?? ""}>{o.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="mt-1 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYMENT_TERM_OPTIONS.map((o) => (
+                <SelectItem key={o.days ?? "default"} value={o.days === null ? "default" : String(o.days)}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="text-xs text-muted-foreground mt-1">
             Overrides the organization default for new invoices with this client.
           </p>

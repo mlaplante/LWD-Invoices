@@ -66,7 +66,7 @@ export default async function UnpaidReportPage() {
       {/* Table */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Unpaid
           </p>
           <p className="text-base font-semibold mt-0.5">Outstanding Invoices</p>
@@ -77,6 +77,7 @@ export default async function UnpaidReportPage() {
             <p className="text-sm font-medium text-emerald-600">All invoices paid!</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/40">
@@ -130,6 +131,7 @@ export default async function UnpaidReportPage() {
               ))}
             </tfoot>
           </table>
+          </div>
         )}
       </div>
     </div>

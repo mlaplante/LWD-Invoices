@@ -233,7 +233,7 @@ export function ExpenseList() {
       {/* Table */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             All Expenses
           </p>
         </div>
@@ -327,7 +327,7 @@ export function ExpenseList() {
                         <span className="flex items-center gap-1.5">
                           <Repeat className="w-3.5 h-3.5 text-primary shrink-0" />
                           {rec.name}
-                          <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                             {formatFrequency(rec.frequency, rec.interval)}
                           </span>
                         </span>
@@ -396,7 +396,7 @@ export function ExpenseList() {
                 {recurringExpenses.length > 0 && expenses.length > 0 && (
                   <tr>
                     <td colSpan={9} className="px-6 py-1.5 bg-muted/30">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                         One-Time Expenses
                       </p>
                     </td>

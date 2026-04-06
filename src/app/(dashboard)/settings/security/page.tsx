@@ -17,7 +17,7 @@ export default async function SecuritySettingsPage() {
 
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Authentication
           </p>
           <p className="text-base font-semibold mt-1">Two-Factor Authentication</p>
@@ -33,7 +33,7 @@ export default async function SecuritySettingsPage() {
 
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Password</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Password</p>
           <p className="text-base font-semibold mt-1">Change Password</p>
           <p className="text-sm text-muted-foreground mt-0.5">Update the password you use to sign in.</p>
         </div>

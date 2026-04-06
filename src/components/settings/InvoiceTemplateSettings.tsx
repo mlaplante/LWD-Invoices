@@ -212,7 +212,7 @@ export function InvoiceTemplateSettings({ org }: Props) {
       {/* Template Picker */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Layout
           </p>
           <p className="text-base font-semibold mt-1">Invoice Template</p>
@@ -258,7 +258,7 @@ export function InvoiceTemplateSettings({ org }: Props) {
       {/* Customization */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Customization
           </p>
           <p className="text-base font-semibold mt-1">Template Options</p>
@@ -339,7 +339,7 @@ export function InvoiceTemplateSettings({ org }: Props) {
       {/* Deposit Default */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Payments
           </p>
           <p className="text-base font-semibold mt-1">Default Deposit</p>

@@ -21,7 +21,7 @@ export function CashFlowWidget({ collectedThisMonth, outstandingAR, expensesThis
   return (
     <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
       <div className="px-5 py-4 border-b border-border/50">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
           This Month
         </p>
         <p className="text-sm font-semibold mt-0.5">Cash Flow</p>

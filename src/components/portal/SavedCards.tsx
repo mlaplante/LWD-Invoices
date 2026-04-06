@@ -43,7 +43,7 @@ export function SavedCards({ clientToken }: { clientToken: string }) {
                 Expires {card.expiresMonth.toString().padStart(2, "0")}/{card.expiresYear}
               </span>
               {card.isDefault && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                   Default
                 </span>
               )}

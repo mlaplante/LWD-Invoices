@@ -52,11 +52,11 @@ export default async function TimeTrackingReportPage({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Hours</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Hours</p>
           <p className="text-2xl font-bold mt-1">{fmtHours(totalMinutes)}</p>
         </div>
         <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Billable Value</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Billable Value</p>
           <p className="text-2xl font-bold mt-1 text-primary">${totalBillable.toFixed(2)}</p>
         </div>
       </div>
@@ -67,9 +67,10 @@ export default async function TimeTrackingReportPage({
         </div>
       ) : (
         <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-border/50">
-              <tr className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 <th className="px-5 py-3 text-left">Project</th>
                 <th className="px-5 py-3 text-left">Client</th>
                 <th className="px-5 py-3 text-right">Hours</th>
@@ -87,6 +88,7 @@ export default async function TimeTrackingReportPage({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

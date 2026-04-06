@@ -159,7 +159,8 @@ function SortableLineItem({
 
   return (
     <div ref={setNodeRef} style={style} className="rounded-md border bg-card">
-      <div className="grid grid-cols-[24px_2fr_80px_120px_80px_80px_120px_100px_32px] gap-2 items-start p-2">
+      {/* ── Desktop grid layout ── */}
+      <div className="hidden sm:grid grid-cols-[24px_2fr_80px_120px_80px_80px_120px_100px_32px] gap-2 items-start p-2">
         {/* Drag handle */}
         <button
           type="button"
@@ -317,6 +318,180 @@ function SortableLineItem({
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
+
+      {/* ── Mobile card layout ── */}
+      <div className="sm:hidden p-3 space-y-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="cursor-grab text-muted-foreground touch-none p-1"
+            title="Drag to reorder"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <Input
+            placeholder="Item name"
+            value={line.name}
+            onChange={(e) => onUpdate(index, { name: e.target.value })}
+            className="flex-1 h-10"
+          />
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="p-2 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex gap-2">
+          <Select
+            value={line.lineType}
+            onValueChange={(v: string) => onUpdate(index, { lineType: v as LineType })}
+          >
+            <SelectTrigger className="h-10 flex-1 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(LINE_TYPE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value} className="text-sm">
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <button
+            type="button"
+            onClick={() => onToggleDescription(index)}
+            className="p-2 text-muted-foreground hover:text-foreground"
+            title="Toggle description"
+          >
+            {expandedDescriptions.has(index) ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        {expandedDescriptions.has(index) && (
+          <Textarea
+            placeholder="Description (optional)"
+            value={line.description ?? ""}
+            onChange={(e) => onUpdate(index, { description: e.target.value })}
+            className="min-h-[56px] text-sm text-muted-foreground resize-y"
+            rows={2}
+          />
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Qty</label>
+            <Input
+              type="number"
+              min={0}
+              step="any"
+              value={line.qty}
+              onChange={(e) => onUpdate(index, { qty: Number(e.target.value) })}
+              className="h-10 text-right"
+              disabled={isDiscount}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Rate</label>
+            <Input
+              type="number"
+              min={0}
+              step="any"
+              value={line.rate}
+              onChange={(e) => onUpdate(index, { rate: Number(e.target.value) })}
+              className="h-10 text-right"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Discount</label>
+            <div className="flex gap-0.5">
+              <Input
+                type="number"
+                min={0}
+                step="any"
+                value={line.discount}
+                onChange={(e) => onUpdate(index, { discount: Number(e.target.value) })}
+                className="h-10 w-full text-right"
+                disabled={isDiscount}
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdate(index, { discountIsPercentage: !line.discountIsPercentage })
+                }
+                className="h-10 rounded border px-2 text-sm hover:bg-muted"
+                title={line.discountIsPercentage ? "Switch to fixed" : "Switch to %"}
+                disabled={isDiscount}
+              >
+                {line.discountIsPercentage ? "%" : "$"}
+              </button>
+            </div>
+          </div>
+          {showPeriod && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Period</label>
+              <Input
+                type="number"
+                min={0}
+                step="any"
+                value={line.period ?? ""}
+                onChange={(e) =>
+                  onUpdate(index, {
+                    period: e.target.value === "" ? undefined : Number(e.target.value),
+                  })
+                }
+                className="h-10 text-right"
+                placeholder="1"
+              />
+            </div>
+          )}
+        </div>
+
+        {taxes.length > 0 && (
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Taxes</label>
+            <div className="flex flex-wrap gap-1.5">
+              {taxes.map((tax) => (
+                <button
+                  key={tax.id}
+                  type="button"
+                  onClick={() => onToggleTax(index, tax.id)}
+                  className={`rounded px-2 py-1.5 text-xs border transition-colors ${
+                    line.taxIds.includes(tax.id)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  {tax.name} {tax.rate}%
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+          <span className="text-sm text-muted-foreground">Total</span>
+          <div className="text-right">
+            <span className="text-sm font-semibold">{fmt(result.total, currencySymbol)}</span>
+            {result.taxTotal > 0 && (
+              <span className="text-xs text-muted-foreground ml-2">
+                (tax: {fmt(result.taxTotal, currencySymbol)})
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -382,7 +557,7 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
   return (
     <div className="space-y-2">
       {/* Header */}
-      <div className="grid grid-cols-[24px_2fr_80px_120px_80px_80px_120px_100px_32px] gap-2 px-2 text-xs font-medium text-muted-foreground">
+      <div className="hidden sm:grid grid-cols-[24px_2fr_80px_120px_80px_80px_120px_100px_32px] gap-2 px-2 text-xs font-medium text-muted-foreground">
         <span />
         <span>Description</span>
         <span className="text-right">Qty</span>

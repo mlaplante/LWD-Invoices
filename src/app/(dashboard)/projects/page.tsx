@@ -145,7 +145,7 @@ export default async function ProjectsPage({
                   <p className="font-semibold text-sm truncate">{p.name}</p>
                   <span
                     className={cn(
-                      "inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-semibold shrink-0 ml-2",
+                      "inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold shrink-0 ml-2",
                       badge.className
                     )}
                   >

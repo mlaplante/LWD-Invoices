@@ -98,7 +98,7 @@ export default async function ExpensesReportPage({
       {/* Expenses table */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Expenses</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expenses</p>
           <p className="text-base font-semibold mt-0.5">All Expenses</p>
         </div>
 
@@ -107,6 +107,7 @@ export default async function ExpensesReportPage({
             <p className="text-sm text-muted-foreground">No expenses recorded yet.</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/40">
@@ -133,7 +134,7 @@ export default async function ExpensesReportPage({
                   <td className="px-6 py-3.5 text-muted-foreground">{e.supplier?.name ?? "—"}</td>
                   <td className="px-6 py-3.5 text-center">
                     {e.recurringExpenseId ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                         <Repeat className="w-2.5 h-2.5" />
                         Recurring
                       </span>
@@ -154,6 +155,7 @@ export default async function ExpensesReportPage({
               </tr>
             </tfoot>
           </table>
+          </div>
         )}
       </div>
     </div>

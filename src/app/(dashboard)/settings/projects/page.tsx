@@ -29,7 +29,7 @@ export default async function ProjectSettingsPage() {
       {/* Content card */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Project Settings
           </p>
           <p className="text-base font-semibold mt-1">Task Statuses &amp; Templates</p>

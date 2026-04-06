@@ -115,7 +115,7 @@ export function SummaryCards({ summary }: Props) {
             {card.badge && (
               <span
                 className={cn(
-                  "text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                  "text-xs font-semibold px-1.5 py-0.5 rounded-md",
                   card.badgeColor
                 )}
               >
@@ -127,7 +127,7 @@ export function SummaryCards({ summary }: Props) {
             <p className="text-xs text-muted-foreground font-medium">
               {card.label}
             </p>
-            <p className="font-display text-3xl mt-0.5 leading-none">
+            <p className="font-display text-2xl sm:text-3xl mt-0.5 leading-none truncate">
               {card.value}
             </p>
           </div>

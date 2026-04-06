@@ -140,7 +140,7 @@ export default async function SettingsPage() {
       {/* Organization */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Organization
           </p>
           <p className="text-base font-semibold mt-1">General Settings</p>
@@ -156,7 +156,7 @@ export default async function SettingsPage() {
       {/* Security Enforcement */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Security
           </p>
           <p className="text-base font-semibold mt-1">Team Security</p>
@@ -172,7 +172,7 @@ export default async function SettingsPage() {
       {/* Branding */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Branding
           </p>
           <p className="text-base font-semibold mt-1">Brand &amp; Appearance</p>
@@ -188,7 +188,7 @@ export default async function SettingsPage() {
       {/* Portal Branding */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Portal
           </p>
           <p className="text-base font-semibold mt-1">Portal Branding</p>
@@ -204,7 +204,7 @@ export default async function SettingsPage() {
       {/* Currencies */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Currencies
           </p>
           <p className="text-base font-semibold mt-1">Currency Management</p>
@@ -220,7 +220,7 @@ export default async function SettingsPage() {
       {/* Taxes */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Taxes
           </p>
           <p className="text-base font-semibold mt-1">Tax Rates</p>

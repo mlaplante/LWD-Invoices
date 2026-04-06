@@ -278,7 +278,7 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
                         {TYPE_LABELS[inv.type]}
                         {inv.recurringInvoice?.isActive && (
                           <span
-                            className="inline-flex items-center gap-1 text-[10px] font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5"
+                            className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5"
                             title={`Recurring \u00b7 ${inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}`}
                           >
                             <RefreshCw className="w-2.5 h-2.5" />

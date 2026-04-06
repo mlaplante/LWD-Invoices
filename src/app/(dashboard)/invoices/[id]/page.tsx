@@ -231,7 +231,7 @@ export default async function InvoiceDetailPage({
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
 
         {/* Top banner: org name (left) + metadata grid (right) */}
-        <div className="grid grid-cols-[1fr_auto] gap-10 px-8 pt-8 pb-6 border-b border-border/50">
+        <div className="grid grid-cols-1 gap-6 px-4 sm:px-8 pt-6 sm:pt-8 pb-6 border-b border-border/50 sm:grid-cols-[1fr_auto] sm:gap-10">
           <div>
             {invoice.organization.logoUrl && (
               <img
@@ -278,15 +278,15 @@ export default async function InvoiceDetailPage({
         </div>
 
         {/* Issue From / Issue For */}
-        <div className="grid grid-cols-2 gap-6 px-8 py-5 border-b border-border/50 bg-muted/20">
+        <div className="grid grid-cols-1 gap-4 px-4 sm:px-8 py-5 border-b border-border/50 bg-muted/20 sm:grid-cols-2 sm:gap-6">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
               Issue From
             </p>
             <p className="font-semibold text-foreground">{invoice.organization.name}</p>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
               Issue For
             </p>
             <p className="font-semibold text-foreground">{invoice.client.name}</p>
@@ -299,7 +299,7 @@ export default async function InvoiceDetailPage({
         </div>
 
         {/* Line items */}
-        <div className="px-8 py-6">
+        <div className="px-4 sm:px-8 py-6 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
@@ -411,8 +411,8 @@ export default async function InvoiceDetailPage({
 
         {/* Notes */}
         {invoice.notes && (
-          <div className="mx-8 mb-8 rounded-xl border border-border/50 bg-muted/40 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+          <div className="mx-4 sm:mx-8 mb-6 sm:mb-8 rounded-xl border border-border/50 bg-muted/40 p-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
               Notes
             </p>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
@@ -432,6 +432,7 @@ export default async function InvoiceDetailPage({
         <div className="space-y-3">
           <h2 className="text-base font-semibold">Payment History</h2>
           <div className="rounded-2xl border border-border/50 overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/30 border-b border-border/50">
                 <tr>
@@ -463,6 +464,7 @@ export default async function InvoiceDetailPage({
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
@@ -472,6 +474,7 @@ export default async function InvoiceDetailPage({
         <div className="space-y-3">
           <h2 className="text-base font-semibold">Payment Schedule</h2>
           <div className="rounded-2xl border border-border/50 overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/30 border-b border-border/50">
                 <tr>
@@ -518,6 +521,7 @@ export default async function InvoiceDetailPage({
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

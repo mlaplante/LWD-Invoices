@@ -103,7 +103,7 @@ export default async function TaxLiabilityReportPage({
       {/* Detail table */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Details</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Details</p>
           <p className="text-base font-semibold mt-0.5">Tax by Invoice</p>
         </div>
 
@@ -112,6 +112,7 @@ export default async function TaxLiabilityReportPage({
             <p className="text-sm text-muted-foreground">No tax data for the selected period.</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/40">
@@ -139,7 +140,7 @@ export default async function TaxLiabilityReportPage({
                   <td className="px-6 py-3.5 text-right tabular-nums">{d.taxRate}%</td>
                   <td className="px-6 py-3.5 text-right font-semibold tabular-nums">${d.taxAmount.toFixed(2)}</td>
                   <td className="px-6 py-3.5 text-center">
-                    <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground">
+                    <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
                       {d.paymentStatus.replace("_", " ")}
                     </span>
                   </td>
@@ -159,6 +160,7 @@ export default async function TaxLiabilityReportPage({
               </tr>
             </tfoot>
           </table>
+          </div>
         )}
       </div>
     </div>
