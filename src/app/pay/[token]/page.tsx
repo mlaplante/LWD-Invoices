@@ -108,6 +108,17 @@ export default async function PayPage({
 
   const hasInstallments = invoice.partialPayments.length > 0;
 
+  // Load saved payment methods for this client
+  const savedCards = !isPaid && invoice.clientId
+    ? await db.savedPaymentMethod.findMany({
+        where: {
+          clientId: invoice.clientId,
+          organizationId: invoice.organizationId,
+        },
+        orderBy: { isDefault: "desc" },
+      })
+    : [];
+
   return (
     <main aria-label="Payment" className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-12">
       <div className="w-full max-w-md rounded-2xl border border-border/50 bg-card shadow-lg overflow-hidden">
@@ -195,6 +206,19 @@ export default async function PayPage({
                           </p>
                         </div>
                         <div className="space-y-2">
+                          {savedCards.length > 0 && (
+                            <form action={`/api/pay/${token}/charge-saved`} method="POST">
+                              <input type="hidden" name="paymentMethodId" value={savedCards[0].stripePaymentMethodId} />
+                              <input type="hidden" name="partialPaymentId" value={inst.id} />
+                              <button
+                                type="submit"
+                                className="flex items-center justify-center gap-2 w-full rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                              >
+                                <CreditCard className="h-4 w-4" />
+                                Pay with {savedCards[0].brand.charAt(0).toUpperCase() + savedCards[0].brand.slice(1)} ending {savedCards[0].last4}
+                              </button>
+                            </form>
+                          )}
                           {stripeGw && (
                             <a
                               href={stripeUrl}
@@ -232,6 +256,18 @@ export default async function PayPage({
               ) : isPayable && hasGateways ? (
                 /* No installments — single payment */
                 <div className="space-y-3">
+                  {savedCards.length > 0 && (
+                    <form action={`/api/pay/${token}/charge-saved`} method="POST">
+                      <input type="hidden" name="paymentMethodId" value={savedCards[0].stripePaymentMethodId} />
+                      <button
+                        type="submit"
+                        className="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        Pay with {savedCards[0].brand.charAt(0).toUpperCase() + savedCards[0].brand.slice(1)} ending {savedCards[0].last4}
+                      </button>
+                    </form>
+                  )}
                   {stripeGw && (
                     <a
                       href={`/api/pay/${token}/stripe`}
