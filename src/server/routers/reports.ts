@@ -381,6 +381,142 @@ export const reportsRouter = router({
       };
     }),
 
+  profitabilityByProject: protectedProcedure
+    .input(dateRangeSchema)
+    .query(async ({ ctx, input }) => {
+      const dateFilter = input.from || input.to
+        ? { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) }
+        : undefined;
+
+      // Revenue: invoice lines sourced from TimeEntry or Expense, on paid/sent invoices.
+      // TimeEntry.invoiceLineId and Expense.invoiceLineId store the InvoiceLine id,
+      // but there is no Prisma relation — so we query InvoiceLine by sourceTable/sourceId.
+      const paidStatuses = ["PAID", "SENT", "PARTIALLY_PAID"] as const;
+
+      // Get all project time-entry ids and expense ids so we can look up their project
+      const [billedTimeEntries, billedExpenses] = await Promise.all([
+        ctx.db.timeEntry.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            invoiceLineId: { not: null },
+            ...(dateFilter ? { date: dateFilter } : {}),
+          },
+          select: { id: true, projectId: true, invoiceLineId: true },
+        }),
+        ctx.db.expense.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            invoiceLineId: { not: null },
+            projectId: { not: null },
+            ...(dateFilter ? { createdAt: dateFilter } : {}),
+          },
+          select: { id: true, projectId: true, invoiceLineId: true },
+        }),
+      ]);
+
+      // Build lookup: invoiceLineId -> projectId
+      const lineToProject = new Map<string, string>();
+      for (const t of billedTimeEntries) {
+        if (t.invoiceLineId) lineToProject.set(t.invoiceLineId, t.projectId);
+      }
+      for (const e of billedExpenses) {
+        if (e.invoiceLineId && e.projectId) lineToProject.set(e.invoiceLineId, e.projectId);
+      }
+
+      // Fetch invoice lines + invoice status for those line ids
+      const lineIds = Array.from(lineToProject.keys());
+      const invoiceLines = lineIds.length > 0
+        ? await ctx.db.invoiceLine.findMany({
+            where: { id: { in: lineIds } },
+            select: { id: true, total: true, invoice: { select: { status: true } } },
+          })
+        : [];
+
+      // Revenue by project
+      const revenueByProject: Record<string, number> = {};
+      for (const line of invoiceLines) {
+        if (!paidStatuses.includes(line.invoice.status as typeof paidStatuses[number])) continue;
+        const pid = lineToProject.get(line.id);
+        if (!pid) continue;
+        revenueByProject[pid] = (revenueByProject[pid] ?? 0) + Number(line.total);
+      }
+
+      // Costs: all expenses + time entries by project
+      const [allExpenses, allTime] = await Promise.all([
+        ctx.db.expense.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            projectId: { not: null },
+            ...(dateFilter ? { createdAt: dateFilter } : {}),
+          },
+          select: { projectId: true, rate: true, qty: true },
+        }),
+        ctx.db.timeEntry.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            ...(dateFilter ? { date: dateFilter } : {}),
+          },
+          select: {
+            projectId: true,
+            minutes: true,
+            project: { select: { rate: true } },
+          },
+        }),
+      ]);
+
+      // Project names + client names
+      const projects = await ctx.db.project.findMany({
+        where: { organizationId: ctx.orgId },
+        select: { id: true, name: true, client: { select: { name: true } } },
+      });
+      const projectMap = new Map(projects.map((p) => [p.id, { name: p.name, clientName: p.client.name }]));
+
+      // Costs by project
+      const costByProject: Record<string, number> = {};
+      for (const e of allExpenses) {
+        if (!e.projectId) continue;
+        costByProject[e.projectId] = (costByProject[e.projectId] ?? 0) + Number(e.rate) * e.qty;
+      }
+      for (const t of allTime) {
+        const hours = Number(t.minutes) / 60;
+        costByProject[t.projectId] = (costByProject[t.projectId] ?? 0) + hours * Number(t.project.rate);
+      }
+
+      const allProjectIds = Array.from(
+        new Set([...Object.keys(revenueByProject), ...Object.keys(costByProject)])
+      );
+
+      const rows = allProjectIds.map((pid) => {
+        const info = projectMap.get(pid);
+        const revenue = revenueByProject[pid] ?? 0;
+        const costs = costByProject[pid] ?? 0;
+        const margin = revenue - costs;
+        return {
+          projectId: pid,
+          projectName: info?.name ?? "Unknown",
+          clientName: info?.clientName ?? "Unknown",
+          revenue: Math.round(revenue * 100) / 100,
+          costs: Math.round(costs * 100) / 100,
+          margin: Math.round(margin * 100) / 100,
+          marginPercent: revenue > 0 ? Math.round((margin / revenue) * 10000) / 100 : 0,
+        };
+      });
+
+      rows.sort((a, b) => b.revenue - a.revenue);
+
+      const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
+      const totalCosts = rows.reduce((s, r) => s + r.costs, 0);
+      const totalMargin = totalRevenue - totalCosts;
+
+      return {
+        rows,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalCosts: Math.round(totalCosts * 100) / 100,
+        totalMargin: Math.round(totalMargin * 100) / 100,
+        avgMarginPercent: totalRevenue > 0 ? Math.round((totalMargin / totalRevenue) * 10000) / 100 : 0,
+      };
+    }),
+
   invoiceAging: protectedProcedure.query(async ({ ctx }) => {
     const now = new Date();
     const invoices = await ctx.db.invoice.findMany({
