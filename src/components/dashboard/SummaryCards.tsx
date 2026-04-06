@@ -49,7 +49,7 @@ export function SummaryCards({ summary }: Props) {
       badge: `${summary.outstandingCount} invoice${summary.outstandingCount !== 1 ? "s" : ""}`,
       badgeColor: "bg-muted text-muted-foreground",
       color: "text-amber-600 bg-amber-50",
-      href: "/invoices",
+      href: "/invoices?status=SENT&status=PARTIALLY_PAID&status=OVERDUE",
     },
     {
       icon: AlertTriangle,
@@ -67,7 +67,7 @@ export function SummaryCards({ summary }: Props) {
         summary.overdueCount > 0
           ? "text-red-600 bg-red-50"
           : "text-gray-400 bg-gray-100",
-      href: "/invoices",
+      href: "/invoices?status=OVERDUE",
     },
     {
       icon: Wallet,

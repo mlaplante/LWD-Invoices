@@ -327,6 +327,48 @@ export const dashboardRouter = router({
     };
   }),
 
+  dueThisWeek: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const endOfWeek = new Date(now);
+    endOfWeek.setDate(endOfWeek.getDate() + 7);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    const invoices = await ctx.db.invoice.findMany({
+      where: {
+        organizationId: ctx.orgId,
+        status: { in: ["SENT", "PARTIALLY_PAID"] },
+        isArchived: false,
+        dueDate: { gte: now, lte: endOfWeek },
+      },
+      select: {
+        id: true,
+        number: true,
+        total: true,
+        dueDate: true,
+        status: true,
+        client: { select: { name: true } },
+        payments: { select: { amount: true } },
+        currency: { select: { symbol: true, symbolPosition: true } },
+      },
+      orderBy: { dueDate: "asc" },
+      take: 10,
+    });
+
+    return invoices.map((inv) => {
+      const paid = inv.payments.reduce((s, p) => s + p.amount.toNumber(), 0);
+      return {
+        id: inv.id,
+        number: inv.number,
+        clientName: inv.client.name,
+        total: inv.total.toNumber(),
+        remaining: inv.total.toNumber() - paid,
+        dueDate: inv.dueDate!.toISOString(),
+        currencySymbol: inv.currency.symbol,
+        symbolPosition: inv.currency.symbolPosition,
+      };
+    });
+  }),
+
   agingReceivables: protectedProcedure.query(async ({ ctx }) => {
     const now = new Date();
 

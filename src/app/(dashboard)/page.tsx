@@ -8,6 +8,7 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { TopClients } from "@/components/dashboard/TopClients";
 import { AgingReceivables } from "@/components/dashboard/AgingReceivables";
 import { EstimateConversion } from "@/components/dashboard/EstimateConversion";
+import { DueThisWeek } from "@/components/dashboard/DueThisWeek";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Lazy-load chart components to defer the ~400KB Recharts bundle
@@ -54,15 +55,17 @@ async function ExpensesSection() {
 }
 
 async function InsightsSection() {
-  const [topClients, aging, conversion] = await Promise.all([
+  const [topClients, aging, conversion, dueThisWeek] = await Promise.all([
     api.dashboard.topClients(),
     api.dashboard.agingReceivables(),
     api.dashboard.estimateConversion(),
+    api.dashboard.dueThisWeek(),
   ]);
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
       <TopClients data={topClients} />
       <AgingReceivables data={aging} />
+      <DueThisWeek data={dueThisWeek} />
       <EstimateConversion data={conversion} />
     </div>
   );
