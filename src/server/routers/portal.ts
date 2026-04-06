@@ -390,6 +390,65 @@ export const portalRouter = router({
       };
     }),
 
+  savedCards: publicProcedure
+    .input(z.object({ clientToken: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const client = await ctx.db.client.findUnique({
+        where: { portalToken: input.clientToken },
+        select: { id: true, organizationId: true },
+      });
+      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return ctx.db.savedPaymentMethod.findMany({
+        where: { clientId: client.id, organizationId: client.organizationId },
+        select: {
+          id: true,
+          last4: true,
+          brand: true,
+          expiresMonth: true,
+          expiresYear: true,
+          isDefault: true,
+        },
+        orderBy: { isDefault: "desc" },
+      });
+    }),
+
+  removeCard: publicProcedure
+    .input(z.object({ clientToken: z.string(), cardId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const client = await ctx.db.client.findUnique({
+        where: { portalToken: input.clientToken },
+        select: { id: true, organizationId: true, stripeCustomerId: true },
+      });
+      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const card = await ctx.db.savedPaymentMethod.findFirst({
+        where: { id: input.cardId, clientId: client.id, organizationId: client.organizationId },
+      });
+      if (!card) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Detach from Stripe if possible
+      if (client.stripeCustomerId) {
+        try {
+          const gw = await ctx.db.gatewaySetting.findFirst({
+            where: { organizationId: client.organizationId, gatewayType: "STRIPE", isEnabled: true },
+          });
+          if (gw) {
+            const { decryptJson } = await import("@/server/services/encryption");
+            const { getStripeClient } = await import("@/server/services/stripe");
+            const config = decryptJson<{ secretKey: string }>(gw.configJson);
+            const stripe = getStripeClient(config.secretKey);
+            await stripe.paymentMethods.detach(card.stripePaymentMethodId);
+          }
+        } catch (err) {
+          console.error("Failed to detach card from Stripe:", err);
+        }
+      }
+
+      await ctx.db.savedPaymentMethod.delete({ where: { id: card.id } });
+      return { success: true };
+    }),
+
   signProposal: publicProcedure
     .input(
       z.object({
