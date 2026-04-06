@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3 } from "lucide-react";
 
 const reports = [
   {
@@ -30,6 +30,20 @@ const reports = [
     description: "Net income breakdown with revenue vs. expenses by month.",
     icon: <TrendingUp className="w-4 h-4" />,
     color: "bg-blue-50 text-blue-600",
+  },
+  {
+    href: "/reports/profitability",
+    label: "Profitability",
+    description: "Margin analysis by client and project.",
+    icon: <PieChart className="w-4 h-4" />,
+    color: "bg-indigo-50 text-indigo-600",
+  },
+  {
+    href: "/reports/forecast",
+    label: "Revenue Forecast",
+    description: "Pipeline view of expected revenue over the next months.",
+    icon: <BarChart3 className="w-4 h-4" />,
+    color: "bg-teal-50 text-teal-600",
   },
   {
     href: "/reports/aging",
