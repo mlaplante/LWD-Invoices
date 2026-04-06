@@ -276,6 +276,111 @@ export const reportsRouter = router({
       };
     }),
 
+  profitabilityByClient: protectedProcedure
+    .input(dateRangeSchema)
+    .query(async ({ ctx, input }) => {
+      const dateFilter = input.from || input.to
+        ? { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) }
+        : undefined;
+
+      // Revenue: payments grouped by invoice's clientId
+      const payments = await ctx.db.payment.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          ...(dateFilter ? { paidAt: dateFilter } : {}),
+        },
+        select: {
+          amount: true,
+          invoice: { select: { clientId: true } },
+        },
+      });
+
+      // Costs: expenses via project.clientId + time entry cost via project
+      const [expenses, timeEntries] = await Promise.all([
+        ctx.db.expense.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            project: { isNot: null },
+            ...(dateFilter ? { createdAt: dateFilter } : {}),
+          },
+          select: {
+            rate: true,
+            qty: true,
+            project: { select: { clientId: true } },
+          },
+        }),
+        ctx.db.timeEntry.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            ...(dateFilter ? { date: dateFilter } : {}),
+          },
+          select: {
+            minutes: true,
+            project: { select: { clientId: true, rate: true } },
+          },
+        }),
+      ]);
+
+      // Client names
+      const clients = await ctx.db.client.findMany({
+        where: { organizationId: ctx.orgId },
+        select: { id: true, name: true },
+      });
+      const clientMap = new Map(clients.map((c) => [c.id, c.name]));
+
+      // Aggregate by clientId
+      const revenueByClient: Record<string, number> = {};
+      for (const p of payments) {
+        const cid = p.invoice.clientId;
+        revenueByClient[cid] = (revenueByClient[cid] ?? 0) + Number(p.amount);
+      }
+
+      const costByClient: Record<string, number> = {};
+      for (const e of expenses) {
+        if (!e.project) continue;
+        const cid = e.project.clientId;
+        costByClient[cid] = (costByClient[cid] ?? 0) + Number(e.rate) * e.qty;
+      }
+      for (const t of timeEntries) {
+        if (!t.project) continue;
+        const cid = t.project.clientId;
+        const hours = Number(t.minutes) / 60;
+        costByClient[cid] = (costByClient[cid] ?? 0) + hours * Number(t.project.rate);
+      }
+
+      const allClientIds = Array.from(
+        new Set([...Object.keys(revenueByClient), ...Object.keys(costByClient)])
+      );
+
+      const rows = allClientIds.map((cid) => {
+        const revenue = revenueByClient[cid] ?? 0;
+        const costs = costByClient[cid] ?? 0;
+        const margin = revenue - costs;
+        return {
+          clientId: cid,
+          clientName: clientMap.get(cid) ?? "Unknown",
+          revenue: Math.round(revenue * 100) / 100,
+          costs: Math.round(costs * 100) / 100,
+          margin: Math.round(margin * 100) / 100,
+          marginPercent: revenue > 0 ? Math.round((margin / revenue) * 10000) / 100 : 0,
+        };
+      });
+
+      rows.sort((a, b) => b.revenue - a.revenue);
+
+      const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
+      const totalCosts = rows.reduce((s, r) => s + r.costs, 0);
+      const totalMargin = totalRevenue - totalCosts;
+
+      return {
+        rows,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalCosts: Math.round(totalCosts * 100) / 100,
+        totalMargin: Math.round(totalMargin * 100) / 100,
+        avgMarginPercent: totalRevenue > 0 ? Math.round((totalMargin / totalRevenue) * 10000) / 100 : 0,
+      };
+    }),
+
   invoiceAging: protectedProcedure.query(async ({ ctx }) => {
     const now = new Date();
     const invoices = await ctx.db.invoice.findMany({
