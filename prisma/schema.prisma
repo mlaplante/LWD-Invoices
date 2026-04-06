@@ -228,6 +228,7 @@ model Organization {
   lateFeeEntries          LateFeeEntry[]
   retainers               Retainer[]
   reminderSequences       ReminderSequence[]
+  savedPaymentMethods     SavedPaymentMethod[]
 }
 
 model User {
@@ -300,11 +301,12 @@ model Client {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  invoices       Invoice[]
-  projects       Project[]
-  tickets        Ticket[]
-  portalSessions ClientPortalSession[]
-  retainer       Retainer?
+  invoices              Invoice[]
+  projects              Project[]
+  tickets               Ticket[]
+  portalSessions        ClientPortalSession[]
+  retainer              Retainer?
+  savedPaymentMethods   SavedPaymentMethod[]
 }
 
 model ClientPortalSession {
@@ -531,6 +533,25 @@ model Payment {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+model SavedPaymentMethod {
+  id                    String   @id @default(cuid())
+  clientId              String
+  organizationId        String
+  stripePaymentMethodId String   @unique
+  last4                 String
+  brand                 String
+  expiresMonth          Int
+  expiresYear           Int
+  isDefault             Boolean  @default(true)
+  createdAt             DateTime @default(now())
+
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, organizationId, stripePaymentMethodId])
+  @@index([clientId, organizationId])
 }
 
 model GatewaySetting {
