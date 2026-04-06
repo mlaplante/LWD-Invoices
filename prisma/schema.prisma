@@ -446,6 +446,7 @@ model Invoice {
   lateFeeEntries          LateFeeEntry[]
   retainerTransactions    RetainerTransaction[]
   reminderLogs            ReminderLog[]
+  milestone               Milestone?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -642,6 +643,11 @@ model Milestone {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   tasks          ProjectTask[]
+  amount         Decimal?   @db.Decimal(20, 10)
+  completedAt    DateTime?
+  autoInvoice    Boolean    @default(false)
+  invoiceId      String?    @unique
+  invoice        Invoice?   @relation(fields: [invoiceId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
