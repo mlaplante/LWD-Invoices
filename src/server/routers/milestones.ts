@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
+import { generateInvoiceNumber } from "../services/invoice-numbering";
 
 export const milestonesRouter = router({
   list: protectedProcedure
@@ -22,6 +23,8 @@ export const milestonesRouter = router({
         targetDate: z.coerce.date().optional(),
         sortOrder: z.number().int().default(0),
         isViewable: z.boolean().default(false),
+        amount: z.coerce.number().positive().optional(),
+        autoInvoice: z.boolean().default(false),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -40,6 +43,8 @@ export const milestonesRouter = router({
         targetDate: z.coerce.date().optional(),
         sortOrder: z.number().int().optional(),
         isViewable: z.boolean().optional(),
+        amount: z.coerce.number().positive().optional().nullable(),
+        autoInvoice: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -79,5 +84,103 @@ export const milestonesRouter = router({
           })
         )
       );
+    }),
+
+  complete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const milestone = await ctx.db.milestone.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+        include: { project: { include: { client: true } } },
+      });
+      if (!milestone) throw new TRPCError({ code: "NOT_FOUND" });
+      if (milestone.completedAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Milestone already completed" });
+      }
+
+      if (milestone.autoInvoice && milestone.amount) {
+        // Create draft invoice inside a transaction
+        const result = await ctx.db.$transaction(async (tx) => {
+          const number = await generateInvoiceNumber(tx as never, ctx.orgId);
+
+          const defaultCurrency = await tx.currency.findFirst({
+            where: { organizationId: ctx.orgId, isDefault: true },
+          });
+          if (!defaultCurrency) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No default currency configured" });
+
+          const amt = Number(milestone.amount);
+
+          const invoice = await tx.invoice.create({
+            data: {
+              number,
+              type: "DETAILED",
+              status: "DRAFT",
+              date: new Date(),
+              clientId: milestone.project.clientId,
+              organizationId: ctx.orgId,
+              currencyId: defaultCurrency.id,
+              subtotal: amt,
+              taxTotal: 0,
+              discountTotal: 0,
+              total: amt,
+              lines: {
+                create: {
+                  sort: 0,
+                  lineType: "STANDARD",
+                  name: milestone.name,
+                  description: `Milestone: ${milestone.name}`,
+                  qty: 1,
+                  rate: amt,
+                  subtotal: amt,
+                  taxTotal: 0,
+                  total: amt,
+                },
+              },
+            },
+          });
+
+          const updated = await tx.milestone.update({
+            where: { id: input.id },
+            data: { completedAt: new Date(), invoiceId: invoice.id },
+          });
+
+          await tx.auditLog.create({
+            data: {
+              action: "CREATED",
+              entityType: "Invoice",
+              entityId: invoice.id,
+              entityLabel: invoice.number,
+              organizationId: ctx.orgId,
+              userId: ctx.userId,
+            },
+          });
+
+          return { milestone: updated, invoice };
+        });
+
+        return result.milestone;
+      }
+
+      // No auto-invoice — just mark complete
+      return ctx.db.milestone.update({
+        where: { id: input.id },
+        data: { completedAt: new Date() },
+      });
+    }),
+
+  reopen: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const milestone = await ctx.db.milestone.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+      });
+      if (!milestone) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!milestone.completedAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Milestone is not completed" });
+      }
+      return ctx.db.milestone.update({
+        where: { id: input.id },
+        data: { completedAt: null },
+      });
     }),
 });
