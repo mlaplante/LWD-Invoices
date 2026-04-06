@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/supabase/server";
 import { db } from "@/server/db";
@@ -68,13 +69,8 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen bg-background">
       {/* ── Desktop sidebar (static shell, pre-rendered) ──── */}
       <aside className="hidden lg:flex w-56 shrink-0 flex-col p-4 gap-0 bg-sidebar print:hidden">
-        <div className="flex items-center gap-2.5 px-2 mb-6">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/30">
-            <span className="text-primary-foreground text-sm font-black tracking-tight">L</span>
-          </div>
-          <span className="font-extrabold text-[17px] text-sidebar-foreground tracking-tight">
-            LWD
-          </span>
+        <div className="flex items-center px-2 mb-6">
+          <Image src="/logo-horizontal.png" alt="LWD Invoices" width={180} height={40} className="h-9 w-auto" priority />
         </div>
 
         <Link
@@ -96,13 +92,8 @@ export default async function DashboardLayout({
 
       {/* ── Mobile fixed top header ────────────────────────── */}
       <header className="lg:hidden fixed top-0 inset-x-0 z-20 h-14 flex items-center justify-between px-4 bg-sidebar border-b border-sidebar-border print:hidden">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center shadow-sm shadow-primary/30">
-            <span className="text-primary-foreground text-xs font-black">L</span>
-          </div>
-          <span className="font-extrabold text-sm text-sidebar-foreground tracking-tight">
-            LWD
-          </span>
+        <div className="flex items-center">
+          <Image src="/logo-horizontal.png" alt="LWD Invoices" width={150} height={34} className="h-7 w-auto" priority />
         </div>
         <div className="flex items-center gap-3">
           <SearchTriggerButton />
