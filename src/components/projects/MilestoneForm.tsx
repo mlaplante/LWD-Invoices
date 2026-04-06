@@ -20,11 +20,14 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
     color: "#3b82f6",
     targetDate: "",
     isViewable: false,
+    amount: "",
+    autoInvoice: false,
   });
   const [error, setError] = useState<string | null>(null);
 
   const mutation = trpc.milestones.create.useMutation({
     onSuccess: () => {
+      utils.milestones.list.invalidate({ projectId });
       utils.projects.get.invalidate({ id: projectId });
       onSuccess?.();
     },
@@ -41,6 +44,8 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
       color: form.color,
       targetDate: form.targetDate ? new Date(form.targetDate) : undefined,
       isViewable: form.isViewable,
+      amount: form.amount ? parseFloat(form.amount) : undefined,
+      autoInvoice: form.autoInvoice,
     });
   }
 
@@ -102,6 +107,30 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
           />
         </div>
       </div>
+
+      <div>
+        <label className="text-sm font-medium">Amount</label>
+        <Input
+          type="number"
+          step="0.01"
+          min="0"
+          value={form.amount}
+          onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+          placeholder="Fixed price for this milestone"
+          className="mt-1"
+        />
+      </div>
+
+      {form.amount && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.autoInvoice}
+            onChange={(e) => setForm((p) => ({ ...p, autoInvoice: e.target.checked }))}
+          />
+          Auto-create draft invoice on completion
+        </label>
+      )}
 
       <label className="flex items-center gap-2 text-sm">
         <input
