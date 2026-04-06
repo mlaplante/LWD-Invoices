@@ -69,6 +69,9 @@ export async function sendPaymentReceiptEmail({
       portalLink: fullInvoice.portalToken
         ? `${process.env.NEXT_PUBLIC_APP_URL}/portal/${fullInvoice.portalToken}`
         : undefined,
+      payLink: fullInvoice.portalToken
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/pay/${fullInvoice.portalToken}`
+        : undefined,
       logoUrl: fullInvoice.organization.logoUrl ?? undefined,
       installmentNumber,
       totalInstallments,

@@ -12,6 +12,7 @@ type Props = {
   paidAt: string;
   orgName: string;
   portalLink?: string;
+  payLink?: string;
   logoUrl?: string;
   brandColor?: string;
   hidePoweredBy?: boolean;
@@ -23,7 +24,7 @@ type Props = {
 const ACCENT = "#059669";
 
 export function PaymentReceiptEmail({
-  invoiceNumber, clientName, amountPaid, currencySymbol, paidAt, orgName, portalLink, logoUrl, brandColor, hidePoweredBy, installmentNumber, totalInstallments, remainingBalance,
+  invoiceNumber, clientName, amountPaid, currencySymbol, paidAt, orgName, portalLink, payLink, logoUrl, brandColor, hidePoweredBy, installmentNumber, totalInstallments, remainingBalance,
 }: Props) {
   return (
     <Html lang="en">
@@ -77,14 +78,31 @@ export function PaymentReceiptEmail({
               )}
             </Section>
 
-            {portalLink && (
+            {/* Pay Remaining CTA for partial payments */}
+            {payLink && remainingBalance && parseFloat(remainingBalance) > 0 ? (
+              <>
+                <Button
+                  href={payLink}
+                  style={{ backgroundColor: "#d97706", color: "#ffffff", padding: "13px 28px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 15, display: "inline-block" }}
+                >
+                  Pay Remaining {currencySymbol}{Number(remainingBalance).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </Button>
+                {portalLink && (
+                  <Text style={{ fontSize: 13, color: "#6b7280", margin: "12px 0 0", textAlign: "center" }}>
+                    <a href={portalLink} style={{ color: "#6b7280", textDecoration: "underline" }}>
+                      View Receipt
+                    </a>
+                  </Text>
+                )}
+              </>
+            ) : portalLink ? (
               <Button
                 href={portalLink}
                 style={{ backgroundColor: ACCENT, color: "#ffffff", padding: "13px 28px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 15, display: "inline-block" }}
               >
                 View Receipt
               </Button>
-            )}
+            ) : null}
           </Section>
 
           <Hr style={{ borderColor: "#f3f4f6", margin: 0 }} />
