@@ -7,6 +7,8 @@ import type { StripeConfig } from "@/server/services/gateway-config";
 import type Stripe from "stripe";
 import { logAudit } from "@/server/services/audit";
 import { sendPaymentReceiptEmail } from "@/server/services/payment-receipt-email";
+import { saveStripeCard } from "@/server/services/save-stripe-card";
+import { getStripeClient } from "@/server/services/stripe";
 
 // Track processed Stripe event IDs to prevent duplicate processing.
 // Entries auto-expire after 24 hours. In-memory is sufficient because
@@ -221,6 +223,25 @@ export async function POST(req: NextRequest) {
         where: { id: clientId, organizationId: orgId },
         data: { stripeCustomerId: customerId },
       });
+    }
+
+    // Save card details to SavedPaymentMethod for display on the pay page
+    try {
+      const paymentIntentId = typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id;
+      if (paymentIntentId && clientId) {
+        const stripeClient = getStripeClient(config.secretKey);
+        await saveStripeCard({
+          stripeClient,
+          paymentIntentId,
+          clientId,
+          organizationId: orgId,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to save card details:", err);
+      // Non-critical — don't fail the webhook
     }
 
     await logAudit({
