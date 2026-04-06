@@ -33,6 +33,7 @@ export async function sendInvoiceSentEmail(invoice: FullInvoice, appUrl: string)
       dueDate: invoice.dueDate?.toLocaleDateString() ?? null,
       orgName: invoice.organization.name,
       portalLink: `${appUrl}/portal/${invoice.portalToken}`,
+      payLink: `${appUrl}/pay/${invoice.portalToken}`,
       logoUrl: invoice.organization.logoUrl ?? undefined,
       partialPayments: partialPayments && partialPayments.length > 0 ? partialPayments : undefined,
     })

@@ -18,6 +18,7 @@ type Props = {
   dueDate: string | null;
   orgName: string;
   portalLink: string;
+  payLink?: string;
   logoUrl?: string;
   brandColor?: string;
   hidePoweredBy?: boolean;
@@ -25,7 +26,7 @@ type Props = {
 };
 
 export function InvoiceSentEmail({
-  invoiceNumber, clientName, total, currencySymbol, dueDate, orgName, portalLink, logoUrl, brandColor, hidePoweredBy, partialPayments,
+  invoiceNumber, clientName, total, currencySymbol, dueDate, orgName, portalLink, payLink, logoUrl, brandColor, hidePoweredBy, partialPayments,
 }: Props) {
   const ACCENT = brandColor ?? "#2563eb";
   return (
@@ -109,12 +110,28 @@ export function InvoiceSentEmail({
               </Section>
             )}
 
-            <Button
-              href={portalLink}
-              style={{ backgroundColor: ACCENT, color: "#ffffff", padding: "13px 28px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 15, display: "inline-block" }}
-            >
-              View Invoice
-            </Button>
+            {payLink ? (
+              <>
+                <Button
+                  href={payLink}
+                  style={{ backgroundColor: ACCENT, color: "#ffffff", padding: "13px 28px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 15, display: "inline-block" }}
+                >
+                  Pay {currencySymbol}{Number(total).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Now
+                </Button>
+                <Text style={{ fontSize: 13, color: "#6b7280", margin: "12px 0 0", textAlign: "center" }}>
+                  <a href={portalLink} style={{ color: "#6b7280", textDecoration: "underline" }}>
+                    View full invoice
+                  </a>
+                </Text>
+              </>
+            ) : (
+              <Button
+                href={portalLink}
+                style={{ backgroundColor: ACCENT, color: "#ffffff", padding: "13px 28px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 15, display: "inline-block" }}
+              >
+                View Invoice
+              </Button>
+            )}
           </Section>
 
           {/* Footer */}
