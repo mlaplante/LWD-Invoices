@@ -8,6 +8,7 @@ import { DashboardSummaryCards } from "@/components/portal/DashboardSummaryCards
 import { DashboardInvoiceTable } from "@/components/portal/DashboardInvoiceTable";
 import { DashboardPaymentHistory } from "@/components/portal/DashboardPaymentHistory";
 import { DashboardProjects } from "@/components/portal/DashboardProjects";
+import { HoursSection } from "@/components/portal/HoursSection";
 import { SavedCards } from "@/components/portal/SavedCards";
 import { formatCurrency } from "@/lib/format";
 
@@ -184,6 +185,9 @@ export default async function PortalDashboardPage({
         <DashboardPaymentHistory payments={allPayments} />
         <DashboardProjects projects={projectRows} />
       </div>
+
+      {/* Hours retainers */}
+      <HoursSection clientId={client.id} />
 
       {/* Saved payment methods */}
       <SavedCards clientToken={clientToken} />
