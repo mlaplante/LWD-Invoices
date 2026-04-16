@@ -60,8 +60,8 @@ export const timeEntriesRouter = router({
           note: z.string().optional(),
         })
         .refine(
-          (v) => (v.projectId ? !v.retainerId : !!v.retainerId),
-          { message: "Provide exactly one of projectId or retainerId." },
+          (v) => !!v.projectId || !!v.retainerId,
+          { message: "Provide at least one of projectId or retainerId." },
         ),
     )
     .mutation(async ({ ctx, input }) => {
@@ -89,7 +89,8 @@ export const timeEntriesRouter = router({
           }
           retainerPeriodId = active.id;
         }
-      } else if (input.projectId) {
+      }
+      if (input.projectId) {
         const project = await ctx.db.project.findFirst({
           where: { id: input.projectId, organizationId: ctx.orgId },
           select: { id: true },

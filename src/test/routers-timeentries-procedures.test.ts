@@ -930,13 +930,24 @@ describe("timeEntries.create with retainer", () => {
     });
   });
 
-  it("rejects providing both projectId and retainerId", async () => {
-    await expect(
-      caller.create({ projectId: "proj_1", retainerId: "hr_1", minutes: 30 }),
-    ).rejects.toThrow(/exactly one of projectId or retainerId/);
+  it("accepts both projectId AND retainerId (retainer time that also counts on the project)", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({
+      id: "hr_1",
+      organizationId: "test-org-123",
+      resetInterval: null,
+    });
+    ctx.db.project.findFirst.mockResolvedValue({ id: "proj_1" });
+
+    const te = await caller.create({
+      projectId: "proj_1",
+      retainerId: "hr_1",
+      minutes: 60,
+    });
+    expect(te.projectId).toBe("proj_1");
+    expect(te.retainerId).toBe("hr_1");
   });
 
   it("rejects providing neither", async () => {
-    await expect(caller.create({ minutes: 30 })).rejects.toThrow(/exactly one/);
+    await expect(caller.create({ minutes: 30 })).rejects.toThrow(/at least one/);
   });
 });

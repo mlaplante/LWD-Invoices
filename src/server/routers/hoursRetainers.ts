@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Decimal } from "@prisma/client-runtime-utils";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { resolvePeriodLabel, defaultPeriodBounds } from "@/server/services/hours-retainers";
@@ -363,6 +364,46 @@ export const hoursRetainersRouter = router({
       });
 
       return updated;
+    }),
+
+  monthlyHoursForClient: protectedProcedure
+    .input(
+      z.object({
+        clientId: z.string(),
+        referenceDate: z.coerce.date().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const ref = input.referenceDate ?? new Date();
+      const monthStart = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), 1));
+      const monthEnd = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + 1, 1));
+      const currentMonthLabel = resolvePeriodLabel(ref);
+
+      // Find all retainers for this client in the org
+      const retainers = await ctx.db.hoursRetainer.findMany({
+        where: { organizationId: ctx.orgId, clientId: input.clientId },
+        select: { id: true },
+      });
+
+      if (retainers.length === 0) {
+        return { totalHours: new Decimal(0), retainerCount: 0, currentMonthLabel };
+      }
+
+      const retainerIds = retainers.map((r) => r.id);
+
+      const agg = await ctx.db.timeEntry.aggregate({
+        _sum: { minutes: true },
+        where: {
+          organizationId: ctx.orgId,
+          retainerId: { in: retainerIds },
+          date: { gte: monthStart, lt: monthEnd },
+        },
+      });
+
+      const totalMinutes = agg._sum.minutes ?? new Decimal(0);
+      const totalHours = new Decimal(totalMinutes.toString()).dividedBy(60);
+
+      return { totalHours, retainerCount: retainers.length, currentMonthLabel };
     }),
 
   deletePeriod: requireRole("OWNER", "ADMIN")

@@ -651,6 +651,93 @@ describe("hoursRetainers.editPeriod", () => {
   });
 });
 
+// ============================================================
+// monthlyHoursForClient
+// ============================================================
+describe("hoursRetainers.monthlyHoursForClient", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext();
+    caller = hoursRetainersRouter.createCaller(ctx);
+  });
+
+  it("returns totalHours, retainerCount, and currentMonthLabel for a client with entries", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-15T12:00:00Z"));
+
+    const { Decimal } = await import("@prisma/client-runtime-utils");
+
+    ctx.db.hoursRetainer.findMany.mockResolvedValue([
+      { id: "hr_1" },
+      { id: "hr_2" },
+    ]);
+    ctx.db.timeEntry.aggregate.mockResolvedValue({
+      _sum: { minutes: new Decimal(180) }, // 3 hours
+    });
+
+    const out = await caller.monthlyHoursForClient({ clientId: "client_1" });
+
+    expect(out.retainerCount).toBe(2);
+    expect(out.currentMonthLabel).toBe("April 2026");
+    expect(Number(out.totalHours)).toBeCloseTo(3, 5);
+
+    expect(ctx.db.hoursRetainer.findMany).toHaveBeenCalledWith({
+      where: { organizationId: "test-org-123", clientId: "client_1" },
+      select: { id: true },
+    });
+    expect(ctx.db.timeEntry.aggregate).toHaveBeenCalledWith({
+      _sum: { minutes: true },
+      where: {
+        organizationId: "test-org-123",
+        retainerId: { in: ["hr_1", "hr_2"] },
+        date: {
+          gte: new Date("2026-04-01T00:00:00.000Z"),
+          lt: new Date("2026-05-01T00:00:00.000Z"),
+        },
+      },
+    });
+
+    vi.useRealTimers();
+  });
+
+  it("returns zero hours when client has no retainers", async () => {
+    ctx.db.hoursRetainer.findMany.mockResolvedValue([]);
+
+    const out = await caller.monthlyHoursForClient({ clientId: "client_no_retainers" });
+
+    expect(out.retainerCount).toBe(0);
+    expect(Number(out.totalHours)).toBe(0);
+    expect(ctx.db.timeEntry.aggregate).not.toHaveBeenCalled();
+  });
+
+  it("returns zero hours when aggregate returns null _sum.minutes", async () => {
+    const { Decimal } = await import("@prisma/client-runtime-utils");
+    ctx.db.hoursRetainer.findMany.mockResolvedValue([{ id: "hr_1" }]);
+    ctx.db.timeEntry.aggregate.mockResolvedValue({ _sum: { minutes: null } });
+
+    const out = await caller.monthlyHoursForClient({ clientId: "client_1" });
+    expect(Number(out.totalHours)).toBe(0);
+  });
+
+  it("respects a custom referenceDate for month scoping", async () => {
+    const { Decimal } = await import("@prisma/client-runtime-utils");
+    ctx.db.hoursRetainer.findMany.mockResolvedValue([{ id: "hr_1" }]);
+    ctx.db.timeEntry.aggregate.mockResolvedValue({ _sum: { minutes: new Decimal(60) } });
+
+    const out = await caller.monthlyHoursForClient({
+      clientId: "client_1",
+      referenceDate: new Date("2026-02-15T00:00:00Z"),
+    });
+
+    expect(out.currentMonthLabel).toBe("February 2026");
+    const aggCall = ctx.db.timeEntry.aggregate.mock.calls[0][0];
+    expect(aggCall.where.date.gte).toEqual(new Date("2026-02-01T00:00:00.000Z"));
+    expect(aggCall.where.date.lt).toEqual(new Date("2026-03-01T00:00:00.000Z"));
+  });
+});
+
 describe("hoursRetainers.deletePeriod", () => {
   let ctx: any;
   let caller: any;

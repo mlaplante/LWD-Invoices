@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,19 +47,6 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
   const activeRetainers = retainers.filter((r) => r.active);
 
   const mutation = trpc.timeEntries.create.useMutation({
-    onSuccess: () => {
-      // Invalidate project list (entries on this tab); retainer entries are on their own page
-      utils.timeEntries.list.invalidate({ projectId });
-      setForm({
-        date: new Date().toISOString().slice(0, 10),
-        minutes: "",
-        startTime: "",
-        endTime: "",
-        taskId: form.taskId,
-        note: "",
-      });
-      onSuccess?.();
-    },
     onError: (err) => setError(err.message),
   });
 
@@ -95,25 +83,63 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
         setError("Please select a retainer.");
         return;
       }
-      mutation.mutate({
-        retainerId,
-        date: new Date(form.date),
-        minutes,
-        startTime: useTimeRange ? form.startTime : undefined,
-        endTime: useTimeRange ? form.endTime : undefined,
-        taskId: form.taskId || undefined,
-        note: form.note || undefined,
-      });
+      const selectedRetainer = activeRetainers.find((r) => r.id === retainerId);
+      const retainerName = selectedRetainer?.name ?? "retainer";
+      const hoursLabel = (minutes / 60).toFixed(1) + "h";
+      mutation.mutate(
+        {
+          retainerId,
+          projectId,
+          date: new Date(form.date),
+          minutes,
+          startTime: useTimeRange ? form.startTime : undefined,
+          endTime: useTimeRange ? form.endTime : undefined,
+          taskId: form.taskId || undefined,
+          note: form.note || undefined,
+        },
+        {
+          onSuccess: () => {
+            utils.timeEntries.list.invalidate({ projectId });
+            if (clientId) utils.hoursRetainers.list.invalidate({ clientId });
+            setForm({
+              date: new Date().toISOString().slice(0, 10),
+              minutes: "",
+              startTime: "",
+              endTime: "",
+              taskId: form.taskId,
+              note: "",
+            });
+            toast.success(`Logged ${hoursLabel} to ${retainerName}`);
+            onSuccess?.();
+          },
+        },
+      );
     } else {
-      mutation.mutate({
-        projectId,
-        date: new Date(form.date),
-        minutes,
-        startTime: useTimeRange ? form.startTime : undefined,
-        endTime: useTimeRange ? form.endTime : undefined,
-        taskId: form.taskId || undefined,
-        note: form.note || undefined,
-      });
+      mutation.mutate(
+        {
+          projectId,
+          date: new Date(form.date),
+          minutes,
+          startTime: useTimeRange ? form.startTime : undefined,
+          endTime: useTimeRange ? form.endTime : undefined,
+          taskId: form.taskId || undefined,
+          note: form.note || undefined,
+        },
+        {
+          onSuccess: () => {
+            utils.timeEntries.list.invalidate({ projectId });
+            setForm({
+              date: new Date().toISOString().slice(0, 10),
+              minutes: "",
+              startTime: "",
+              endTime: "",
+              taskId: form.taskId,
+              note: "",
+            });
+            onSuccess?.();
+          },
+        },
+      );
     }
   }
 

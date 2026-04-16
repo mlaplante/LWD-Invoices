@@ -26,6 +26,12 @@ export default function RetainerDetailPage({
 
   return (
     <div className="space-y-4 max-w-3xl">
+      <Link
+        href={`/clients/${clientId}`}
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Back to {data.client?.name ?? "client"}
+      </Link>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{data.name}</h1>

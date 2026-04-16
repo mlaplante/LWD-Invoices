@@ -25,6 +25,10 @@ export function TimeTab({ projectId }: Props) {
   const { data: entries = [], isLoading } = trpc.timeEntries.list.useQuery({ projectId });
   const { data: project } = trpc.projects.get.useQuery({ id: projectId });
   const tasks = project?.tasks ?? [];
+  const { data: retainerHours } = trpc.hoursRetainers.monthlyHoursForClient.useQuery(
+    { clientId: project?.clientId ?? "" },
+    { enabled: !!project?.clientId },
+  );
 
   const deleteMutation = trpc.timeEntries.delete.useMutation({
     onSuccess: () => {
@@ -50,6 +54,12 @@ export function TimeTab({ projectId }: Props) {
           </Button>
         </div>
       </div>
+
+      {retainerHours && retainerHours.totalHours.toNumber() > 0 && (
+        <div className="text-sm rounded bg-muted px-3 py-2 text-muted-foreground">
+          {retainerHours.totalHours.toString()}h logged against retainers for this client in {retainerHours.currentMonthLabel}.
+        </div>
+      )}
 
       {showForm && (
         <div className="rounded-2xl border border-border/50 p-4">
