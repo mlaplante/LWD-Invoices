@@ -26,7 +26,7 @@ describe("portal.listHoursRetainers", () => {
     expect(out).toEqual([]);
   });
 
-  it("aggregates BLOCK retainer hours correctly and NEVER leaks note", async () => {
+  it("aggregates BLOCK retainer hours and includes note in workLog", async () => {
     ctx.db.client.findUnique.mockResolvedValue({ id: "client_1" });
     ctx.db.hoursRetainer.findMany.mockResolvedValue([
       {
@@ -41,7 +41,7 @@ describe("portal.listHoursRetainers", () => {
           {
             date: new Date("2026-04-14"),
             minutes: new Prisma.Decimal(120),
-            note: "SECRET INTERNAL NOTE",
+            note: "Deployed config changes",
             retainerPeriodId: null,
           },
         ],
@@ -55,13 +55,34 @@ describe("portal.listHoursRetainers", () => {
     expect(out[0].remainingHours.toString()).toBe("18");
     expect(out[0].overByHours).toBeNull();
 
-    // CRITICAL regression guard: the serialized payload must never contain the note.
-    expect(JSON.stringify(out)).not.toContain("SECRET INTERNAL NOTE");
-    expect(out[0].workLog[0]).toEqual({
-      date: new Date("2026-04-14"),
-      hours: expect.anything(),
-    });
-    expect("note" in out[0].workLog[0]).toBe(false);
+    // Notes are client-facing work descriptions — included in workLog.
+    expect(out[0].workLog[0].note).toBe("Deployed config changes");
+    expect(Object.keys(out[0].workLog[0]).sort()).toEqual(["date", "hours", "note"]);
+  });
+
+  it("returns null note when time entry has no note", async () => {
+    ctx.db.client.findUnique.mockResolvedValue({ id: "client_1" });
+    ctx.db.hoursRetainer.findMany.mockResolvedValue([
+      {
+        id: "hr_1",
+        name: "Block",
+        resetInterval: null,
+        includedHours: new Prisma.Decimal(10),
+        active: true,
+        createdAt: new Date("2026-01-01"),
+        periods: [],
+        timeEntries: [
+          {
+            date: new Date("2026-04-14"),
+            minutes: new Prisma.Decimal(60),
+            note: null,
+            retainerPeriodId: null,
+          },
+        ],
+      },
+    ]);
+    const out = await caller.listHoursRetainers({ clientToken: "tok" });
+    expect(out[0].workLog[0].note).toBeNull();
   });
 
   it("MONTHLY retainer scopes workLog to the active period and computes period gauge", async () => {
@@ -96,13 +117,13 @@ describe("portal.listHoursRetainers", () => {
           {
             date: new Date("2026-04-14"),
             minutes: new Prisma.Decimal(300),
-            note: "current-period-admin-only",
+            note: "Current period work",
             retainerPeriodId: "p_active",
           },
           {
             date: new Date("2026-03-20"),
             minutes: new Prisma.Decimal(1080),
-            note: "older-period-admin-only",
+            note: "Older period work",
             retainerPeriodId: "p_closed",
           },
         ],
@@ -126,9 +147,9 @@ describe("portal.listHoursRetainers", () => {
     expect(r.workLog).toHaveLength(1);
     expect(r.workLog[0].date).toEqual(new Date("2026-04-14"));
 
-    // Neither admin note leaks
-    expect(JSON.stringify(out)).not.toContain("current-period-admin-only");
-    expect(JSON.stringify(out)).not.toContain("older-period-admin-only");
+    // Current-period note is included (client-facing); closed-period note is out of scope
+    expect(r.workLog[0].note).toBe("Current period work");
+    expect(JSON.stringify(out)).not.toContain("Older period work");
   });
 
   it("filters out inactive retainers", async () => {

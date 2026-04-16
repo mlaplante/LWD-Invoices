@@ -71,9 +71,14 @@ export function HoursRetainerCard({ r }: { r: PortalRetainer }) {
           </h4>
           <ul className="space-y-1 text-sm">
             {r.workLog.slice(0, 20).map((e, i) => (
-              <li key={i} className="flex justify-between">
-                <span>{new Date(e.date).toLocaleDateString()}</span>
-                <span className="font-mono">{Number(e.hours).toFixed(2)} hrs</span>
+              <li key={i} className="flex flex-col gap-0.5">
+                <div className="flex justify-between">
+                  <span>{new Date(e.date).toLocaleDateString()}</span>
+                  <span className="font-mono">{Number(e.hours).toFixed(2)} hrs</span>
+                </div>
+                {e.note && (
+                  <div className="text-xs text-muted-foreground">{e.note}</div>
+                )}
               </li>
             ))}
           </ul>

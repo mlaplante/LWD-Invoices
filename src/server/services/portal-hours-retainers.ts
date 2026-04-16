@@ -29,7 +29,7 @@ export type PortalRetainer = {
     includedHoursSnapshot: Prisma.Decimal;
     usedHours: Prisma.Decimal;
   }>;
-  workLog: Array<{ date: Date; hours: Prisma.Decimal }>;
+  workLog: Array<{ date: Date; hours: Prisma.Decimal; note: string | null }>;
 };
 
 export async function listPortalRetainers(

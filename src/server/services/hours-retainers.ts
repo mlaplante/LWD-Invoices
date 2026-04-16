@@ -59,6 +59,7 @@ export function defaultPeriodBounds(date: Date): { start: Date; end: Date } {
 export function sanitizeTimeEntryForPortal(entry: {
   date: Date;
   minutes: Prisma.Decimal;
-}): { date: Date; hours: Prisma.Decimal } {
-  return { date: entry.date, hours: entry.minutes.div(60) };
+  note: string | null;
+}): { date: Date; hours: Prisma.Decimal; note: string | null } {
+  return { date: entry.date, hours: entry.minutes.div(60), note: entry.note };
 }

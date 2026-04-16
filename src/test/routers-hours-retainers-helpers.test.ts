@@ -114,29 +114,31 @@ describe("sanitizeTimeEntryForPortal", () => {
     id: "te_1",
     date: new Date("2026-04-14"),
     minutes: new Prisma.Decimal(120),
-    note: "DO NOT LEAK — internal debugging notes",
+    note: "Deployed config changes",
     userId: "user_1",
     projectId: null,
     retainerId: "hr_1",
     organizationId: "org_1",
   };
 
-  it("returns only date and hours", () => {
+  it("returns only date, hours, and note", () => {
     const out = sanitizeTimeEntryForPortal(raw);
-    expect(Object.keys(out).sort()).toEqual(["date", "hours"]);
+    expect(Object.keys(out).sort()).toEqual(["date", "hours", "note"]);
     expect(out.date).toEqual(raw.date);
     expect(out.hours.toString()).toBe("2");
+    expect(out.note).toBe("Deployed config changes");
   });
 
-  it("NEVER includes the note field", () => {
-    const out = sanitizeTimeEntryForPortal(raw);
-    expect("note" in out).toBe(false);
-    expect(JSON.stringify(out)).not.toContain("DO NOT LEAK");
+  it("preserves null note", () => {
+    const out = sanitizeTimeEntryForPortal({ ...raw, note: null });
+    expect(out.note).toBeNull();
   });
 
   it("NEVER includes admin identity fields", () => {
     const out = sanitizeTimeEntryForPortal(raw);
     expect("userId" in out).toBe(false);
     expect("organizationId" in out).toBe(false);
+    expect("id" in out).toBe(false);
+    expect("retainerId" in out).toBe(false);
   });
 });
