@@ -55,9 +55,9 @@ export function TimeTab({ projectId }: Props) {
         </div>
       </div>
 
-      {retainerHours && retainerHours.totalHours.toNumber() > 0 && (
+      {retainerHours && Number(retainerHours.totalHours) > 0 && (
         <div className="text-sm rounded bg-muted px-3 py-2 text-muted-foreground">
-          {retainerHours.totalHours.toString()}h logged against retainers for this client in {retainerHours.currentMonthLabel}.
+          {Number(retainerHours.totalHours).toFixed(2)}h logged against retainers for this client in {retainerHours.currentMonthLabel}.
         </div>
       )}
 
