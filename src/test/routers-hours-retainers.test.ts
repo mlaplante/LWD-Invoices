@@ -301,6 +301,7 @@ describe("hoursRetainers.openPeriod", () => {
     const retainer = { id: "hr_1", resetInterval: "MONTHLY", includedHours: 20 };
     const createdPeriod = { id: "p_1", status: "ACTIVE" };
     ctx.db.hoursRetainer.findFirst.mockResolvedValue(retainer);
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue(null);
     ctx.db.hoursRetainerPeriod.create.mockResolvedValue(createdPeriod);
 
     const out = await caller.openPeriod({ retainerId: "hr_1" });
@@ -334,6 +335,7 @@ describe("hoursRetainers.openPeriod", () => {
   it("respects input overrides for label, periodStart, periodEnd", async () => {
     const retainer = { id: "hr_1", resetInterval: "MONTHLY", includedHours: 15 };
     ctx.db.hoursRetainer.findFirst.mockResolvedValue(retainer);
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue(null);
     ctx.db.hoursRetainerPeriod.create.mockResolvedValue({ id: "p_2" });
 
     const customStart = new Date("2026-03-01T00:00:00.000Z");
@@ -350,6 +352,37 @@ describe("hoursRetainers.openPeriod", () => {
     expect(data.label).toBe("March 2026 (custom)");
     expect(data.periodStart).toEqual(customStart);
     expect(data.periodEnd).toEqual(customEnd);
+  });
+
+  it("throws BAD_REQUEST when an active period already exists", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({
+      id: "hr_1",
+      organizationId: "test-org-123",
+      resetInterval: "MONTHLY",
+      includedHours: "20",
+    });
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_active" });
+    await expect(caller.openPeriod({ retainerId: "hr_1" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringMatching(/already active/i),
+    });
+    expect(ctx.db.hoursRetainerPeriod.create).not.toHaveBeenCalled();
+  });
+
+  it("openPeriod rejects inverted date range", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({
+      id: "hr_1",
+      organizationId: "test-org-123",
+      resetInterval: "MONTHLY",
+      includedHours: "20",
+    });
+    await expect(
+      caller.openPeriod({
+        retainerId: "hr_1",
+        periodStart: new Date("2026-04-30"),
+        periodEnd: new Date("2026-04-01"),
+      }),
+    ).rejects.toThrow(/periodStart must be before periodEnd/);
   });
 });
 
@@ -464,6 +497,21 @@ describe("hoursRetainers.editPeriod", () => {
         includedHoursSnapshot: 22,
       },
     });
+    const where = ctx.db.hoursRetainerPeriod.findFirst.mock.calls[0][0].where;
+    expect(where).toEqual({
+      id: "p_1",
+      retainer: { organizationId: "test-org-123" },
+    });
+  });
+
+  it("editPeriod rejects inverted date range", async () => {
+    await expect(
+      caller.editPeriod({
+        periodId: "p_1",
+        periodStart: new Date("2026-04-30"),
+        periodEnd: new Date("2026-04-01"),
+      }),
+    ).rejects.toThrow(/periodStart must be before periodEnd/);
   });
 
   it("throws NOT_FOUND when period is missing or wrong org", async () => {
@@ -493,6 +541,8 @@ describe("hoursRetainers.deletePeriod", () => {
     const out = await caller.deletePeriod({ periodId: "p_1" });
     expect(out).toEqual({ ok: true });
     expect(ctx.db.hoursRetainerPeriod.delete).toHaveBeenCalledWith({ where: { id: "p_1" } });
+    const where = ctx.db.hoursRetainerPeriod.findFirst.mock.calls[0][0].where;
+    expect(where.retainer.organizationId).toBe("test-org-123");
   });
 
   it("throws BAD_REQUEST 'time entries' when period has time entries", async () => {

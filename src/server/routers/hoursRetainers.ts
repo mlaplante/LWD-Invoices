@@ -138,12 +138,17 @@ export const hoursRetainersRouter = router({
 
   openPeriod: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
-      z.object({
-        retainerId: z.string(),
-        label: z.string().optional(),
-        periodStart: z.coerce.date().optional(),
-        periodEnd: z.coerce.date().optional(),
-      }),
+      z
+        .object({
+          retainerId: z.string(),
+          label: z.string().optional(),
+          periodStart: z.coerce.date().optional(),
+          periodEnd: z.coerce.date().optional(),
+        })
+        .refine(
+          (d) => !d.periodStart || !d.periodEnd || d.periodStart < d.periodEnd,
+          { message: "periodStart must be before periodEnd" },
+        ),
     )
     .mutation(async ({ ctx, input }) => {
       const retainer = await ctx.db.hoursRetainer.findFirst({
@@ -154,6 +159,17 @@ export const hoursRetainersRouter = router({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Cannot open a period on a block retainer.",
+        });
+      }
+
+      const existingActive = await ctx.db.hoursRetainerPeriod.findFirst({
+        where: { retainerId: retainer.id, status: "ACTIVE" },
+        select: { id: true },
+      });
+      if (existingActive) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A period is already active on this retainer. Close it before opening a new one.",
         });
       }
 
@@ -213,13 +229,18 @@ export const hoursRetainersRouter = router({
 
   editPeriod: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
-      z.object({
-        periodId: z.string(),
-        label: z.string().min(1).optional(),
-        periodStart: z.coerce.date().optional(),
-        periodEnd: z.coerce.date().optional(),
-        includedHoursSnapshot: z.number().positive().optional(),
-      }),
+      z
+        .object({
+          periodId: z.string(),
+          label: z.string().min(1).optional(),
+          periodStart: z.coerce.date().optional(),
+          periodEnd: z.coerce.date().optional(),
+          includedHoursSnapshot: z.number().positive().optional(),
+        })
+        .refine(
+          (d) => !d.periodStart || !d.periodEnd || d.periodStart < d.periodEnd,
+          { message: "periodStart must be before periodEnd" },
+        ),
     )
     .mutation(async ({ ctx, input }) => {
       const period = await ctx.db.hoursRetainerPeriod.findFirst({
