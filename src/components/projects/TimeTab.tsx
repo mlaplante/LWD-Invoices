@@ -57,6 +57,7 @@ export function TimeTab({ projectId }: Props) {
           <TimeEntryForm
             projectId={projectId}
             tasks={tasks.map((t) => ({ id: t.id, name: t.name }))}
+            clientId={project?.clientId}
             onSuccess={() => setShowForm(false)}
           />
         </div>
