@@ -121,6 +121,16 @@ describe("hoursRetainers.create", () => {
       data: expect.objectContaining({ resetInterval: null }),
     });
     expect(ctx.db.hoursRetainerPeriod.create).not.toHaveBeenCalled();
+    expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CREATED",
+          entityType: "HoursRetainer",
+          organizationId: "test-org-123",
+          userId: "test-user-456",
+        }),
+      }),
+    );
   });
 
   it("creates a MONTHLY retainer and auto-opens first period", async () => {
@@ -168,6 +178,16 @@ describe("hoursRetainers.create", () => {
     expect(periodData.periodEnd).toEqual(new Date("2026-04-30T23:59:59.999Z"));
     expect(periodData.includedHoursSnapshot).toBe(20);
     expect(periodData.status).toBe("ACTIVE");
+    expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CREATED",
+          entityType: "HoursRetainer",
+          organizationId: "test-org-123",
+          userId: "test-user-456",
+        }),
+      }),
+    );
 
     vi.useRealTimers();
   });
@@ -215,6 +235,16 @@ describe("hoursRetainers.update", () => {
       where: { id: "hr_1" },
       data: { name: "Renamed", includedHours: 30, active: false },
     });
+    expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "UPDATED",
+          entityType: "HoursRetainer",
+          organizationId: "test-org-123",
+          userId: "test-user-456",
+        }),
+      }),
+    );
   });
 
   it("throws NOT_FOUND when retainer belongs to another org", async () => {
@@ -249,17 +279,27 @@ describe("hoursRetainers.delete", () => {
   });
 
   it("deletes when there are no time entries", async () => {
-    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1" });
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1", name: "Block 20h" });
     ctx.db.timeEntry.count.mockResolvedValue(0);
     ctx.db.hoursRetainer.delete.mockResolvedValue({ id: "hr_1" });
 
     const out = await caller.delete({ id: "hr_1" });
     expect(out).toEqual({ ok: true });
     expect(ctx.db.hoursRetainer.delete).toHaveBeenCalledWith({ where: { id: "hr_1" } });
+    expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "DELETED",
+          entityType: "HoursRetainer",
+          organizationId: "test-org-123",
+          userId: "test-user-456",
+        }),
+      }),
+    );
   });
 
   it("throws BAD_REQUEST with 'time entries' in message when count > 0", async () => {
-    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1" });
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1", name: "Block 20h" });
     ctx.db.timeEntry.count.mockResolvedValue(3);
 
     await expect(caller.delete({ id: "hr_1" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -273,7 +313,7 @@ describe("hoursRetainers.delete", () => {
   });
 
   it("does NOT call hoursRetainer.delete when guard fails", async () => {
-    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1" });
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1", name: "Block 20h" });
     ctx.db.timeEntry.count.mockResolvedValue(5);
 
     await expect(caller.delete({ id: "hr_1" })).rejects.toThrow();
@@ -311,6 +351,16 @@ describe("hoursRetainers.openPeriod", () => {
     expect(data.status).toBe("ACTIVE");
     expect(data.includedHoursSnapshot).toBe(20);
     expect(data.retainerId).toBe("hr_1");
+    expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CREATED",
+          entityType: "HoursRetainerPeriod",
+          organizationId: "test-org-123",
+          userId: "test-user-456",
+        }),
+      }),
+    );
 
     vi.useRealTimers();
   });
@@ -427,6 +477,29 @@ describe("hoursRetainers.closeAndRoll", () => {
     expect(newPeriodData.status).toBe("ACTIVE");
     // Should be May 2026 (next month after April)
     expect(newPeriodData.label).toBe("May 2026");
+
+    // Two audit log entries: STATUS_CHANGED for closed period, CREATED for new period
+    expect(ctx.db.auditLog.create).toHaveBeenCalledTimes(2);
+    expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "STATUS_CHANGED",
+          entityType: "HoursRetainerPeriod",
+          organizationId: "test-org-123",
+          userId: "test-user-456",
+        }),
+      }),
+    );
+    expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CREATED",
+          entityType: "HoursRetainerPeriod",
+          organizationId: "test-org-123",
+          userId: "test-user-456",
+        }),
+      }),
+    );
   });
 
   it("throws BAD_REQUEST 'active' when no active period exists", async () => {
@@ -502,6 +575,16 @@ describe("hoursRetainers.editPeriod", () => {
       id: "p_1",
       retainer: { organizationId: "test-org-123" },
     });
+    expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "UPDATED",
+          entityType: "HoursRetainerPeriod",
+          organizationId: "test-org-123",
+          userId: "test-user-456",
+        }),
+      }),
+    );
   });
 
   it("editPeriod rejects inverted date range", async () => {
@@ -534,7 +617,7 @@ describe("hoursRetainers.deletePeriod", () => {
   });
 
   it("deletes the period when there are no time entries", async () => {
-    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_1" });
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_1", label: "April 2026" });
     ctx.db.timeEntry.count.mockResolvedValue(0);
     ctx.db.hoursRetainerPeriod.delete.mockResolvedValue({ id: "p_1" });
 
@@ -543,10 +626,20 @@ describe("hoursRetainers.deletePeriod", () => {
     expect(ctx.db.hoursRetainerPeriod.delete).toHaveBeenCalledWith({ where: { id: "p_1" } });
     const where = ctx.db.hoursRetainerPeriod.findFirst.mock.calls[0][0].where;
     expect(where.retainer.organizationId).toBe("test-org-123");
+    expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "DELETED",
+          entityType: "HoursRetainerPeriod",
+          organizationId: "test-org-123",
+          userId: "test-user-456",
+        }),
+      }),
+    );
   });
 
   it("throws BAD_REQUEST 'time entries' when period has time entries", async () => {
-    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_1" });
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_1", label: "April 2026" });
     ctx.db.timeEntry.count.mockResolvedValue(2);
 
     await expect(caller.deletePeriod({ periodId: "p_1" })).rejects.toMatchObject({
@@ -564,7 +657,7 @@ describe("hoursRetainers.deletePeriod", () => {
   });
 
   it("does NOT call hoursRetainerPeriod.delete when guard fails", async () => {
-    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_1" });
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_1", label: "April 2026" });
     ctx.db.timeEntry.count.mockResolvedValue(1);
 
     await expect(caller.deletePeriod({ periodId: "p_1" })).rejects.toThrow();

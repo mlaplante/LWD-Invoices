@@ -81,6 +81,18 @@ export const hoursRetainersRouter = router({
           });
         }
 
+        await tx.auditLog.create({
+          data: {
+            action: "CREATED",
+            entityType: "HoursRetainer",
+            entityId: retainer.id,
+            entityLabel: retainer.name,
+            organizationId: ctx.orgId,
+            userId: ctx.userId,
+            diff: { type: input.type, includedHours: input.includedHours } as any,
+          },
+        });
+
         return retainer;
       });
     }),
@@ -102,7 +114,7 @@ export const hoursRetainersRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return ctx.db.hoursRetainer.update({
+      const updated = await ctx.db.hoursRetainer.update({
         where: { id: input.id },
         data: {
           ...(input.name !== undefined && { name: input.name }),
@@ -111,6 +123,20 @@ export const hoursRetainersRouter = router({
           ...(input.active !== undefined && { active: input.active }),
         },
       });
+
+      const { id: _id, ...updatedFields } = input;
+      await ctx.db.auditLog.create({
+        data: {
+          action: "UPDATED",
+          entityType: "HoursRetainer",
+          entityId: input.id,
+          organizationId: ctx.orgId,
+          userId: ctx.userId,
+          diff: updatedFields as any,
+        },
+      });
+
+      return updated;
     }),
 
   delete: requireRole("OWNER", "ADMIN")
@@ -118,7 +144,7 @@ export const hoursRetainersRouter = router({
     .mutation(async ({ ctx, input }) => {
       const retainer = await ctx.db.hoursRetainer.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
-        select: { id: true },
+        select: { id: true, name: true },
       });
       if (!retainer) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -132,6 +158,18 @@ export const hoursRetainersRouter = router({
       }
 
       await ctx.db.hoursRetainer.delete({ where: { id: input.id } });
+
+      await ctx.db.auditLog.create({
+        data: {
+          action: "DELETED",
+          entityType: "HoursRetainer",
+          entityId: input.id,
+          entityLabel: retainer.name,
+          organizationId: ctx.orgId,
+          userId: ctx.userId,
+        },
+      });
+
       return { ok: true };
     }),
 
@@ -174,17 +212,32 @@ export const hoursRetainersRouter = router({
 
       const anchor = input.periodStart ?? new Date();
       const bounds = defaultPeriodBounds(anchor);
+      const label = input.label ?? resolvePeriodLabel(anchor);
 
-      return ctx.db.hoursRetainerPeriod.create({
+      const period = await ctx.db.hoursRetainerPeriod.create({
         data: {
           retainerId: retainer.id,
-          label: input.label ?? resolvePeriodLabel(anchor),
+          label,
           periodStart: input.periodStart ?? bounds.start,
           periodEnd: input.periodEnd ?? bounds.end,
           includedHoursSnapshot: retainer.includedHours,
           status: "ACTIVE",
         },
       });
+
+      await ctx.db.auditLog.create({
+        data: {
+          action: "CREATED",
+          entityType: "HoursRetainerPeriod",
+          entityId: period.id,
+          entityLabel: label,
+          organizationId: ctx.orgId,
+          userId: ctx.userId,
+          diff: { retainerId: retainer.id, status: "ACTIVE" } as any,
+        },
+      });
+
+      return period;
     }),
 
   closeAndRoll: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
@@ -212,16 +265,42 @@ export const hoursRetainersRouter = router({
         const nextStart = new Date(closed.periodEnd);
         nextStart.setUTCDate(nextStart.getUTCDate() + 1);
         const bounds = defaultPeriodBounds(nextStart);
+        const newLabel = resolvePeriodLabel(nextStart);
         const opened = await tx.hoursRetainerPeriod.create({
           data: {
             retainerId: retainer.id,
-            label: resolvePeriodLabel(nextStart),
+            label: newLabel,
             periodStart: bounds.start,
             periodEnd: bounds.end,
             includedHoursSnapshot: retainer.includedHours,
             status: "ACTIVE",
           },
         });
+
+        await tx.auditLog.create({
+          data: {
+            action: "STATUS_CHANGED",
+            entityType: "HoursRetainerPeriod",
+            entityId: closed.id,
+            entityLabel: active.label,
+            organizationId: ctx.orgId,
+            userId: ctx.userId,
+            diff: { from: "ACTIVE", to: "CLOSED" } as any,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            action: "CREATED",
+            entityType: "HoursRetainerPeriod",
+            entityId: opened.id,
+            entityLabel: newLabel,
+            organizationId: ctx.orgId,
+            userId: ctx.userId,
+            diff: { retainerId: retainer.id, status: "ACTIVE" } as any,
+          },
+        });
+
         return { closed, opened };
       });
     }),
@@ -244,9 +323,12 @@ export const hoursRetainersRouter = router({
     .mutation(async ({ ctx, input }) => {
       const period = await ctx.db.hoursRetainerPeriod.findFirst({
         where: { id: input.periodId, retainer: { organizationId: ctx.orgId } },
+        select: { id: true, retainerId: true, organizationId: true },
       });
       if (!period) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.hoursRetainerPeriod.update({
+
+      const { periodId: _pid, ...updatedFields } = input;
+      const updated = await ctx.db.hoursRetainerPeriod.update({
         where: { id: input.periodId },
         data: {
           ...(input.label !== undefined && { label: input.label }),
@@ -257,6 +339,20 @@ export const hoursRetainersRouter = router({
           }),
         },
       });
+
+      await ctx.db.auditLog.create({
+        data: {
+          action: "UPDATED",
+          entityType: "HoursRetainerPeriod",
+          entityId: input.periodId,
+          entityLabel: input.label,
+          organizationId: ctx.orgId,
+          userId: ctx.userId,
+          diff: updatedFields as any,
+        },
+      });
+
+      return updated;
     }),
 
   deletePeriod: requireRole("OWNER", "ADMIN")
@@ -264,7 +360,7 @@ export const hoursRetainersRouter = router({
     .mutation(async ({ ctx, input }) => {
       const period = await ctx.db.hoursRetainerPeriod.findFirst({
         where: { id: input.periodId, retainer: { organizationId: ctx.orgId } },
-        select: { id: true },
+        select: { id: true, label: true },
       });
       if (!period) throw new TRPCError({ code: "NOT_FOUND" });
       const teCount = await ctx.db.timeEntry.count({ where: { retainerPeriodId: input.periodId } });
@@ -275,6 +371,18 @@ export const hoursRetainersRouter = router({
         });
       }
       await ctx.db.hoursRetainerPeriod.delete({ where: { id: input.periodId } });
+
+      await ctx.db.auditLog.create({
+        data: {
+          action: "DELETED",
+          entityType: "HoursRetainerPeriod",
+          entityId: input.periodId,
+          entityLabel: period.label,
+          organizationId: ctx.orgId,
+          userId: ctx.userId,
+        },
+      });
+
       return { ok: true };
     }),
 });
