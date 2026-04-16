@@ -390,6 +390,21 @@ export const portalRouter = router({
       };
     }),
 
+  listHoursRetainers: publicProcedure
+    .input(z.object({ clientToken: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const client = await ctx.db.client.findUnique({
+        where: { portalToken: input.clientToken },
+        select: { id: true },
+      });
+      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const { listPortalRetainers } = await import(
+        "@/server/services/portal-hours-retainers"
+      );
+      return listPortalRetainers(ctx.db as any, client.id);
+    }),
+
   savedCards: publicProcedure
     .input(z.object({ clientToken: z.string() }))
     .query(async ({ ctx, input }) => {
