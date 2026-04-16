@@ -423,3 +423,101 @@ describe("hoursRetainers.closeAndRoll", () => {
     });
   });
 });
+
+// ============================================================
+// Task 14: editPeriod + deletePeriod
+// ============================================================
+describe("hoursRetainers.editPeriod", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext();
+    caller = hoursRetainersRouter.createCaller(ctx);
+    ctx.db.user.findFirst.mockResolvedValue(null);
+  });
+
+  it("updates label, dates, and snapshot correctly", async () => {
+    const period = { id: "p_1", retainerId: "hr_1" };
+    const updated = { id: "p_1", label: "April 2026 (adj)", includedHoursSnapshot: 22 };
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue(period);
+    ctx.db.hoursRetainerPeriod.update.mockResolvedValue(updated);
+
+    const newStart = new Date("2026-04-01T00:00:00.000Z");
+    const newEnd = new Date("2026-04-30T23:59:59.999Z");
+
+    const out = await caller.editPeriod({
+      periodId: "p_1",
+      label: "April 2026 (adj)",
+      periodStart: newStart,
+      periodEnd: newEnd,
+      includedHoursSnapshot: 22,
+    });
+
+    expect(out).toEqual(updated);
+    expect(ctx.db.hoursRetainerPeriod.update).toHaveBeenCalledWith({
+      where: { id: "p_1" },
+      data: {
+        label: "April 2026 (adj)",
+        periodStart: newStart,
+        periodEnd: newEnd,
+        includedHoursSnapshot: 22,
+      },
+    });
+  });
+
+  it("throws NOT_FOUND when period is missing or wrong org", async () => {
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue(null);
+
+    await expect(caller.editPeriod({ periodId: "p_missing", label: "X" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+});
+
+describe("hoursRetainers.deletePeriod", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext();
+    caller = hoursRetainersRouter.createCaller(ctx);
+    ctx.db.user.findFirst.mockResolvedValue(null);
+  });
+
+  it("deletes the period when there are no time entries", async () => {
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_1" });
+    ctx.db.timeEntry.count.mockResolvedValue(0);
+    ctx.db.hoursRetainerPeriod.delete.mockResolvedValue({ id: "p_1" });
+
+    const out = await caller.deletePeriod({ periodId: "p_1" });
+    expect(out).toEqual({ ok: true });
+    expect(ctx.db.hoursRetainerPeriod.delete).toHaveBeenCalledWith({ where: { id: "p_1" } });
+  });
+
+  it("throws BAD_REQUEST 'time entries' when period has time entries", async () => {
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_1" });
+    ctx.db.timeEntry.count.mockResolvedValue(2);
+
+    await expect(caller.deletePeriod({ periodId: "p_1" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    await expect(caller.deletePeriod({ periodId: "p_1" })).rejects.toThrow(/time entries/i);
+  });
+
+  it("throws NOT_FOUND when period is missing", async () => {
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue(null);
+
+    await expect(caller.deletePeriod({ periodId: "p_missing" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("does NOT call hoursRetainerPeriod.delete when guard fails", async () => {
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_1" });
+    ctx.db.timeEntry.count.mockResolvedValue(1);
+
+    await expect(caller.deletePeriod({ periodId: "p_1" })).rejects.toThrow();
+    expect(ctx.db.hoursRetainerPeriod.delete).not.toHaveBeenCalled();
+  });
+});

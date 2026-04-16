@@ -210,4 +210,51 @@ export const hoursRetainersRouter = router({
         return { closed, opened };
       });
     }),
+
+  editPeriod: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(
+      z.object({
+        periodId: z.string(),
+        label: z.string().min(1).optional(),
+        periodStart: z.coerce.date().optional(),
+        periodEnd: z.coerce.date().optional(),
+        includedHoursSnapshot: z.number().positive().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const period = await ctx.db.hoursRetainerPeriod.findFirst({
+        where: { id: input.periodId, retainer: { organizationId: ctx.orgId } },
+      });
+      if (!period) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.hoursRetainerPeriod.update({
+        where: { id: input.periodId },
+        data: {
+          ...(input.label !== undefined && { label: input.label }),
+          ...(input.periodStart !== undefined && { periodStart: input.periodStart }),
+          ...(input.periodEnd !== undefined && { periodEnd: input.periodEnd }),
+          ...(input.includedHoursSnapshot !== undefined && {
+            includedHoursSnapshot: input.includedHoursSnapshot,
+          }),
+        },
+      });
+    }),
+
+  deletePeriod: requireRole("OWNER", "ADMIN")
+    .input(z.object({ periodId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const period = await ctx.db.hoursRetainerPeriod.findFirst({
+        where: { id: input.periodId, retainer: { organizationId: ctx.orgId } },
+        select: { id: true },
+      });
+      if (!period) throw new TRPCError({ code: "NOT_FOUND" });
+      const teCount = await ctx.db.timeEntry.count({ where: { retainerPeriodId: input.periodId } });
+      if (teCount > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot delete: this period has time entries.",
+        });
+      }
+      await ctx.db.hoursRetainerPeriod.delete({ where: { id: input.periodId } });
+      return { ok: true };
+    }),
 });
