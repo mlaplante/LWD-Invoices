@@ -725,7 +725,7 @@ model TimeEntry {
   project        Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   retainerId       String?
-  retainer         HoursRetainer? @relation(fields: [retainerId], references: [id], onDelete: Cascade)
+  retainer         HoursRetainer? @relation(fields: [retainerId], references: [id], onDelete: Restrict)
   retainerPeriodId String?
   retainerPeriod   HoursRetainerPeriod? @relation(fields: [retainerPeriodId], references: [id], onDelete: SetNull)
 
