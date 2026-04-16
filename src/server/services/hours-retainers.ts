@@ -34,15 +34,25 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+/**
+ * Returns "Month YYYY" using UTC month/year.
+ * Precondition: `date` should be UTC-normalized (e.g., from the DB or an ISO string).
+ * Locally-constructed Dates (new Date(2026, 1, 28)) may yield the wrong month in non-UTC timezones.
+ */
 export function resolvePeriodLabel(date: Date): string {
   return `${MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
+/**
+ * Returns the first and last instant of the UTC month containing `date`.
+ * Precondition: `date` should be UTC-normalized (e.g., from the DB or an ISO string).
+ * Locally-constructed Dates (new Date(2026, 1, 28)) may yield the wrong month in non-UTC timezones.
+ */
 export function defaultPeriodBounds(date: Date): { start: Date; end: Date } {
   const year = date.getUTCFullYear();
   const month = date.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
-  const end = new Date(Date.UTC(year, month + 1, 0));
+  const end = new Date(Date.UTC(year, month + 1, 1) - 1);
   return { start, end };
 }
 

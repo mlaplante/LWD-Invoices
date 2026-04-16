@@ -65,6 +65,19 @@ describe("isPeriodCurrent", () => {
     const p = { periodStart: new Date("2026-04-01"), periodEnd: new Date("2026-04-30") };
     expect(isPeriodCurrent(p, new Date("2026-04-01"))).toBe(true);
   });
+
+  it("true on the last calendar day of the period after midnight UTC", () => {
+    const { start, end } = defaultPeriodBounds(new Date("2026-04-15T00:00:00Z"));
+    const bounds = { periodStart: start, periodEnd: end };
+    expect(isPeriodCurrent(bounds, new Date("2026-04-30T12:00:00Z"))).toBe(true);
+    expect(isPeriodCurrent(bounds, new Date("2026-04-30T23:59:59Z"))).toBe(true);
+  });
+
+  it("false at the start of the next month", () => {
+    const { start, end } = defaultPeriodBounds(new Date("2026-04-15T00:00:00Z"));
+    const bounds = { periodStart: start, periodEnd: end };
+    expect(isPeriodCurrent(bounds, new Date("2026-05-01T00:00:00Z"))).toBe(false);
+  });
 });
 
 describe("resolvePeriodLabel", () => {
@@ -79,10 +92,12 @@ describe("defaultPeriodBounds", () => {
     const b = defaultPeriodBounds(new Date("2026-04-16"));
     expect(b.start.toISOString().slice(0, 10)).toBe("2026-04-01");
     expect(b.end.toISOString().slice(0, 10)).toBe("2026-04-30");
+    expect(b.end.toISOString()).toBe("2026-04-30T23:59:59.999Z");
   });
   it("handles 31-day month", () => {
     const b = defaultPeriodBounds(new Date("2026-01-15"));
     expect(b.end.toISOString().slice(0, 10)).toBe("2026-01-31");
+    expect(b.end.toISOString()).toBe("2026-01-31T23:59:59.999Z");
   });
   it("handles February leap year (2028)", () => {
     const b = defaultPeriodBounds(new Date("2028-02-15"));
