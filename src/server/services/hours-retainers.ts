@@ -45,3 +45,10 @@ export function defaultPeriodBounds(date: Date): { start: Date; end: Date } {
   const end = new Date(Date.UTC(year, month + 1, 0));
   return { start, end };
 }
+
+export function sanitizeTimeEntryForPortal(entry: {
+  date: Date;
+  minutes: Prisma.Decimal;
+}): { date: Date; hours: Prisma.Decimal } {
+  return { date: entry.date, hours: entry.minutes.div(60) };
+}

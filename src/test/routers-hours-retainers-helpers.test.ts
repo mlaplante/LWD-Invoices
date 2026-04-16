@@ -6,6 +6,7 @@ import {
   isPeriodCurrent,
   resolvePeriodLabel,
   defaultPeriodBounds,
+  sanitizeTimeEntryForPortal,
 } from "@/server/services/hours-retainers";
 
 describe("calculateUsedHours", () => {
@@ -90,5 +91,37 @@ describe("defaultPeriodBounds", () => {
   it("handles February non-leap year", () => {
     const b = defaultPeriodBounds(new Date("2026-02-15"));
     expect(b.end.toISOString().slice(0, 10)).toBe("2026-02-28");
+  });
+});
+
+describe("sanitizeTimeEntryForPortal", () => {
+  const raw = {
+    id: "te_1",
+    date: new Date("2026-04-14"),
+    minutes: new Prisma.Decimal(120),
+    note: "DO NOT LEAK — internal debugging notes",
+    userId: "user_1",
+    projectId: null,
+    retainerId: "hr_1",
+    organizationId: "org_1",
+  };
+
+  it("returns only date and hours", () => {
+    const out = sanitizeTimeEntryForPortal(raw);
+    expect(Object.keys(out).sort()).toEqual(["date", "hours"]);
+    expect(out.date).toEqual(raw.date);
+    expect(out.hours.toString()).toBe("2");
+  });
+
+  it("NEVER includes the note field", () => {
+    const out = sanitizeTimeEntryForPortal(raw);
+    expect("note" in out).toBe(false);
+    expect(JSON.stringify(out)).not.toContain("DO NOT LEAK");
+  });
+
+  it("NEVER includes admin identity fields", () => {
+    const out = sanitizeTimeEntryForPortal(raw);
+    expect("userId" in out).toBe(false);
+    expect("organizationId" in out).toBe(false);
   });
 });
