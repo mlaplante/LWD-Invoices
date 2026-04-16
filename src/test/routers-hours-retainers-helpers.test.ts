@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma";
-import { calculateUsedHours, calculateRemaining } from "@/server/services/hours-retainers";
+import {
+  calculateUsedHours,
+  calculateRemaining,
+  isPeriodCurrent,
+  resolvePeriodLabel,
+  defaultPeriodBounds,
+} from "@/server/services/hours-retainers";
 
 describe("calculateUsedHours", () => {
   it("returns 0 for no entries", () => {
@@ -42,5 +48,47 @@ describe("calculateRemaining", () => {
     const r = calculateRemaining(new Prisma.Decimal(20), new Prisma.Decimal(22.5));
     expect(r.remaining.toString()).toBe("0");
     expect(r.overBy?.toString()).toBe("2.5");
+  });
+});
+
+describe("isPeriodCurrent", () => {
+  it("true when now is inside bounds", () => {
+    const p = { periodStart: new Date("2026-04-01"), periodEnd: new Date("2026-04-30") };
+    expect(isPeriodCurrent(p, new Date("2026-04-15"))).toBe(true);
+  });
+  it("false when now is after end", () => {
+    const p = { periodStart: new Date("2026-04-01"), periodEnd: new Date("2026-04-30") };
+    expect(isPeriodCurrent(p, new Date("2026-05-01"))).toBe(false);
+  });
+  it("true at the exact start date", () => {
+    const p = { periodStart: new Date("2026-04-01"), periodEnd: new Date("2026-04-30") };
+    expect(isPeriodCurrent(p, new Date("2026-04-01"))).toBe(true);
+  });
+});
+
+describe("resolvePeriodLabel", () => {
+  it("returns Month YYYY", () => {
+    expect(resolvePeriodLabel(new Date("2026-04-16"))).toBe("April 2026");
+    expect(resolvePeriodLabel(new Date("2026-12-01"))).toBe("December 2026");
+  });
+});
+
+describe("defaultPeriodBounds", () => {
+  it("returns first/last day for 30-day month", () => {
+    const b = defaultPeriodBounds(new Date("2026-04-16"));
+    expect(b.start.toISOString().slice(0, 10)).toBe("2026-04-01");
+    expect(b.end.toISOString().slice(0, 10)).toBe("2026-04-30");
+  });
+  it("handles 31-day month", () => {
+    const b = defaultPeriodBounds(new Date("2026-01-15"));
+    expect(b.end.toISOString().slice(0, 10)).toBe("2026-01-31");
+  });
+  it("handles February leap year (2028)", () => {
+    const b = defaultPeriodBounds(new Date("2028-02-15"));
+    expect(b.end.toISOString().slice(0, 10)).toBe("2028-02-29");
+  });
+  it("handles February non-leap year", () => {
+    const b = defaultPeriodBounds(new Date("2026-02-15"));
+    expect(b.end.toISOString().slice(0, 10)).toBe("2026-02-28");
   });
 });
