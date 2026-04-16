@@ -171,4 +171,43 @@ export const hoursRetainersRouter = router({
         },
       });
     }),
+
+  closeAndRoll: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(z.object({ retainerId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const retainer = await ctx.db.hoursRetainer.findFirst({
+        where: { id: input.retainerId, organizationId: ctx.orgId },
+      });
+      if (!retainer) throw new TRPCError({ code: "NOT_FOUND" });
+      if (retainer.resetInterval !== "MONTHLY") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Not a monthly retainer." });
+      }
+
+      return ctx.db.$transaction(async (tx: any) => {
+        const active = await tx.hoursRetainerPeriod.findFirst({
+          where: { retainerId: retainer.id, status: "ACTIVE" },
+        });
+        if (!active) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No active period to close." });
+        }
+        const closed = await tx.hoursRetainerPeriod.update({
+          where: { id: active.id },
+          data: { status: "CLOSED" },
+        });
+        const nextStart = new Date(closed.periodEnd);
+        nextStart.setUTCDate(nextStart.getUTCDate() + 1);
+        const bounds = defaultPeriodBounds(nextStart);
+        const opened = await tx.hoursRetainerPeriod.create({
+          data: {
+            retainerId: retainer.id,
+            label: resolvePeriodLabel(nextStart),
+            periodStart: bounds.start,
+            periodEnd: bounds.end,
+            includedHoursSnapshot: retainer.includedHours,
+            status: "ACTIVE",
+          },
+        });
+        return { closed, opened };
+      });
+    }),
 });

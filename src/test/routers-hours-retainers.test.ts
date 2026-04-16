@@ -352,3 +352,74 @@ describe("hoursRetainers.openPeriod", () => {
     expect(data.periodEnd).toEqual(customEnd);
   });
 });
+
+// ============================================================
+// Task 13: closeAndRoll
+// ============================================================
+describe("hoursRetainers.closeAndRoll", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext();
+    caller = hoursRetainersRouter.createCaller(ctx);
+    ctx.db.user.findFirst.mockResolvedValue(null);
+  });
+
+  it("closes the active period and opens a new one with current retainer includedHours as snapshot", async () => {
+    const retainer = { id: "hr_1", resetInterval: "MONTHLY", includedHours: 25 };
+    const activePeriod = {
+      id: "p_1",
+      retainerId: "hr_1",
+      status: "ACTIVE",
+      includedHoursSnapshot: 20, // old snapshot - should NOT be used for new period
+      periodEnd: new Date("2026-04-30T23:59:59.999Z"),
+    };
+    const closedPeriod = { ...activePeriod, status: "CLOSED" };
+    const openedPeriod = { id: "p_2", status: "ACTIVE", label: "May 2026" };
+
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(retainer);
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue(activePeriod);
+    ctx.db.hoursRetainerPeriod.update.mockResolvedValue(closedPeriod);
+    ctx.db.hoursRetainerPeriod.create.mockResolvedValue(openedPeriod);
+
+    const out = await caller.closeAndRoll({ retainerId: "hr_1" });
+
+    expect(out.closed.status).toBe("CLOSED");
+    expect(out.opened).toEqual(openedPeriod);
+
+    // New period snapshot uses retainer's CURRENT includedHours (25), not the closed period's (20)
+    const newPeriodData = ctx.db.hoursRetainerPeriod.create.mock.calls[0][0].data;
+    expect(newPeriodData.includedHoursSnapshot).toBe(25);
+    expect(newPeriodData.status).toBe("ACTIVE");
+    // Should be May 2026 (next month after April)
+    expect(newPeriodData.label).toBe("May 2026");
+  });
+
+  it("throws BAD_REQUEST 'active' when no active period exists", async () => {
+    const retainer = { id: "hr_1", resetInterval: "MONTHLY", includedHours: 20 };
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(retainer);
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue(null);
+
+    await expect(caller.closeAndRoll({ retainerId: "hr_1" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    await expect(caller.closeAndRoll({ retainerId: "hr_1" })).rejects.toThrow(/active/i);
+  });
+
+  it("throws BAD_REQUEST for a block retainer", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1", resetInterval: null, includedHours: 20 });
+
+    await expect(caller.closeAndRoll({ retainerId: "hr_1" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+  });
+
+  it("throws NOT_FOUND when retainer is missing", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(null);
+
+    await expect(caller.closeAndRoll({ retainerId: "hr_missing" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+});
