@@ -28,7 +28,6 @@ export const hoursRetainersRouter = router({
           periods: { orderBy: { periodStart: "desc" } },
           timeEntries: {
             orderBy: { date: "desc" },
-            include: { user: { select: { id: true, name: true } } },
           },
         },
       });
