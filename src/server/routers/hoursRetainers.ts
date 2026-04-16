@@ -135,4 +135,40 @@ export const hoursRetainersRouter = router({
       await ctx.db.hoursRetainer.delete({ where: { id: input.id } });
       return { ok: true };
     }),
+
+  openPeriod: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(
+      z.object({
+        retainerId: z.string(),
+        label: z.string().optional(),
+        periodStart: z.coerce.date().optional(),
+        periodEnd: z.coerce.date().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const retainer = await ctx.db.hoursRetainer.findFirst({
+        where: { id: input.retainerId, organizationId: ctx.orgId },
+      });
+      if (!retainer) throw new TRPCError({ code: "NOT_FOUND" });
+      if (retainer.resetInterval !== "MONTHLY") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot open a period on a block retainer.",
+        });
+      }
+
+      const anchor = input.periodStart ?? new Date();
+      const bounds = defaultPeriodBounds(anchor);
+
+      return ctx.db.hoursRetainerPeriod.create({
+        data: {
+          retainerId: retainer.id,
+          label: input.label ?? resolvePeriodLabel(anchor),
+          periodStart: input.periodStart ?? bounds.start,
+          periodEnd: input.periodEnd ?? bounds.end,
+          includedHoursSnapshot: retainer.includedHours,
+          status: "ACTIVE",
+        },
+      });
+    }),
 });

@@ -280,3 +280,75 @@ describe("hoursRetainers.delete", () => {
     expect(ctx.db.hoursRetainer.delete).not.toHaveBeenCalled();
   });
 });
+
+// ============================================================
+// Task 12: openPeriod
+// ============================================================
+describe("hoursRetainers.openPeriod", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext();
+    caller = hoursRetainersRouter.createCaller(ctx);
+    ctx.db.user.findFirst.mockResolvedValue(null);
+  });
+
+  it("opens a period on a MONTHLY retainer with correct snapshot and ACTIVE status", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-15T12:00:00Z"));
+
+    const retainer = { id: "hr_1", resetInterval: "MONTHLY", includedHours: 20 };
+    const createdPeriod = { id: "p_1", status: "ACTIVE" };
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(retainer);
+    ctx.db.hoursRetainerPeriod.create.mockResolvedValue(createdPeriod);
+
+    const out = await caller.openPeriod({ retainerId: "hr_1" });
+
+    expect(out).toEqual(createdPeriod);
+    const data = ctx.db.hoursRetainerPeriod.create.mock.calls[0][0].data;
+    expect(data.status).toBe("ACTIVE");
+    expect(data.includedHoursSnapshot).toBe(20);
+    expect(data.retainerId).toBe("hr_1");
+
+    vi.useRealTimers();
+  });
+
+  it("throws BAD_REQUEST 'block' when retainer has resetInterval: null", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1", resetInterval: null, includedHours: 20 });
+
+    await expect(caller.openPeriod({ retainerId: "hr_1" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    await expect(caller.openPeriod({ retainerId: "hr_1" })).rejects.toThrow(/block/i);
+  });
+
+  it("throws NOT_FOUND when retainer is missing or wrong org", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(null);
+
+    await expect(caller.openPeriod({ retainerId: "hr_missing" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("respects input overrides for label, periodStart, periodEnd", async () => {
+    const retainer = { id: "hr_1", resetInterval: "MONTHLY", includedHours: 15 };
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(retainer);
+    ctx.db.hoursRetainerPeriod.create.mockResolvedValue({ id: "p_2" });
+
+    const customStart = new Date("2026-03-01T00:00:00.000Z");
+    const customEnd = new Date("2026-03-31T23:59:59.999Z");
+
+    await caller.openPeriod({
+      retainerId: "hr_1",
+      label: "March 2026 (custom)",
+      periodStart: customStart,
+      periodEnd: customEnd,
+    });
+
+    const data = ctx.db.hoursRetainerPeriod.create.mock.calls[0][0].data;
+    expect(data.label).toBe("March 2026 (custom)");
+    expect(data.periodStart).toEqual(customStart);
+    expect(data.periodEnd).toEqual(customEnd);
+  });
+});
