@@ -188,3 +188,49 @@ describe("hoursRetainers.create", () => {
     expect(ctx.db.hoursRetainer.create).not.toHaveBeenCalled();
   });
 });
+
+// ============================================================
+// Task 10: update
+// ============================================================
+describe("hoursRetainers.update", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext();
+    caller = hoursRetainersRouter.createCaller(ctx);
+    ctx.db.user.findFirst.mockResolvedValue(null);
+  });
+
+  it("updates fields correctly", async () => {
+    const existing = { id: "hr_1" };
+    const updated = { id: "hr_1", name: "Renamed", includedHours: 30, active: false };
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(existing);
+    ctx.db.hoursRetainer.update.mockResolvedValue(updated);
+
+    const out = await caller.update({ id: "hr_1", name: "Renamed", includedHours: 30, active: false });
+
+    expect(out).toEqual(updated);
+    expect(ctx.db.hoursRetainer.update).toHaveBeenCalledWith({
+      where: { id: "hr_1" },
+      data: { name: "Renamed", includedHours: 30, active: false },
+    });
+  });
+
+  it("throws NOT_FOUND when retainer belongs to another org", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(null);
+
+    await expect(caller.update({ id: "hr_1", name: "New Name" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("does NOT touch hoursRetainerPeriod.update (no retroactive snapshot change)", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1" });
+    ctx.db.hoursRetainer.update.mockResolvedValue({ id: "hr_1" });
+
+    await caller.update({ id: "hr_1", includedHours: 25 });
+
+    expect(ctx.db.hoursRetainerPeriod.update).not.toHaveBeenCalled();
+  });
+});

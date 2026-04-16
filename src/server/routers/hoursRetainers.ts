@@ -85,4 +85,32 @@ export const hoursRetainersRouter = router({
         return retainer;
       });
     }),
+
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).optional(),
+        includedHours: z.number().positive().optional(),
+        hourlyRate: z.number().positive().nullable().optional(),
+        active: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.hoursRetainer.findFirst({
+        where: { id: input.id, organizationId: ctx.orgId },
+        select: { id: true },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return ctx.db.hoursRetainer.update({
+        where: { id: input.id },
+        data: {
+          ...(input.name !== undefined && { name: input.name }),
+          ...(input.includedHours !== undefined && { includedHours: input.includedHours }),
+          ...(input.hourlyRate !== undefined && { hourlyRate: input.hourlyRate }),
+          ...(input.active !== undefined && { active: input.active }),
+        },
+      });
+    }),
 });
