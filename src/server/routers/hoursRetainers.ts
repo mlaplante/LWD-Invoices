@@ -323,9 +323,19 @@ export const hoursRetainersRouter = router({
     .mutation(async ({ ctx, input }) => {
       const period = await ctx.db.hoursRetainerPeriod.findFirst({
         where: { id: input.periodId, retainer: { organizationId: ctx.orgId } },
-        select: { id: true, retainerId: true, organizationId: true },
+        select: { id: true, retainerId: true, status: true },
       });
       if (!period) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (
+        input.includedHoursSnapshot !== undefined &&
+        period.status === "CLOSED"
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot edit includedHoursSnapshot on a closed period.",
+        });
+      }
 
       const { periodId: _pid, ...updatedFields } = input;
       const updated = await ctx.db.hoursRetainerPeriod.update({

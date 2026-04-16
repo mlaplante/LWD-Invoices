@@ -544,7 +544,7 @@ describe("hoursRetainers.editPeriod", () => {
   });
 
   it("updates label, dates, and snapshot correctly", async () => {
-    const period = { id: "p_1", retainerId: "hr_1" };
+    const period = { id: "p_1", retainerId: "hr_1", status: "ACTIVE" };
     const updated = { id: "p_1", label: "April 2026 (adj)", includedHoursSnapshot: 22 };
     ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue(period);
     ctx.db.hoursRetainerPeriod.update.mockResolvedValue(updated);
@@ -603,6 +603,51 @@ describe("hoursRetainers.editPeriod", () => {
     await expect(caller.editPeriod({ periodId: "p_missing", label: "X" })).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
+  });
+
+  it("allows includedHoursSnapshot updates on ACTIVE periods", async () => {
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({
+      id: "p_1",
+      retainerId: "hr_1",
+      status: "ACTIVE",
+    });
+    ctx.db.hoursRetainerPeriod.update.mockResolvedValue({
+      id: "p_1",
+      status: "ACTIVE",
+      includedHoursSnapshot: "30",
+    });
+    const out = await caller.editPeriod({ periodId: "p_1", includedHoursSnapshot: 30 });
+    expect(out.includedHoursSnapshot).toBe("30");
+  });
+
+  it("rejects includedHoursSnapshot edit on CLOSED period", async () => {
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({
+      id: "p_1",
+      retainerId: "hr_1",
+      status: "CLOSED",
+    });
+    await expect(
+      caller.editPeriod({ periodId: "p_1", includedHoursSnapshot: 30 }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringMatching(/closed period/i),
+    });
+    expect(ctx.db.hoursRetainerPeriod.update).not.toHaveBeenCalled();
+  });
+
+  it("allows label/date edits on CLOSED period", async () => {
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({
+      id: "p_1",
+      retainerId: "hr_1",
+      status: "CLOSED",
+    });
+    ctx.db.hoursRetainerPeriod.update.mockResolvedValue({
+      id: "p_1",
+      status: "CLOSED",
+      label: "Renamed",
+    });
+    const out = await caller.editPeriod({ periodId: "p_1", label: "Renamed" });
+    expect(out.label).toBe("Renamed");
   });
 });
 
