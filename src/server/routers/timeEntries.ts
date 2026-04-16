@@ -48,15 +48,21 @@ export const timeEntriesRouter = router({
 
   create: protectedProcedure
     .input(
-      z.object({
-        projectId: z.string(),
-        taskId: z.string().optional(),
-        date: z.coerce.date().default(() => new Date()),
-        minutes: z.number().positive(),
-        startTime: z.string().optional(),
-        endTime: z.string().optional(),
-        note: z.string().optional(),
-      })
+      z
+        .object({
+          projectId: z.string().optional(),
+          taskId: z.string().optional(),
+          retainerId: z.string().optional(),
+          date: z.coerce.date().default(() => new Date()),
+          minutes: z.number().positive(),
+          startTime: z.string().optional(),
+          endTime: z.string().optional(),
+          note: z.string().optional(),
+        })
+        .refine(
+          (v) => (v.projectId ? !v.retainerId : !!v.retainerId),
+          { message: "Provide exactly one of projectId or retainerId." },
+        ),
     )
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
@@ -65,10 +71,43 @@ export const timeEntriesRouter = router({
       });
       const rounded = roundMinutes(input.minutes, org?.taskTimeInterval ?? 0);
 
+      let retainerPeriodId: string | null = null;
+      if (input.retainerId) {
+        const retainer = await ctx.db.hoursRetainer.findFirst({
+          where: { id: input.retainerId, organizationId: ctx.orgId },
+        });
+        if (!retainer) throw new TRPCError({ code: "NOT_FOUND", message: "Retainer not found" });
+        if (retainer.resetInterval === "MONTHLY") {
+          const active = await ctx.db.hoursRetainerPeriod.findFirst({
+            where: { retainerId: retainer.id, status: "ACTIVE" },
+          });
+          if (!active) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "This monthly retainer has no active period. Open one first.",
+            });
+          }
+          retainerPeriodId = active.id;
+        }
+      } else if (input.projectId) {
+        const project = await ctx.db.project.findFirst({
+          where: { id: input.projectId, organizationId: ctx.orgId },
+          select: { id: true },
+        });
+        if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      }
+
       return ctx.db.timeEntry.create({
         data: {
-          ...input,
+          date: input.date,
           minutes: rounded,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          note: input.note,
+          taskId: input.taskId ?? null,
+          projectId: input.projectId ?? null,
+          retainerId: input.retainerId ?? null,
+          retainerPeriodId,
           userId: ctx.userId,
           organizationId: ctx.orgId,
         },

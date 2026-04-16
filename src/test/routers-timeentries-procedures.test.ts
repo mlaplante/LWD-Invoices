@@ -247,6 +247,7 @@ describe("TimeEntries Router Procedures", () => {
         id: "test-org-123",
         taskTimeInterval: 15,
       });
+      ctx.db.project.findFirst.mockResolvedValue({ id: "proj_1" });
 
       const mockCreatedEntry = {
         id: "entry_1",
@@ -285,6 +286,7 @@ describe("TimeEntries Router Procedures", () => {
         id: "test-org-123",
         taskTimeInterval: 15,
       });
+      ctx.db.project.findFirst.mockResolvedValue({ id: "proj_1" });
 
       ctx.db.timeEntry.create.mockResolvedValue({
         id: "entry_1",
@@ -323,6 +325,7 @@ describe("TimeEntries Router Procedures", () => {
         id: "test-org-123",
         taskTimeInterval: 0,
       });
+      ctx.db.project.findFirst.mockResolvedValue({ id: "proj_1" });
 
       ctx.db.timeEntry.create.mockResolvedValue({
         id: "entry_1",
@@ -864,5 +867,76 @@ describe("TimeEntries Router Procedures", () => {
         where: { organizationId: "test-org-123" },
       });
     });
+  });
+});
+
+import { TRPCError } from "@trpc/server";
+
+describe("timeEntries.create with retainer", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext();
+    caller = timeEntriesRouter.createCaller(ctx);
+    ctx.db.organization.findFirst.mockResolvedValue({ taskTimeInterval: 0 });
+    ctx.db.timeEntry.create.mockImplementation(async ({ data }: any) => ({ id: "te_new", ...data }));
+  });
+
+  it("creates BLOCK time entry with no period", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({
+      id: "hr_1",
+      organizationId: "test-org-123",
+      resetInterval: null,
+    });
+
+    const te = await caller.create({ retainerId: "hr_1", minutes: 60 });
+    expect(te.retainerId).toBe("hr_1");
+    expect(te.retainerPeriodId).toBeNull();
+    expect(te.projectId).toBeNull();
+    expect(ctx.db.hoursRetainerPeriod.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("creates MONTHLY time entry auto-attached to the ACTIVE period", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({
+      id: "hr_1",
+      organizationId: "test-org-123",
+      resetInterval: "MONTHLY",
+    });
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue({ id: "p_active" });
+
+    const te = await caller.create({ retainerId: "hr_1", minutes: 60 });
+    expect(te.retainerPeriodId).toBe("p_active");
+  });
+
+  it("throws when MONTHLY retainer has no active period", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({
+      id: "hr_1",
+      organizationId: "test-org-123",
+      resetInterval: "MONTHLY",
+    });
+    ctx.db.hoursRetainerPeriod.findFirst.mockResolvedValue(null);
+
+    await expect(caller.create({ retainerId: "hr_1", minutes: 60 })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringMatching(/no active period/i),
+    });
+  });
+
+  it("throws NOT_FOUND when retainer is from another org", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(null);
+    await expect(caller.create({ retainerId: "hr_hack", minutes: 30 })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("rejects providing both projectId and retainerId", async () => {
+    await expect(
+      caller.create({ projectId: "proj_1", retainerId: "hr_1", minutes: 30 }),
+    ).rejects.toThrow(/exactly one of projectId or retainerId/);
+  });
+
+  it("rejects providing neither", async () => {
+    await expect(caller.create({ minutes: 30 })).rejects.toThrow(/exactly one/);
   });
 });
