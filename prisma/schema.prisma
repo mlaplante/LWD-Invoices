@@ -227,6 +227,7 @@ model Organization {
   scheduledReports        ScheduledReport[]
   lateFeeEntries          LateFeeEntry[]
   retainers               Retainer[]
+  hoursRetainers          HoursRetainer[]
   reminderSequences       ReminderSequence[]
   savedPaymentMethods     SavedPaymentMethod[]
 }
@@ -306,6 +307,7 @@ model Client {
   tickets               Ticket[]
   portalSessions        ClientPortalSession[]
   retainer              Retainer?
+  hoursRetainers        HoursRetainer[]
   savedPaymentMethods   SavedPaymentMethod[]
 }
 
@@ -718,12 +720,22 @@ model TimeEntry {
   userId         String
   taskId         String?
   task           ProjectTask? @relation(fields: [taskId], references: [id])
-  projectId      String
-  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  projectId      String?
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  retainerId       String?
+  retainer         HoursRetainer? @relation(fields: [retainerId], references: [id], onDelete: Restrict)
+  retainerPeriodId String?
+  retainerPeriod   HoursRetainerPeriod? @relation(fields: [retainerPeriodId], references: [id], onDelete: SetNull)
+
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([retainerId])
+  @@index([retainerPeriodId])
 }
 
 model Timer {
@@ -1192,4 +1204,54 @@ model RetainerTransaction {
   invoiceId   String?
   invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
+}
+
+enum HoursRetainerResetInterval {
+  MONTHLY
+}
+
+enum HoursRetainerPeriodStatus {
+  ACTIVE
+  CLOSED
+}
+
+model HoursRetainer {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  name           String
+  includedHours  Decimal  @db.Decimal(16, 8)
+  resetInterval  HoursRetainerResetInterval?
+  hourlyRate     Decimal? @db.Decimal(20, 10)
+  active         Boolean  @default(true)
+
+  periods        HoursRetainerPeriod[]
+  timeEntries    TimeEntry[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, clientId])
+}
+
+model HoursRetainerPeriod {
+  id                    String   @id @default(cuid())
+  retainerId            String
+  retainer              HoursRetainer @relation(fields: [retainerId], references: [id], onDelete: Cascade)
+
+  label                 String
+  periodStart           DateTime
+  periodEnd             DateTime
+  includedHoursSnapshot Decimal  @db.Decimal(16, 8)
+  status                HoursRetainerPeriodStatus @default(ACTIVE)
+
+  timeEntries           TimeEntry[]
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([retainerId, status])
 }

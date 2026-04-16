@@ -34,6 +34,7 @@ import { recurringExpensesRouter } from "./recurringExpenses";
 import { teamRouter } from "./team";
 import { emailAutomationsRouter } from "./emailAutomations";
 import { lateFeesRouter } from "./lateFees";
+import { hoursRetainersRouter } from "./hoursRetainers";
 import { retainersRouter } from "./retainers";
 import { scheduledReportsRouter } from "./scheduledReports";
 import { reminderSequencesRouter } from "./reminderSequences";
@@ -78,6 +79,7 @@ export const appRouter = router({
   team: teamRouter,
   emailAutomations: emailAutomationsRouter,
   lateFees: lateFeesRouter,
+  hoursRetainers: hoursRetainersRouter,
   retainers: retainersRouter,
   scheduledReports: scheduledReportsRouter,
   reminderSequences: reminderSequencesRouter,

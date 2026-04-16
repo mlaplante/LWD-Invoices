@@ -18,11 +18,14 @@ type Task = { id: string; name: string };
 type Props = {
   projectId: string;
   tasks: Task[];
+  clientId?: string;
   onSuccess?: () => void;
 };
 
-export function TimeEntryForm({ projectId, tasks, onSuccess }: Props) {
+export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) {
   const utils = trpc.useUtils();
+  const [mode, setMode] = useState<"project" | "retainer">("project");
+  const [retainerId, setRetainerId] = useState("");
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     minutes: "",
@@ -34,8 +37,17 @@ export function TimeEntryForm({ projectId, tasks, onSuccess }: Props) {
   const [useTimeRange, setUseTimeRange] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Only query retainers when clientId is known and mode is retainer
+  const { data: retainers = [], isLoading: retainersLoading } =
+    trpc.hoursRetainers.list.useQuery(
+      { clientId: clientId ?? "" },
+      { enabled: !!clientId && mode === "retainer" },
+    );
+  const activeRetainers = retainers.filter((r) => r.active);
+
   const mutation = trpc.timeEntries.create.useMutation({
     onSuccess: () => {
+      // Invalidate project list (entries on this tab); retainer entries are on their own page
       utils.timeEntries.list.invalidate({ projectId });
       setForm({
         date: new Date().toISOString().slice(0, 10),
@@ -78,15 +90,31 @@ export function TimeEntryForm({ projectId, tasks, onSuccess }: Props) {
       }
     }
 
-    mutation.mutate({
-      projectId,
-      date: new Date(form.date),
-      minutes,
-      startTime: useTimeRange ? form.startTime : undefined,
-      endTime: useTimeRange ? form.endTime : undefined,
-      taskId: form.taskId || undefined,
-      note: form.note || undefined,
-    });
+    if (mode === "retainer") {
+      if (!retainerId) {
+        setError("Please select a retainer.");
+        return;
+      }
+      mutation.mutate({
+        retainerId,
+        date: new Date(form.date),
+        minutes,
+        startTime: useTimeRange ? form.startTime : undefined,
+        endTime: useTimeRange ? form.endTime : undefined,
+        taskId: form.taskId || undefined,
+        note: form.note || undefined,
+      });
+    } else {
+      mutation.mutate({
+        projectId,
+        date: new Date(form.date),
+        minutes,
+        startTime: useTimeRange ? form.startTime : undefined,
+        endTime: useTimeRange ? form.endTime : undefined,
+        taskId: form.taskId || undefined,
+        note: form.note || undefined,
+      });
+    }
   }
 
   return (
@@ -94,6 +122,67 @@ export function TimeEntryForm({ projectId, tasks, onSuccess }: Props) {
       {error && (
         <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
+        </div>
+      )}
+
+      {clientId && (
+        <div>
+          <label className="text-sm font-medium">Log against</label>
+          <div className="mt-1 flex gap-1 rounded-lg border border-border p-1 w-fit">
+            <button
+              type="button"
+              onClick={() => setMode("project")}
+              className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                mode === "project"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Project
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("retainer")}
+              className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                mode === "retainer"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Retainer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === "retainer" && clientId && (
+        <div>
+          <label className="text-sm font-medium">Retainer</label>
+          <Select
+            value={retainerId || "none"}
+            onValueChange={(v) => setRetainerId(v === "none" ? "" : v)}
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select a retainer" />
+            </SelectTrigger>
+            <SelectContent>
+              {retainersLoading ? (
+                <SelectItem value="none" disabled>
+                  Loading retainers…
+                </SelectItem>
+              ) : activeRetainers.length === 0 ? (
+                <SelectItem value="none" disabled>
+                  No active retainers
+                </SelectItem>
+              ) : (
+                activeRetainers.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
         </div>
       )}
 

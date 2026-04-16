@@ -1,8 +1,3 @@
--- Add new values to UserRole enum
-ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'OWNER';
-ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'ACCOUNTANT';
-ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'VIEWER';
-
 -- Update existing STAFF users to ADMIN (before removing STAFF)
 UPDATE "User" SET "role" = 'ADMIN' WHERE "role" = 'STAFF';
 

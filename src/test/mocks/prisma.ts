@@ -47,6 +47,7 @@ export function createMockPrismaClient() {
     client: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -276,6 +277,24 @@ export function createMockPrismaClient() {
       findMany: vi.fn(),
       findFirst: vi.fn(),
       findUnique: vi.fn(),
+    },
+    hoursRetainer: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    hoursRetainerPeriod: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
     },
   };
 
