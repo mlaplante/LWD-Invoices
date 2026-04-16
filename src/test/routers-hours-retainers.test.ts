@@ -234,3 +234,49 @@ describe("hoursRetainers.update", () => {
     expect(ctx.db.hoursRetainerPeriod.update).not.toHaveBeenCalled();
   });
 });
+
+// ============================================================
+// Task 11: delete
+// ============================================================
+describe("hoursRetainers.delete", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext();
+    caller = hoursRetainersRouter.createCaller(ctx);
+    ctx.db.user.findFirst.mockResolvedValue(null);
+  });
+
+  it("deletes when there are no time entries", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1" });
+    ctx.db.timeEntry.count.mockResolvedValue(0);
+    ctx.db.hoursRetainer.delete.mockResolvedValue({ id: "hr_1" });
+
+    const out = await caller.delete({ id: "hr_1" });
+    expect(out).toEqual({ ok: true });
+    expect(ctx.db.hoursRetainer.delete).toHaveBeenCalledWith({ where: { id: "hr_1" } });
+  });
+
+  it("throws BAD_REQUEST with 'time entries' in message when count > 0", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1" });
+    ctx.db.timeEntry.count.mockResolvedValue(3);
+
+    await expect(caller.delete({ id: "hr_1" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.delete({ id: "hr_1" })).rejects.toThrow(/time entries/i);
+  });
+
+  it("throws NOT_FOUND when retainer is missing or wrong org", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue(null);
+
+    await expect(caller.delete({ id: "hr_1" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("does NOT call hoursRetainer.delete when guard fails", async () => {
+    ctx.db.hoursRetainer.findFirst.mockResolvedValue({ id: "hr_1" });
+    ctx.db.timeEntry.count.mockResolvedValue(5);
+
+    await expect(caller.delete({ id: "hr_1" })).rejects.toThrow();
+    expect(ctx.db.hoursRetainer.delete).not.toHaveBeenCalled();
+  });
+});

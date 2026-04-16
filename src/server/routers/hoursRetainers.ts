@@ -113,4 +113,26 @@ export const hoursRetainersRouter = router({
         },
       });
     }),
+
+  delete: requireRole("OWNER", "ADMIN")
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const retainer = await ctx.db.hoursRetainer.findFirst({
+        where: { id: input.id, organizationId: ctx.orgId },
+        select: { id: true },
+      });
+      if (!retainer) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const teCount = await ctx.db.timeEntry.count({ where: { retainerId: input.id } });
+      if (teCount > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Cannot delete: this retainer has time entries. Deactivate it instead, or detach entries first.",
+        });
+      }
+
+      await ctx.db.hoursRetainer.delete({ where: { id: input.id } });
+      return { ok: true };
+    }),
 });
