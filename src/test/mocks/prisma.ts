@@ -318,9 +318,11 @@ export function createMockPrismaClient() {
 
 export interface MockTRPCContext {
   db: PrismaClient;
-  orgId: string;
-  userId: string;
-  userRole: string;
+  orgId: string | null;
+  userId: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userRole: any;
+  isActive: boolean | null;
 }
 
 /**
@@ -335,6 +337,7 @@ export function createMockContext(
     orgId: "test-org-123",
     userId: "test-user-456",
     userRole: "OWNER",
+    isActive: true,
     ...overrides,
   };
 }

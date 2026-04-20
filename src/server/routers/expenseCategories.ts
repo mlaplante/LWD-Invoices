@@ -1,21 +1,21 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { getExpenseCategoriesForOrg, invalidateOrg } from "../cached";
 
 export const expenseCategoriesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.expenseCategory.findMany({
-      where: { organizationId: ctx.orgId },
-      orderBy: { name: "asc" },
-    });
+    return getExpenseCategoriesForOrg(ctx.orgId);
   }),
 
   create: requireRole("OWNER", "ADMIN")
     .input(z.object({ name: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.expenseCategory.create({
+      const created = await ctx.db.expenseCategory.create({
         data: { ...input, organizationId: ctx.orgId },
       });
+      invalidateOrg(ctx.orgId, "expenseCategories");
+      return created;
     }),
 
   update: requireRole("OWNER", "ADMIN")
@@ -26,7 +26,9 @@ export const expenseCategoriesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.expenseCategory.update({ where: { id }, data });
+      const updated = await ctx.db.expenseCategory.update({ where: { id }, data });
+      invalidateOrg(ctx.orgId, "expenseCategories");
+      return updated;
     }),
 
   delete: requireRole("OWNER", "ADMIN")
@@ -36,6 +38,8 @@ export const expenseCategoriesRouter = router({
         where: { id: input.id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.expenseCategory.delete({ where: { id: input.id } });
+      const deleted = await ctx.db.expenseCategory.delete({ where: { id: input.id } });
+      invalidateOrg(ctx.orgId, "expenseCategories");
+      return deleted;
     }),
 });

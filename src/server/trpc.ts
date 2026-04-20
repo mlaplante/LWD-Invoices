@@ -5,6 +5,7 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 import type { UserRole } from "@/generated/prisma";
 import { cookies } from "next/headers";
+import { findDbUserBySupabaseId } from "./user-context";
 
 export const createTRPCContext = async () => {
   const { data: { user } } = await getUser();
@@ -12,19 +13,17 @@ export const createTRPCContext = async () => {
 
   let orgId: string | null = null;
   let userRole: UserRole | null = null;
+  let isActive: boolean | null = null;
 
   if (userId) {
-    // Read active org from cookie
     const cookieStore = await cookies();
     const activeOrgId = cookieStore.get("activeOrgId")?.value ?? null;
 
-    // Look up our internal User record (userId in context is Supabase UUID, User table has supabaseId)
-    const dbUser = await db.user.findFirst({
-      where: { supabaseId: userId },
-      select: { id: true },
-    });
+    const dbUser = await findDbUserBySupabaseId(userId);
 
     if (dbUser) {
+      isActive = dbUser.isActive;
+
       if (activeOrgId) {
         const membership = await db.userOrganization.findUnique({
           where: { userId_organizationId: { userId: dbUser.id, organizationId: activeOrgId } },
@@ -36,7 +35,6 @@ export const createTRPCContext = async () => {
         }
       }
 
-      // Fallback: if no cookie or invalid, use first membership
       if (!orgId) {
         const firstMembership = await db.userOrganization.findFirst({
           where: { userId: dbUser.id },
@@ -49,8 +47,6 @@ export const createTRPCContext = async () => {
         }
       }
 
-      // Legacy fallback: if UserOrganization is empty (migration not yet run),
-      // fall back to app_metadata
       if (!orgId) {
         orgId = (user?.app_metadata?.organizationId as string) ?? null;
         userRole = (user?.app_metadata?.userRole as UserRole) ?? null;
@@ -58,7 +54,7 @@ export const createTRPCContext = async () => {
     }
   }
 
-  return { db, userId, orgId, userRole };
+  return { db, userId, orgId, userRole, isActive };
 };
 
 const t = initTRPC.context<typeof createTRPCContext>().create({
@@ -83,18 +79,9 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.userId || !ctx.orgId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-
-  // Check if user account is suspended
-  try {
-    const dbUser = await ctx.db.user.findFirst({
-      where: { supabaseId: ctx.userId },
-      select: { isActive: true },
-    });
-    if (dbUser && !dbUser.isActive) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Your account has been suspended." });
-    }
-  } catch (e) {
-    if (e instanceof TRPCError) throw e;
+  // isActive was resolved once in createTRPCContext; no extra DB roundtrip per procedure.
+  if (ctx.isActive === false) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Your account has been suspended." });
   }
 
   return next({ ctx: { ...ctx, userId: ctx.userId, orgId: ctx.orgId, userRole: ctx.userRole } });

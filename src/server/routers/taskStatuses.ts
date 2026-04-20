@@ -1,13 +1,11 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
+import { getTaskStatusesForOrg, invalidateOrg } from "../cached";
 
 export const taskStatusesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.taskStatus.findMany({
-      where: { organizationId: ctx.orgId },
-      orderBy: { sortOrder: "asc" },
-    });
+    return getTaskStatusesForOrg(ctx.orgId);
   }),
 
   create: protectedProcedure
@@ -20,9 +18,11 @@ export const taskStatusesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.taskStatus.create({
+      const created = await ctx.db.taskStatus.create({
         data: { ...input, organizationId: ctx.orgId },
       });
+      invalidateOrg(ctx.orgId, "taskStatuses");
+      return created;
     }),
 
   update: protectedProcedure
@@ -41,7 +41,9 @@ export const taskStatusesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.taskStatus.update({ where: { id }, data });
+      const updated = await ctx.db.taskStatus.update({ where: { id }, data });
+      invalidateOrg(ctx.orgId, "taskStatuses");
+      return updated;
     }),
 
   delete: protectedProcedure
@@ -51,7 +53,9 @@ export const taskStatusesRouter = router({
         where: { id: input.id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.taskStatus.delete({ where: { id: input.id } });
+      const deleted = await ctx.db.taskStatus.delete({ where: { id: input.id } });
+      invalidateOrg(ctx.orgId, "taskStatuses");
+      return deleted;
     }),
 
   reorder: protectedProcedure
@@ -65,5 +69,6 @@ export const taskStatusesRouter = router({
           })
         )
       );
+      invalidateOrg(ctx.orgId, "taskStatuses");
     }),
 });

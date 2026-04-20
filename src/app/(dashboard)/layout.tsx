@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/supabase/server";
-import { db } from "@/server/db";
+import { findDbUserBySupabaseId } from "@/server/user-context";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { SidebarNav } from "@/components/layout/SidebarNav";
@@ -53,10 +53,7 @@ export default async function DashboardLayout({
   const { data: { user } } = await getUser();
   if (user) {
     try {
-      const dbUser = await db.user.findFirst({
-        where: { supabaseId: user.id },
-        select: { isActive: true },
-      });
+      const dbUser = await findDbUserBySupabaseId(user.id);
       if (dbUser && !dbUser.isActive) {
         redirect("/suspended");
       }

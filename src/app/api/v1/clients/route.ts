@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { withV1Auth, paginationParams } from "../auth";
+import { jsonWithETag } from "../etag";
 
 export async function GET(req: NextRequest) {
   return withV1Auth(req, async ({ orgId }) => {
@@ -29,6 +30,6 @@ export async function GET(req: NextRequest) {
       orderBy: { name: "asc" },
     });
 
-    return NextResponse.json({ data: clients, page });
+    return jsonWithETag(req, { data: clients, page });
   });
 }

@@ -25,6 +25,7 @@ const nextConfig = {
       "lucide-react",
       "recharts",
       "date-fns",
+      "sonner",
       "@radix-ui/react-alert-dialog",
       "@radix-ui/react-dialog",
       "@radix-ui/react-dropdown-menu",

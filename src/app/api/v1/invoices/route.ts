@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { InvoiceStatus } from "@/generated/prisma";
 import { withV1Auth, paginationParams } from "../auth";
+import { jsonWithETag } from "../etag";
 
 export async function GET(req: NextRequest) {
   return withV1Auth(req, async ({ orgId }) => {
@@ -28,6 +29,6 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ data: invoices, page });
+    return jsonWithETag(req, { data: invoices, page });
   });
 }

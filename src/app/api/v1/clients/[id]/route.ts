@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { withV1Auth } from "../../auth";
+import { jsonWithETag } from "../../etag";
 
 export async function GET(
   req: NextRequest,
@@ -35,6 +36,6 @@ export async function GET(
     });
 
     if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ data: client });
+    return jsonWithETag(req, { data: client });
   });
 }
