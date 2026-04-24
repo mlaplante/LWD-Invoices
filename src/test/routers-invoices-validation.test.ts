@@ -15,7 +15,7 @@ function canDeleteInvoice(status: InvoiceStatus): boolean {
     InvoiceStatus.PAID,
     InvoiceStatus.PARTIALLY_PAID,
     InvoiceStatus.OVERDUE,
-  ].includes(status);
+  ].includes(status as never);
 }
 
 function canMarkAsPaid(status: InvoiceStatus): boolean {
@@ -23,7 +23,7 @@ function canMarkAsPaid(status: InvoiceStatus): boolean {
     InvoiceStatus.SENT,
     InvoiceStatus.PARTIALLY_PAID,
     InvoiceStatus.OVERDUE,
-  ].includes(status);
+  ].includes(status as never);
 }
 
 function getArchivableStatuses(): InvoiceStatus[] {

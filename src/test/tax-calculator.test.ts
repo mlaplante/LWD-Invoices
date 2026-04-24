@@ -18,7 +18,7 @@ describe("Tax Calculator", () => {
       const line: LineInput = {
         qty: 2,
         rate: 100,
-        lineType: LineType.NORMAL,
+        lineType: LineType.STANDARD,
         discount: 0,
         discountIsPercentage: false,
         taxIds: ["tax_13"],
@@ -37,7 +37,7 @@ describe("Tax Calculator", () => {
       const line: LineInput = {
         qty: 0,
         rate: 100,
-        lineType: LineType.NORMAL,
+        lineType: LineType.STANDARD,
         discount: 0,
         discountIsPercentage: false,
         taxIds: ["tax_13"],
@@ -54,7 +54,7 @@ describe("Tax Calculator", () => {
       const line: LineInput = {
         qty: 1,
         rate: 100,
-        lineType: LineType.NORMAL,
+        lineType: LineType.STANDARD,
         discount: 10, // 10% discount
         discountIsPercentage: true,
         taxIds: ["tax_13"],
@@ -71,7 +71,7 @@ describe("Tax Calculator", () => {
       const line: LineInput = {
         qty: 1,
         rate: 100,
-        lineType: LineType.NORMAL,
+        lineType: LineType.STANDARD,
         discount: 15,
         discountIsPercentage: false,
         taxIds: ["tax_13"],
@@ -88,7 +88,7 @@ describe("Tax Calculator", () => {
       const line: LineInput = {
         qty: 1,
         rate: 100,
-        lineType: LineType.NORMAL,
+        lineType: LineType.STANDARD,
         discount: 0,
         discountIsPercentage: false,
         taxIds: ["tax_5", "tax_13"],
@@ -106,7 +106,7 @@ describe("Tax Calculator", () => {
       const line: LineInput = {
         qty: 1,
         rate: 100,
-        lineType: LineType.NORMAL,
+        lineType: LineType.STANDARD,
         discount: 0,
         discountIsPercentage: false,
         taxIds: ["tax_gst", "tax_pst"],
@@ -130,7 +130,7 @@ describe("Tax Calculator", () => {
       const line: LineInput = {
         qty: 1,
         rate: 100,
-        lineType: LineType.NORMAL,
+        lineType: LineType.STANDARD,
         discount: 0,
         discountIsPercentage: false,
         taxIds: ["tax_5", "tax_gst"],
@@ -204,7 +204,7 @@ describe("Tax Calculator", () => {
       const line: LineInput = {
         qty: 1,
         rate: 100,
-        lineType: LineType.NORMAL,
+        lineType: LineType.STANDARD,
         discount: 0,
         discountIsPercentage: false,
         taxIds: ["tax_missing"],
@@ -239,7 +239,7 @@ describe("Tax Calculator", () => {
         {
           qty: 1,
           rate: 100,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: ["tax_13"],
@@ -259,7 +259,7 @@ describe("Tax Calculator", () => {
         {
           qty: 1,
           rate: 100,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: ["tax_13"],
@@ -267,7 +267,7 @@ describe("Tax Calculator", () => {
         {
           qty: 2,
           rate: 50,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: ["tax_13"],
@@ -286,7 +286,7 @@ describe("Tax Calculator", () => {
         {
           qty: 1,
           rate: 100,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: ["tax_13"],
@@ -314,7 +314,7 @@ describe("Tax Calculator", () => {
         {
           qty: 1,
           rate: 100,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: ["tax_13"],
@@ -342,7 +342,7 @@ describe("Tax Calculator", () => {
         {
           qty: 1,
           rate: 100,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: [],
@@ -350,7 +350,7 @@ describe("Tax Calculator", () => {
         {
           qty: 1,
           rate: 100,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: [],
@@ -386,7 +386,7 @@ describe("Tax Calculator", () => {
         {
           qty: 1,
           rate: 100,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: [],
@@ -421,7 +421,7 @@ describe("Tax Calculator", () => {
         {
           qty: 1,
           rate: 100,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: ["tax_13"],
@@ -450,7 +450,7 @@ describe("Tax Calculator", () => {
         {
           qty: 2,
           rate: 100,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: ["tax_5"],
@@ -458,7 +458,7 @@ describe("Tax Calculator", () => {
         {
           qty: 1,
           rate: 200,
-          lineType: LineType.NORMAL,
+          lineType: LineType.STANDARD,
           discount: 0,
           discountIsPercentage: false,
           taxIds: ["tax_13"],

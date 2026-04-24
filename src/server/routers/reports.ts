@@ -418,7 +418,7 @@ export const reportsRouter = router({
       // Build lookup: invoiceLineId -> projectId
       const lineToProject = new Map<string, string>();
       for (const t of billedTimeEntries) {
-        if (t.invoiceLineId) lineToProject.set(t.invoiceLineId, t.projectId);
+        if (t.invoiceLineId && t.projectId) lineToProject.set(t.invoiceLineId, t.projectId);
       }
       for (const e of billedExpenses) {
         if (e.invoiceLineId && e.projectId) lineToProject.set(e.invoiceLineId, e.projectId);
@@ -479,6 +479,7 @@ export const reportsRouter = router({
         costByProject[e.projectId] = (costByProject[e.projectId] ?? 0) + Number(e.rate) * e.qty;
       }
       for (const t of allTime) {
+        if (!t.projectId || !t.project) continue;
         const hours = Number(t.minutes) / 60;
         costByProject[t.projectId] = (costByProject[t.projectId] ?? 0) + hours * Number(t.project.rate);
       }
@@ -576,10 +577,11 @@ export const reportsRouter = router({
       >();
 
       for (const e of entries) {
+        if (!e.projectId || !e.project) continue;
         const key = e.projectId;
         if (!byProject.has(key)) {
           byProject.set(key, {
-            projectId: e.projectId,
+            projectId: key,
             projectName: e.project.name,
             clientName: e.project.client.name,
             totalMinutes: 0,

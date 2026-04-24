@@ -28,6 +28,7 @@ export default async function PayPage({
   });
 
   if (!invoice) notFound();
+  const inv = invoice;
 
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
@@ -83,7 +84,7 @@ export default async function PayPage({
     const chargedAmount = (
       amount * (1 + paypalGw.surcharge.toNumber() / 100)
     ).toFixed(2);
-    return `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(paypalConfig.email)}&amount=${chargedAmount}&currency_code=${invoice.currency.code}&item_name=${encodeURIComponent(label)}&return=${encodeURIComponent(`${appUrl}/pay/${token}/success`)}`;
+    return `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(paypalConfig.email)}&amount=${chargedAmount}&currency_code=${inv.currency.code}&item_name=${encodeURIComponent(label)}&return=${encodeURIComponent(`${appUrl}/pay/${token}/success`)}`;
   }
 
   const hasGateways = !!stripeGw || !!paypalConfig;

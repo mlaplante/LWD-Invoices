@@ -53,7 +53,7 @@ describe("Projects Router Procedures", () => {
           id: "p_1",
           name: "On Hold Project",
           description: null,
-          status: ProjectStatus.ON_HOLD,
+          status: ProjectStatus.COMPLETED,
           clientId: "c_1",
           organizationId: "test-org-123",
           currencyId: "usd",
@@ -74,12 +74,12 @@ describe("Projects Router Procedures", () => {
       ctx.db.project.count.mockResolvedValue(1);
 
       const result = await caller.list({
-        status: ProjectStatus.ON_HOLD,
+        status: ProjectStatus.COMPLETED,
         includeArchived: false,
       });
 
       expect(result.items).toHaveLength(1);
-      expect(result.items[0].status).toBe(ProjectStatus.ON_HOLD);
+      expect(result.items[0].status).toBe(ProjectStatus.COMPLETED);
       expect(ctx.db.project.findMany).toHaveBeenCalled();
     });
 
@@ -180,7 +180,7 @@ describe("Projects Router Procedures", () => {
 
   describe("create", () => {
     it("creates project with required fields", async () => {
-      ctx.db.$transaction.mockImplementation(async (fn) => {
+      ctx.db.$transaction.mockImplementation(async (fn: any) => {
         return await fn(ctx.db);
       });
 
@@ -220,7 +220,7 @@ describe("Projects Router Procedures", () => {
     });
 
     it("creates project with optional fields", async () => {
-      ctx.db.$transaction.mockImplementation(async (fn) => {
+      ctx.db.$transaction.mockImplementation(async (fn: any) => {
         return await fn(ctx.db);
       });
 
@@ -265,7 +265,7 @@ describe("Projects Router Procedures", () => {
     });
 
     it("creates project with template", async () => {
-      ctx.db.$transaction.mockImplementation(async (fn) => {
+      ctx.db.$transaction.mockImplementation(async (fn: any) => {
         return await fn(ctx.db);
       });
 
@@ -311,7 +311,7 @@ describe("Projects Router Procedures", () => {
     });
 
     it("creates project with default status ACTIVE", async () => {
-      ctx.db.$transaction.mockImplementation(async (fn) => {
+      ctx.db.$transaction.mockImplementation(async (fn: any) => {
         return await fn(ctx.db);
       });
 
@@ -361,7 +361,7 @@ describe("Projects Router Procedures", () => {
         id: "p_1",
         name: "Updated Project",
         description: "Updated description",
-        status: ProjectStatus.ON_HOLD,
+        status: ProjectStatus.COMPLETED,
         clientId: "c_2",
         organizationId: "test-org-123",
         currencyId: "eur",
@@ -379,7 +379,7 @@ describe("Projects Router Procedures", () => {
         id: "p_1",
         name: "Updated Project",
         description: "Updated description",
-        status: ProjectStatus.ON_HOLD,
+        status: ProjectStatus.COMPLETED,
         clientId: "c_2",
         currencyId: "eur",
         dueDate: new Date("2026-12-31"),
@@ -391,7 +391,7 @@ describe("Projects Router Procedures", () => {
       });
 
       expect(result.name).toBe("Updated Project");
-      expect(result.status).toBe(ProjectStatus.ON_HOLD);
+      expect(result.status).toBe(ProjectStatus.COMPLETED);
       expect(ctx.db.project.update).toHaveBeenCalled();
     });
 
@@ -532,7 +532,7 @@ describe("Projects Router Procedures", () => {
 
   describe("create – template with tasks", () => {
     it("creates tasks from template with parent-child relationships", async () => {
-      ctx.db.$transaction.mockImplementation(async (fn) => {
+      ctx.db.$transaction.mockImplementation(async (fn: any) => {
         return await fn(ctx.db);
       });
 
@@ -585,7 +585,7 @@ describe("Projects Router Procedures", () => {
     });
 
     it("skips task creation when template not found", async () => {
-      ctx.db.$transaction.mockImplementation(async (fn) => {
+      ctx.db.$transaction.mockImplementation(async (fn: any) => {
         return await fn(ctx.db);
       });
 

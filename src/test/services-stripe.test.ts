@@ -287,7 +287,8 @@ describe("Stripe Service", () => {
   describe("constructStripeEvent", () => {
     beforeEach(() => {
       const StripeClass = vi.mocked(Stripe);
-      StripeClass.webhooks = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (StripeClass as any).webhooks = {
         constructEvent: vi.fn(),
       };
     });
@@ -306,7 +307,7 @@ describe("Stripe Service", () => {
       } as any;
 
       const StripeClass = vi.mocked(Stripe);
-      StripeClass.webhooks.constructEvent.mockReturnValue(mockEvent);
+      (StripeClass.webhooks.constructEvent as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockEvent);
 
       const result = constructStripeEvent(payload, sig, secret);
 
@@ -327,7 +328,7 @@ describe("Stripe Service", () => {
       const secret = "whsec_test456";
 
       const StripeClass = vi.mocked(Stripe);
-      StripeClass.webhooks.constructEvent.mockImplementation(() => {
+      (StripeClass.webhooks.constructEvent as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => {
         throw new Error(
           "No matching valid signature found. Possible causes: (1) the webhook secret is incorrect, (2) the payload was modified, or (3) the signature is outside of the tolerance window."
         );
@@ -363,7 +364,7 @@ describe("Stripe Service", () => {
           data: { object: { id: "test_id" } },
         } as any;
 
-        StripeClass.webhooks.constructEvent.mockReturnValue(mockEvent);
+        (StripeClass.webhooks.constructEvent as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockEvent);
 
         const result = constructStripeEvent(payload, sig, secret);
 
@@ -403,11 +404,12 @@ describe("Stripe Service", () => {
       } as any;
 
       const StripeClass = vi.mocked(Stripe);
-      StripeClass.webhooks.constructEvent.mockReturnValue(mockEvent);
+      (StripeClass.webhooks.constructEvent as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockEvent);
 
       const result = constructStripeEvent(payload, sig, secret);
 
-      expect(result.data.object.metadata).toEqual({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((result.data.object as any).metadata).toEqual({
         invoiceId: "inv_123",
         orgId: "org_456",
         portalToken: "token_789",

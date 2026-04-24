@@ -476,7 +476,7 @@ describe("Invoice Query Builders", () => {
         status: [InvoiceStatus.DRAFT],
         search: "test",
       };
-      const originalStatus = [...input.status];
+      const originalStatus = [...(input.status ?? [])];
 
       buildInvoiceListWhere(input);
 

@@ -105,6 +105,7 @@ export const timesheetsRouter = router({
       >();
 
       for (const entry of entries) {
+        if (!entry.projectId || !entry.project) continue;
         const key = input.groupBy === "project" ? entry.projectId : entry.userId;
         const label = input.groupBy === "project" ? entry.project.name : entry.userId;
 

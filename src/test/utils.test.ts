@@ -86,7 +86,7 @@ describe("Utility Functions", () => {
     });
 
     it("handles nested conditional logic", () => {
-      const variant = "primary";
+      const variant = "primary" as "primary" | "secondary";
       const result = cn(
         "base",
         variant === "primary" && "bg-blue-500",

@@ -190,7 +190,7 @@ describe("Partial Payments Router Procedures", () => {
       };
 
       ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
-      ctx.db.$transaction.mockImplementation(async (callback) => {
+      ctx.db.$transaction.mockImplementation(async (callback: any) => {
         return await callback(mockTx);
       });
 
@@ -249,7 +249,7 @@ describe("Partial Payments Router Procedures", () => {
       };
 
       ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
-      ctx.db.$transaction.mockImplementation(async (callback) => {
+      ctx.db.$transaction.mockImplementation(async (callback: any) => {
         return await callback(mockTx);
       });
 
@@ -302,7 +302,7 @@ describe("Partial Payments Router Procedures", () => {
       };
 
       ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
-      ctx.db.$transaction.mockImplementation(async (callback) => {
+      ctx.db.$transaction.mockImplementation(async (callback: any) => {
         return await callback(mockTx);
       });
 
@@ -377,7 +377,7 @@ describe("Partial Payments Router Procedures", () => {
       };
 
       ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
-      ctx.db.$transaction.mockImplementation(async (callback) => {
+      ctx.db.$transaction.mockImplementation(async (callback: any) => {
         return await callback(mockTx);
       });
 
@@ -413,7 +413,7 @@ describe("Partial Payments Router Procedures", () => {
       };
 
       ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
-      ctx.db.$transaction.mockImplementation(async (callback) => {
+      ctx.db.$transaction.mockImplementation(async (callback: any) => {
         return await callback(mockTx);
       });
 

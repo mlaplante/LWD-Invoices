@@ -166,17 +166,21 @@ export const timeEntriesRouter = router({
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
 
-      const entries = await ctx.db.timeEntry.findMany({
+      const rawEntries = await ctx.db.timeEntry.findMany({
         where: {
           id: { in: input.entryIds },
           organizationId: ctx.orgId,
           invoiceLineId: null,
+          projectId: { not: null },
         },
         include: {
           task: { select: { id: true, name: true, rate: true } },
           project: { select: { id: true, name: true, rate: true } },
         },
       });
+      const entries = rawEntries.filter(
+        (e): e is typeof e & { project: NonNullable<typeof e.project> } => !!e.project,
+      );
       if (entries.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No unbilled entries found" });
       }

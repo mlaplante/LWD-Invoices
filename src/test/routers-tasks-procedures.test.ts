@@ -146,7 +146,7 @@ describe("Tasks Router Procedures", () => {
     });
 
     it("respects includeCompleted flag", async () => {
-      const mockTasks = [];
+      const mockTasks: unknown[] = [];
 
       ctx.db.projectTask.findMany.mockResolvedValue(mockTasks);
 

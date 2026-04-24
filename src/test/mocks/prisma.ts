@@ -317,7 +317,8 @@ export function createMockPrismaClient() {
 }
 
 export interface MockTRPCContext {
-  db: PrismaClient;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any;
   orgId: string | null;
   userId: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
