@@ -8,8 +8,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { ResendInvoiceButton } from "@/components/invoices/ResendInvoiceButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { FileText, Archive, Trash2, RefreshCw, Send, CheckCircle } from "lucide-react";
+
+const RESENDABLE_STATUSES: InvoiceStatus[] = ["SENT", "OVERDUE", "PARTIALLY_PAID"];
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
   DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",       dot: "bg-gray-400" },
@@ -152,6 +155,7 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
         {invoices.map((inv) => {
           const badge = STATUS_BADGE[inv.status];
           const isSelected = selected.has(inv.id);
+          const canResend = !selectMode && inv.type !== "ESTIMATE" && RESENDABLE_STATUSES.includes(inv.status);
 
           return (
             <div
@@ -208,6 +212,11 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
                   </span>
                 </div>
               </Link>
+              {canResend && (
+                <div className="shrink-0">
+                  <ResendInvoiceButton invoiceId={inv.id} />
+                </div>
+              )}
             </div>
           );
         })}
