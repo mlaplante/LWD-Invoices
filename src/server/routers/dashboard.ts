@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { Prisma } from "@/generated/prisma";
 import { router, protectedProcedure } from "../trpc";
 import { InvoiceStatus } from "@/generated/prisma";
 
@@ -34,30 +33,19 @@ export const dashboardRouter = router({
         999
       );
 
-      const outstandingWhere = {
-        organizationId: ctx.orgId,
-        isArchived: false,
-        status: {
-          in: [
-            InvoiceStatus.SENT,
-            InvoiceStatus.PARTIALLY_PAID,
-            InvoiceStatus.OVERDUE,
-          ],
-        },
-      };
-      const overdueWhere = {
-        organizationId: ctx.orgId,
-        isArchived: false,
-        status: InvoiceStatus.OVERDUE,
-      };
+      const outstandingStatuses: InvoiceStatus[] = [
+        InvoiceStatus.SENT,
+        InvoiceStatus.PARTIALLY_PAID,
+        InvoiceStatus.OVERDUE,
+      ];
 
       const [
         thisMonthPaymentAgg,
         lastMonthPaymentAgg,
-        outstandingInvoices,
-        overdueInvoices,
-        thisMonthExpenses,
-        lastMonthExpenses,
+        outstandingRows,
+        overdueRows,
+        thisMonthExpensesAgg,
+        lastMonthExpensesAgg,
       ] = await Promise.all([
         ctx.db.payment.aggregate({
           where: { organizationId: ctx.orgId, paidAt: { gte: thisMonthStart } },
@@ -67,36 +55,47 @@ export const dashboardRouter = router({
           where: { organizationId: ctx.orgId, paidAt: { gte: lastMonthStart, lte: lastMonthEnd } },
           _sum: { amount: true },
         }),
-        // Fetch outstanding invoices with payments to calculate true balance
-        ctx.db.invoice.findMany({
-          where: outstandingWhere,
-          select: {
-            total: true,
-            payments: { select: { amount: true } },
-          },
-        }),
-        ctx.db.invoice.findMany({
-          where: overdueWhere,
-          select: {
-            total: true,
-            payments: { select: { amount: true } },
-          },
-        }),
-        // Expenses need rate * qty per row — can't aggregate in SQL via Prisma
-        ctx.db.expense.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            createdAt: { gte: thisMonthStart },
-          },
-          select: { rate: true, qty: true },
-        }),
-        ctx.db.expense.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
-          },
-          select: { rate: true, qty: true },
-        }),
+        ctx.db.$queryRaw<Array<{ count: number; balance: number }>>`
+          SELECT COUNT(*)::int AS count,
+                 COALESCE(SUM(GREATEST(i.total - COALESCE(p.paid, 0), 0)), 0)::float AS balance
+          FROM "Invoice" i
+          LEFT JOIN (
+            SELECT "invoiceId", SUM(amount) AS paid
+            FROM "Payment"
+            WHERE "organizationId" = ${ctx.orgId}
+            GROUP BY "invoiceId"
+          ) p ON p."invoiceId" = i.id
+          WHERE i."organizationId" = ${ctx.orgId}
+            AND i."isArchived" = false
+            AND i.status::text = ANY(${outstandingStatuses}::text[])
+        `,
+        ctx.db.$queryRaw<Array<{ count: number; balance: number }>>`
+          SELECT COUNT(*)::int AS count,
+                 COALESCE(SUM(GREATEST(i.total - COALESCE(p.paid, 0), 0)), 0)::float AS balance
+          FROM "Invoice" i
+          LEFT JOIN (
+            SELECT "invoiceId", SUM(amount) AS paid
+            FROM "Payment"
+            WHERE "organizationId" = ${ctx.orgId}
+            GROUP BY "invoiceId"
+          ) p ON p."invoiceId" = i.id
+          WHERE i."organizationId" = ${ctx.orgId}
+            AND i."isArchived" = false
+            AND i.status = ${InvoiceStatus.OVERDUE}::"InvoiceStatus"
+        `,
+        ctx.db.$queryRaw<Array<{ total: number }>>`
+          SELECT COALESCE(SUM(rate * qty), 0)::float AS total
+          FROM "Expense"
+          WHERE "organizationId" = ${ctx.orgId}
+            AND "createdAt" >= ${thisMonthStart}
+        `,
+        ctx.db.$queryRaw<Array<{ total: number }>>`
+          SELECT COALESCE(SUM(rate * qty), 0)::float AS total
+          FROM "Expense"
+          WHERE "organizationId" = ${ctx.orgId}
+            AND "createdAt" >= ${lastMonthStart}
+            AND "createdAt" <= ${lastMonthEnd}
+        `,
       ]);
 
       const revenueThisMonth = Number(thisMonthPaymentAgg._sum.amount ?? 0);
@@ -108,29 +107,13 @@ export const dashboardRouter = router({
             )
           : null;
 
-      // Calculate true outstanding = invoice total minus payments received
-      let outstandingTotal = 0;
-      for (const inv of outstandingInvoices) {
-        const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
-        const balance = Number(inv.total) - paid;
-        if (balance > 0) outstandingTotal += balance;
-      }
+      const outstandingCount = outstandingRows[0]?.count ?? 0;
+      const outstandingTotal = outstandingRows[0]?.balance ?? 0;
+      const overdueCount = overdueRows[0]?.count ?? 0;
+      const overdueTotal = overdueRows[0]?.balance ?? 0;
 
-      let overdueTotal = 0;
-      for (const inv of overdueInvoices) {
-        const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
-        const balance = Number(inv.total) - paid;
-        if (balance > 0) overdueTotal += balance;
-      }
-
-      const expensesThisMonth = thisMonthExpenses.reduce(
-        (s, e) => s + Number(e.rate) * e.qty,
-        0
-      );
-      const expensesLastMonth = lastMonthExpenses.reduce(
-        (s, e) => s + Number(e.rate) * e.qty,
-        0
-      );
+      const expensesThisMonth = thisMonthExpensesAgg[0]?.total ?? 0;
+      const expensesLastMonth = lastMonthExpensesAgg[0]?.total ?? 0;
       const expensesChange =
         expensesLastMonth > 0
           ? Math.round(((expensesThisMonth - expensesLastMonth) / expensesLastMonth) * 100)
@@ -140,9 +123,9 @@ export const dashboardRouter = router({
         revenueThisMonth,
         revenueLastMonth,
         revenueChange,
-        outstandingCount: outstandingInvoices.length,
+        outstandingCount,
         outstandingTotal,
-        overdueCount: overdueInvoices.length,
+        overdueCount,
         overdueTotal,
         cashCollected: revenueThisMonth,
         expensesThisMonth,
