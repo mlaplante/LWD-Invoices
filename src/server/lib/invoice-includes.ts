@@ -21,13 +21,34 @@ export const fullInvoiceInclude = {
 export const detailInvoiceInclude = {
   client: { select: { id: true, name: true, email: true, address: true } },
   currency: true,
-  organization: true,
+  organization: {
+    select: {
+      id: true,
+      name: true,
+      logoUrl: true,
+      brandColor: true,
+      invoicePrefix: true,
+      invoiceTemplate: true,
+      invoiceFontFamily: true,
+      invoiceAccentColor: true,
+      invoiceShowLogo: true,
+      invoiceFooterText: true,
+      defaultPaymentTermsDays: true,
+      paymentReminderDays: true,
+      lateFeeEnabled: true,
+      lateFeeType: true,
+      lateFeeAmount: true,
+      lateFeeGraceDays: true,
+      lateFeeRecurring: true,
+      lateFeeMaxApplications: true,
+      lateFeeIntervalDays: true,
+    },
+  },
   lines: {
     include: { taxes: { include: { tax: true } } },
     orderBy: { sort: "asc" as const },
   },
   payments: { orderBy: { paidAt: "asc" as const } },
-  proposalContent: true,
   partialPayments: { orderBy: { sortOrder: "asc" as const } },
 } satisfies Prisma.InvoiceInclude;
 
