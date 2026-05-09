@@ -9,6 +9,7 @@ import { logAudit } from "@/server/services/audit";
 import { sendPaymentReceiptEmail } from "@/server/services/payment-receipt-email";
 import { saveStripeCard } from "@/server/services/save-stripe-card";
 import { getStripeClient } from "@/server/services/stripe";
+import { safeErrorResponse } from "@/lib/api-errors";
 
 // Track processed Stripe event IDs to prevent duplicate processing.
 // Entries auto-expire after 24 hours. In-memory is sufficient because
@@ -62,17 +63,26 @@ export async function POST(req: NextRequest) {
   let config: StripeConfig;
   try {
     config = decryptJson<StripeConfig>(gateway.configJson);
-  } catch {
-    return NextResponse.json({ error: "Failed to decrypt config" }, { status: 500 });
+  } catch (err) {
+    return safeErrorResponse("Failed to decrypt config", 500, {
+      route: "webhooks/stripe",
+      cause: err,
+      meta: { orgId },
+    });
   }
 
-  // Now verify with the org's webhook secret
+  // Now verify with the org's webhook secret. Don't echo Stripe's signature
+  // error message back to the caller — it can vary by failure mode and is
+  // useful only for server-side debugging.
   let event: Stripe.Event;
   try {
     event = constructStripeEvent(rawBody, sig, config.webhookSecret);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Invalid signature";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    return safeErrorResponse("Invalid signature", 400, {
+      route: "webhooks/stripe",
+      cause: err,
+      meta: { orgId },
+    });
   }
 
   // Cross-validate: ensure the orgId from the verified event matches the pre-parsed one.

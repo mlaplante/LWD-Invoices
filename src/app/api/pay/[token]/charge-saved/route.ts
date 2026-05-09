@@ -4,6 +4,7 @@ import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 import { decryptJson } from "@/server/services/encryption";
 import { getStripeClient } from "@/server/services/stripe";
 import type { StripeConfig } from "@/server/services/gateway-config";
+import { safeErrorResponse } from "@/lib/api-errors";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
 
@@ -63,8 +64,18 @@ export async function POST(
     return NextResponse.json({ error: "Stripe not configured" }, { status: 400 });
   }
 
-  const config = decryptJson<StripeConfig>(gatewaySetting.configJson);
-  const stripeClient = getStripeClient(config.secretKey);
+  let config: StripeConfig;
+  let stripeClient: ReturnType<typeof getStripeClient>;
+  try {
+    config = decryptJson<StripeConfig>(gatewaySetting.configJson);
+    stripeClient = getStripeClient(config.secretKey);
+  } catch (err) {
+    return safeErrorResponse("Payment gateway unavailable", 500, {
+      route: "pay/[token]/charge-saved",
+      cause: err,
+      meta: { orgId: invoice.organizationId },
+    });
+  }
 
   const total = invoice.total.toNumber();
   const paidSum = invoice.payments.reduce((s, p) => s + p.amount.toNumber(), 0);
@@ -162,10 +173,14 @@ export async function POST(
     );
   } catch (err: unknown) {
     const stripeError = err as { type?: string; message?: string };
+    // StripeCardError messages are user-safe by design (e.g. "Your card was declined").
     if (stripeError.type === "StripeCardError") {
       return NextResponse.json({ error: stripeError.message ?? "Card declined" }, { status: 402 });
     }
-    console.error("Charge failed:", err);
-    return NextResponse.json({ error: "Payment failed" }, { status: 500 });
+    return safeErrorResponse("Payment failed", 500, {
+      route: "pay/[token]/charge-saved",
+      cause: err,
+      meta: { invoiceId: invoice.id },
+    });
   }
 }
