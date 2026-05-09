@@ -15,7 +15,11 @@ import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
 import { getAppUrl } from "@/lib/app-url";
 import { sendPaymentReceiptEmail } from "../services/payment-receipt-email";
-import { fullInvoiceInclude as emailInvoiceInclude } from "@/server/lib/invoice-includes";
+import {
+  fullInvoiceInclude as emailInvoiceInclude,
+  detailInvoiceInclude,
+  summaryInvoiceInclude,
+} from "@/server/lib/invoice-includes";
 import { paginationFromInput } from "@/lib/pagination";
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
@@ -100,29 +104,6 @@ async function updateEstimateStatus(
     data: { status },
   });
 }
-
-// Full include for get/detail queries
-const detailInvoiceInclude = {
-  client: { select: { id: true, name: true, email: true, address: true } },
-  currency: true,
-  organization: true,
-  lines: {
-    include: {
-      taxes: { include: { tax: true } },
-    },
-    orderBy: { sort: "asc" as const },
-  },
-  payments: { orderBy: { paidAt: "asc" as const } },
-  proposalContent: true,
-  partialPayments: { orderBy: { sortOrder: "asc" as const } },
-};
-
-// Summary include for list queries
-const summaryInvoiceInclude = {
-  client: { select: { id: true, name: true } },
-  currency: { select: { id: true, symbol: true, symbolPosition: true } },
-  recurringInvoice: { select: { isActive: true, frequency: true } },
-};
 
 // ─── Router ────────────────────────────────────────────────────────────────────
 

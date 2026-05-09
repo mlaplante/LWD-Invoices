@@ -9,6 +9,7 @@ import {
   type TaxInput,
 } from "../services/tax-calculator";
 import { generateExpensesForRecurring } from "../services/recurring-expense-generator";
+import { detailExpenseInclude } from "@/server/lib/expense-includes";
 
 async function generateDueExpenses(db: PrismaClient, orgId: string) {
   const now = new Date();
@@ -45,12 +46,7 @@ export const expensesRouter = router({
           ...(input.projectId ? { projectId: input.projectId } : {}),
           ...(input.unbilledOnly ? { invoiceLineId: null } : {}),
         },
-        include: {
-          tax: true,
-          category: true,
-          supplier: true,
-          project: { select: { id: true, name: true } },
-        },
+        include: detailExpenseInclude,
         orderBy: { createdAt: "desc" },
       });
     }),
@@ -66,12 +62,7 @@ export const expensesRouter = router({
     .query(async ({ ctx, input }) => {
       const expense = await ctx.db.expense.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
-        include: {
-          tax: true,
-          category: true,
-          supplier: true,
-          project: { select: { id: true, name: true } },
-        },
+        include: detailExpenseInclude,
       });
       if (!expense) throw new TRPCError({ code: "NOT_FOUND" });
       return expense;
@@ -107,7 +98,7 @@ export const expensesRouter = router({
             ? (ocrRawResult as Prisma.InputJsonValue)
             : undefined,
         },
-        include: { tax: true, category: true, supplier: true, project: { select: { id: true, name: true } } },
+        include: detailExpenseInclude,
       });
     }),
 
@@ -146,7 +137,7 @@ export const expensesRouter = router({
             ? (ocrRawResult as Prisma.InputJsonValue | typeof Prisma.DbNull)
             : undefined,
         },
-        include: { tax: true, category: true, supplier: true, project: { select: { id: true, name: true } } },
+        include: detailExpenseInclude,
       });
     }),
 
