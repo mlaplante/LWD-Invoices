@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
-import { PrismaClient, LineType } from "@/generated/prisma";
+import { LineType } from "@/generated/prisma";
 import {
   calculateLineTotals,
   calculateInvoiceTotals,
@@ -169,7 +169,6 @@ export const tasksRouter = router({
       const nextSort = invoice.lines.length;
 
       return ctx.db.$transaction(async (tx) => {
-        const txClient = tx as unknown as PrismaClient;
         const createdLines = await Promise.all(
           tasks.map((task, i) => {
             const lineInput = {
@@ -182,7 +181,7 @@ export const tasksRouter = router({
             };
             const result = calculateLineTotals(lineInput, []);
 
-            return txClient.invoiceLine.create({
+            return tx.invoiceLine.create({
               data: {
                 sort: nextSort + i,
                 lineType: LineType.TIME_ENTRY,
@@ -203,7 +202,7 @@ export const tasksRouter = router({
         // Mark tasks as billed
         await Promise.all(
           createdLines.map((line, i) =>
-            txClient.projectTask.update({
+            tx.projectTask.update({
               where: { id: tasks[i].id },
               data: { invoiceLineId: line.id },
             })
@@ -211,7 +210,7 @@ export const tasksRouter = router({
         );
 
         // Recalculate invoice totals
-        const allLines = await txClient.invoiceLine.findMany({
+        const allLines = await tx.invoiceLine.findMany({
           where: { invoiceId: input.invoiceId },
           include: { taxes: { include: { tax: true } } },
         });
@@ -227,7 +226,7 @@ export const tasksRouter = router({
 
         const totals = calculateInvoiceTotals(lineInputs, taxInputs);
 
-        return txClient.invoice.update({
+        return tx.invoice.update({
           where: { id: input.invoiceId },
           data: {
             subtotal: totals.subtotal,
