@@ -2,12 +2,9 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
 import { LineType } from "@/generated/prisma";
-import {
-  calculateLineTotals,
-  calculateInvoiceTotals,
-  type TaxInput,
-} from "../services/tax-calculator";
+import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
 import { getForOrg } from "../lib/get-for-org";
+import { getOrgTaxList } from "../lib/tax-helpers";
 
 export const tasksRouter = router({
   list: protectedProcedure
@@ -150,12 +147,7 @@ export const tasksRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No unbilled tasks found" });
       }
 
-      const allTaxes = await ctx.db.tax.findMany({ where: { organizationId: ctx.orgId } });
-      const taxInputs: TaxInput[] = allTaxes.map((t) => ({
-        id: t.id,
-        rate: t.rate.toNumber(),
-        isCompound: t.isCompound,
-      }));
+      const taxInputs = await getOrgTaxList(ctx.db, ctx.orgId);
 
       const nextSort = invoice.lines.length;
 

@@ -6,10 +6,9 @@ import {
   calculateLineTotals,
   calculateInvoiceTotals,
   calculateInvoiceTotalsWithDiscount,
-  getOrgTaxMap,
-  type TaxInput,
   type LineInput,
 } from "../services/tax-calculator";
+import { buildTaxInputs, getOrgTaxMap, type TaxInput } from "@/server/lib/tax-helpers";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
@@ -81,13 +80,6 @@ function toLineInput(line: z.infer<typeof lineSchema>): LineInput {
     discountIsPercentage: line.discountIsPercentage,
     taxIds: line.taxIds,
   };
-}
-
-function buildTaxInputs(taxMap: Map<string, TaxInput>, taxIds: string[]): TaxInput[] {
-  return taxIds.flatMap((id) => {
-    const t = taxMap.get(id);
-    return t ? [t] : [];
-  });
 }
 
 async function updateEstimateStatus(
