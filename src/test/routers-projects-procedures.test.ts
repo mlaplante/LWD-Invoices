@@ -168,6 +168,8 @@ describe("Projects Router Procedures", () => {
 
     it("throws NOT_FOUND when project doesn't exist", async () => {
       ctx.db.project.findUnique.mockResolvedValue(null);
+      ctx.db.timeEntry.aggregate = vi.fn().mockResolvedValue({ _sum: { minutes: null } });
+      ctx.db.expense.aggregate = vi.fn().mockResolvedValue({ _sum: { rate: null } });
 
       try {
         await caller.get({ id: "p_nonexistent" });

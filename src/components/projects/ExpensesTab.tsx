@@ -14,7 +14,8 @@ export function ExpensesTab({ projectId }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [showBill, setShowBill] = useState(false);
 
-  const { data: expenses = [], isLoading } = trpc.expenses.list.useQuery({ projectId });
+  const { data: expensesPage, isLoading } = trpc.expenses.list.useQuery({ projectId });
+  const expenses = expensesPage?.items ?? [];
   const { data: taxes = [] } = trpc.taxes.list.useQuery();
   const { data: categories = [] } = trpc.expenseCategories.list.useQuery();
   const { data: suppliers = [] } = trpc.expenseSuppliers.list.useQuery();

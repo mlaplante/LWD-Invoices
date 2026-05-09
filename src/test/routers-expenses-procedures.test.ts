@@ -76,8 +76,9 @@ describe("Expenses Router Procedures", () => {
 
       const result = await caller.list({});
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Office Supplies");
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].name).toBe("Office Supplies");
+      expect(result.nextCursor).toBeNull();
       expect(ctx.db.expense.findMany).toHaveBeenCalledWith({
         where: { organizationId: "test-org-123" },
         include: {
@@ -87,6 +88,7 @@ describe("Expenses Router Procedures", () => {
           project: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
+        take: 101,
       });
     });
 
@@ -97,12 +99,13 @@ describe("Expenses Router Procedures", () => {
 
       const result = await caller.list({ projectId: "p_1" });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].projectId).toBe("p_1");
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].projectId).toBe("p_1");
       expect(ctx.db.expense.findMany).toHaveBeenCalledWith({
         where: { organizationId: "test-org-123", projectId: "p_1" },
         include: expect.any(Object),
         orderBy: { createdAt: "desc" },
+        take: 101,
       });
     });
 
@@ -113,12 +116,13 @@ describe("Expenses Router Procedures", () => {
 
       const result = await caller.list({ unbilledOnly: true });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].invoiceLineId).toBeNull();
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].invoiceLineId).toBeNull();
       expect(ctx.db.expense.findMany).toHaveBeenCalledWith({
         where: { organizationId: "test-org-123", invoiceLineId: null },
         include: expect.any(Object),
         orderBy: { createdAt: "desc" },
+        take: 101,
       });
     });
 
@@ -131,6 +135,7 @@ describe("Expenses Router Procedures", () => {
         where: { organizationId: "test-org-123", projectId: "p_1", invoiceLineId: null },
         include: expect.any(Object),
         orderBy: { createdAt: "desc" },
+        take: 101,
       });
     });
 
@@ -139,7 +144,8 @@ describe("Expenses Router Procedures", () => {
 
       const result = await caller.list({});
 
-      expect(result).toHaveLength(0);
+      expect(result.items).toHaveLength(0);
+      expect(result.nextCursor).toBeNull();
     });
   });
 

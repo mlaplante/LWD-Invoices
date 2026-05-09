@@ -128,13 +128,16 @@ export const tasksRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const invoice = await getForOrg(ctx.db.invoice, input.invoiceId, ctx.orgId, {
-        entityName: "Invoice",
+      const invoice = await ctx.db.invoice.findFirst({
+        where: { id: input.invoiceId, organizationId: ctx.orgId },
         include: {
           lines: { include: { taxes: true } },
           currency: true,
         },
       });
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
 
       const tasks = await ctx.db.projectTask.findMany({
         where: {
