@@ -6,16 +6,20 @@ import {
   calculateLineTotals,
   calculateInvoiceTotals,
   calculateInvoiceTotalsWithDiscount,
-  getOrgTaxMap,
-  type TaxInput,
   type LineInput,
 } from "../services/tax-calculator";
+import { buildTaxInputs, getOrgTaxMap, type TaxInput } from "@/server/lib/tax-helpers";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
 import { getAppUrl } from "@/lib/app-url";
 import { sendPaymentReceiptEmail } from "../services/payment-receipt-email";
-import { fullInvoiceInclude as emailInvoiceInclude } from "@/server/lib/invoice-includes";
+import {
+  fullInvoiceInclude as emailInvoiceInclude,
+  detailInvoiceInclude,
+  summaryInvoiceInclude,
+} from "@/server/lib/invoice-includes";
+import { paginationFromInput } from "@/lib/pagination";
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
 
@@ -78,13 +82,6 @@ function toLineInput(line: z.infer<typeof lineSchema>): LineInput {
   };
 }
 
-function buildTaxInputs(taxMap: Map<string, TaxInput>, taxIds: string[]): TaxInput[] {
-  return taxIds.flatMap((id) => {
-    const t = taxMap.get(id);
-    return t ? [t] : [];
-  });
-}
-
 async function updateEstimateStatus(
   ctx: { db: PrismaClient; orgId: string },
   id: string,
@@ -99,29 +96,6 @@ async function updateEstimateStatus(
     data: { status },
   });
 }
-
-// Full include for get/detail queries
-const detailInvoiceInclude = {
-  client: { select: { id: true, name: true, email: true, address: true } },
-  currency: true,
-  organization: true,
-  lines: {
-    include: {
-      taxes: { include: { tax: true } },
-    },
-    orderBy: { sort: "asc" as const },
-  },
-  payments: { orderBy: { paidAt: "asc" as const } },
-  proposalContent: true,
-  partialPayments: { orderBy: { sortOrder: "asc" as const } },
-};
-
-// Summary include for list queries
-const summaryInvoiceInclude = {
-  client: { select: { id: true, name: true } },
-  currency: { select: { id: true, symbol: true, symbolPosition: true } },
-  recurringInvoice: { select: { isActive: true, frequency: true } },
-};
 
 // ─── Router ────────────────────────────────────────────────────────────────────
 
@@ -167,13 +141,14 @@ export const invoicesRouter = router({
           : {}),
       };
 
+      const { skip, take } = paginationFromInput({ page: input.page, pageSize: input.pageSize });
       const [items, total] = await ctx.db.$transaction([
         ctx.db.invoice.findMany({
           where,
           include: summaryInvoiceInclude,
           orderBy: { date: "desc" },
-          skip: (input.page - 1) * input.pageSize,
-          take: input.pageSize,
+          skip,
+          take,
         }),
         ctx.db.invoice.count({ where }),
       ]);

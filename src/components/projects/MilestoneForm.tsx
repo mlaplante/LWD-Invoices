@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useEntityForm } from "@/hooks/use-entity-form";
 
 type Props = {
   projectId: string;
@@ -14,7 +14,7 @@ type Props = {
 
 export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
   const utils = trpc.useUtils();
-  const [form, setForm] = useState({
+  const { form, setField, error, setError } = useEntityForm({
     name: "",
     description: "",
     color: "#3b82f6",
@@ -23,7 +23,6 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
     amount: "",
     autoInvoice: false,
   });
-  const [error, setError] = useState<string | null>(null);
 
   const mutation = trpc.milestones.create.useMutation({
     onSuccess: () => {
@@ -61,7 +60,7 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
         <label className="text-sm font-medium">Name</label>
         <Input
           value={form.name}
-          onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+          onChange={(e) => setField("name", e.target.value)}
           placeholder="Milestone name"
           required
           className="mt-1"
@@ -72,7 +71,7 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
         <label className="text-sm font-medium">Description</label>
         <Textarea
           value={form.description}
-          onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+          onChange={(e) => setField("description", e.target.value)}
           placeholder="Optional description"
           rows={2}
           className="mt-1"
@@ -86,12 +85,12 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
             <input
               type="color"
               value={form.color}
-              onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
+              onChange={(e) => setField("color", e.target.value)}
               className="w-10 h-10 rounded cursor-pointer"
             />
             <Input
               value={form.color}
-              onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
+              onChange={(e) => setField("color", e.target.value)}
               className="font-mono text-sm"
             />
           </div>
@@ -102,7 +101,7 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
           <Input
             type="date"
             value={form.targetDate}
-            onChange={(e) => setForm((p) => ({ ...p, targetDate: e.target.value }))}
+            onChange={(e) => setField("targetDate", e.target.value)}
             className="mt-1"
           />
         </div>
@@ -115,7 +114,7 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
           step="0.01"
           min="0"
           value={form.amount}
-          onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+          onChange={(e) => setField("amount", e.target.value)}
           placeholder="Fixed price for this milestone"
           className="mt-1"
         />
@@ -126,7 +125,7 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
           <input
             type="checkbox"
             checked={form.autoInvoice}
-            onChange={(e) => setForm((p) => ({ ...p, autoInvoice: e.target.checked }))}
+            onChange={(e) => setField("autoInvoice", e.target.checked)}
           />
           Auto-create draft invoice on completion
         </label>
@@ -136,7 +135,7 @@ export function MilestoneForm({ projectId, onSuccess, onCancel }: Props) {
         <input
           type="checkbox"
           checked={form.isViewable}
-          onChange={(e) => setForm((p) => ({ ...p, isViewable: e.target.checked }))}
+          onChange={(e) => setField("isViewable", e.target.checked)}
         />
         Visible to client
       </label>

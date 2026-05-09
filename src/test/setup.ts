@@ -15,3 +15,13 @@ process.env.GATEWAY_ENCRYPTION_KEY ??=
 
 // Mock server-only so server modules can be imported in tests
 vi.mock("server-only", () => ({}));
+
+// next/cache requires the Next runtime (incremental cache + static generation
+// store). Under vitest neither is bound, so any unstable_cache/revalidateTag
+// call throws. Replace them with passthroughs so cached helpers behave like
+// plain async functions in tests.
+vi.mock("next/cache", () => ({
+  unstable_cache: (fn: (...args: unknown[]) => unknown) => fn,
+  revalidateTag: () => undefined,
+  revalidatePath: () => undefined,
+}));

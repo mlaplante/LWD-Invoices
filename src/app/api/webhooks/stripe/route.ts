@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
-import { GatewayType, InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { decryptJson } from "@/server/services/encryption";
-import { constructStripeEvent } from "@/server/services/stripe";
-import type { StripeConfig } from "@/server/services/gateway-config";
+import { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import type Stripe from "stripe";
 import { logAudit } from "@/server/services/audit";
 import { sendPaymentReceiptEmail } from "@/server/services/payment-receipt-email";
 import { saveStripeCard } from "@/server/services/save-stripe-card";
 import { getStripeClient } from "@/server/services/stripe";
+import { validateStripeWebhook } from "@/server/services/stripe-webhook-validator";
 
 // Track processed Stripe event IDs to prevent duplicate processing.
 // Entries auto-expire after 24 hours. In-memory is sufficient because
@@ -25,62 +23,9 @@ function cleanExpiredEvents() {
 }
 
 export async function POST(req: NextRequest) {
-  // Must use raw text — Stripe signature verification requires exact bytes
-  const rawBody = await req.text();
-  const sig = req.headers.get("stripe-signature");
-  if (!sig) {
-    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
-  }
-
-  // Pre-parse to extract orgId from metadata before verifying
-  let preEvent: { data?: { object?: { metadata?: Record<string, string> } } };
-  try {
-    preEvent = JSON.parse(rawBody) as typeof preEvent;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const orgId = preEvent?.data?.object?.metadata?.orgId;
-  if (!orgId) {
-    return NextResponse.json({ error: "Missing orgId in metadata" }, { status: 400 });
-  }
-
-  // Load this org's Stripe gateway config
-  const gateway = await db.gatewaySetting.findUnique({
-    where: {
-      organizationId_gatewayType: {
-        organizationId: orgId,
-        gatewayType: GatewayType.STRIPE,
-      },
-    },
-  });
-
-  if (!gateway?.isEnabled) {
-    return NextResponse.json({ error: "Stripe not configured for org" }, { status: 400 });
-  }
-
-  let config: StripeConfig;
-  try {
-    config = decryptJson<StripeConfig>(gateway.configJson);
-  } catch {
-    return NextResponse.json({ error: "Failed to decrypt config" }, { status: 500 });
-  }
-
-  // Now verify with the org's webhook secret
-  let event: Stripe.Event;
-  try {
-    event = constructStripeEvent(rawBody, sig, config.webhookSecret);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Invalid signature";
-    return NextResponse.json({ error: msg }, { status: 400 });
-  }
-
-  // Cross-validate: ensure the orgId from the verified event matches the pre-parsed one.
-  // This prevents an attacker from using one org's webhook secret to process another org's data.
-  const verifiedOrgId = (event.data.object as { metadata?: Record<string, string> })?.metadata?.orgId;
-  if (verifiedOrgId !== orgId) {
-    return NextResponse.json({ error: "OrgId mismatch" }, { status: 400 });
-  }
+  const validated = await validateStripeWebhook(req);
+  if (!validated.ok) return validated.response;
+  const { event, orgId, config } = validated;
 
   // Idempotency: skip already-processed events
   cleanExpiredEvents();

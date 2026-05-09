@@ -1,12 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
-import { PrismaClient, LineType } from "@/generated/prisma";
-import {
-  calculateLineTotals,
-  calculateInvoiceTotals,
-  type TaxInput,
-} from "../services/tax-calculator";
+import { LineType } from "@/generated/prisma";
+import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
+import { getForOrg } from "../lib/get-for-org";
+import { getOrgTaxList } from "../lib/tax-helpers";
 
 export const tasksRouter = router({
   list: protectedProcedure
@@ -84,10 +82,7 @@ export const tasksRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      const existing = await ctx.db.projectTask.findUnique({
-        where: { id, organizationId: ctx.orgId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await getForOrg(ctx.db.projectTask, id, ctx.orgId, { entityName: "Task" });
       return ctx.db.projectTask.update({
         where: { id, organizationId: ctx.orgId },
         data,
@@ -98,10 +93,7 @@ export const tasksRouter = router({
   complete: protectedProcedure
     .input(z.object({ id: z.string(), isCompleted: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      const existing = await ctx.db.projectTask.findUnique({
-        where: { id: input.id, organizationId: ctx.orgId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await getForOrg(ctx.db.projectTask, input.id, ctx.orgId, { entityName: "Task" });
       return ctx.db.projectTask.update({
         where: { id: input.id, organizationId: ctx.orgId },
         data: { isCompleted: input.isCompleted },
@@ -111,10 +103,7 @@ export const tasksRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const existing = await ctx.db.projectTask.findUnique({
-        where: { id: input.id, organizationId: ctx.orgId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await getForOrg(ctx.db.projectTask, input.id, ctx.orgId, { entityName: "Task" });
       return ctx.db.projectTask.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
@@ -139,14 +128,13 @@ export const tasksRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const invoice = await ctx.db.invoice.findUnique({
-        where: { id: input.invoiceId, organizationId: ctx.orgId },
+      const invoice = await getForOrg(ctx.db.invoice, input.invoiceId, ctx.orgId, {
+        entityName: "Invoice",
         include: {
           lines: { include: { taxes: true } },
           currency: true,
         },
       });
-      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
 
       const tasks = await ctx.db.projectTask.findMany({
         where: {
@@ -159,17 +147,11 @@ export const tasksRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No unbilled tasks found" });
       }
 
-      const allTaxes = await ctx.db.tax.findMany({ where: { organizationId: ctx.orgId } });
-      const taxInputs: TaxInput[] = allTaxes.map((t) => ({
-        id: t.id,
-        rate: t.rate.toNumber(),
-        isCompound: t.isCompound,
-      }));
+      const taxInputs = await getOrgTaxList(ctx.db, ctx.orgId);
 
       const nextSort = invoice.lines.length;
 
       return ctx.db.$transaction(async (tx) => {
-        const txClient = tx as unknown as PrismaClient;
         const createdLines = await Promise.all(
           tasks.map((task, i) => {
             const lineInput = {
@@ -182,7 +164,7 @@ export const tasksRouter = router({
             };
             const result = calculateLineTotals(lineInput, []);
 
-            return txClient.invoiceLine.create({
+            return tx.invoiceLine.create({
               data: {
                 sort: nextSort + i,
                 lineType: LineType.TIME_ENTRY,
@@ -203,7 +185,7 @@ export const tasksRouter = router({
         // Mark tasks as billed
         await Promise.all(
           createdLines.map((line, i) =>
-            txClient.projectTask.update({
+            tx.projectTask.update({
               where: { id: tasks[i].id },
               data: { invoiceLineId: line.id },
             })
@@ -211,7 +193,7 @@ export const tasksRouter = router({
         );
 
         // Recalculate invoice totals
-        const allLines = await txClient.invoiceLine.findMany({
+        const allLines = await tx.invoiceLine.findMany({
           where: { invoiceId: input.invoiceId },
           include: { taxes: { include: { tax: true } } },
         });
@@ -227,7 +209,7 @@ export const tasksRouter = router({
 
         const totals = calculateInvoiceTotals(lineInputs, taxInputs);
 
-        return txClient.invoice.update({
+        return tx.invoice.update({
           where: { id: input.invoiceId },
           data: {
             subtotal: totals.subtotal,

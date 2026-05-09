@@ -581,6 +581,7 @@ describe("TimeEntries Router Procedures", () => {
           id: { in: ["entry_1", "entry_2"] },
           organizationId: "test-org-123",
           invoiceLineId: null,
+          projectId: { not: null },
         },
         include: {
           task: { select: { id: true, name: true, rate: true } },

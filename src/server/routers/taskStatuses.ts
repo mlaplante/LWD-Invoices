@@ -5,7 +5,7 @@ import { getTaskStatusesForOrg, invalidateOrg } from "../cached";
 
 export const taskStatusesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return getTaskStatusesForOrg(ctx.orgId);
+    return getTaskStatusesForOrg(ctx.db, ctx.orgId);
   }),
 
   create: protectedProcedure

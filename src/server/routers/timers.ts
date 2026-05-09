@@ -3,6 +3,22 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
 import { roundMinutes } from "../services/time-rounding";
 
+const pauseEventSchema = z.object({
+  at: z.string(),
+  seconds: z.number(),
+});
+const pausesArraySchema = z.array(pauseEventSchema);
+
+// Defensive: a corrupt or hand-edited pausesJson row should not 500 the timer flow.
+// Return [] when the column can't be parsed; the next pause event re-establishes a valid array.
+function parsePauses(raw: string): Array<{ at: string; seconds: number }> {
+  try {
+    return pausesArraySchema.parse(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+
 export const timersRouter = router({
   getActive: protectedProcedure
     .input(z.object({ taskId: z.string() }))
@@ -95,7 +111,7 @@ export const timersRouter = router({
       const newCurrentSeconds = timer.currentSeconds + elapsed;
 
       // Append pause event to pausesJson
-      const pauses = JSON.parse(timer.pausesJson) as Array<{ at: string; seconds: number }>;
+      const pauses = parsePauses(timer.pausesJson);
       pauses.push({ at: now.toISOString(), seconds: newCurrentSeconds });
 
       return ctx.db.timer.update({

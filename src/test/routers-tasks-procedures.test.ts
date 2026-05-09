@@ -346,7 +346,7 @@ describe("Tasks Router Procedures", () => {
         sortOrder: 2,
       };
 
-      ctx.db.projectTask.findUnique.mockResolvedValue(existingTask);
+      ctx.db.projectTask.findFirst.mockResolvedValue(existingTask);
       ctx.db.projectTask.update.mockResolvedValue({
         ...updatedTask,
         taskStatus: null,
@@ -363,7 +363,7 @@ describe("Tasks Router Procedures", () => {
       expect(result.name).toBe("Updated Name");
       expect(result.notes).toBe("Updated notes");
       expect(result.sortOrder).toBe(2);
-      expect(ctx.db.projectTask.findUnique).toHaveBeenCalledWith({
+      expect(ctx.db.projectTask.findFirst).toHaveBeenCalledWith({
         where: { id: "task_1", organizationId: "test-org-123" },
       });
       expect(ctx.db.projectTask.update).toHaveBeenCalledWith({
@@ -378,16 +378,16 @@ describe("Tasks Router Procedures", () => {
     });
 
     it("throws NOT_FOUND when task doesn't exist", async () => {
-      ctx.db.projectTask.findUnique.mockResolvedValue(null);
+      ctx.db.projectTask.findFirst.mockResolvedValue(null);
 
       await expect(
         caller.update({
           id: "nonexistent_task",
           name: "Updated Name",
         })
-      ).rejects.toThrow("NOT_FOUND");
+      ).rejects.toThrow("Task not found");
 
-      expect(ctx.db.projectTask.findUnique).toHaveBeenCalledWith({
+      expect(ctx.db.projectTask.findFirst).toHaveBeenCalledWith({
         where: { id: "nonexistent_task", organizationId: "test-org-123" },
       });
     });
@@ -421,7 +421,7 @@ describe("Tasks Router Procedures", () => {
         dueDate: new Date("2026-03-20"),
       };
 
-      ctx.db.projectTask.findUnique.mockResolvedValue(existingTask);
+      ctx.db.projectTask.findFirst.mockResolvedValue(existingTask);
       ctx.db.projectTask.update.mockResolvedValue({
         ...updatedTask,
         taskStatus: null,
@@ -474,7 +474,7 @@ describe("Tasks Router Procedures", () => {
         isCompleted: true,
       };
 
-      ctx.db.projectTask.findUnique.mockResolvedValue(existingTask);
+      ctx.db.projectTask.findFirst.mockResolvedValue(existingTask);
       ctx.db.projectTask.update.mockResolvedValue(completedTask);
 
       const result = await caller.complete({
@@ -483,7 +483,7 @@ describe("Tasks Router Procedures", () => {
       });
 
       expect(result.isCompleted).toBe(true);
-      expect(ctx.db.projectTask.findUnique).toHaveBeenCalledWith({
+      expect(ctx.db.projectTask.findFirst).toHaveBeenCalledWith({
         where: { id: "task_1", organizationId: "test-org-123" },
       });
       expect(ctx.db.projectTask.update).toHaveBeenCalledWith({
@@ -521,7 +521,7 @@ describe("Tasks Router Procedures", () => {
         isCompleted: false,
       };
 
-      ctx.db.projectTask.findUnique.mockResolvedValue(existingTask);
+      ctx.db.projectTask.findFirst.mockResolvedValue(existingTask);
       ctx.db.projectTask.update.mockResolvedValue(incompletedTask);
 
       const result = await caller.complete({
@@ -537,16 +537,16 @@ describe("Tasks Router Procedures", () => {
     });
 
     it("throws NOT_FOUND when task doesn't exist", async () => {
-      ctx.db.projectTask.findUnique.mockResolvedValue(null);
+      ctx.db.projectTask.findFirst.mockResolvedValue(null);
 
       await expect(
         caller.complete({
           id: "nonexistent_task",
           isCompleted: true,
         })
-      ).rejects.toThrow("NOT_FOUND");
+      ).rejects.toThrow("Task not found");
 
-      expect(ctx.db.projectTask.findUnique).toHaveBeenCalledWith({
+      expect(ctx.db.projectTask.findFirst).toHaveBeenCalledWith({
         where: { id: "nonexistent_task", organizationId: "test-org-123" },
       });
     });
@@ -577,13 +577,13 @@ describe("Tasks Router Procedures", () => {
         updatedAt: new Date(),
       };
 
-      ctx.db.projectTask.findUnique.mockResolvedValue(existingTask);
+      ctx.db.projectTask.findFirst.mockResolvedValue(existingTask);
       ctx.db.projectTask.delete.mockResolvedValue(existingTask);
 
       const result = await caller.delete({ id: "task_1" });
 
       expect(result.id).toBe("task_1");
-      expect(ctx.db.projectTask.findUnique).toHaveBeenCalledWith({
+      expect(ctx.db.projectTask.findFirst).toHaveBeenCalledWith({
         where: { id: "task_1", organizationId: "test-org-123" },
       });
       expect(ctx.db.projectTask.delete).toHaveBeenCalledWith({
@@ -592,13 +592,13 @@ describe("Tasks Router Procedures", () => {
     });
 
     it("throws NOT_FOUND when task doesn't exist", async () => {
-      ctx.db.projectTask.findUnique.mockResolvedValue(null);
+      ctx.db.projectTask.findFirst.mockResolvedValue(null);
 
       await expect(
         caller.delete({ id: "nonexistent_task" })
-      ).rejects.toThrow("NOT_FOUND");
+      ).rejects.toThrow("Task not found");
 
-      expect(ctx.db.projectTask.findUnique).toHaveBeenCalledWith({
+      expect(ctx.db.projectTask.findFirst).toHaveBeenCalledWith({
         where: { id: "nonexistent_task", organizationId: "test-org-123" },
       });
       expect(ctx.db.projectTask.delete).not.toHaveBeenCalled();
@@ -608,13 +608,13 @@ describe("Tasks Router Procedures", () => {
       const otherOrgCtx = createMockContext({ orgId: "other-org-999" });
       const otherCaller = tasksRouter.createCaller(otherOrgCtx);
 
-      otherOrgCtx.db.projectTask.findUnique.mockResolvedValue(null);
+      otherOrgCtx.db.projectTask.findFirst.mockResolvedValue(null);
 
       await expect(
         otherCaller.delete({ id: "task_1" })
-      ).rejects.toThrow("NOT_FOUND");
+      ).rejects.toThrow("Task not found");
 
-      expect((otherOrgCtx.db as any).projectTask.findUnique).toHaveBeenCalledWith({
+      expect((otherOrgCtx.db as any).projectTask.findFirst).toHaveBeenCalledWith({
         where: { id: "task_1", organizationId: "other-org-999" },
       });
     });
@@ -690,7 +690,7 @@ describe("Tasks Router Procedures", () => {
         },
       ];
 
-      ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
+      ctx.db.invoice.findFirst.mockResolvedValue(mockInvoice);
       ctx.db.projectTask.findMany.mockResolvedValue(mockTasks);
       ctx.db.tax.findMany.mockResolvedValue([]);
 
@@ -709,7 +709,7 @@ describe("Tasks Router Procedures", () => {
         taskIds: ["task_1", "task_2"],
       });
 
-      expect(ctx.db.invoice.findUnique).toHaveBeenCalledWith({
+      expect(ctx.db.invoice.findFirst).toHaveBeenCalledWith({
         where: { id: "inv_1", organizationId: "test-org-123" },
         include: {
           lines: { include: { taxes: true } },
@@ -760,7 +760,7 @@ describe("Tasks Router Procedures", () => {
     });
 
     it("throws NOT_FOUND when invoice doesn't exist", async () => {
-      ctx.db.invoice.findUnique.mockResolvedValue(null);
+      ctx.db.invoice.findFirst.mockResolvedValue(null);
 
       await expect(
         caller.billToInvoice({
@@ -778,7 +778,7 @@ describe("Tasks Router Procedures", () => {
         currency: { id: "cur_1", symbol: "$", code: "USD" },
       };
 
-      ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
+      ctx.db.invoice.findFirst.mockResolvedValue(mockInvoice);
       ctx.db.projectTask.findMany.mockResolvedValue([]);
 
       await expect(
@@ -811,7 +811,7 @@ describe("Tasks Router Procedures", () => {
         },
       ];
 
-      ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
+      ctx.db.invoice.findFirst.mockResolvedValue(mockInvoice);
       ctx.db.projectTask.findMany.mockResolvedValue(mockTasks);
       ctx.db.tax.findMany.mockResolvedValue([]);
       ctx.db.invoiceLine.create.mockImplementation(({ data }: any) =>
@@ -852,7 +852,7 @@ describe("Tasks Router Procedures", () => {
         },
       ];
 
-      ctx.db.invoice.findUnique.mockResolvedValue(mockInvoice);
+      ctx.db.invoice.findFirst.mockResolvedValue(mockInvoice);
       ctx.db.projectTask.findMany.mockResolvedValue(mockTasks);
       ctx.db.tax.findMany.mockResolvedValue([
         { id: "tax_1", rate: new Decimal("10"), isCompound: false },

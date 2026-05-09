@@ -8,6 +8,7 @@ import {
 } from "@/server/services/stripe";
 import { headers } from "next/headers";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { safeErrorResponse } from "@/lib/api-errors";
 
 // 10 payment attempts per token per 5 minutes
 const payLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60_000 });
@@ -67,8 +68,18 @@ export async function GET(
     );
   }
 
-  const config = decryptJson<StripeConfig>(gatewaySetting.configJson);
-  const stripeClient = getStripeClient(config.secretKey);
+  let config: StripeConfig;
+  let stripeClient: ReturnType<typeof getStripeClient>;
+  try {
+    config = decryptJson<StripeConfig>(gatewaySetting.configJson);
+    stripeClient = getStripeClient(config.secretKey);
+  } catch (err) {
+    return safeErrorResponse("Payment gateway unavailable", 500, {
+      route: "pay/[token]/stripe",
+      cause: err,
+      meta: { orgId: invoice.organizationId },
+    });
+  }
 
   const totalPaid = invoice.payments.reduce(
     (sum, p) => sum + p.amount.toNumber(),
@@ -94,27 +105,37 @@ export async function GET(
     }
   }
 
-  const { url: checkoutUrl } = await createCheckoutSession({
-    stripeClient,
-    invoice: {
-      id: invoice.id,
-      number: invoice.number,
-      total: invoice.total,
-      currency: invoice.currency,
-      portalToken: invoice.portalToken!,
-      organizationId: invoice.organizationId,
-      clientId: invoice.clientId,
-    },
-    surcharge: gatewaySetting.surcharge.toNumber(),
-    appUrl,
-    partialPaymentId: partialPaymentId ?? undefined,
-    amountOverride: payAmount,
-    successUrl: `${appUrl}/pay/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancelUrl: `${appUrl}/pay/${token}`,
-    clientEmail: invoice.client?.email,
-    clientName: invoice.client?.name,
-    stripeCustomerId: invoice.client?.stripeCustomerId,
-  });
+  let checkoutUrl: string;
+  try {
+    const session = await createCheckoutSession({
+      stripeClient,
+      invoice: {
+        id: invoice.id,
+        number: invoice.number,
+        total: invoice.total,
+        currency: invoice.currency,
+        portalToken: invoice.portalToken!,
+        organizationId: invoice.organizationId,
+        clientId: invoice.clientId,
+      },
+      surcharge: gatewaySetting.surcharge.toNumber(),
+      appUrl,
+      partialPaymentId: partialPaymentId ?? undefined,
+      amountOverride: payAmount,
+      successUrl: `${appUrl}/pay/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${appUrl}/pay/${token}`,
+      clientEmail: invoice.client?.email,
+      clientName: invoice.client?.name,
+      stripeCustomerId: invoice.client?.stripeCustomerId,
+    });
+    checkoutUrl = session.url;
+  } catch (err) {
+    return safeErrorResponse("Could not start payment session", 502, {
+      route: "pay/[token]/stripe",
+      cause: err,
+      meta: { invoiceId: invoice.id },
+    });
+  }
 
   return NextResponse.redirect(checkoutUrl, 303);
 }

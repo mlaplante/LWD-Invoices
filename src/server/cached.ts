@@ -1,6 +1,6 @@
 import "server-only";
 import { unstable_cache, revalidateTag } from "next/cache";
-import { db } from "./db";
+import type { PrismaClient } from "@/generated/prisma";
 
 /**
  * Cross-request cache for org-scoped reads that rarely change.
@@ -11,13 +11,17 @@ import { db } from "./db";
  * to a plain-number shape before caching.
  *
  * Invalidation is tag-based. On mutation, call revalidateTag(orgTag(...)).
+ *
+ * Each helper takes the Prisma client as its first argument so callers
+ * (including tests with a mocked client) supply the same instance they
+ * use for writes — no implicit dependency on a singleton.
  */
 
 export const orgTag = (orgId: string, resource: string) => `org:${orgId}:${resource}`;
 
 const ONE_HOUR = 60 * 60;
 
-export const getTaskStatusesForOrg = (orgId: string) =>
+export const getTaskStatusesForOrg = (db: PrismaClient, orgId: string) =>
   unstable_cache(
     async () =>
       db.taskStatus.findMany({
@@ -28,7 +32,7 @@ export const getTaskStatusesForOrg = (orgId: string) =>
     { tags: [orgTag(orgId, "taskStatuses")], revalidate: ONE_HOUR }
   )();
 
-export const getExpenseCategoriesForOrg = (orgId: string) =>
+export const getExpenseCategoriesForOrg = (db: PrismaClient, orgId: string) =>
   unstable_cache(
     async () =>
       db.expenseCategory.findMany({
@@ -39,7 +43,7 @@ export const getExpenseCategoriesForOrg = (orgId: string) =>
     { tags: [orgTag(orgId, "expenseCategories")], revalidate: ONE_HOUR }
   )();
 
-export const getExpenseSuppliersForOrg = (orgId: string) =>
+export const getExpenseSuppliersForOrg = (db: PrismaClient, orgId: string) =>
   unstable_cache(
     async () =>
       db.expenseSupplier.findMany({
