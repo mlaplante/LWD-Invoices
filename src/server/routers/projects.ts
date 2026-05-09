@@ -91,37 +91,36 @@ export const projectsRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      // Fetch project with flat task list for client-side tree building
-      const project = await ctx.db.project.findUnique({
-        where: { id: input.id, organizationId: ctx.orgId },
-        include: {
-          client: { select: { id: true, name: true } },
-          currency: { select: { id: true, symbol: true, symbolPosition: true, code: true } },
-          milestones: { orderBy: { sortOrder: "asc" } },
-          tasks: {
-            include: {
-              taskStatus: true,
-              milestone: true,
-              timer: true,
-              _count: { select: { timeEntries: true, children: true } },
+      const [project, timeAgg, expenseAgg] = await Promise.all([
+        ctx.db.project.findUnique({
+          where: { id: input.id, organizationId: ctx.orgId },
+          include: {
+            client: { select: { id: true, name: true } },
+            currency: { select: { id: true, symbol: true, symbolPosition: true, code: true } },
+            milestones: { orderBy: { sortOrder: "asc" } },
+            tasks: {
+              include: {
+                taskStatus: true,
+                milestone: true,
+                timer: true,
+                _count: { select: { timeEntries: true, children: true } },
+              },
+              orderBy: { sortOrder: "asc" },
             },
-            orderBy: { sortOrder: "asc" },
+            _count: { select: { tasks: true, timeEntries: true, expenses: true } },
           },
-          _count: { select: { tasks: true, timeEntries: true, expenses: true } },
-        },
-      });
+        }),
+        ctx.db.timeEntry.aggregate({
+          where: { projectId: input.id, organizationId: ctx.orgId },
+          _sum: { minutes: true },
+        }),
+        ctx.db.expense.aggregate({
+          where: { projectId: input.id, organizationId: ctx.orgId },
+          _sum: { rate: true },
+        }),
+      ]);
+
       if (!project) throw new TRPCError({ code: "NOT_FOUND" });
-
-      // Compute summary totals
-      const timeAgg = await ctx.db.timeEntry.aggregate({
-        where: { projectId: input.id, organizationId: ctx.orgId },
-        _sum: { minutes: true },
-      });
-
-      const expenseAgg = await ctx.db.expense.aggregate({
-        where: { projectId: input.id, organizationId: ctx.orgId },
-        _sum: { rate: true },
-      });
 
       return {
         ...project,
