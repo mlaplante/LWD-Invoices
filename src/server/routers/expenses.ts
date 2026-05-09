@@ -33,10 +33,12 @@ export const expensesRouter = router({
       z.object({
         projectId: z.string().min(1).optional(),
         unbilledOnly: z.boolean().default(false),
+        limit: z.number().int().min(1).max(200).default(100),
+        cursor: z.string().optional(),
       })
     )
     .query(async ({ ctx, input }) => {
-      return ctx.db.expense.findMany({
+      const items = await ctx.db.expense.findMany({
         where: {
           organizationId: ctx.orgId,
           ...(input.projectId ? { projectId: input.projectId } : {}),
@@ -44,7 +46,17 @@ export const expensesRouter = router({
         },
         include: detailExpenseInclude,
         orderBy: { createdAt: "desc" },
+        take: input.limit + 1,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       });
+
+      let nextCursor: string | null = null;
+      if (items.length > input.limit) {
+        const next = items.pop();
+        nextCursor = next?.id ?? null;
+      }
+
+      return { items, nextCursor };
     }),
 
   generateRecurring: protectedProcedure

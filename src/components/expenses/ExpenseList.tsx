@@ -33,7 +33,8 @@ export function ExpenseList() {
     onSuccess: () => utils.expenses.list.invalidate(),
   });
   useEffect(() => { generateRecurring.mutate(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const { data: expenses = [] } = trpc.expenses.list.useQuery({});
+  const { data: expensesPage } = trpc.expenses.list.useQuery({});
+  const expenses = expensesPage?.items ?? [];
   const { data: recurringExpenses = [] } = trpc.recurringExpenses.list.useQuery();
   const { data: categories = [] } = trpc.expenseCategories.list.useQuery();
 
