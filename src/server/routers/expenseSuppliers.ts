@@ -5,7 +5,7 @@ import { getExpenseSuppliersForOrg, invalidateOrg } from "../cached";
 
 export const expenseSuppliersRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return getExpenseSuppliersForOrg(ctx.orgId);
+    return getExpenseSuppliersForOrg(ctx.db, ctx.orgId);
   }),
 
   create: requireRole("OWNER", "ADMIN")
