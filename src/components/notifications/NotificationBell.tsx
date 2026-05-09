@@ -13,7 +13,13 @@ import { formatDistanceToNow } from "date-fns";
 export function NotificationBell() {
   const { data: count = 0 } = trpc.notifications.unreadCount.useQuery(
     undefined,
-    { refetchInterval: 30_000 },
+    {
+      refetchInterval: (query) =>
+        typeof document !== "undefined" && document.visibilityState === "hidden"
+          ? false
+          : 30_000,
+      refetchIntervalInBackground: false,
+    },
   );
   const { data: notifications = [] } = trpc.notifications.list.useQuery({
     limit: 10,
