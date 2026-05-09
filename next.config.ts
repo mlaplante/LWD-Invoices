@@ -26,6 +26,8 @@ const nextConfig = {
       "recharts",
       "date-fns",
       "sonner",
+      "cmdk",
+      "radix-ui",
       "@radix-ui/react-alert-dialog",
       "@radix-ui/react-dialog",
       "@radix-ui/react-dropdown-menu",
@@ -33,6 +35,9 @@ const nextConfig = {
       "@radix-ui/react-select",
       "@radix-ui/react-tabs",
       "@radix-ui/react-tooltip",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "@dnd-kit/utilities",
     ],
   },
   async headers() {
