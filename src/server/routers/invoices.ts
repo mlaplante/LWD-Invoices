@@ -16,6 +16,7 @@ import { notifyOrgAdmins } from "../services/notifications";
 import { getAppUrl } from "@/lib/app-url";
 import { sendPaymentReceiptEmail } from "../services/payment-receipt-email";
 import { fullInvoiceInclude as emailInvoiceInclude } from "@/server/lib/invoice-includes";
+import { paginationFromInput } from "@/lib/pagination";
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
 
@@ -167,13 +168,14 @@ export const invoicesRouter = router({
           : {}),
       };
 
+      const { skip, take } = paginationFromInput({ page: input.page, pageSize: input.pageSize });
       const [items, total] = await ctx.db.$transaction([
         ctx.db.invoice.findMany({
           where,
           include: summaryInvoiceInclude,
           orderBy: { date: "desc" },
-          skip: (input.page - 1) * input.pageSize,
-          take: input.pageSize,
+          skip,
+          take,
         }),
         ctx.db.invoice.count({ where }),
       ]);
