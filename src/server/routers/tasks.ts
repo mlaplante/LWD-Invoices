@@ -7,6 +7,7 @@ import {
   calculateInvoiceTotals,
   type TaxInput,
 } from "../services/tax-calculator";
+import { getForOrg } from "../lib/get-for-org";
 
 export const tasksRouter = router({
   list: protectedProcedure
@@ -84,10 +85,7 @@ export const tasksRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      const existing = await ctx.db.projectTask.findUnique({
-        where: { id, organizationId: ctx.orgId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await getForOrg(ctx.db.projectTask, id, ctx.orgId, { entityName: "Task" });
       return ctx.db.projectTask.update({
         where: { id, organizationId: ctx.orgId },
         data,
@@ -98,10 +96,7 @@ export const tasksRouter = router({
   complete: protectedProcedure
     .input(z.object({ id: z.string(), isCompleted: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      const existing = await ctx.db.projectTask.findUnique({
-        where: { id: input.id, organizationId: ctx.orgId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await getForOrg(ctx.db.projectTask, input.id, ctx.orgId, { entityName: "Task" });
       return ctx.db.projectTask.update({
         where: { id: input.id, organizationId: ctx.orgId },
         data: { isCompleted: input.isCompleted },
@@ -111,10 +106,7 @@ export const tasksRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const existing = await ctx.db.projectTask.findUnique({
-        where: { id: input.id, organizationId: ctx.orgId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await getForOrg(ctx.db.projectTask, input.id, ctx.orgId, { entityName: "Task" });
       return ctx.db.projectTask.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
@@ -139,14 +131,13 @@ export const tasksRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const invoice = await ctx.db.invoice.findUnique({
-        where: { id: input.invoiceId, organizationId: ctx.orgId },
+      const invoice = await getForOrg(ctx.db.invoice, input.invoiceId, ctx.orgId, {
+        entityName: "Invoice",
         include: {
           lines: { include: { taxes: true } },
           currency: true,
         },
       });
-      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
 
       const tasks = await ctx.db.projectTask.findMany({
         where: {

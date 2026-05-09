@@ -109,6 +109,7 @@ export function createMockPrismaClient() {
     projectTask: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
