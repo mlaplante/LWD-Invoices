@@ -25,6 +25,10 @@ const orgPdfSelect = {
   hidePoweredBy: true,
   portalTagline: true,
   portalFooterText: true,
+  // Used by the payment-reminders Inngest function which fetches invoices
+  // via fullInvoiceInclude and reads org.paymentReminderDays to decide
+  // when to send.
+  paymentReminderDays: true,
 } as const satisfies Prisma.OrganizationSelect;
 
 /**
