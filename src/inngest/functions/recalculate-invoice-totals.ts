@@ -21,8 +21,11 @@ import { LineType } from "@/generated/prisma";
  * credit note instead.
  */
 export const recalculateInvoiceTotals = inngest.createFunction(
-  { id: "recalculate-invoice-totals", name: "Recalculate Invoice Totals (tax delete)" },
-  { event: "org/tax.deleted" },
+  {
+    id: "recalculate-invoice-totals",
+    name: "Recalculate Invoice Totals (tax delete)",
+    triggers: [{ event: "org/tax.deleted" }],
+  },
   async ({ event, step }) => {
     const { orgId, taxId } = event.data as { orgId: string; taxId: string };
 
