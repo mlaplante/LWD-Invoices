@@ -160,6 +160,12 @@ model Organization {
   defaultDepositPercent   Int?
   smartRemindersEnabled   Boolean  @default(false)
   smartRemindersThreshold Int      @default(80)
+  // When true, invoice tax is computed via Stripe Tax Calculation API using
+  // the org's Stripe gateway secret + the client's destination address. When
+  // false (default), the legacy compound-tax calculator in src/server/services/
+  // tax-calculator.ts owns tax computation. Switching to true requires the
+  // org to have a Stripe gateway configured AND a complete origin address.
+  stripeTaxEnabled        Boolean  @default(false)
   emailBccOwner           Boolean  @default(true)
   lateFeeEnabled          Boolean @default(false)
   lateFeeType             String?
@@ -411,6 +417,12 @@ model Invoice {
   retainerApplied Decimal @default(0) @db.Decimal(20, 10)
   creditApplied   Decimal @default(0) @db.Decimal(20, 10)
 
+  // When tax was computed by Stripe Tax (Organization.stripeTaxEnabled), this
+  // holds the Calculation ID returned by Stripe. Used later when reconciling
+  // the calculation into a Stripe Tax Transaction at finalization. Null when
+  // the legacy tax-calculator was used.
+  stripeTaxCalculationId String?
+
   // Credit note fields
   sourceInvoiceId  String?
   creditNoteStatus String?  // DRAFT | ISSUED | APPLIED | VOIDED
@@ -481,10 +493,37 @@ model InvoiceLine {
   invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
-  taxes InvoiceLineTax[]
+  taxes              InvoiceLineTax[]
+  stripeTaxBreakdown InvoiceLineStripeTaxBreakdown[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Per-line, per-jurisdiction tax row populated only when Stripe Tax computed
+// the invoice. Coexists with InvoiceLineTax: the legacy path writes
+// InvoiceLineTax rows; Stripe Tax writes InvoiceLineStripeTaxBreakdown rows.
+// A given line uses one path or the other, never both — switch via
+// Organization.stripeTaxEnabled at calc time.
+model InvoiceLineStripeTaxBreakdown {
+  id                   String      @id @default(cuid())
+  invoiceLineId        String
+  invoiceLine          InvoiceLine @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
+  // Display info copied from Stripe so we can render without a re-fetch.
+  jurisdictionDisplay  String      // e.g. "California" or "Germany"
+  jurisdictionLevel    String      // country | state | county | city | district
+  // Calculated amounts at the time of computation, in invoice currency.
+  amount               Decimal     @db.Decimal(20, 4)
+  taxableAmount        Decimal     @db.Decimal(20, 4)
+  // Percentage_decimal as returned by Stripe (e.g. "8.25").
+  rateDecimal          Decimal     @db.Decimal(8, 4)
+  // sales_tax | vat | gst | etc. Free-form for forward compat.
+  taxType              String
+  // Stripe-provided reason like "standard_rated" / "reverse_charge".
+  reason               String?
+  createdAt            DateTime    @default(now())
+
+  @@index([invoiceLineId])
 }
 
 model InvoiceLineTax {
