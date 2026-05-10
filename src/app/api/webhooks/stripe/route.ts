@@ -33,6 +33,108 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
+  // Refunds: reverse the recorded payment, audit, downgrade invoice status
+  // if it was fully paid via this charge. Stripe sends one charge.refunded
+  // event per refund, including partials.
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as Stripe.Charge;
+    const paymentIntentId = typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : charge.payment_intent?.id;
+    if (!paymentIntentId) {
+      processedEvents.set(event.id, Date.now());
+      return NextResponse.json({ received: true });
+    }
+    const payment = await db.payment.findFirst({
+      where: { transactionId: paymentIntentId, organizationId: orgId },
+      include: { invoice: true },
+    });
+    if (payment) {
+      const refundedTotal = (charge.amount_refunded ?? 0) / 100;
+      await logAudit({
+        action: "STATUS_CHANGED",
+        entityType: "Invoice",
+        entityId: payment.invoiceId,
+        entityLabel: `Invoice #${payment.invoice.number}`,
+        diff: { event: "stripe_refund", amountRefunded: refundedTotal, transactionId: paymentIntentId },
+        organizationId: orgId,
+      });
+      // If the full charge has been refunded, flip the invoice back to SENT
+      // so the org sees it as outstanding again. Partial refunds leave status
+      // alone — accounting can issue a credit note instead.
+      if ((charge.amount_refunded ?? 0) >= (charge.amount ?? 0) && payment.invoice.status === InvoiceStatus.PAID) {
+        await db.invoice.update({
+          where: { id: payment.invoiceId },
+          data: { status: InvoiceStatus.SENT },
+        });
+      }
+    }
+    processedEvents.set(event.id, Date.now());
+    return NextResponse.json({ received: true });
+  }
+
+  // Disputes: never auto-mutate the invoice — disputes can be lost and
+  // re-charged. Just log so admins see it in the audit trail and can react.
+  if (event.type === "charge.dispute.created") {
+    const dispute = event.data.object as Stripe.Dispute;
+    const paymentIntentId = typeof dispute.payment_intent === "string"
+      ? dispute.payment_intent
+      : dispute.payment_intent?.id;
+    if (paymentIntentId) {
+      const payment = await db.payment.findFirst({
+        where: { transactionId: paymentIntentId, organizationId: orgId },
+        select: { invoiceId: true, invoice: { select: { number: true } } },
+      });
+      if (payment) {
+        await logAudit({
+          action: "STATUS_CHANGED",
+          entityType: "Invoice",
+          entityId: payment.invoiceId,
+          entityLabel: `Invoice #${payment.invoice.number}`,
+          diff: {
+            event: "stripe_dispute_created",
+            reason: dispute.reason,
+            amount: (dispute.amount ?? 0) / 100,
+            disputeId: dispute.id,
+          },
+          organizationId: orgId,
+        });
+      }
+    }
+    processedEvents.set(event.id, Date.now());
+    return NextResponse.json({ received: true });
+  }
+
+  // Payment failed / canceled: log so the org sees why a checkout didn't
+  // result in a payment. No invoice status change — a draft/sent invoice
+  // stays unpaid until a successful charge lands.
+  if (event.type === "payment_intent.payment_failed" || event.type === "payment_intent.canceled") {
+    const intent = event.data.object as Stripe.PaymentIntent;
+    const invoiceId = intent.metadata?.invoiceId;
+    if (invoiceId) {
+      const invoice = await db.invoice.findFirst({
+        where: { id: invoiceId, organizationId: orgId },
+        select: { number: true },
+      });
+      if (invoice) {
+        await logAudit({
+          action: "STATUS_CHANGED",
+          entityType: "Invoice",
+          entityId: invoiceId,
+          entityLabel: `Invoice #${invoice.number}`,
+          diff: {
+            event: event.type,
+            failureMessage: intent.last_payment_error?.message ?? null,
+            failureCode: intent.last_payment_error?.code ?? null,
+          },
+          organizationId: orgId,
+        });
+      }
+    }
+    processedEvents.set(event.id, Date.now());
+    return NextResponse.json({ received: true });
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const invoiceId = session.metadata?.invoiceId;

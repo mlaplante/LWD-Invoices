@@ -1,5 +1,6 @@
 import { MfaEnrollment } from "@/components/settings/MfaEnrollment";
 import { ChangePasswordForm } from "@/components/settings/ChangePasswordForm";
+import { SignOutEverywhere } from "@/components/settings/SignOutEverywhere";
 import { getUser } from "@/lib/supabase/server";
 
 export default async function SecuritySettingsPage() {
@@ -39,6 +40,19 @@ export default async function SecuritySettingsPage() {
         </div>
         <div className="px-6 py-6">
           <ChangePasswordForm email={email} />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border/50">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
+          <p className="text-base font-semibold mt-1">Active Sessions</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Lost a device, or want to force a refresh on every browser? Sign out everywhere in one click.
+          </p>
+        </div>
+        <div className="px-6 py-6">
+          <SignOutEverywhere />
         </div>
       </div>
     </div>

@@ -110,6 +110,31 @@ Then create a pull request on GitHub with:
 - Validate all inputs using Zod schemas
 - Return appropriate HTTP status codes
 
+### Error Handling
+
+We use three rules so errors stay predictable across mutations, webhooks, and
+side effects. Pick the bucket that matches your code path:
+
+1. **Critical-path mutations (tRPC procedures, REST mutators)** — throw
+   `TRPCError` (or return a non-2xx Response) with a clear `code` and
+   `message`. The client surfaces these to the user. **Never swallow.**
+   Examples: invoice create/update, payment recording, gateway config.
+
+2. **Non-critical side effects** (audit logs, follow-up emails, automation
+   fan-out, notifications) — wrap in `try/catch`, `console.error` with a
+   `[module]` prefix, and continue. The user-facing operation already
+   succeeded; a failed audit row shouldn't unwind it. Use `.catch(() => {})`
+   only after `console.error` is unnecessary because the call is purely
+   advisory.
+
+3. **External webhooks** (Stripe, Resend, etc.) — always return 2xx unless
+   the payload is malformed or the signature fails. Log internal failures
+   with `[provider-webhook]` prefix; never re-throw, or the provider will
+   retry and you'll process duplicates.
+
+When in doubt, ask: "if this fails, should the user see an error?" Yes →
+rule 1. No → rule 2 or 3.
+
 ## Testing
 
 - Write unit tests for services and utilities

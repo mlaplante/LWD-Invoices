@@ -1,11 +1,23 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 
+const EMPTY_RESULTS = {
+  invoices: [],
+  clients: [],
+  projects: [],
+  expenses: [],
+  tickets: [],
+} as const;
+
 export const searchRouter = router({
   global: protectedProcedure
     .input(z.object({ query: z.string().min(2).max(100) }))
     .query(async ({ ctx, input }) => {
-      const q = input.query;
+      // Normalize so the React Query cache key dedupes "Foo" / " foo " / "foo".
+      // CommandPalette already debounces 300ms; this just collapses keystroke
+      // variants that would otherwise miss the cache.
+      const q = input.query.trim();
+      if (q.length < 2) return { ...EMPTY_RESULTS };
       const take = 5;
 
       const [invoices, clients, projects, expenses, tickets] = await Promise.all([

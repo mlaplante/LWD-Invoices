@@ -119,10 +119,51 @@ function toLegacyLineInput(line: ResolverLineInput): LineInput {
 }
 
 export async function resolveInvoiceTax(input: ResolverInput): Promise<ResolvedInvoice> {
+  // Tax-exempt clients (nonprofits, intercompany, etc.) skip both paths.
+  // We still compute subtotals/discounts so totals reconcile, but every
+  // tax breakdown comes back empty and taxTotal is forced to 0.
+  const client = await input.db.client.findUnique({
+    where: { id: input.clientId },
+    select: { isTaxExempt: true },
+  });
+  if (client?.isTaxExempt) {
+    return resolveExempt(input);
+  }
   if (input.org.stripeTaxEnabled) {
     return resolveViaStripe(input);
   }
   return resolveViaLegacy(input);
+}
+
+function resolveExempt(input: ResolverInput): ResolvedInvoice {
+  // Reuse the legacy line subtotal calculator, then strip the tax outputs.
+  const lineResults = input.lines.map((line) => {
+    const result = calculateLineTotals(toLegacyLineInput(line), []);
+    return { reference: line.reference, result };
+  });
+  const invoiceTotals = calculateInvoiceTotalsWithDiscount(
+    input.lines.map(toLegacyLineInput),
+    [],
+    input.discountType,
+    input.discountAmount,
+  );
+  return {
+    invoice: {
+      subtotal: invoiceTotals.subtotal,
+      discountTotal: invoiceTotals.discountTotal,
+      taxTotal: 0,
+      total: invoiceTotals.subtotal - invoiceTotals.discountTotal,
+      stripeTaxCalculationId: null,
+    },
+    lines: lineResults.map(({ reference, result }) => ({
+      reference,
+      subtotal: result.subtotal,
+      taxTotal: 0,
+      total: result.subtotal,
+      legacyTaxBreakdown: [],
+      stripeTaxBreakdown: [],
+    })),
+  };
 }
 
 function resolveViaLegacy(input: ResolverInput): ResolvedInvoice {

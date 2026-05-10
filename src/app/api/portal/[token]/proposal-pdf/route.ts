@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 import { db } from "@/server/db";
 import { getProposalFileSignedUrl } from "@/lib/supabase/storage";
+import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
 
 export async function GET(
   _req: NextRequest,
@@ -10,17 +11,7 @@ export async function GET(
 
   const invoice = await db.invoice.findFirst({
     where: { portalToken: token, type: "ESTIMATE" },
-    include: {
-      client: true,
-      currency: true,
-      organization: true,
-      lines: {
-        include: { taxes: { include: { tax: true } } },
-        orderBy: { sort: "asc" },
-      },
-      payments: { orderBy: { paidAt: "asc" } },
-      partialPayments: { orderBy: { sortOrder: "asc" } },
-    },
+    include: fullInvoiceInclude,
   });
 
   if (!invoice) {

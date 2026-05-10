@@ -1,5 +1,27 @@
 import type { NextRequest } from "next/server";
 
+/**
+ * Pagination conventions in this codebase
+ * ───────────────────────────────────────
+ *
+ * Two styles coexist by design:
+ *
+ *   Offset-based (this file)
+ *     - Use for: paged tables where the user can jump to page N (invoices,
+ *       clients, audit log).
+ *     - Inputs: { page, pageSize } via paginationFromInput / clampPagination.
+ *     - Trade-off: easier to reason about; counts can drift on writes.
+ *
+ *   Cursor-based (Prisma's `cursor` + `take + 1` pop-trailing trick)
+ *     - Use for: infinite-scroll lists where order is stable (expenses,
+ *       activity feeds).
+ *     - Inputs: { cursor?, limit }.
+ *     - Trade-off: stable under concurrent writes; can't jump to page N.
+ *
+ * Don't migrate one to the other unless the UX is changing — the choice is
+ * a property of the consuming view, not a code-style preference.
+ */
+
 const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 100;

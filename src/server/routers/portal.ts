@@ -25,13 +25,39 @@ const PAYABLE_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.OVERDUE,
 ];
 
+// Org fields the portal renders directly (branding + address). Excludes
+// internal settings like late-fee config, smart-reminder thresholds, and
+// stripeTax* flags that the public portal never reads.
+const portalOrgSelect = {
+  id: true,
+  name: true,
+  logoUrl: true,
+  brandColor: true,
+  brandFont: true,
+  hidePoweredBy: true,
+  portalTagline: true,
+  portalFooterText: true,
+  invoiceTemplate: true,
+  invoiceFontFamily: true,
+  invoiceAccentColor: true,
+  invoiceShowLogo: true,
+  invoiceFooterText: true,
+  phone: true,
+  addressLine1: true,
+  addressLine2: true,
+  city: true,
+  state: true,
+  postalCode: true,
+  country: true,
+} as const;
+
 async function getInvoiceByToken(db: typeof import("../db").db, token: string) {
   const invoice = await db.invoice.findUnique({
     where: { portalToken: token },
     include: {
       client: true,
       currency: true,
-      organization: true,
+      organization: { select: portalOrgSelect },
       lines: {
         include: { taxes: { include: { tax: true } } },
         orderBy: { sort: "asc" },

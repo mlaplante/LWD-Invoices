@@ -296,6 +296,10 @@ model Client {
   zip              String?
   country          String?
   taxId            String?
+  // When true, invoice tax computation skips this client. The invoice
+  // tax-resolver checks the flag before applying any rate (legacy or
+  // Stripe Tax) and renders a 0 taxTotal with a "Tax exempt" line.
+  isTaxExempt      Boolean  @default(false)
   notes                   String?
   defaultPaymentTermsDays Int?
   portalToken             String   @unique @default(cuid())
@@ -304,6 +308,11 @@ model Client {
   autoChargeEnabled  Boolean @default(false)
   creditBalance    Decimal @default(0)
   isArchived       Boolean  @default(false)
+  // Email deliverability — populated by the Resend webhook handler when
+  // a client's address bounces (hard) or marks an email as spam. Used to
+  // suppress further sends and surface the issue in the client UI.
+  emailBouncedAt    DateTime?
+  emailComplainedAt DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -471,6 +480,9 @@ model Invoice {
   updatedAt DateTime @updatedAt
 
   @@unique([organizationId, number])
+  @@index([organizationId, status])
+  @@index([organizationId, isArchived])
+  @@index([organizationId, dueDate])
 }
 
 model InvoiceLine {
@@ -562,6 +574,8 @@ model PartialPayment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([invoiceId, isPaid])
 }
 
 model Payment {
@@ -580,6 +594,9 @@ model Payment {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+
+  @@index([organizationId, paidAt])
+  @@index([invoiceId])
 }
 
 model SavedPaymentMethod {
@@ -907,6 +924,14 @@ model RecurringInvoice {
   occurrenceCount Int                @default(0)
   isActive        Boolean            @default(true)
   autoSend        Boolean            @default(false)
+  // Optional anchor for MONTHLY/YEARLY schedules. 1-31; values past the
+  // last day of a given month clamp to the last day (Feb 30 → Feb 28/29).
+  // Null falls back to startDate's day-of-month.
+  dayOfMonth      Int?
+  // IANA timezone for computing nextRunAt boundaries. Null = UTC. Lets
+  // an org running in America/New_York fire monthly invoices at local
+  // midnight instead of 7-8pm the previous day.
+  timezone        String?
 
   invoiceId      String       @unique
   invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)

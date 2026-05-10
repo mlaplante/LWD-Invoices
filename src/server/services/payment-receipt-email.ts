@@ -1,5 +1,6 @@
 import { db } from "@/server/db";
 import { sendEmail } from "./email-sender";
+import { formatDate } from "@/lib/format";
 
 /**
  * Sends a payment receipt email to the client with BCC to the org owner.
@@ -65,7 +66,7 @@ export async function sendPaymentReceiptEmail({
       amountPaid: amountPaid.toFixed(2),
       currencySymbol: fullInvoice.currency.symbol,
       orgName: fullInvoice.organization.name,
-      paidAt: new Date().toLocaleDateString(),
+      paidAt: formatDate(new Date()),
       portalLink: fullInvoice.portalToken
         ? `${process.env.NEXT_PUBLIC_APP_URL}/portal/${fullInvoice.portalToken}`
         : undefined,

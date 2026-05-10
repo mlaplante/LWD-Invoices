@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { Prisma } from "@/generated/prisma";
 import bcrypt from "bcryptjs";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { logAudit } from "../services/audit";
+import { getForOrg } from "../lib/get-for-org";
 
 const clientSchema = z.object({
   name: z.string().min(1),
@@ -14,7 +14,12 @@ const clientSchema = z.object({
   state: z.string().optional(),
   zip: z.string().optional(),
   country: z.string().optional(),
-  taxId: z.string().optional(),
+  // Format validation is intentionally lenient — country-specific tax-ID
+  // formats vary widely (VAT, EIN, ABN, GSTIN, ...) and a country-aware
+  // validator would be a bigger feature. Strip whitespace and cap length
+  // so callers can't paste 10MB of garbage.
+  taxId: z.string().trim().max(64).optional(),
+  isTaxExempt: z.boolean().optional(),
   notes: z.string().optional(),
   portalPassphrase: z.string().optional(),
   defaultPaymentTermsDays: z.number().int().min(0).max(365).nullable().optional(),
@@ -68,11 +73,7 @@ export const clientsRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const client = await ctx.db.client.findUnique({
-        where: { id: input.id, organizationId: ctx.orgId },
-      });
-      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
-      return client;
+      return getForOrg(ctx.db.client, input.id, ctx.orgId, { entityName: "Client" });
     }),
 
   create: requireRole("OWNER", "ADMIN")

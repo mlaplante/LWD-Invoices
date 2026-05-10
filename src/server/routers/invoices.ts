@@ -21,6 +21,12 @@ import {
   summaryInvoiceInclude,
 } from "@/server/lib/invoice-includes";
 import { paginationFromInput } from "@/lib/pagination";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+// Bulk-payment limiter: a single org/user shouldn't fire markPaidMany more
+// than 5x per minute under any legitimate workflow. Anything higher means
+// either a script gone wrong or abuse — both of which we want to slow down.
+const markPaidManyLimiter = createRateLimiter({ limit: 5, windowMs: 60_000 });
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
 
@@ -210,6 +216,16 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
         where: { id: ctx.orgId },
+        select: {
+          id: true,
+          stripeTaxEnabled: true,
+          addressLine1: true,
+          addressLine2: true,
+          city: true,
+          state: true,
+          postalCode: true,
+          country: true,
+        },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -351,6 +367,16 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
         where: { id: ctx.orgId },
+        select: {
+          id: true,
+          stripeTaxEnabled: true,
+          addressLine1: true,
+          addressLine2: true,
+          city: true,
+          state: true,
+          postalCode: true,
+          country: true,
+        },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -748,6 +774,16 @@ export const invoicesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Throttle by (orgId, userId) — a script firing the bulk endpoint
+      // in a tight loop should hit the brake before exhausting DB work.
+      const key = `${ctx.orgId}:${ctx.userId ?? "anon"}`;
+      if (markPaidManyLimiter.isLimited(key)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many bulk-mark-paid requests. Try again in a minute.",
+        });
+      }
+
       // Fetch eligible invoices with their totals
       const invoices = await ctx.db.invoice.findMany({
         where: {
@@ -1111,4 +1147,42 @@ export const invoicesRouter = router({
   declineEstimate: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => updateEstimateStatus(ctx, input.id, "REJECTED")),
+
+  // Issues a fresh portalToken for an invoice, invalidating every existing
+  // /portal/<token> and /pay/<token> link. Use when a link has been shared
+  // beyond the intended audience (forwarded email, indexed accidentally,
+  // exposed in a screenshot).
+  rotatePortalToken: requireRole("OWNER", "ADMIN")
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.invoice.findFirst({
+        where: { id: input.id, organizationId: ctx.orgId },
+        select: { id: true, number: true },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Prisma's @default(cuid()) only fires on create. crypto.randomUUID
+      // is sufficient for portal tokens — they're URL-safe, unguessable,
+      // and unique enough that the @unique constraint will never realistically
+      // conflict.
+      const newToken = crypto.randomUUID();
+
+      const updated = await ctx.db.invoice.update({
+        where: { id: input.id, organizationId: ctx.orgId },
+        data: { portalToken: newToken },
+        select: { portalToken: true },
+      });
+
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Invoice",
+        entityId: input.id,
+        entityLabel: `Invoice #${existing.number}`,
+        diff: { event: "portal_token_rotated" },
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+
+      return { portalToken: updated.portalToken };
+    }),
 });

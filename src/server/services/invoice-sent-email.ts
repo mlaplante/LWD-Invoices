@@ -1,4 +1,5 @@
 import { sendEmail } from "./email-sender";
+import { formatDate } from "@/lib/format";
 import type { FullInvoice } from "./invoice-pdf";
 
 /**
@@ -19,7 +20,7 @@ export async function sendInvoiceSentEmail(invoice: FullInvoice, appUrl: string)
         : pp.amount.toNumber().toFixed(2);
       return {
         amount,
-        dueDate: pp.dueDate?.toLocaleDateString() ?? null,
+        dueDate: pp.dueDate ? formatDate(pp.dueDate) : null,
         isPaid: pp.isPaid,
       };
     });
@@ -30,7 +31,7 @@ export async function sendInvoiceSentEmail(invoice: FullInvoice, appUrl: string)
       clientName: invoice.client.name,
       total: invoice.total.toNumber().toFixed(2),
       currencySymbol: invoice.currency.symbol,
-      dueDate: invoice.dueDate?.toLocaleDateString() ?? null,
+      dueDate: invoice.dueDate ? formatDate(invoice.dueDate) : null,
       orgName: invoice.organization.name,
       portalLink: `${appUrl}/portal/${invoice.portalToken}`,
       payLink: `${appUrl}/pay/${invoice.portalToken}`,

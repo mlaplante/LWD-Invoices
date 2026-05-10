@@ -35,7 +35,10 @@ export function CommandPalette() {
   const router = useRouter();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cmd+K / Ctrl+K listener
+  // Cmd+K / Ctrl+K listener. Skip when the user is in another editable
+  // element so e.g. typing "k" in a textarea doesn't open the palette
+  // when the OS has already swallowed the modifier (uncommon, but happens
+  // with virtual keyboards / international layouts).
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -255,12 +258,20 @@ export function SearchTriggerButton() {
   return (
     <button
       type="button"
-      onClick={() =>
-        document.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "k", metaKey: true })
-        )
-      }
+      onClick={() => {
+        // Synthesize a Cmd+K so the palette's existing listener handles
+        // the toggle. metaKey covers macOS; ctrlKey covers everywhere else,
+        // and the listener accepts either.
+        const event = new KeyboardEvent("keydown", {
+          key: "k",
+          metaKey: navigator.platform.toLowerCase().includes("mac"),
+          ctrlKey: !navigator.platform.toLowerCase().includes("mac"),
+          bubbles: true,
+        });
+        document.dispatchEvent(event);
+      }}
       className="inline-flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+      aria-label="Open search"
     >
       <Search className="h-3.5 w-3.5" />
       <span className="hidden sm:inline">Search…</span>

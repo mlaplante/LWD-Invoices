@@ -1,3 +1,15 @@
+/**
+ * Upstash-backed sliding-window limiter, shared across replicas.
+ *
+ * Used by `src/proxy.ts` to throttle traffic to /portal, /pay, and
+ * /api/webhooks at the edge before a route handler runs. If Upstash env
+ * vars aren't set, getRateLimiters() returns null and the proxy skips
+ * the check (dev/test mode).
+ *
+ * For per-route in-process limits inside a single handler (e.g. brute-force
+ * protection on a passphrase check), prefer the in-memory limiter in
+ * `./rate-limit.ts`.
+ */
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 

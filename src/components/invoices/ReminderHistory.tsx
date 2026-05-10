@@ -1,6 +1,7 @@
 "use client";
 
 import { trpc } from "@/trpc/client";
+import { formatDateTime } from "@/lib/format";
 
 type Props = { invoiceId: string };
 
@@ -26,9 +27,7 @@ export function ReminderHistory({ invoiceId }: Props) {
             {logs.map((log) => (
               <tr key={log.id} className="hover:bg-muted/20 transition-colors">
                 <td className="px-5 py-3 text-muted-foreground">
-                  {new Date(log.sentAt).toLocaleDateString("en-US", {
-                    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                  })}
+                  {formatDateTime(log.sentAt)}
                 </td>
                 <td className="px-5 py-3 text-muted-foreground">{log.step.sequence.name}</td>
                 <td className="px-5 py-3 text-muted-foreground">

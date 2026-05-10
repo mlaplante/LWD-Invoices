@@ -11,6 +11,7 @@
  *   5. Compound taxes IN ORDER: each adds (rate/100 × running) and increases running
  */
 
+import { cache } from "react";
 import { LineType, type PrismaClient } from "@/generated/prisma";
 
 const PERIOD_TYPES = new Set<LineType>([
@@ -296,8 +297,15 @@ export function calculateInvoiceTotalsWithDiscount(
 
 /**
  * Load all taxes for an organization and return them as a Map<taxId, TaxInput>.
+ *
+ * Wrapped in React's `cache()` so concurrent calls within a single server
+ * request (tRPC mutation + downstream services) share one DB roundtrip. The
+ * cache lives only for the request and is keyed by (db, orgId) — no cross-
+ * request leakage. Cross-request caching is handled separately by cached.ts.
  */
-export async function getOrgTaxMap(
+export const getOrgTaxMap = cache(_getOrgTaxMap);
+
+async function _getOrgTaxMap(
   db: PrismaClient,
   orgId: string,
 ): Promise<Map<string, TaxInput>> {

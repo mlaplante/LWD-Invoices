@@ -24,30 +24,34 @@ export const createTRPCContext = async () => {
     if (dbUser) {
       isActive = dbUser.isActive;
 
-      if (activeOrgId) {
-        const membership = await db.userOrganization.findUnique({
-          where: { userId_organizationId: { userId: dbUser.id, organizationId: activeOrgId } },
-          select: { role: true, organizationId: true },
-        });
-        if (membership) {
-          orgId = membership.organizationId;
-          userRole = membership.role;
-        }
-      }
-
-      if (!orgId) {
-        const firstMembership = await db.userOrganization.findFirst({
+      // Fetch the active membership and the fallback first-membership in
+      // parallel. The activeOrgId lookup is a unique key hit, so the second
+      // findFirst is cheap when the cookie is fresh, and saves a roundtrip
+      // when the cookie is stale or absent.
+      const [activeMembership, firstMembership] = await Promise.all([
+        activeOrgId
+          ? db.userOrganization.findUnique({
+              where: {
+                userId_organizationId: {
+                  userId: dbUser.id,
+                  organizationId: activeOrgId,
+                },
+              },
+              select: { role: true, organizationId: true },
+            })
+          : Promise.resolve(null),
+        db.userOrganization.findFirst({
           where: { userId: dbUser.id },
           select: { role: true, organizationId: true },
           orderBy: { createdAt: "asc" },
-        });
-        if (firstMembership) {
-          orgId = firstMembership.organizationId;
-          userRole = firstMembership.role;
-        }
-      }
+        }),
+      ]);
 
-      if (!orgId) {
+      const membership = activeMembership ?? firstMembership;
+      if (membership) {
+        orgId = membership.organizationId;
+        userRole = membership.role;
+      } else {
         orgId = (user?.app_metadata?.organizationId as string) ?? null;
         userRole = (user?.app_metadata?.userRole as UserRole) ?? null;
       }

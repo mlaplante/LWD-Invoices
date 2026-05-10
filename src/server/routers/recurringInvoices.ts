@@ -10,28 +10,43 @@ const recurringSchema = z.object({
   endDate: z.coerce.date().optional(),
   maxOccurrences: z.number().int().min(1).optional(),
   autoSend: z.boolean().default(false),
+  // 1-31; clamped to the last day of short months at run time.
+  dayOfMonth: z.number().int().min(1).max(31).optional(),
+  // IANA timezone string, validated lazily by Intl.DateTimeFormat at
+  // schedule time so we don't need to ship a country/zone allowlist.
+  timezone: z
+    .string()
+    .max(64)
+    .optional()
+    .refine(
+      (tz) => {
+        if (!tz) return true;
+        try {
+          new Intl.DateTimeFormat("en-US", { timeZone: tz });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid IANA timezone" },
+    ),
 });
 
 export const recurringInvoicesRouter = router({
   getForInvoice: protectedProcedure
     .input(z.object({ invoiceId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.recurringInvoice.findFirst({
-        where: { invoiceId: input.invoiceId, organizationId: org.id },
+        where: { invoiceId: input.invoiceId, organizationId: ctx.orgId },
       });
     }),
 
   upsert: requireRole("OWNER", "ADMIN")
     .input(z.object({ invoiceId: z.string(), data: recurringSchema }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
-
-      // Verify invoice belongs to org
       const invoice = await ctx.db.invoice.findFirst({
-        where: { id: input.invoiceId, organizationId: org.id },
+        where: { id: input.invoiceId, organizationId: ctx.orgId },
+        select: { id: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -41,7 +56,7 @@ export const recurringInvoicesRouter = router({
         create: {
           ...input.data,
           invoiceId: input.invoiceId,
-          organizationId: org.id,
+          organizationId: ctx.orgId,
           nextRunAt: input.data.startDate,
         },
         update: {
@@ -56,10 +71,8 @@ export const recurringInvoicesRouter = router({
   cancel: requireRole("OWNER", "ADMIN")
     .input(z.object({ invoiceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.recurringInvoice.updateMany({
-        where: { invoiceId: input.invoiceId, organizationId: org.id },
+        where: { invoiceId: input.invoiceId, organizationId: ctx.orgId },
         data: { isActive: false },
       });
     }),
