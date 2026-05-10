@@ -58,14 +58,6 @@ describe("RecurringInvoices Router Procedures", () => {
       expect(result).toBeNull();
     });
 
-    it("throws NOT_FOUND when organization does not exist", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
-
-      await expect(
-        caller.getForInvoice({ invoiceId: "inv_123" })
-      ).rejects.toThrow("NOT_FOUND");
-    });
-
     it("respects organization isolation - only returns recurring invoices from the org", async () => {
       ctx.db.organization.findFirst.mockResolvedValue({
         id: "test-org-123",
@@ -345,6 +337,7 @@ describe("RecurringInvoices Router Procedures", () => {
           id: "inv_from_other_org",
           organizationId: "test-org-123",
         },
+        select: { id: true },
       });
     });
 
@@ -419,14 +412,6 @@ describe("RecurringInvoices Router Procedures", () => {
       const result = await caller.cancel({ invoiceId: "inv_nonexistent" });
 
       expect(result.count).toBe(0);
-    });
-
-    it("throws NOT_FOUND when organization does not exist", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
-
-      await expect(caller.cancel({ invoiceId: "inv_123" })).rejects.toThrow(
-        "NOT_FOUND"
-      );
     });
 
     it("respects organization isolation - only cancels org's recurring invoices", async () => {

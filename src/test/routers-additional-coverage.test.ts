@@ -450,7 +450,7 @@ describe("Expense Categories Router", () => {
 
   describe("update", () => {
     it("updates category name", async () => {
-      ctx.db.expenseCategory.findUnique.mockResolvedValue({
+      ctx.db.expenseCategory.findFirst.mockResolvedValue({
         id: "cat_1",
         name: "Old Name",
       });
@@ -468,17 +468,17 @@ describe("Expense Categories Router", () => {
     });
 
     it("throws NOT_FOUND for non-existent category", async () => {
-      ctx.db.expenseCategory.findUnique.mockResolvedValue(null);
+      ctx.db.expenseCategory.findFirst.mockResolvedValue(null);
 
       await expect(
         caller.update({ id: "cat_1", name: "New Name" })
-      ).rejects.toThrow("NOT_FOUND");
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
   });
 
   describe("delete", () => {
     it("deletes a category", async () => {
-      ctx.db.expenseCategory.findUnique.mockResolvedValue({ id: "cat_1" });
+      ctx.db.expenseCategory.findFirst.mockResolvedValue({ id: "cat_1" });
       ctx.db.expenseCategory.delete.mockResolvedValue({ id: "cat_1" });
 
       const result = await caller.delete({ id: "cat_1" });
@@ -487,11 +487,11 @@ describe("Expense Categories Router", () => {
     });
 
     it("throws NOT_FOUND for non-existent category", async () => {
-      ctx.db.expenseCategory.findUnique.mockResolvedValue(null);
+      ctx.db.expenseCategory.findFirst.mockResolvedValue(null);
 
-      await expect(caller.delete({ id: "cat_1" })).rejects.toThrow(
-        "NOT_FOUND"
-      );
+      await expect(caller.delete({ id: "cat_1" })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
     });
   });
 });
@@ -573,7 +573,7 @@ describe("Expense Suppliers Router", () => {
 
   describe("update", () => {
     it("updates supplier name", async () => {
-      ctx.db.expenseSupplier.findUnique.mockResolvedValue({
+      ctx.db.expenseSupplier.findFirst.mockResolvedValue({
         id: "sup_1",
         name: "Old Name",
       });
@@ -591,17 +591,17 @@ describe("Expense Suppliers Router", () => {
     });
 
     it("throws NOT_FOUND for non-existent supplier", async () => {
-      ctx.db.expenseSupplier.findUnique.mockResolvedValue(null);
+      ctx.db.expenseSupplier.findFirst.mockResolvedValue(null);
 
       await expect(
         caller.update({ id: "sup_1", name: "New Name" })
-      ).rejects.toThrow("NOT_FOUND");
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
   });
 
   describe("delete", () => {
     it("deletes a supplier", async () => {
-      ctx.db.expenseSupplier.findUnique.mockResolvedValue({ id: "sup_1" });
+      ctx.db.expenseSupplier.findFirst.mockResolvedValue({ id: "sup_1" });
       ctx.db.expenseSupplier.delete.mockResolvedValue({ id: "sup_1" });
 
       const result = await caller.delete({ id: "sup_1" });
@@ -610,11 +610,11 @@ describe("Expense Suppliers Router", () => {
     });
 
     it("throws NOT_FOUND for non-existent supplier", async () => {
-      ctx.db.expenseSupplier.findUnique.mockResolvedValue(null);
+      ctx.db.expenseSupplier.findFirst.mockResolvedValue(null);
 
-      await expect(caller.delete({ id: "sup_1" })).rejects.toThrow(
-        "NOT_FOUND"
-      );
+      await expect(caller.delete({ id: "sup_1" })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
     });
   });
 });

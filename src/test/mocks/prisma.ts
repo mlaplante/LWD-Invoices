@@ -188,6 +188,7 @@ export function createMockPrismaClient() {
     expenseCategory: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -195,6 +196,7 @@ export function createMockPrismaClient() {
     expenseSupplier: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),

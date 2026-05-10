@@ -157,20 +157,20 @@ describe("Clients Router Procedures", () => {
         updatedAt: new Date(),
       };
 
-      ctx.db.client.findUnique.mockResolvedValue(mockClient);
+      ctx.db.client.findFirst.mockResolvedValue(mockClient);
 
       const result = await caller.get({ id: "c_1" });
 
       expect(result.id).toBe("c_1");
       expect(result.name).toBe("Test Client");
       expect(result.phone).toBe("123-456-7890");
-      expect(ctx.db.client.findUnique).toHaveBeenCalledWith({
+      expect(ctx.db.client.findFirst).toHaveBeenCalledWith({
         where: { id: "c_1", organizationId: "test-org-123" },
       });
     });
 
     it("throws NOT_FOUND when client doesn't exist", async () => {
-      ctx.db.client.findUnique.mockResolvedValue(null);
+      ctx.db.client.findFirst.mockResolvedValue(null);
 
       try {
         await caller.get({ id: "c_nonexistent" });
