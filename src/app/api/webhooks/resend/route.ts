@@ -75,5 +75,21 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Side-effects: mark the client as having delivery problems so future
+  // sends can suppress and the UI can surface a warning. Best-effort —
+  // failures here must not retry the webhook (the EmailEvent row is the
+  // source of truth; this is denormalization for fast reads).
+  if ((type === "email.bounced" || type === "email.complained") && orgId && recipient) {
+    try {
+      const field = type === "email.bounced" ? "emailBouncedAt" : "emailComplainedAt";
+      await db.client.updateMany({
+        where: { organizationId: orgId, email: recipient },
+        data: { [field]: occurredAt },
+      });
+    } catch (err) {
+      console.error("[resend-webhook] Failed to flag client deliverability:", err);
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

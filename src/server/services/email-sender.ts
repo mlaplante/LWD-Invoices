@@ -1,3 +1,4 @@
+import { db } from "@/server/db";
 import { getOwnerBcc } from "./email-bcc";
 
 export type SendEmailOptions = {
@@ -8,16 +9,37 @@ export type SendEmailOptions = {
   attachments?: { filename: string; content: Buffer }[];
 };
 
+export type SendEmailResult =
+  | { resendId: string | null; suppressed?: false }
+  | { resendId: null; suppressed: true; reason: "bounced" | "complained" };
+
 /**
  * Sends an email via Resend with org owner BCC (if enabled).
  * Centralizes Resend instantiation, from address, BCC logic, and the
  * `org_id` tag that the Resend webhook handler uses to attribute
  * delivery/open/click events back to the org.
  *
- * Returns the Resend message id when available so callers can correlate
- * later EmailEvent rows.
+ * Suppresses sends to recipients whose Client row has emailBouncedAt or
+ * emailComplainedAt set — Resend would charge us anyway and a hard bounce
+ * looped back via webhook proves the address is unreachable. Returns
+ * { suppressed: true } so callers can decide whether to surface the skip.
  */
-export async function sendEmail(opts: SendEmailOptions): Promise<{ resendId: string | null }> {
+export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult> {
+  const recipients = Array.isArray(opts.to) ? opts.to : [opts.to];
+  const flagged = await db.client.findFirst({
+    where: {
+      organizationId: opts.organizationId,
+      email: { in: recipients },
+      OR: [{ emailBouncedAt: { not: null } }, { emailComplainedAt: { not: null } }],
+    },
+    select: { emailBouncedAt: true, emailComplainedAt: true },
+  });
+  if (flagged) {
+    const reason = flagged.emailBouncedAt ? "bounced" : "complained";
+    console.error(`[email-sender] Suppressed send to ${reason} recipient`);
+    return { resendId: null, suppressed: true, reason };
+  }
+
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY);
 

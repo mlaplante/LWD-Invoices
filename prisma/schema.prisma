@@ -304,6 +304,11 @@ model Client {
   autoChargeEnabled  Boolean @default(false)
   creditBalance    Decimal @default(0)
   isArchived       Boolean  @default(false)
+  // Email deliverability — populated by the Resend webhook handler when
+  // a client's address bounces (hard) or marks an email as spam. Used to
+  // suppress further sends and surface the issue in the client UI.
+  emailBouncedAt    DateTime?
+  emailComplainedAt DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
