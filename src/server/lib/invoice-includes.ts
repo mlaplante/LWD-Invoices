@@ -1,13 +1,40 @@
 import type { Prisma } from "@/generated/prisma";
 
 /**
+ * Organization fields needed to render an invoice PDF and the surrounding
+ * email envelope. Centralized so the PDF templates and email layouts share
+ * one schema — if a template starts referencing a new org field, add it here.
+ */
+const orgPdfSelect = {
+  id: true,
+  name: true,
+  logoUrl: true,
+  brandColor: true,
+  phone: true,
+  addressLine1: true,
+  addressLine2: true,
+  city: true,
+  state: true,
+  postalCode: true,
+  country: true,
+  invoiceTemplate: true,
+  invoiceFontFamily: true,
+  invoiceAccentColor: true,
+  invoiceShowLogo: true,
+  invoiceFooterText: true,
+  hidePoweredBy: true,
+  portalTagline: true,
+  portalFooterText: true,
+} as const satisfies Prisma.OrganizationSelect;
+
+/**
  * Full invoice include for PDF generation and email rendering.
  * Used by Inngest functions, API routes, and tRPC procedures.
  */
 export const fullInvoiceInclude = {
   client: true,
   currency: true,
-  organization: true,
+  organization: { select: orgPdfSelect },
   lines: {
     include: { taxes: { include: { tax: true } } },
     orderBy: { sort: "asc" as const },
