@@ -58,13 +58,14 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Client portal and pay pages — short cache to reduce re-renders for repeat visits
+# Client portal and pay pages — token-gated, contains per-recipient data.
+# Must NOT be cached by shared/CDN caches; force revalidation on every hit.
 [[headers]]
   for = "/portal/*"
   [headers.values]
-    Cache-Control = "public, max-age=60, stale-while-revalidate=300"
+    Cache-Control = "private, no-store, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/pay/*"
   [headers.values]
-    Cache-Control = "public, max-age=60, stale-while-revalidate=300"
+    Cache-Control = "private, no-store, max-age=0, must-revalidate"

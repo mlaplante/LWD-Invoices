@@ -20,7 +20,9 @@ export async function uploadProposalFile(
   }
 
   const supabase = createAdminClient();
-  const ext = file.name.split(".").pop();
+  // Whitelist the extension instead of trusting the client-supplied filename,
+  // since `file.name` flows directly into the storage path below.
+  const ext = file.type === "application/pdf" ? "pdf" : "docx";
   const storagePath = `${orgId}/${invoiceId}/proposal.${ext}`;
 
   const { error } = await supabase.storage
