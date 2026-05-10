@@ -234,10 +234,10 @@ export function CompactTemplate({ invoice, config }: TemplateProps) {
       {invoice.lines
         .sort((a, b) => a.sort - b.sort)
         .map((line) => {
-          const lineTax = line.taxes.reduce(
-            (sum, t) => sum + Number(t.taxAmount),
-            0
-          );
+          // Read from the cached row total instead of summing line.taxes:
+          // Stripe-Tax invoices store breakdowns on a different relation
+          // and would otherwise render lineTax = 0 here.
+          const lineTax = Number(line.taxTotal);
           return (
             <View key={line.id} style={styles.tableRow}>
               <View style={styles.colName}>
