@@ -210,6 +210,16 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
         where: { id: ctx.orgId },
+        select: {
+          id: true,
+          stripeTaxEnabled: true,
+          addressLine1: true,
+          addressLine2: true,
+          city: true,
+          state: true,
+          postalCode: true,
+          country: true,
+        },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -351,6 +361,16 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const org = await ctx.db.organization.findFirst({
         where: { id: ctx.orgId },
+        select: {
+          id: true,
+          stripeTaxEnabled: true,
+          addressLine1: true,
+          addressLine2: true,
+          city: true,
+          state: true,
+          postalCode: true,
+          country: true,
+        },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 

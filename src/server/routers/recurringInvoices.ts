@@ -16,22 +16,17 @@ export const recurringInvoicesRouter = router({
   getForInvoice: protectedProcedure
     .input(z.object({ invoiceId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.recurringInvoice.findFirst({
-        where: { invoiceId: input.invoiceId, organizationId: org.id },
+        where: { invoiceId: input.invoiceId, organizationId: ctx.orgId },
       });
     }),
 
   upsert: requireRole("OWNER", "ADMIN")
     .input(z.object({ invoiceId: z.string(), data: recurringSchema }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
-
-      // Verify invoice belongs to org
       const invoice = await ctx.db.invoice.findFirst({
-        where: { id: input.invoiceId, organizationId: org.id },
+        where: { id: input.invoiceId, organizationId: ctx.orgId },
+        select: { id: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -41,7 +36,7 @@ export const recurringInvoicesRouter = router({
         create: {
           ...input.data,
           invoiceId: input.invoiceId,
-          organizationId: org.id,
+          organizationId: ctx.orgId,
           nextRunAt: input.data.startDate,
         },
         update: {
@@ -56,10 +51,8 @@ export const recurringInvoicesRouter = router({
   cancel: requireRole("OWNER", "ADMIN")
     .input(z.object({ invoiceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({ where: { id: ctx.orgId } });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.recurringInvoice.updateMany({
-        where: { invoiceId: input.invoiceId, organizationId: org.id },
+        where: { invoiceId: input.invoiceId, organizationId: ctx.orgId },
         data: { isActive: false },
       });
     }),
