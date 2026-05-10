@@ -12,10 +12,6 @@ const nextConfig = {
     formats: ["image/avif", "image/webp"],
   },
   serverExternalPackages: ["@react-pdf/renderer", "svix", "@anthropic-ai/sdk"],
-  eslint: {
-    // Lint in CI separately — skip during next build to save ~15-30s
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     // Type-check in CI separately — skip during next build to save ~10-20s
     ignoreBuildErrors: true,
