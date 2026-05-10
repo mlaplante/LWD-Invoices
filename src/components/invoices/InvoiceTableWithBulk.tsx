@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
@@ -62,6 +62,82 @@ function formatBulkResult(
   if (result.skipped > 0) parts.push(`${result.skipped} skipped`);
   return { message: parts.join(", "), isError: result.failed > 0 };
 }
+
+type RowProps = {
+  inv: Invoice;
+  isSelected: boolean;
+  onToggle: (id: string) => void;
+};
+
+const InvoiceRow = React.memo(function InvoiceRow({ inv, isSelected, onToggle }: RowProps) {
+  const badge = STATUS_BADGE[inv.status];
+  return (
+    <tr
+      className={cn(
+        "group hover:bg-accent/30 transition-colors",
+        isSelected && "bg-accent/20"
+      )}
+    >
+      <td className="py-3.5 pl-2 print:hidden">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onToggle(inv.id)}
+          className="rounded border-border"
+          aria-label={`Select invoice ${inv.number}`}
+        />
+      </td>
+      <td className="py-3.5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground leading-tight flex items-center gap-1.5">
+              <span className="font-mono text-xs text-muted-foreground">#{inv.number}</span>
+              {TYPE_LABELS[inv.type]}
+              {inv.recurringInvoice?.isActive && (
+                <span
+                  className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5"
+                  title={`Recurring · ${inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}`}
+                >
+                  <RefreshCw className="w-2.5 h-2.5" />
+                  {inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {inv.client.name}
+            </p>
+          </div>
+        </div>
+      </td>
+      <td className="py-3.5 text-muted-foreground">
+        {formatDate(inv.date)}
+      </td>
+      <td className="py-3.5 text-foreground/80">
+        {inv.client.name}
+      </td>
+      <td className="py-3.5 text-right font-mono font-semibold tabular-nums text-foreground">
+        {formatCurrency(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
+      </td>
+      <td className="py-3.5 pl-4">
+        <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium", badge.className)}>
+          <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", badge.dot)} />
+          {badge.label}
+        </span>
+      </td>
+      <td className="py-3.5 pr-2 print:hidden">
+        <InvoiceRowActions
+          invoiceId={inv.id}
+          invoiceTotal={inv.total}
+          status={inv.status}
+          invoiceType={inv.type}
+        />
+      </td>
+    </tr>
+  );
+});
 
 export function InvoiceTableWithBulk({ invoices }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -135,12 +211,15 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
     setSelected(allSelected ? new Set() : new Set(allIds));
   }
 
-  function toggle(id: string) {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelected(next);
-  }
+  // Stable so memoized rows skip re-render when sibling rows toggle.
+  const toggle = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const selectedIds = Array.from(selected);
 
@@ -247,77 +326,14 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
           </tr>
         </thead>
         <tbody className="divide-y divide-border/50">
-          {invoices.map((inv) => {
-            const badge = STATUS_BADGE[inv.status];
-            const isSelected = selected.has(inv.id);
-            return (
-              <tr
-                key={inv.id}
-                className={cn(
-                  "group hover:bg-accent/30 transition-colors",
-                  isSelected && "bg-accent/20"
-                )}
-              >
-                <td className="py-3.5 pl-2 print:hidden">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggle(inv.id)}
-                    className="rounded border-border"
-                    aria-label={`Select invoice ${inv.number}`}
-                  />
-                </td>
-                <td className="py-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground leading-tight flex items-center gap-1.5">
-                        <span className="font-mono text-xs text-muted-foreground">#{inv.number}</span>
-                        {TYPE_LABELS[inv.type]}
-                        {inv.recurringInvoice?.isActive && (
-                          <span
-                            className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5"
-                            title={`Recurring \u00b7 ${inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}`}
-                          >
-                            <RefreshCw className="w-2.5 h-2.5" />
-                            {inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {inv.client.name}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-3.5 text-muted-foreground">
-                  {formatDate(inv.date)}
-                </td>
-                <td className="py-3.5 text-foreground/80">
-                  {inv.client.name}
-                </td>
-                <td className="py-3.5 text-right font-mono font-semibold tabular-nums text-foreground">
-                  {formatCurrency(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
-                </td>
-                <td className="py-3.5 pl-4">
-                  <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium", badge.className)}>
-                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", badge.dot)} />
-                    {badge.label}
-                  </span>
-                </td>
-                <td className="py-3.5 pr-2 print:hidden">
-                  <InvoiceRowActions
-                    invoiceId={inv.id}
-                    invoiceTotal={inv.total}
-                    status={inv.status}
-                    invoiceType={inv.type}
-                  />
-                </td>
-              </tr>
-            );
-          })}
+          {invoices.map((inv) => (
+            <InvoiceRow
+              key={inv.id}
+              inv={inv}
+              isSelected={selected.has(inv.id)}
+              onToggle={toggle}
+            />
+          ))}
         </tbody>
       </table>
     </div>

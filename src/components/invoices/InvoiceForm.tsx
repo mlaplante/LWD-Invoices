@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition, useRef } from "react";
+import React, { useMemo, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { InvoiceType } from "@/generated/prisma";
 import { toast } from "sonner";
@@ -95,12 +95,17 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
   const activeCurrency =
     currencies.find((c) => c.id === form.currencyId) ?? defaultCurrency;
 
-  const taxOptions = taxes.map((t) => ({
-    id: t.id,
-    name: t.name,
-    rate: Number(t.rate),
-    isCompound: t.isCompound,
-  }));
+  // Stable across renders so memoized line-item rows don't re-render every keystroke.
+  const taxOptions = useMemo(
+    () =>
+      taxes.map((t) => ({
+        id: t.id,
+        name: t.name,
+        rate: Number(t.rate),
+        isCompound: t.isCompound,
+      })),
+    [taxes],
+  );
 
   const taxInputs: TaxInput[] = taxOptions;
 

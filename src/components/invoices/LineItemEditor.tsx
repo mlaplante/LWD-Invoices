@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { LineType } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,19 +123,19 @@ type SortableLineItemProps = {
   index: number;
   taxes: TaxOption[];
   currencySymbol: string;
-  expandedDescriptions: Set<number>;
+  isExpanded: boolean;
   onUpdate: (index: number, patch: Partial<LineItemValue>) => void;
   onRemove: (index: number) => void;
   onToggleDescription: (index: number) => void;
   onToggleTax: (index: number, taxId: string) => void;
 };
 
-function SortableLineItem({
+function SortableLineItemImpl({
   line,
   index,
   taxes,
   currencySymbol,
-  expandedDescriptions,
+  isExpanded,
   onUpdate,
   onRemove,
   onToggleDescription,
@@ -202,14 +202,14 @@ function SortableLineItem({
               className="text-muted-foreground hover:text-foreground"
               title="Toggle description"
             >
-              {expandedDescriptions.has(index) ? (
+              {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
             </button>
           </div>
-          {expandedDescriptions.has(index) && (
+          {isExpanded && (
             <Textarea
               placeholder="Description (optional)"
               value={line.description ?? ""}
@@ -368,7 +368,7 @@ function SortableLineItem({
             className="p-2 text-muted-foreground hover:text-foreground"
             title="Toggle description"
           >
-            {expandedDescriptions.has(index) ? (
+            {isExpanded ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
               <ChevronDown className="h-4 w-4" />
@@ -376,7 +376,7 @@ function SortableLineItem({
           </button>
         </div>
 
-        {expandedDescriptions.has(index) && (
+        {isExpanded && (
           <Textarea
             placeholder="Description (optional)"
             value={line.description ?? ""}
@@ -496,6 +496,8 @@ function SortableLineItem({
   );
 }
 
+const SortableLineItem = React.memo(SortableLineItemImpl);
+
 // ── Main editor ───────────────────────────────────────────────────────────────
 
 export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props) {
@@ -505,40 +507,51 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
   // Monotonically increasing counter ensures unique sort keys even after deletes
   const sortCounter = useRef(lines.length);
 
+  // Refs for stable callbacks: row callbacks capture latest props without
+  // changing identity, so memoized rows skip re-render when neighbors update.
+  const linesRef = useRef(lines);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    linesRef.current = lines;
+    onChangeRef.current = onChange;
+  }, [lines, onChange]);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  function updateLine(index: number, patch: Partial<LineItemValue>) {
-    const updated = lines.map((l, i) => (i === index ? { ...l, ...patch } : l));
-    onChange(updated);
-  }
+  const updateLine = useCallback((index: number, patch: Partial<LineItemValue>) => {
+    const current = linesRef.current;
+    onChangeRef.current(current.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  }, []);
 
-  function removeLine(index: number) {
-    onChange(lines.filter((_, i) => i !== index));
-  }
+  const removeLine = useCallback((index: number) => {
+    onChangeRef.current(linesRef.current.filter((_, i) => i !== index));
+  }, []);
 
   function addLine() {
     onChange([...lines, newLine(sortCounter.current++)]);
   }
 
-  function toggleDescription(index: number) {
+  const toggleDescription = useCallback((index: number) => {
     setExpandedDescriptions((prev) => {
       const next = new Set(prev);
       if (next.has(index)) next.delete(index);
       else next.add(index);
       return next;
     });
-  }
+  }, []);
 
-  function toggleTax(index: number, taxId: string) {
-    const line = lines[index];
+  const toggleTax = useCallback((index: number, taxId: string) => {
+    const line = linesRef.current[index];
     const taxIds = line.taxIds.includes(taxId)
       ? line.taxIds.filter((id) => id !== taxId)
       : [...line.taxIds, taxId];
-    updateLine(index, { taxIds });
-  }
+    onChangeRef.current(
+      linesRef.current.map((l, i) => (i === index ? { ...l, taxIds } : l))
+    );
+  }, []);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -585,7 +598,7 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
               index={i}
               taxes={taxes}
               currencySymbol={currencySymbol}
-              expandedDescriptions={expandedDescriptions}
+              isExpanded={expandedDescriptions.has(i)}
               onUpdate={updateLine}
               onRemove={removeLine}
               onToggleDescription={toggleDescription}
