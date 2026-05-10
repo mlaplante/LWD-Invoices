@@ -162,6 +162,8 @@ export const timeEntriesRouter = router({
         include: { lines: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      const { assertNotStripeTaxInvoice } = await import("@/server/lib/stripe-tax-guard");
+      assertNotStripeTaxInvoice(invoice);
 
       const rawEntries = await ctx.db.timeEntry.findMany({
         where: {

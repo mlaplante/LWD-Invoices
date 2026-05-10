@@ -214,6 +214,8 @@ export const expensesRouter = router({
         include: { lines: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      const { assertNotStripeTaxInvoice } = await import("@/server/lib/stripe-tax-guard");
+      assertNotStripeTaxInvoice(invoice);
 
       const expenses = await ctx.db.expense.findMany({
         where: {
