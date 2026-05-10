@@ -21,6 +21,12 @@ import {
   summaryInvoiceInclude,
 } from "@/server/lib/invoice-includes";
 import { paginationFromInput } from "@/lib/pagination";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+// Bulk-payment limiter: a single org/user shouldn't fire markPaidMany more
+// than 5x per minute under any legitimate workflow. Anything higher means
+// either a script gone wrong or abuse — both of which we want to slow down.
+const markPaidManyLimiter = createRateLimiter({ limit: 5, windowMs: 60_000 });
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
 
@@ -768,6 +774,16 @@ export const invoicesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Throttle by (orgId, userId) — a script firing the bulk endpoint
+      // in a tight loop should hit the brake before exhausting DB work.
+      const key = `${ctx.orgId}:${ctx.userId ?? "anon"}`;
+      if (markPaidManyLimiter.isLimited(key)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many bulk-mark-paid requests. Try again in a minute.",
+        });
+      }
+
       // Fetch eligible invoices with their totals
       const invoices = await ctx.db.invoice.findMany({
         where: {
