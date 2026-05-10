@@ -2,13 +2,11 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { proposalSectionsSchema, validateSections } from "./proposal-templates-helpers";
+import { getProposalTemplatesForOrg, invalidateOrg } from "../cached";
 
 export const proposalTemplatesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.proposalTemplate.findMany({
-      where: { organizationId: ctx.orgId },
-      orderBy: { createdAt: "desc" },
-    });
+    return getProposalTemplatesForOrg(ctx.db, ctx.orgId);
   }),
 
   get: protectedProcedure
@@ -39,7 +37,7 @@ export const proposalTemplatesRouter = router({
         });
       }
 
-      return ctx.db.proposalTemplate.create({
+      const created = await ctx.db.proposalTemplate.create({
         data: {
           name: input.name,
           sections: input.sections,
@@ -47,6 +45,8 @@ export const proposalTemplatesRouter = router({
           organizationId: ctx.orgId,
         },
       });
+      invalidateOrg(ctx.orgId, "proposalTemplates");
+      return created;
     }),
 
   update: protectedProcedure
@@ -73,7 +73,7 @@ export const proposalTemplatesRouter = router({
         });
       }
 
-      return ctx.db.proposalTemplate.update({
+      const updated = await ctx.db.proposalTemplate.update({
         where: { id: input.id },
         data: {
           ...(input.name !== undefined && { name: input.name }),
@@ -81,6 +81,8 @@ export const proposalTemplatesRouter = router({
           ...(input.isDefault !== undefined && { isDefault: input.isDefault }),
         },
       });
+      invalidateOrg(ctx.orgId, "proposalTemplates");
+      return updated;
     }),
 
   delete: protectedProcedure
@@ -92,6 +94,7 @@ export const proposalTemplatesRouter = router({
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
       await ctx.db.proposalTemplate.delete({ where: { id: input.id } });
+      invalidateOrg(ctx.orgId, "proposalTemplates");
       return { success: true };
     }),
 });

@@ -1,14 +1,12 @@
 import { z } from "zod";
 import { router, requireRole, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
+import { getEmailAutomationsForOrg, invalidateOrg } from "../cached";
 
 export const emailAutomationsRouter = router({
   list: requireRole("OWNER", "ADMIN")
     .query(async ({ ctx }) => {
-      return ctx.db.emailAutomation.findMany({
-        where: { organizationId: ctx.orgId },
-        orderBy: { createdAt: "desc" },
-      });
+      return getEmailAutomationsForOrg(ctx.db, ctx.orgId);
     }),
 
   create: requireRole("OWNER", "ADMIN")
@@ -22,12 +20,14 @@ export const emailAutomationsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.emailAutomation.create({
+      const created = await ctx.db.emailAutomation.create({
         data: {
           ...input,
           organizationId: ctx.orgId,
         },
       });
+      invalidateOrg(ctx.orgId, "emailAutomations");
+      return created;
     }),
 
   update: requireRole("OWNER", "ADMIN")
@@ -49,10 +49,12 @@ export const emailAutomationsRouter = router({
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Automation not found" });
       }
-      return ctx.db.emailAutomation.update({
+      const updated = await ctx.db.emailAutomation.update({
         where: { id },
         data,
       });
+      invalidateOrg(ctx.orgId, "emailAutomations");
+      return updated;
     }),
 
   delete: requireRole("OWNER", "ADMIN")
@@ -65,6 +67,7 @@ export const emailAutomationsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Automation not found" });
       }
       await ctx.db.emailAutomation.delete({ where: { id: input.id } });
+      invalidateOrg(ctx.orgId, "emailAutomations");
       return { success: true };
     }),
 

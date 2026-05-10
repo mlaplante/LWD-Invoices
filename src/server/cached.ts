@@ -54,6 +54,28 @@ export const getExpenseSuppliersForOrg = (db: PrismaClient, orgId: string) =>
     { tags: [orgTag(orgId, "expenseSuppliers")], revalidate: ONE_HOUR }
   )();
 
+export const getEmailAutomationsForOrg = (db: PrismaClient, orgId: string) =>
+  unstable_cache(
+    async () =>
+      db.emailAutomation.findMany({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: "desc" },
+      }),
+    ["emailAutomations", orgId],
+    { tags: [orgTag(orgId, "emailAutomations")], revalidate: ONE_HOUR }
+  )();
+
+export const getProposalTemplatesForOrg = (db: PrismaClient, orgId: string) =>
+  unstable_cache(
+    async () =>
+      db.proposalTemplate.findMany({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: "desc" },
+      }),
+    ["proposalTemplates", orgId],
+    { tags: [orgTag(orgId, "proposalTemplates")], revalidate: ONE_HOUR }
+  )();
+
 export function invalidateOrg(orgId: string, ...resources: string[]) {
   // Next 16: revalidateTag requires a cacheLife profile. { expire: 0 } forces
   // immediate purge so the next read refetches.

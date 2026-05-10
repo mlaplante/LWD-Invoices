@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Type check
+        run: npx tsc --noEmit
+      # Lint is disabled until eslint-config-next is compatible with ESLint 10
+      # (eslint-plugin-react crashes: contextOrFilename.getFilename is not a function).
+      # next.config.ts also has ignoreDuringBuilds: true for the same reason.
+      - name: Test
+        run: npm run test:run
