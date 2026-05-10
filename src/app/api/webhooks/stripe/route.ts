@@ -215,6 +215,27 @@ export async function POST(req: NextRequest) {
       console.error("[stripe-webhook] Failed to send payment receipt email:", err);
     }
 
+    // Promote Stripe Tax calculation → transaction so the tax shows in
+    // Stripe's filing reports. Idempotent and non-fatal: a failed promotion
+    // doesn't unwind the payment we just recorded.
+    try {
+      const { promoteStripeTaxCalculation } = await import(
+        "@/server/services/stripe-tax-transaction"
+      );
+      const stripeClient = getStripeClient(config.secretKey);
+      const result = await promoteStripeTaxCalculation({
+        db,
+        stripe: stripeClient,
+        invoiceId,
+        reference: invoice.number,
+      });
+      if (!result.transactionId && result.reason) {
+        console.error("[stripe-webhook] Tax promotion skipped:", result.reason);
+      }
+    } catch (err) {
+      console.error("[stripe-webhook] Tax promotion threw:", err);
+    }
+
     // Fire automation event for payment received
     try {
       const { inngest: inngestClient } = await import("@/inngest/client");

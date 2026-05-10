@@ -422,6 +422,10 @@ model Invoice {
   // the calculation into a Stripe Tax Transaction at finalization. Null when
   // the legacy tax-calculator was used.
   stripeTaxCalculationId String?
+  // Set when the Stripe Tax Calculation has been promoted to a Tax Transaction
+  // — typically at payment finalization. Persisting it lets us issue reversals
+  // later when a credit note is generated against this invoice.
+  stripeTaxTransactionId String?
 
   // Credit note fields
   sourceInvoiceId  String?
