@@ -131,6 +131,10 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
   const createMutation = trpc.invoices.create.useMutation();
   const updateMutation = trpc.invoices.update.useMutation();
+  const { data: stripeTaxPreflight } = trpc.organization.stripeTaxPreflight.useQuery(
+    { clientId: form.clientId || undefined },
+    { staleTime: 30_000 },
+  );
 
   function calcDueDate(invoiceDate: string, termsDays: number): string {
     if (termsDays === 0) return invoiceDate;
@@ -580,6 +584,19 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
           before creating invoices.
         </p>
       )}
+      {stripeTaxPreflight && !stripeTaxPreflight.ok && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-semibold">Stripe Tax can&apos;t calculate yet</p>
+          <p className="mt-1">
+            Saving will fail until the following are filled in:
+          </p>
+          <ul className="mt-1 list-disc pl-5">
+            {stripeTaxPreflight.missing.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="flex gap-2">
         <Button
           type="button"
@@ -593,14 +610,14 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
           type="button"
           variant="outline"
           onClick={() => handleSave(false)}
-          disabled={isSaving || !form.clientId || !form.currencyId}
+          disabled={isSaving || !form.clientId || !form.currencyId || stripeTaxPreflight?.ok === false}
         >
           {isSaving ? "Saving…" : "Save as Draft"}
         </Button>
         <Button
           type="button"
           onClick={() => handleSave(true)}
-          disabled={isSaving || !form.clientId || !form.currencyId}
+          disabled={isSaving || !form.clientId || !form.currencyId || stripeTaxPreflight?.ok === false}
         >
           {isSaving ? "Saving…" : "Save & Send"}
         </Button>

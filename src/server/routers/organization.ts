@@ -192,6 +192,67 @@ export const organizationRouter = router({
       return result;
     }),
 
+  // Preflight check: surfaces address gaps that would make resolveInvoiceTax
+  // throw at submit time. Call from the invoice form to display inline
+  // warnings before the user tries to save.
+  stripeTaxPreflight: protectedProcedure
+    .input(z.object({ clientId: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const org = await ctx.db.organization.findUnique({
+        where: { id: ctx.orgId },
+        select: {
+          stripeTaxEnabled: true,
+          addressLine1: true,
+          city: true,
+          state: true,
+          postalCode: true,
+          country: true,
+        },
+      });
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Not on Stripe Tax — nothing to preflight.
+      if (!org.stripeTaxEnabled) return { ok: true as const, missing: [] };
+
+      const { GatewayType } = await import("@/generated/prisma");
+      const gateway = await ctx.db.gatewaySetting.findFirst({
+        where: {
+          organizationId: ctx.orgId,
+          gatewayType: GatewayType.STRIPE,
+          isEnabled: true,
+        },
+        select: { id: true },
+      });
+
+      const missing: string[] = [];
+      if (!gateway) missing.push("Stripe gateway");
+      if (!org.addressLine1) missing.push("Org street address");
+      if (!org.city) missing.push("Org city");
+      if (!org.postalCode) missing.push("Org postal code");
+      if (!org.country) missing.push("Org country");
+      if ((org.country === "US" || org.country === "CA") && !org.state) {
+        missing.push("Org state/province");
+      }
+
+      if (input.clientId) {
+        const client = await ctx.db.client.findUnique({
+          where: { id: input.clientId },
+          select: { address: true, city: true, state: true, zip: true, country: true },
+        });
+        if (client) {
+          if (!client.address) missing.push("Client street address");
+          if (!client.city) missing.push("Client city");
+          if (!client.zip) missing.push("Client postal code");
+          if (!client.country) missing.push("Client country");
+          if ((client.country === "US" || client.country === "CA") && !client.state) {
+            missing.push("Client state/province");
+          }
+        }
+      }
+
+      return { ok: missing.length === 0, missing };
+    }),
+
   // Dedicated mutation for the Stripe Tax toggle. Plain organization.update
   // would let a caller flip the flag without preflight; this enforces the
   // prerequisites server-side so the org can't enter a state where Stripe
