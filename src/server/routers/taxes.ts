@@ -46,6 +46,20 @@ export const taxesRouter = router({
         where: { id: input.id, organizationId: ctx.orgId },
       });
       invalidateOrg(ctx.orgId, "taxes");
+
+      // Fan out a recalc job — open invoices that referenced this tax
+      // need their cached totals refreshed so dashboard/reports stay
+      // accurate. Best-effort: a failure here is logged, not surfaced.
+      try {
+        const { inngest } = await import("@/inngest/client");
+        await inngest.send({
+          name: "org/tax.deleted",
+          data: { orgId: ctx.orgId, taxId: input.id },
+        });
+      } catch (err) {
+        console.error("[taxes.delete] Failed to enqueue recalc job:", err);
+      }
+
       return result;
     }),
 });
