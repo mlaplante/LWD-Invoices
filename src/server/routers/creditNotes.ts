@@ -83,7 +83,7 @@ export const creditNotesRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Fetch source invoice with lines and taxes
+      // Fetch source invoice with lines and taxes (both legacy + Stripe shape).
       const sourceInvoice = await ctx.db.invoice.findFirst({
         where: {
           id: input.sourceInvoiceId,
@@ -91,7 +91,10 @@ export const creditNotesRouter = router({
         },
         include: {
           lines: {
-            include: { taxes: { include: { tax: true } } },
+            include: {
+              taxes: { include: { tax: true } },
+              stripeTaxBreakdown: true,
+            },
             orderBy: { sort: "asc" },
           },
           currency: true,
@@ -115,36 +118,142 @@ export const creditNotesRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No valid lines selected" });
       }
 
-      // Build all tax inputs from selected lines
-      const allTaxMap = new Map<string, TaxInput>();
-      for (const line of selectedLines) {
-        for (const lt of line.taxes) {
-          if (!allTaxMap.has(lt.taxId)) {
-            allTaxMap.set(lt.taxId, {
-              id: lt.taxId,
-              rate: Number(lt.tax.rate),
-              isCompound: lt.tax.isCompound,
-            });
-          }
-        }
-      }
-      const allTaxes = Array.from(allTaxMap.values());
-
-      // Build line inputs and calculate totals
-      const lineInputs: LineInput[] = selectedLines.map((l) => ({
-        qty: Number(l.qty),
-        rate: Number(l.rate),
-        period: l.period ? Number(l.period) : null,
-        lineType: l.lineType,
-        discount: Number(l.discount),
-        discountIsPercentage: l.discountIsPercentage,
-        taxIds: l.taxes.map((t) => t.taxId),
-      }));
-
-      const invoiceTotals = calculateInvoiceTotals(lineInputs, allTaxes);
-
       // Generate credit note number
       const cnNumber = await generateCreditNoteNumber(ctx.orgId);
+
+      // Use loose != null so undefined (in tests with partial mocks) takes
+      // the legacy path same as null. Stripe-Tax invoices always set this.
+      const sourceWasStripeTax = sourceInvoice.stripeTaxTransactionId != null;
+
+      let invoiceTotals: { subtotal: number; discountTotal: number; taxTotal: number; total: number };
+      let linesData: Array<{
+        sort: number;
+        lineType: typeof selectedLines[number]["lineType"];
+        name: string;
+        description: string | null;
+        qty: typeof selectedLines[number]["qty"];
+        rate: typeof selectedLines[number]["rate"];
+        period: typeof selectedLines[number]["period"];
+        discount: typeof selectedLines[number]["discount"];
+        discountIsPercentage: boolean;
+        subtotal: number;
+        taxTotal: number;
+        total: number;
+        taxes: { create: { taxId: string; taxAmount: number }[] };
+        stripeTaxBreakdown: {
+          create: {
+            jurisdictionDisplay: string;
+            jurisdictionLevel: string;
+            amount: number;
+            taxableAmount: number;
+            rateDecimal: number;
+            taxType: string;
+            reason: string | null;
+          }[];
+        };
+      }>;
+
+      if (sourceWasStripeTax) {
+        // Source invoice's tax came from Stripe Tax. Don't recompute via the
+        // legacy calculator (which would produce 0 since there are no
+        // InvoiceLineTax rows). Snapshot the source's per-line tax totals and
+        // jurisdiction breakdowns; the issuance step will reverse the original
+        // Stripe Tax Transaction.
+        let subtotalSum = 0;
+        let taxSum = 0;
+        linesData = selectedLines.map((l, idx) => {
+          const subtotal = Number(l.subtotal);
+          const taxTotal = Number(l.taxTotal);
+          subtotalSum += subtotal;
+          taxSum += taxTotal;
+          return {
+            sort: idx,
+            lineType: l.lineType,
+            name: l.name,
+            description: l.description,
+            qty: l.qty,
+            rate: l.rate,
+            period: l.period,
+            discount: l.discount,
+            discountIsPercentage: l.discountIsPercentage,
+            subtotal,
+            taxTotal,
+            total: subtotal + taxTotal,
+            taxes: { create: [] },
+            stripeTaxBreakdown: {
+              create: l.stripeTaxBreakdown.map((b) => ({
+                jurisdictionDisplay: b.jurisdictionDisplay,
+                jurisdictionLevel: b.jurisdictionLevel,
+                amount: Number(b.amount),
+                taxableAmount: Number(b.taxableAmount),
+                rateDecimal: Number(b.rateDecimal),
+                taxType: b.taxType,
+                reason: b.reason,
+              })),
+            },
+          };
+        });
+        invoiceTotals = {
+          subtotal: subtotalSum,
+          discountTotal: 0,
+          taxTotal: taxSum,
+          total: subtotalSum + taxSum,
+        };
+      } else {
+        // Legacy path: recompute via the compound-tax calculator.
+        const allTaxMap = new Map<string, TaxInput>();
+        for (const line of selectedLines) {
+          for (const lt of line.taxes) {
+            if (!allTaxMap.has(lt.taxId)) {
+              allTaxMap.set(lt.taxId, {
+                id: lt.taxId,
+                rate: Number(lt.tax.rate),
+                isCompound: lt.tax.isCompound,
+              });
+            }
+          }
+        }
+        const allTaxes = Array.from(allTaxMap.values());
+
+        const lineInputs: LineInput[] = selectedLines.map((l) => ({
+          qty: Number(l.qty),
+          rate: Number(l.rate),
+          period: l.period ? Number(l.period) : null,
+          lineType: l.lineType,
+          discount: Number(l.discount),
+          discountIsPercentage: l.discountIsPercentage,
+          taxIds: l.taxes.map((t) => t.taxId),
+        }));
+
+        invoiceTotals = calculateInvoiceTotals(lineInputs, allTaxes);
+        linesData = selectedLines.map((l, idx) => {
+          const lineResult = calculateLineTotals(
+            lineInputs[idx],
+            allTaxes.filter((t) => lineInputs[idx].taxIds.includes(t.id)),
+          );
+          return {
+            sort: idx,
+            lineType: l.lineType,
+            name: l.name,
+            description: l.description,
+            qty: l.qty,
+            rate: l.rate,
+            period: l.period,
+            discount: l.discount,
+            discountIsPercentage: l.discountIsPercentage,
+            subtotal: lineResult.subtotal,
+            taxTotal: lineResult.taxTotal,
+            total: lineResult.total,
+            taxes: {
+              create: lineResult.taxBreakdown.map((tb) => ({
+                taxId: tb.taxId,
+                taxAmount: tb.taxAmount,
+              })),
+            },
+            stripeTaxBreakdown: { create: [] },
+          };
+        });
+      }
 
       // Create the credit note invoice
       const creditNote = await ctx.db.invoice.create({
@@ -164,34 +273,7 @@ export const creditNotesRouter = router({
           notes: input.notes ?? null,
           clientId: sourceInvoice.clientId,
           organizationId: ctx.orgId,
-          lines: {
-            create: selectedLines.map((l, idx) => {
-              const lineResult = calculateLineTotals(
-                lineInputs[idx],
-                allTaxes.filter((t) => lineInputs[idx].taxIds.includes(t.id)),
-              );
-              return {
-                sort: idx,
-                lineType: l.lineType,
-                name: l.name,
-                description: l.description,
-                qty: l.qty,
-                rate: l.rate,
-                period: l.period,
-                discount: l.discount,
-                discountIsPercentage: l.discountIsPercentage,
-                subtotal: lineResult.subtotal,
-                taxTotal: lineResult.taxTotal,
-                total: lineResult.total,
-                taxes: {
-                  create: lineResult.taxBreakdown.map((tb) => ({
-                    taxId: tb.taxId,
-                    taxAmount: tb.taxAmount,
-                  })),
-                },
-              };
-            }),
-          },
+          lines: { create: linesData },
         },
         include: { lines: true },
       });
@@ -217,6 +299,13 @@ export const creditNotesRouter = router({
           id: input.id,
           organizationId: ctx.orgId,
           type: InvoiceType.CREDIT_NOTE,
+        },
+        select: {
+          id: true,
+          number: true,
+          creditNoteStatus: true,
+          sourceInvoiceId: true,
+          stripeTaxTransactionId: true,
         },
       });
 
@@ -246,6 +335,43 @@ export const creditNotesRouter = router({
         userId: ctx.userId ?? undefined,
         organizationId: ctx.orgId,
       });
+
+      // If the source invoice was filed via Stripe Tax, reverse its
+      // transaction so the negative tax shows in Stripe's filing reports.
+      // Non-fatal: a tax-side failure does not unwind the credit-note
+      // issuance — surfaced through audit/logs instead.
+      if (cn.sourceInvoiceId && !cn.stripeTaxTransactionId) {
+        try {
+          const source = await ctx.db.invoice.findUnique({
+            where: { id: cn.sourceInvoiceId },
+            select: { stripeTaxTransactionId: true },
+          });
+          if (source?.stripeTaxTransactionId) {
+            const { getStripeClientForOrg } = await import("@/server/services/stripe-client");
+            const access = await getStripeClientForOrg(
+              ctx.db as never,
+              ctx.orgId,
+            );
+            if (access) {
+              const { reverseStripeTaxTransaction } = await import(
+                "@/server/services/stripe-tax-transaction"
+              );
+              const result = await reverseStripeTaxTransaction({
+                db: ctx.db as never,
+                stripe: access.stripe,
+                creditNoteId: cn.id,
+                originalTransactionId: source.stripeTaxTransactionId,
+                reference: cn.number,
+              });
+              if (!result.transactionId && result.reason) {
+                console.error("[credit-note] Stripe Tax reversal skipped:", result.reason);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[credit-note] Stripe Tax reversal threw:", err);
+        }
+      }
 
       return updated;
     }),
