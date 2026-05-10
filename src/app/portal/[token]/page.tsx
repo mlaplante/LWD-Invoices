@@ -40,7 +40,7 @@ export default async function PortalInvoicePage({
       currency: true,
       organization: true,
       lines: {
-        include: { taxes: { include: { tax: true } } },
+        include: { taxes: { include: { tax: true } }, stripeTaxBreakdown: true },
         orderBy: { sort: "asc" },
       },
       payments: { orderBy: { paidAt: "asc" } },
@@ -224,12 +224,40 @@ export default async function PortalInvoicePage({
                     <span>-{f(invoice.discountTotal)}</span>
                   </div>
                 )}
-                {Number(invoice.taxTotal) > 0 && (
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Tax</span>
-                    <span>{f(invoice.taxTotal)}</span>
-                  </div>
-                )}
+                {(() => {
+                  // Aggregate Stripe Tax breakdowns across lines into one
+                  // row per (jurisdiction, rate). Falls back to a single
+                  // "Tax" line for legacy invoices.
+                  const buckets = new Map<string, { label: string; amount: number }>();
+                  for (const line of invoice.lines) {
+                    for (const b of line.stripeTaxBreakdown) {
+                      const rate = Number(b.rateDecimal);
+                      const key = `${b.jurisdictionDisplay}|${rate}`;
+                      const existing = buckets.get(key);
+                      const amount = Number(b.amount);
+                      if (existing) existing.amount += amount;
+                      else buckets.set(key, { label: `${b.jurisdictionDisplay} ${rate}%`, amount });
+                    }
+                  }
+                  const stripeRows = Array.from(buckets.values()).sort((a, b) => b.amount - a.amount);
+                  if (stripeRows.length > 0) {
+                    return stripeRows.map((b) => (
+                      <div key={b.label} className="flex justify-between text-sm text-muted-foreground">
+                        <span>{b.label}</span>
+                        <span>{f(b.amount)}</span>
+                      </div>
+                    ));
+                  }
+                  if (Number(invoice.taxTotal) > 0) {
+                    return (
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Tax</span>
+                        <span>{f(invoice.taxTotal)}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="flex justify-between border-t border-border/50 pt-2 text-base font-bold text-foreground">
                   <span>Total</span>
                   <span className="font-display">{f(invoice.total)}</span>

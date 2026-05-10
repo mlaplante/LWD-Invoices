@@ -6,7 +6,7 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 import React from "react";
-import type { TemplateProps } from "./types";
+import { aggregateStripeTaxBreakdowns, type TemplateProps } from "./types";
 import { formatAmount, formatDate } from "../pdf-shared";
 
 export function ModernTemplate({ invoice, config }: TemplateProps) {
@@ -317,12 +317,27 @@ export function ModernTemplate({ invoice, config }: TemplateProps) {
           </View>
         )}
 
-        {Number(invoice.taxTotal) > 0 && (
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>Tax</Text>
-            <Text style={styles.totalsValue}>{fmt(invoice.taxTotal)}</Text>
-          </View>
-        )}
+        {(() => {
+          const stripeBreakdown = aggregateStripeTaxBreakdowns(invoice);
+          if (stripeBreakdown.length > 0) {
+            // Stripe Tax: one row per (jurisdiction, rate).
+            return stripeBreakdown.map((b) => (
+              <View key={b.label} style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>{b.label}</Text>
+                <Text style={styles.totalsValue}>{fmt(b.amount)}</Text>
+              </View>
+            ));
+          }
+          if (Number(invoice.taxTotal) > 0) {
+            return (
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>Tax</Text>
+                <Text style={styles.totalsValue}>{fmt(invoice.taxTotal)}</Text>
+              </View>
+            );
+          }
+          return null;
+        })()}
 
         <View style={styles.totalFinal}>
           <Text style={styles.totalFinalLabel}>Total</Text>
