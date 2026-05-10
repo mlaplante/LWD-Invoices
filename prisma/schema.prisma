@@ -230,6 +230,7 @@ model Organization {
   hoursRetainers          HoursRetainer[]
   reminderSequences       ReminderSequence[]
   savedPaymentMethods     SavedPaymentMethod[]
+  emailEvents             EmailEvent[]
 }
 
 model User {
@@ -956,6 +957,28 @@ model EmailAutomationLog {
   @@index([automationId])
   @@index([invoiceId])
   @@unique([automationId, invoiceId])
+}
+
+// ─── Email Delivery Events (Resend webhook ingestion) ─────────────────────────
+
+model EmailEvent {
+  id             String   @id @default(cuid())
+  // Resend message id from the original send response and the webhook payload.
+  resendId       String
+  // Raw event type from Resend, e.g. "email.delivered" / "email.opened" / "email.clicked".
+  type           String
+  occurredAt     DateTime
+  recipient      String
+  // Populated only on click events.
+  link           String?
+  // Resolved from the `org_id` tag on the original send. Optional because we may
+  // ingest events for emails sent before tagging was wired in.
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+
+  @@index([resendId])
+  @@index([organizationId, type, occurredAt])
 }
 
 // ─── Scheduled Reports ───────────────────────────────────────────────────────

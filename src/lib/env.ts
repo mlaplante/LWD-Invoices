@@ -6,6 +6,11 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     RESEND_API_KEY: z.string().min(1),
     RESEND_FROM_EMAIL: z.string().email().default("invoices@example.com"),
+    // Optional: when set, /api/webhooks/resend verifies incoming
+    // Resend events (email.delivered/opened/clicked/...) and stores them
+    // in the EmailEvent table. Get the secret from the Resend dashboard
+    // when adding a webhook endpoint.
+    RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
     GATEWAY_ENCRYPTION_KEY: z
       .string()
       .length(64)
@@ -32,6 +37,7 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+    RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
     GATEWAY_ENCRYPTION_KEY: process.env.GATEWAY_ENCRYPTION_KEY,
     NODE_ENV: process.env.NODE_ENV,
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
