@@ -137,7 +137,8 @@ export const organizationRouter = router({
         defaultDepositPercent: z.number().int().min(1).max(100).nullable().optional(),
         smartRemindersEnabled: z.boolean().optional(),
         smartRemindersThreshold: z.number().int().min(50).max(100).optional(),
-        stripeTaxEnabled: z.boolean().optional(),
+        // stripeTaxEnabled intentionally omitted — flip via setStripeTaxEnabled
+        // so the preflight (Stripe gateway active + complete origin address) runs.
         addressLine1: z.string().max(200).nullable().optional(),
         addressLine2: z.string().max(200).nullable().optional(),
         city: z.string().max(100).nullable().optional(),
@@ -189,5 +190,67 @@ export const organizationRouter = router({
       }
 
       return result;
+    }),
+
+  // Dedicated mutation for the Stripe Tax toggle. Plain organization.update
+  // would let a caller flip the flag without preflight; this enforces the
+  // prerequisites server-side so the org can't enter a state where Stripe
+  // Tax is "on" but Stripe key / address are missing.
+  setStripeTaxEnabled: requireRole("OWNER", "ADMIN")
+    .input(z.object({ enabled: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.enabled) {
+        const { GatewayType } = await import("@/generated/prisma");
+        const [gateway, org] = await Promise.all([
+          ctx.db.gatewaySetting.findFirst({
+            where: {
+              organizationId: ctx.orgId,
+              gatewayType: GatewayType.STRIPE,
+              isEnabled: true,
+            },
+            select: { id: true },
+          }),
+          ctx.db.organization.findUnique({
+            where: { id: ctx.orgId },
+            select: {
+              addressLine1: true,
+              city: true,
+              state: true,
+              postalCode: true,
+              country: true,
+            },
+          }),
+        ]);
+
+        if (!gateway) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Stripe Tax requires an active Stripe payment gateway. Configure Stripe under Settings → Payments first.",
+          });
+        }
+
+        if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const missing: string[] = [];
+        if (!org.addressLine1) missing.push("street address");
+        if (!org.city) missing.push("city");
+        if (!org.postalCode) missing.push("postal code");
+        if (!org.country) missing.push("country");
+        if ((org.country === "US" || org.country === "CA") && !org.state) {
+          missing.push("state/province");
+        }
+        if (missing.length > 0) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `Stripe Tax needs a complete origin address. Missing: ${missing.join(", ")}.`,
+          });
+        }
+      }
+
+      return ctx.db.organization.update({
+        where: { id: ctx.orgId },
+        data: { stripeTaxEnabled: input.enabled },
+        select: { stripeTaxEnabled: true },
+      });
     }),
 });
