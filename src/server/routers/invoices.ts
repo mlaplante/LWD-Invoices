@@ -9,6 +9,7 @@ import {
   type LineInput,
 } from "../services/tax-calculator";
 import { buildTaxInputs, getOrgTaxMap, type TaxInput } from "@/server/lib/tax-helpers";
+import { resolveInvoiceTax, type ResolverLineInput } from "../services/invoice-tax-resolver";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
@@ -72,6 +73,19 @@ const invoiceWriteWithScheduleSchema = invoiceWriteSchema.extend({
 
 function toLineInput(line: z.infer<typeof lineSchema>): LineInput {
   return {
+    qty: line.qty,
+    rate: line.rate,
+    period: line.period,
+    lineType: line.lineType,
+    discount: line.discount,
+    discountIsPercentage: line.discountIsPercentage,
+    taxIds: line.taxIds,
+  };
+}
+
+function toResolverLine(line: z.infer<typeof lineSchema>): ResolverLineInput {
+  return {
+    reference: String(line.sort),
     qty: line.qty,
     rate: line.rate,
     period: line.period,
@@ -201,22 +215,22 @@ export const invoicesRouter = router({
 
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
 
+      // Resolve tax outside the transaction: Stripe Tax path makes an external
+      // API call we don't want to hold a DB tx open across.
+      const resolved = await resolveInvoiceTax({
+        db: ctx.db as unknown as PrismaClient,
+        org,
+        clientId: input.clientId,
+        currencyId: input.currencyId,
+        lines: input.lines.map(toResolverLine),
+        discountType: input.discountType ?? null,
+        discountAmount: input.discountAmount ?? 0,
+        taxMap,
+      });
+
       const invoice = await ctx.db.$transaction(async (tx) => {
         const txClient = tx as unknown as PrismaClient;
         const number = await generateInvoiceNumber(txClient, ctx.orgId);
-
-        const lineResults = input.lines.map((line) => {
-          const lineTaxes = buildTaxInputs(taxMap, line.taxIds);
-          const result = calculateLineTotals(toLineInput(line), lineTaxes);
-          return { line, result };
-        });
-
-        const invoiceTotals = calculateInvoiceTotalsWithDiscount(
-          input.lines.map(toLineInput),
-          [...taxMap.values()],
-          input.discountType ?? null,
-          input.discountAmount ?? 0
-        );
 
         const created = await tx.invoice.create({
           data: {
@@ -235,33 +249,33 @@ export const invoicesRouter = router({
             discountType: input.discountType ?? null,
             discountAmount: input.discountAmount ?? 0,
             discountDescription: input.discountDescription ?? null,
-            subtotal: invoiceTotals.subtotal,
-            discountTotal: invoiceTotals.discountTotal,
-            taxTotal: invoiceTotals.taxTotal,
-            total: invoiceTotals.total,
+            subtotal: resolved.invoice.subtotal,
+            discountTotal: resolved.invoice.discountTotal,
+            taxTotal: resolved.invoice.taxTotal,
+            total: resolved.invoice.total,
+            stripeTaxCalculationId: resolved.invoice.stripeTaxCalculationId,
             lines: {
-              create: lineResults.map(({ line, result }) => ({
-                sort: line.sort,
-                lineType: line.lineType,
-                name: line.name,
-                description: line.description,
-                qty: line.qty,
-                rate: line.rate,
-                period: line.period,
-                discount: line.discount,
-                discountIsPercentage: line.discountIsPercentage,
-                sourceTable: line.sourceTable,
-                sourceId: line.sourceId,
-                subtotal: result.subtotal,
-                taxTotal: result.taxTotal,
-                total: result.total,
-                taxes: {
-                  create: result.taxBreakdown.map((tb) => ({
-                    taxId: tb.taxId,
-                    taxAmount: tb.taxAmount,
-                  })),
-                },
-              })),
+              create: input.lines.map((line, i) => {
+                const r = resolved.lines[i];
+                return {
+                  sort: line.sort,
+                  lineType: line.lineType,
+                  name: line.name,
+                  description: line.description,
+                  qty: line.qty,
+                  rate: line.rate,
+                  period: line.period,
+                  discount: line.discount,
+                  discountIsPercentage: line.discountIsPercentage,
+                  sourceTable: line.sourceTable,
+                  sourceId: line.sourceId,
+                  subtotal: r.subtotal,
+                  taxTotal: r.taxTotal,
+                  total: r.total,
+                  taxes: { create: r.legacyTaxBreakdown },
+                  stripeTaxBreakdown: { create: r.stripeTaxBreakdown },
+                };
+              }),
             },
           },
           include: detailInvoiceInclude,
@@ -358,24 +372,35 @@ export const invoicesRouter = router({
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
       const { id, lines, partialPayments, discountType, discountAmount, discountDescription, ...rest } = input;
 
+      // Resolve tax outside the transaction (Stripe Tax may make an external call).
+      let resolved: Awaited<ReturnType<typeof resolveInvoiceTax>> | null = null;
+      if (lines !== undefined) {
+        const targetCurrencyId = input.currencyId
+          ?? (await ctx.db.invoice.findUniqueOrThrow({
+            where: { id, organizationId: ctx.orgId },
+            select: { currencyId: true },
+          })).currencyId;
+        resolved = await resolveInvoiceTax({
+          db: ctx.db as unknown as PrismaClient,
+          org,
+          clientId: input.clientId
+            ?? (await ctx.db.invoice.findUniqueOrThrow({
+              where: { id, organizationId: ctx.orgId },
+              select: { clientId: true },
+            })).clientId,
+          currencyId: targetCurrencyId,
+          lines: lines.map(toResolverLine),
+          discountType: discountType ?? null,
+          discountAmount: discountAmount ?? 0,
+          taxMap,
+        });
+      }
+
       const invoice = await ctx.db.$transaction(async (tx) => {
         let updated;
 
-        if (lines !== undefined) {
+        if (lines !== undefined && resolved) {
           await tx.invoiceLine.deleteMany({ where: { invoiceId: id } });
-
-          const lineResults = lines.map((line) => {
-            const lineTaxes = buildTaxInputs(taxMap, line.taxIds);
-            const result = calculateLineTotals(toLineInput(line), lineTaxes);
-            return { line, result };
-          });
-
-          const invoiceTotals = calculateInvoiceTotalsWithDiscount(
-            lines.map(toLineInput),
-            [...taxMap.values()],
-            discountType ?? null,
-            discountAmount ?? 0
-          );
 
           updated = await tx.invoice.update({
             where: { id, organizationId: ctx.orgId },
@@ -384,33 +409,33 @@ export const invoicesRouter = router({
               discountType: discountType ?? null,
               discountAmount: discountAmount ?? 0,
               discountDescription: discountDescription ?? null,
-              subtotal: invoiceTotals.subtotal,
-              discountTotal: invoiceTotals.discountTotal,
-              taxTotal: invoiceTotals.taxTotal,
-              total: invoiceTotals.total,
+              subtotal: resolved.invoice.subtotal,
+              discountTotal: resolved.invoice.discountTotal,
+              taxTotal: resolved.invoice.taxTotal,
+              total: resolved.invoice.total,
+              stripeTaxCalculationId: resolved.invoice.stripeTaxCalculationId,
               lines: {
-                create: lineResults.map(({ line, result }) => ({
-                  sort: line.sort,
-                  lineType: line.lineType,
-                  name: line.name,
-                  description: line.description,
-                  qty: line.qty,
-                  rate: line.rate,
-                  period: line.period,
-                  discount: line.discount,
-                  discountIsPercentage: line.discountIsPercentage,
-                  sourceTable: line.sourceTable,
-                  sourceId: line.sourceId,
-                  subtotal: result.subtotal,
-                  taxTotal: result.taxTotal,
-                  total: result.total,
-                  taxes: {
-                    create: result.taxBreakdown.map((tb) => ({
-                      taxId: tb.taxId,
-                      taxAmount: tb.taxAmount,
-                    })),
-                  },
-                })),
+                create: lines.map((line, i) => {
+                  const r = resolved!.lines[i];
+                  return {
+                    sort: line.sort,
+                    lineType: line.lineType,
+                    name: line.name,
+                    description: line.description,
+                    qty: line.qty,
+                    rate: line.rate,
+                    period: line.period,
+                    discount: line.discount,
+                    discountIsPercentage: line.discountIsPercentage,
+                    sourceTable: line.sourceTable,
+                    sourceId: line.sourceId,
+                    subtotal: r.subtotal,
+                    taxTotal: r.taxTotal,
+                    total: r.total,
+                    taxes: { create: r.legacyTaxBreakdown },
+                    stripeTaxBreakdown: { create: r.stripeTaxBreakdown },
+                  };
+                }),
               },
             },
             include: detailInvoiceInclude,
