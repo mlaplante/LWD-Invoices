@@ -1,5 +1,10 @@
 [build]
-  command = "prisma generate && next build"
+  # IMPORTANT: keep `prisma migrate deploy` in this command. netlify.toml
+  # overrides package.json's build script entirely, so omitting it skips
+  # migrations on deploy and the live DB drifts behind schema.prisma.
+  # Symptom is "column X does not exist" 500s on any page that reads
+  # the new column.
+  command = "prisma generate && prisma migrate deploy && next build"
   publish = ".next"
 
 [build.environment]
