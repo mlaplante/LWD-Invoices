@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { getExpenseCategoriesForOrg, invalidateOrg } from "../cached";
+import { getForOrg } from "../lib/get-for-org";
 
 export const expenseCategoriesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -22,10 +22,7 @@ export const expenseCategoriesRouter = router({
     .input(z.object({ id: z.string(), name: z.string().min(1).optional() }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      const existing = await ctx.db.expenseCategory.findUnique({
-        where: { id, organizationId: ctx.orgId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await getForOrg(ctx.db.expenseCategory, id, ctx.orgId, { entityName: "Expense category" });
       const updated = await ctx.db.expenseCategory.update({ where: { id }, data });
       invalidateOrg(ctx.orgId, "expenseCategories");
       return updated;
@@ -34,10 +31,7 @@ export const expenseCategoriesRouter = router({
   delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const existing = await ctx.db.expenseCategory.findUnique({
-        where: { id: input.id, organizationId: ctx.orgId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await getForOrg(ctx.db.expenseCategory, input.id, ctx.orgId, { entityName: "Expense category" });
       const deleted = await ctx.db.expenseCategory.delete({ where: { id: input.id } });
       invalidateOrg(ctx.orgId, "expenseCategories");
       return deleted;

@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { Prisma } from "@/generated/prisma";
 import bcrypt from "bcryptjs";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { logAudit } from "../services/audit";
+import { getForOrg } from "../lib/get-for-org";
 
 const clientSchema = z.object({
   name: z.string().min(1),
@@ -68,11 +68,7 @@ export const clientsRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const client = await ctx.db.client.findUnique({
-        where: { id: input.id, organizationId: ctx.orgId },
-      });
-      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
-      return client;
+      return getForOrg(ctx.db.client, input.id, ctx.orgId, { entityName: "Client" });
     }),
 
   create: requireRole("OWNER", "ADMIN")
