@@ -6,6 +6,7 @@ import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-cal
 import { generateExpensesForRecurring } from "../services/recurring-expense-generator";
 import { detailExpenseInclude } from "@/server/lib/expense-includes";
 import { getOrgTaxList } from "@/server/lib/tax-helpers";
+import { logAudit } from "../services/audit";
 
 async function generateDueExpenses(db: PrismaClient, orgId: string) {
   const now = new Date();
@@ -98,7 +99,7 @@ export const expensesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { ocrRawResult, ...rest } = input;
-      return ctx.db.expense.create({
+      const created = await ctx.db.expense.create({
         data: {
           ...rest,
           organizationId: ctx.orgId,
@@ -108,6 +109,15 @@ export const expensesRouter = router({
         },
         include: detailExpenseInclude,
       });
+      await logAudit({
+        action: "CREATED",
+        entityType: "Expense",
+        entityId: created.id,
+        entityLabel: created.name,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return created;
     }),
 
   update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
@@ -137,7 +147,7 @@ export const expensesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.expense.update({
+      const updated = await ctx.db.expense.update({
         where: { id, organizationId: ctx.orgId },
         data: {
           ...rest,
@@ -147,6 +157,15 @@ export const expensesRouter = router({
         },
         include: detailExpenseInclude,
       });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Expense",
+        entityId: updated.id,
+        entityLabel: updated.name,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return updated;
     }),
 
   delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
@@ -162,7 +181,16 @@ export const expensesRouter = router({
           message: "Cannot delete a billed expense.",
         });
       }
-      return ctx.db.expense.delete({ where: { id: input.id, organizationId: ctx.orgId } });
+      const deleted = await ctx.db.expense.delete({ where: { id: input.id, organizationId: ctx.orgId } });
+      await logAudit({
+        action: "DELETED",
+        entityType: "Expense",
+        entityId: deleted.id,
+        entityLabel: deleted.name,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return deleted;
     }),
 
   deleteMany: requireRole("OWNER", "ADMIN", "ACCOUNTANT")

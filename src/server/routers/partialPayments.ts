@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { logAudit } from "../services/audit";
 
 const partialPaymentSchema = z.object({
   sortOrder: z.number().int().default(0),
@@ -85,7 +86,7 @@ export const partialPaymentsRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Already paid." });
       }
 
-      return ctx.db.partialPayment.update({
+      const updated = await ctx.db.partialPayment.update({
         where: { id: input.id },
         data: {
           isPaid: true,
@@ -95,5 +96,18 @@ export const partialPaymentsRouter = router({
           gatewayFee: input.gatewayFee,
         },
       });
+      await logAudit({
+        action: "PAYMENT_RECEIVED",
+        entityType: "PartialPayment",
+        entityId: input.id,
+        diff: {
+          method: input.paymentMethod,
+          transactionId: input.transactionId,
+          gatewayFee: input.gatewayFee,
+        },
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return updated;
     }),
 });
