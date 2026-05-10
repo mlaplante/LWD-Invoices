@@ -13,6 +13,15 @@ const authLimiter = createRateLimiter({ limit: 10, windowMs: 15 * 60_000 });
 const failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_FAILURES = 5;
 const LOCKOUT_MS = 15 * 60_000;
+const MAX_TRACKED_TOKENS = 10_000;
+
+function pruneFailedAttempts() {
+  if (failedAttempts.size < MAX_TRACKED_TOKENS) return;
+  const now = Date.now();
+  for (const [k, v] of failedAttempts) {
+    if (v.lockedUntil < now && v.count < MAX_FAILURES) failedAttempts.delete(k);
+  }
+}
 
 export async function POST(
   req: NextRequest,
@@ -70,6 +79,7 @@ export async function POST(
       current.lockedUntil = Date.now() + LOCKOUT_MS;
     }
     failedAttempts.set(token, current);
+    pruneFailedAttempts();
 
     return NextResponse.json({ error: "Incorrect passphrase" }, { status: 401 });
   }
@@ -82,6 +92,7 @@ export async function POST(
   const cookieStore = await cookies();
   cookieStore.set(`portal_auth_${token}`, sessionVal, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 30, // 30 days
     path: `/portal/${token}`,

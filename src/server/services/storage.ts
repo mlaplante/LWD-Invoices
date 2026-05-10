@@ -17,6 +17,14 @@ async function ensureBucket() {
   if (error && !error.message.includes("already exists")) throw error;
 }
 
+// Strip path separators and traversal sequences so a caller-supplied filename
+// can never escape the intended pathname prefix in the storage bucket.
+function sanitizeFilename(name: string): string {
+  const base = name.split(/[\\/]/).pop() ?? "file";
+  const cleaned = base.replace(/[^\w.\-]+/g, "_").replace(/^\.+/, "");
+  return cleaned.length > 0 ? cleaned.slice(0, 200) : "file";
+}
+
 export async function uploadFile(
   filename: string,
   file: Blob,
@@ -25,7 +33,8 @@ export async function uploadFile(
   await ensureBucket();
   const supabase = getClient();
 
-  const path = `${pathname}/${filename}`;
+  const safeName = sanitizeFilename(filename);
+  const path = `${pathname}/${safeName}`;
   const arrayBuffer = await file.arrayBuffer();
 
   const { error } = await supabase.storage
