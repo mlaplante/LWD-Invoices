@@ -1,14 +1,27 @@
 "use client";
 
 import { trpc } from "@/trpc/client";
-import { Bell } from "lucide-react";
+import { Bell, Clock } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
+
+const SNOOZE_OPTIONS = [
+  { label: "1 hour", ms: 60 * 60_000 },
+  { label: "4 hours", ms: 4 * 60 * 60_000 },
+  { label: "Tomorrow", ms: 24 * 60 * 60_000 },
+  { label: "Next week", ms: 7 * 24 * 60 * 60_000 },
+];
 
 export function NotificationBell() {
   const { data: count = 0 } = trpc.notifications.unreadCount.useQuery(
@@ -26,12 +39,15 @@ export function NotificationBell() {
   });
   const utils = trpc.useUtils();
 
+  const invalidate = () => {
+    void utils.notifications.unreadCount.invalidate();
+    void utils.notifications.list.invalidate();
+  };
+
   const markAllRead = trpc.notifications.markAllRead.useMutation({
-    onSuccess: () => {
-      void utils.notifications.unreadCount.invalidate();
-      void utils.notifications.list.invalidate();
-    },
+    onSuccess: invalidate,
   });
+  const snooze = trpc.notifications.snooze.useMutation({ onSuccess: invalidate });
 
   return (
     <Popover>
@@ -61,15 +77,45 @@ export function NotificationBell() {
           {notifications.map((n) => (
             <div
               key={n.id}
-              className={`p-3 border-b text-sm ${!n.isRead ? "bg-muted/30" : ""}`}
+              className={`group flex items-start justify-between gap-2 p-3 border-b text-sm ${!n.isRead ? "bg-muted/30" : ""}`}
             >
-              <p className="font-medium">{n.title}</p>
-              <p className="text-muted-foreground">{n.body}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatDistanceToNow(new Date(n.createdAt), {
-                  addSuffix: true,
-                })}
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{n.title}</p>
+                <p className="text-muted-foreground">{n.body}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatDistanceToNow(new Date(n.createdAt), {
+                    addSuffix: true,
+                  })}
+                </p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    aria-label="Snooze notification"
+                    disabled={snooze.isPending}
+                  >
+                    <Clock className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {SNOOZE_OPTIONS.map((opt) => (
+                    <DropdownMenuItem
+                      key={opt.label}
+                      onClick={() =>
+                        snooze.mutate({
+                          id: n.id,
+                          until: new Date(Date.now() + opt.ms).toISOString(),
+                        })
+                      }
+                    >
+                      {opt.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
           {notifications.length === 0 && (
