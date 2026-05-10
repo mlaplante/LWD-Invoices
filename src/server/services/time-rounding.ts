@@ -1,8 +1,13 @@
 /**
  * Time Rounding Service
  *
- * Exact TypeScript port of Pancake PHP get_rounded_minutes().
- * Round minutes up to the nearest interval bucket.
+ * Exact TypeScript port of Pancake PHP get_rounded_minutes(). Round
+ * minutes up to the nearest interval bucket.
+ *
+ * The interval is configurable per-org via Organization.taskTimeInterval
+ * (set in /settings → Projects). Callers in timeEntries / timesheets /
+ * timers routers all read that field and pass it through; passing 0
+ * disables rounding for entry-level overrides.
  */
 
 /**
