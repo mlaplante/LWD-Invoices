@@ -10,6 +10,26 @@ const recurringSchema = z.object({
   endDate: z.coerce.date().optional(),
   maxOccurrences: z.number().int().min(1).optional(),
   autoSend: z.boolean().default(false),
+  // 1-31; clamped to the last day of short months at run time.
+  dayOfMonth: z.number().int().min(1).max(31).optional(),
+  // IANA timezone string, validated lazily by Intl.DateTimeFormat at
+  // schedule time so we don't need to ship a country/zone allowlist.
+  timezone: z
+    .string()
+    .max(64)
+    .optional()
+    .refine(
+      (tz) => {
+        if (!tz) return true;
+        try {
+          new Intl.DateTimeFormat("en-US", { timeZone: tz });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid IANA timezone" },
+    ),
 });
 
 export const recurringInvoicesRouter = router({
