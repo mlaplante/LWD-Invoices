@@ -36,7 +36,10 @@ export const fullInvoiceInclude = {
   currency: true,
   organization: { select: orgPdfSelect },
   lines: {
-    include: { taxes: { include: { tax: true } } },
+    include: {
+      taxes: { include: { tax: true } },
+      stripeTaxBreakdown: true,
+    },
     orderBy: { sort: "asc" as const },
   },
   payments: { orderBy: { paidAt: "asc" as const } },
