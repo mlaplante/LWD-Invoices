@@ -1131,4 +1131,42 @@ export const invoicesRouter = router({
   declineEstimate: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => updateEstimateStatus(ctx, input.id, "REJECTED")),
+
+  // Issues a fresh portalToken for an invoice, invalidating every existing
+  // /portal/<token> and /pay/<token> link. Use when a link has been shared
+  // beyond the intended audience (forwarded email, indexed accidentally,
+  // exposed in a screenshot).
+  rotatePortalToken: requireRole("OWNER", "ADMIN")
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.invoice.findFirst({
+        where: { id: input.id, organizationId: ctx.orgId },
+        select: { id: true, number: true },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Prisma's @default(cuid()) only fires on create. crypto.randomUUID
+      // is sufficient for portal tokens — they're URL-safe, unguessable,
+      // and unique enough that the @unique constraint will never realistically
+      // conflict.
+      const newToken = crypto.randomUUID();
+
+      const updated = await ctx.db.invoice.update({
+        where: { id: input.id, organizationId: ctx.orgId },
+        data: { portalToken: newToken },
+        select: { portalToken: true },
+      });
+
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Invoice",
+        entityId: input.id,
+        entityLabel: `Invoice #${existing.number}`,
+        diff: { event: "portal_token_rotated" },
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+
+      return { portalToken: updated.portalToken };
+    }),
 });
