@@ -3,6 +3,22 @@ import type { PrismaClient } from "@/generated/prisma";
 const MIN_INVOICES = 3;
 
 /**
+ * Client payment-score helpers.
+ *
+ * Consumers:
+ * - app/(dashboard)/clients/[id]/page.tsx: surfaces on-time % on the
+ *   client detail header so the team can see at a glance whether a
+ *   client pays late.
+ * - inngest/functions/reminder-sequences.ts: gates pre-due reminders
+ *   on isReliablePayer, so chronically on-time clients don't get
+ *   nagged before the invoice is due.
+ *
+ * MIN_INVOICES guards against a single anomaly tilting the score —
+ * clients with fewer than 3 paid invoices return null (insufficient
+ * data) and the UI/reminder logic falls back to the neutral default.
+ */
+
+/**
  * Calculates the percentage of a client's invoices paid on or before due date.
  * Returns null if fewer than MIN_INVOICES paid invoices (not enough data).
  */
