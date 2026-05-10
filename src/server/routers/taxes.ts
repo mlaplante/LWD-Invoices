@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { invalidateOrg } from "../cached";
 
 const taxSchema = z.object({
   name: z.string().min(1),
@@ -19,26 +20,32 @@ export const taxesRouter = router({
   create: requireRole("OWNER", "ADMIN")
     .input(taxSchema)
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.tax.create({
+      const result = await ctx.db.tax.create({
         data: { ...input, organizationId: ctx.orgId },
       });
+      invalidateOrg(ctx.orgId, "taxes");
+      return result;
     }),
 
   update: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }).merge(taxSchema.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      return ctx.db.tax.update({
+      const result = await ctx.db.tax.update({
         where: { id, organizationId: ctx.orgId },
         data,
       });
+      invalidateOrg(ctx.orgId, "taxes");
+      return result;
     }),
 
   delete: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.tax.delete({
+      const result = await ctx.db.tax.delete({
         where: { id: input.id, organizationId: ctx.orgId },
       });
+      invalidateOrg(ctx.orgId, "taxes");
+      return result;
     }),
 });

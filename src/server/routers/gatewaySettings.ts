@@ -4,6 +4,7 @@ import { router, protectedProcedure, requireRole } from "../trpc";
 import { GatewayType } from "@/generated/prisma";
 import { encryptJson, decryptJson } from "../services/encryption";
 import { logAudit } from "../services/audit";
+import { invalidateOrg } from "../cached";
 import type { StripeConfig, PayPalConfig } from "../services/gateway-config";
 
 const stripeConfigSchema = z.object({
@@ -137,6 +138,7 @@ export const gatewaySettingsRouter = router({
         userId: ctx.userId,
         organizationId: ctx.orgId,
       });
+      invalidateOrg(ctx.orgId, "gateways");
 
       return result;
     }),
@@ -167,6 +169,7 @@ export const gatewaySettingsRouter = router({
         userId: ctx.userId,
         organizationId: ctx.orgId,
       });
+      invalidateOrg(ctx.orgId, "gateways");
 
       return result;
     }),

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { logAudit } from "../services/audit";
+import { invalidateOrg } from "../cached";
 
 export const organizationRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
@@ -162,6 +163,7 @@ export const organizationRouter = router({
         userId: ctx.userId,
         organizationId: ctx.orgId,
       });
+      invalidateOrg(ctx.orgId, "branding");
 
       // Sync changed metadata to all org users' app_metadata
       const metaUpdates: Record<string, unknown> = {};
