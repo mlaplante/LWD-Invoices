@@ -144,7 +144,7 @@ export function BillToInvoiceDialog({
           <SelectTrigger className="mt-1">
             <SelectValue placeholder="Select invoice" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper">
             {invoices.map((inv) => (
               <SelectItem key={inv.id} value={inv.id}>
                 #{inv.number}
