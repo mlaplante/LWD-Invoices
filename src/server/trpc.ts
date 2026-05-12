@@ -1,7 +1,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { getUser } from "@/lib/supabase/server";
 import { db } from "./db";
-import superjson from "superjson";
+import superjson from "@/lib/superjson";
 import { ZodError } from "zod";
 import type { UserRole } from "@/generated/prisma";
 import { cookies } from "next/headers";

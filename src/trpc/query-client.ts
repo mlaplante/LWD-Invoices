@@ -1,5 +1,5 @@
 import { QueryClient, defaultShouldDehydrateQuery } from "@tanstack/react-query";
-import superjson from "superjson";
+import superjson from "@/lib/superjson";
 
 // Routers whose backend caches at ~60s (see src/server/routers/dashboard.ts and
 // src/server/routers/reports.ts). Aligning the client staleTime keeps the
