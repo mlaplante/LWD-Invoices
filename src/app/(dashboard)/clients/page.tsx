@@ -1,7 +1,7 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Users } from "lucide-react";
+import { Users, HeartHandshake } from "lucide-react";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Suspense } from "react";
 
@@ -59,6 +59,12 @@ export default async function ClientsPage({
           <Suspense>
             <SearchInput placeholder="Search clients…" />
           </Suspense>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/clients/retention">
+              <HeartHandshake className="w-4 h-4 mr-1.5" />
+              Retention
+            </Link>
+          </Button>
           <Button asChild size="sm">
             <Link href="/clients/new">+ New Client</Link>
           </Button>

@@ -42,6 +42,8 @@ import { dashboardRouter } from "./dashboard";
 import { searchRouter } from "./search";
 import { exportsRouter } from "./exports";
 import { fxRouter } from "./fx";
+import { clientCheckInsRouter } from "./clientCheckIns";
+import { checkInTemplatesRouter } from "./checkInTemplates";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -87,6 +89,8 @@ export const appRouter = router({
   reminderSequences: reminderSequencesRouter,
   exports: exportsRouter,
   fx: fxRouter,
+  clientCheckIns: clientCheckInsRouter,
+  checkInTemplates: checkInTemplatesRouter,
 });
 
 export type AppRouter = typeof appRouter;

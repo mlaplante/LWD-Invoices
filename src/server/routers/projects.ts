@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { Prisma, ProjectStatus } from "@/generated/prisma";
+import { generateProjectCloseCheckIn } from "../services/check-in-generator";
 
 const projectWriteSchema = z.object({
   name: z.string().min(1),
@@ -187,7 +188,12 @@ export const projectsRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.project.update({ where: { id, organizationId: ctx.orgId }, data });
+      const updated = await ctx.db.project.update({
+        where: { id, organizationId: ctx.orgId },
+        data,
+      });
+      await maybeQueueProjectClose(ctx.db, ctx.orgId, existing, updated);
+      return updated;
     }),
 
   archive: requireRole("OWNER", "ADMIN")
@@ -197,10 +203,12 @@ export const projectsRouter = router({
         where: { id: input.id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.project.update({
+      const updated = await ctx.db.project.update({
         where: { id: input.id, organizationId: ctx.orgId },
         data: { status: input.status },
       });
+      await maybeQueueProjectClose(ctx.db, ctx.orgId, existing, updated);
+      return updated;
     }),
 
   delete: requireRole("OWNER", "ADMIN")
@@ -229,3 +237,27 @@ export const projectsRouter = router({
       return ctx.db.project.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 });
+
+type ProjectLike = { id: string; clientId: string; status: ProjectStatus };
+
+async function maybeQueueProjectClose(
+  db: Prisma.TransactionClient | typeof import("../db").db,
+  organizationId: string,
+  before: ProjectLike,
+  after: ProjectLike,
+) {
+  if (before.status === ProjectStatus.COMPLETED) return;
+  if (after.status !== ProjectStatus.COMPLETED) return;
+
+  const org = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: { retentionEnabled: true },
+  });
+  if (!org?.retentionEnabled) return;
+
+  await generateProjectCloseCheckIn({
+    organizationId,
+    clientId: after.clientId,
+    projectId: after.id,
+  });
+}

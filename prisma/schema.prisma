@@ -88,6 +88,26 @@ enum NotificationType {
   RECURRING_EXPENSE_GENERATED
   TICKET_CREATED
   TICKET_REPLIED
+  RETENTION_QUEUE_READY
+}
+
+enum ClientCheckInTouchType {
+  PROJECT_CLOSE
+  THIRTY_DAY
+  QUARTERLY
+  ANNUAL
+}
+
+enum ClientCheckInStatus {
+  PENDING
+  DISMISSED
+  COMPLETED
+}
+
+enum ClientCheckInOutcome {
+  NEW_WORK
+  REFERRAL
+  NOTHING
 }
 
 enum AuditAction {
@@ -237,6 +257,13 @@ model Organization {
   reminderSequences       ReminderSequence[]
   savedPaymentMethods     SavedPaymentMethod[]
   emailEvents             EmailEvent[]
+  clientCheckIns          ClientCheckIn[]
+  checkInTemplates        CheckInTemplate[]
+  // Retention/check-in automation feature flag. retentionEnabledAt is the
+  // floor for cron-generated check-ins so newly-enabled orgs don't get
+  // flooded with historical backfill.
+  retentionEnabled        Boolean   @default(false)
+  retentionEnabledAt      DateTime?
 }
 
 model User {
@@ -325,6 +352,7 @@ model Client {
   retainer              Retainer?
   hoursRetainers        HoursRetainer[]
   savedPaymentMethods   SavedPaymentMethod[]
+  checkIns              ClientCheckIn[]
 }
 
 model ClientPortalSession {
@@ -689,6 +717,7 @@ model Project {
   expenses            Expense[]
   recurringExpenses   RecurringExpense[] @relation("RecurringExpenseProject")
   discussions         Discussion[]
+  checkIns            ClientCheckIn[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1348,4 +1377,51 @@ model HoursRetainerPeriod {
   updatedAt             DateTime @updatedAt
 
   @@index([retainerId, status])
+}
+
+// ─── Client Retention / Check-In Automation ───────────────────────────────────
+// Surfaces a weekly admin-reviewed queue of relationship touches (thank-you,
+// 30-day check-in, quarterly, annual). The system only queues the reminder —
+// the admin writes the actual message — so the relationship still feels human.
+
+model ClientCheckIn {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  // Optional project anchor — PROJECT_CLOSE / THIRTY_DAY / ANNUAL touches are
+  // tied to a specific project; QUARTERLY is a client-level rhythm.
+  projectId       String?
+  project         Project?               @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  touchType       ClientCheckInTouchType
+  status          ClientCheckInStatus    @default(PENDING)
+  dueAt           DateTime
+  outcome         ClientCheckInOutcome?
+  notes           String?
+  completedAt     DateTime?
+  dismissedAt     DateTime?
+  snoozedUntil    DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId, status, dueAt])
+  @@index([clientId, touchType])
+  @@index([organizationId, touchType, status])
+}
+
+model CheckInTemplate {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  touchType       ClientCheckInTouchType
+  subject         String
+  body            String
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([organizationId, touchType])
 }
