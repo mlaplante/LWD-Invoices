@@ -10,8 +10,9 @@ import { processLateFees } from "@/inngest/functions/late-fees";
 import { processScheduledReports } from "@/inngest/functions/scheduled-reports";
 import { processReminderSequences } from "@/inngest/functions/reminder-sequences";
 import { recalculateInvoiceTotals } from "@/inngest/functions/recalculate-invoice-totals";
+import { processRetentionCheckIns } from "@/inngest/functions/retention-checkins";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, processRecurringExpenses, processEmailAutomations, handleAutomationEvent, processLateFees, processScheduledReports, processReminderSequences, recalculateInvoiceTotals],
+  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, processRecurringExpenses, processEmailAutomations, handleAutomationEvent, processLateFees, processScheduledReports, processReminderSequences, recalculateInvoiceTotals, processRetentionCheckIns],
 });
