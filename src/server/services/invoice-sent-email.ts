@@ -40,8 +40,8 @@ export async function sendInvoiceSentEmail(invoice: FullInvoice, appUrl: string)
     })
   );
 
-  const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
-  const pdfBuffer = await generateInvoicePDF(invoice);
+  const { getOrRenderInvoicePDF } = await import("@/server/services/invoice-pdf-cache");
+  const pdfBuffer = await getOrRenderInvoicePDF(invoice);
 
   await sendEmail({
     organizationId: invoice.organizationId,
