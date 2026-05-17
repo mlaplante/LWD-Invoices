@@ -10,6 +10,7 @@ import {
   type TaxInput,
 } from "../services/tax-calculator";
 import { logAudit } from "../services/audit";
+import { generatePortalToken } from "@/lib/portal-session";
 
 export function validateCreditApplication(
   applyAmount: number,
@@ -17,16 +18,28 @@ export function validateCreditApplication(
   invoiceBalance: number,
 ): void {
   if (creditRemaining <= 0) {
-    throw new Error("Credit note has no remaining balance");
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Credit note has no remaining balance",
+    });
   }
   if (invoiceBalance <= 0) {
-    throw new Error("Invoice has no outstanding balance");
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Invoice has no outstanding balance",
+    });
   }
   if (applyAmount > creditRemaining) {
-    throw new Error(`Amount exceeds credit note remaining of ${creditRemaining}`);
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Amount exceeds credit note remaining of ${creditRemaining}`,
+    });
   }
   if (applyAmount > invoiceBalance) {
-    throw new Error(`Amount exceeds invoice balance of ${invoiceBalance}`);
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Amount exceeds invoice balance of ${invoiceBalance}`,
+    });
   }
 }
 
@@ -273,6 +286,7 @@ export const creditNotesRouter = router({
           notes: input.notes ?? null,
           clientId: sourceInvoice.clientId,
           organizationId: ctx.orgId,
+          portalToken: generatePortalToken(),
           lines: { create: linesData },
         },
         include: { lines: true },

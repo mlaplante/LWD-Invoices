@@ -207,10 +207,12 @@ describe("Clients Router Procedures", () => {
 
       expect(result.id).toBe("c_new");
       expect(result.name).toBe("New Client");
+      // portalToken is crypto-random; assert shape + length rather than value.
       expect(ctx.db.client.create).toHaveBeenCalledWith({
         data: {
           name: "New Client",
           organizationId: "test-org-123",
+          portalToken: expect.stringMatching(/^[a-f0-9]{64}$/),
         },
       });
     });

@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import { env } from "@/lib/env";
-import { verifyPortalSession } from "@/lib/portal-session";
+import { getPortalSessionSecret, verifyPortalSession } from "@/lib/portal-session";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
@@ -61,7 +61,7 @@ export default async function PortalLayout({
     const cookieStore = await cookies();
     const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
 
-    if (!cookieVal || !verifyPortalSession(cookieVal, token, env.SUPABASE_SERVICE_ROLE_KEY)) {
+    if (!cookieVal || !verifyPortalSession(cookieVal, token, getPortalSessionSecret())) {
       redirect(`/portal/portal-login/${token}`);
     }
   }

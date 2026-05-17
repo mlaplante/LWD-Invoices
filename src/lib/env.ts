@@ -27,6 +27,12 @@ export const env = createEnv({
     SUPABASE_URL: z.string().url(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    // Dedicated HMAC secret for signing public-portal session cookies.
+    // Optional for back-compat: when unset, the portal-session helpers fall
+    // back to SUPABASE_SERVICE_ROLE_KEY. Set this in production so the
+    // service-role key isn't also a cookie-forgery key — rotating one
+    // shouldn't invalidate every portal session, and vice versa.
+    PORTAL_SESSION_SECRET: z.string().min(32).optional(),
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -45,6 +51,7 @@ export const env = createEnv({
     SUPABASE_URL: process.env.SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    PORTAL_SESSION_SECRET: process.env.PORTAL_SESSION_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

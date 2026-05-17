@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
-import { env } from "@/lib/env";
-import { verifyPortalSession } from "@/lib/portal-session";
+import { getPortalSessionSecret, verifyPortalSession } from "@/lib/portal-session";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 import { cookies } from "next/headers";
 
@@ -32,7 +31,7 @@ export async function POST(
   if (storedHash) {
     const cookieStore = await cookies();
     const authCookie = cookieStore.get(`portal_auth_${token}`);
-    if (!authCookie || !verifyPortalSession(authCookie.value, token, env.SUPABASE_SERVICE_ROLE_KEY)) {
+    if (!authCookie || !verifyPortalSession(authCookie.value, token, getPortalSessionSecret())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }

@@ -2,6 +2,11 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
 
+// ctx.orgId is already verified by protectedProcedure / its trpc middleware,
+// so re-fetching the organization just to read back its id was a wasted
+// round-trip. Wrapping each query in try/catch and returning [] / 0 on error
+// also hid real failures (DB outage, schema drift) — we let TRPC bubble those
+// up so the client surfaces a proper error instead of silently empty UI.
 export const notificationsRouter = router({
   list: protectedProcedure
     .input(
@@ -11,59 +16,39 @@ export const notificationsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({
-        where: { id: ctx.orgId },
-      });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       const now = new Date();
-      try {
-        return await ctx.db.notification.findMany({
-          where: {
-            organizationId: org.id,
-            userId: ctx.userId!,
-            ...(input.includeSnoozed
-              ? {}
-              : { OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }] }),
-          },
-          orderBy: { createdAt: "desc" },
-          take: input.limit,
-        });
-      } catch {
-        return [];
-      }
+      return ctx.db.notification.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          userId: ctx.userId!,
+          ...(input.includeSnoozed
+            ? {}
+            : { OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }] }),
+        },
+        orderBy: { createdAt: "desc" },
+        take: input.limit,
+      });
     }),
 
   unreadCount: protectedProcedure.query(async ({ ctx }) => {
-    const org = await ctx.db.organization.findFirst({
-      where: { id: ctx.orgId },
-    });
-    if (!org) throw new TRPCError({ code: "NOT_FOUND" });
     const now = new Date();
-    try {
-      return await ctx.db.notification.count({
-        where: {
-          organizationId: org.id,
-          userId: ctx.userId!,
-          isRead: false,
-          OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
-        },
-      });
-    } catch {
-      return 0;
-    }
+    return ctx.db.notification.count({
+      where: {
+        organizationId: ctx.orgId,
+        userId: ctx.userId!,
+        isRead: false,
+        OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
+      },
+    });
   }),
 
   markRead: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({
-        where: { id: ctx.orgId },
-      });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.notification.updateMany({
         where: {
           id: input.id,
-          organizationId: org.id,
+          organizationId: ctx.orgId,
           userId: ctx.userId!,
         },
         data: { isRead: true },
@@ -71,13 +56,9 @@ export const notificationsRouter = router({
     }),
 
   markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
-    const org = await ctx.db.organization.findFirst({
-      where: { id: ctx.orgId },
-    });
-    if (!org) throw new TRPCError({ code: "NOT_FOUND" });
     return ctx.db.notification.updateMany({
       where: {
-        organizationId: org.id,
+        organizationId: ctx.orgId,
         userId: ctx.userId!,
         isRead: false,
       },

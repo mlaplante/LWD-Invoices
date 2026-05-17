@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
 import { Prisma, RecurringFrequency } from "@/generated/prisma";
+import { generatePortalToken } from "@/lib/portal-session";
 
 export function computeNextRunAt(
   from: Date,
@@ -97,6 +98,10 @@ async function generateRecurringInvoice(rec: RecurringInvoiceWithRelations) {
       data: { invoiceNextNumber: { increment: 1 } },
     });
 
+    // Create the invoice with all lines nested. Prisma issues a single SQL
+    // INSERT for the invoice plus a batched INSERT for its lines instead of
+    // N round-trips. Line taxes still need a second pass because their FK
+    // (invoiceLineId) only resolves after the lines are persisted.
     const invoice = await tx.invoice.create({
       data: {
         number,
@@ -117,36 +122,51 @@ async function generateRecurringInvoice(rec: RecurringInvoiceWithRelations) {
         total: template.total,
         clientId: template.clientId,
         organizationId: template.organizationId,
+        // Override schema's @default(cuid()) with crypto-strong randomness.
+        portalToken: generatePortalToken(),
+        lines: {
+          create: template.lines.map((line) => ({
+            sort: line.sort,
+            lineType: line.lineType,
+            name: line.name,
+            description: line.description,
+            qty: line.qty,
+            rate: line.rate,
+            period: line.period,
+            discount: line.discount,
+            discountIsPercentage: line.discountIsPercentage,
+            subtotal: line.subtotal,
+            taxTotal: line.taxTotal,
+            total: line.total,
+          })),
+        },
       },
+      include: { lines: { orderBy: { sort: "asc" } } },
     });
 
-    for (const line of template.lines) {
-      const newLine = await tx.invoiceLine.create({
-        data: {
-          invoiceId: invoice.id,
-          sort: line.sort,
-          lineType: line.lineType,
-          name: line.name,
-          description: line.description,
-          qty: line.qty,
-          rate: line.rate,
-          period: line.period,
-          discount: line.discount,
-          discountIsPercentage: line.discountIsPercentage,
-          subtotal: line.subtotal,
-          taxTotal: line.taxTotal,
-          total: line.total,
-        },
-      });
-      for (const lineTax of line.taxes) {
-        await tx.invoiceLineTax.create({
-          data: {
-            invoiceLineId: newLine.id,
-            taxId: lineTax.taxId,
-            taxAmount: lineTax.taxAmount,
-          },
+    // Map template lines (ordered by sort asc, same as the include above) to
+    // their newly-created counterparts so we can batch-insert all line taxes
+    // in a single createMany. Template lines come back from Prisma ordered by
+    // sort because the recurring-invoice's source invoice was created with
+    // sort-ordered lines; we sort defensively here to make the index match.
+    const templateLinesSorted = [...template.lines].sort(
+      (a, b) => a.sort - b.sort,
+    );
+    const taxRows: { invoiceLineId: string; taxId: string; taxAmount: number | Prisma.Decimal }[] = [];
+    for (let i = 0; i < invoice.lines.length; i++) {
+      const created = invoice.lines[i];
+      const source = templateLinesSorted[i];
+      if (!source) continue;
+      for (const lineTax of source.taxes) {
+        taxRows.push({
+          invoiceLineId: created.id,
+          taxId: lineTax.taxId,
+          taxAmount: lineTax.taxAmount,
         });
       }
+    }
+    if (taxRows.length > 0) {
+      await tx.invoiceLineTax.createMany({ data: taxRows });
     }
 
     // Update recurring config INSIDE transaction for atomicity

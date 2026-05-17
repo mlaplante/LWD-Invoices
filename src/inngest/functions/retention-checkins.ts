@@ -46,12 +46,18 @@ export const processRetentionCheckIns = inngest.createFunction(
       },
     });
 
+    // Run orgs concurrently with a small concurrency cap so a 500-org cron
+    // completes in seconds instead of minutes. Each org does an INSERT-many
+    // and a COUNT against the same DB, so we don't want unbounded parallelism
+    // hammering the connection pool — 10 in-flight at a time hits a sweet
+    // spot for Supabase pooler defaults.
+    const CONCURRENCY = 10;
     let totalNew = 0;
     let totalNotified = 0;
     const failures: string[] = [];
 
-    for (const org of orgs) {
-      if (!org.retentionEnabledAt) continue;
+    async function processOrg(org: (typeof orgs)[number]): Promise<void> {
+      if (!org.retentionEnabledAt) return;
       try {
         const counts = await generateDueCheckInsForOrg({
           organizationId: org.id,
@@ -66,7 +72,7 @@ export const processRetentionCheckIns = inngest.createFunction(
         });
 
         // Only ping admins when something new landed or queue isn't empty.
-        if (newTotal === 0 && openCount === 0) continue;
+        if (newTotal === 0 && openCount === 0) return;
 
         const title =
           newTotal > 0
@@ -91,6 +97,11 @@ export const processRetentionCheckIns = inngest.createFunction(
         console.error(`[retention-checkins] org ${org.id} failed:`, err);
         failures.push(org.id);
       }
+    }
+
+    for (let i = 0; i < orgs.length; i += CONCURRENCY) {
+      const batch = orgs.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map(processOrg));
     }
 
     return {
