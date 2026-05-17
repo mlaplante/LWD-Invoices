@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
+import { generatePortalToken } from "@/lib/portal-session";
 
 export const milestonesRouter = router({
   list: protectedProcedure
@@ -119,6 +120,7 @@ export const milestonesRouter = router({
               clientId: milestone.project.clientId,
               organizationId: ctx.orgId,
               currencyId: defaultCurrency.id,
+              portalToken: generatePortalToken(),
               subtotal: amt,
               taxTotal: 0,
               discountTotal: 0,

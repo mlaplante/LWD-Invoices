@@ -1,9 +1,15 @@
 import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 
+const EXPORT_ROW_CAP = 5000;
+
 function csvEscape(value: string | null | undefined): string {
   if (value == null) return "";
-  const str = String(value);
+  let str = String(value);
+  // Prevent CSV formula injection when the cell is later opened in Excel /
+  // Google Sheets. Apply *before* quoting so commas can't sneak past the
+  // leading-char check.
+  if (/^[=+\-@\t]/.test(str)) str = `'${str}`;
   if (str.includes(",") || str.includes('"') || str.includes("\n")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -46,6 +52,7 @@ export async function GET(request: Request) {
       project: { select: { name: true } },
     },
     orderBy: { createdAt: "desc" },
+    take: EXPORT_ROW_CAP,
   });
 
   const headers = [

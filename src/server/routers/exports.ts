@@ -32,6 +32,13 @@ function buildCsv(headers: string[], rows: unknown[][]): string {
   return [headers.join(","), ...rows.map(csvRow)].join("\r\n");
 }
 
+// Soft cap on rows per export. A row of ~12 fields serializes to ~500 bytes,
+// so 5000 rows ≈ 2.5 MB CSV — safely under serverless response-size limits
+// and well under what Excel/Google Sheets opens without complaint. Hitting
+// the cap returns a `truncated: true` flag so the UI can warn the user and
+// suggest narrowing the date range or using the year-end report flow.
+const EXPORT_ROW_CAP = 5000;
+
 const dateRangeSchema = z.object({
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
@@ -61,10 +68,15 @@ export const exportsRouter = router({
           currency: { select: { code: true } },
         },
         orderBy: { date: "desc" },
+        // Fetch one extra row so we can detect truncation without a separate
+        // count() round-trip.
+        take: EXPORT_ROW_CAP + 1,
       });
+      const truncated = invoices.length > EXPORT_ROW_CAP;
+      const rows = truncated ? invoices.slice(0, EXPORT_ROW_CAP) : invoices;
       const csv = buildCsv(
         ["Number", "Status", "Type", "Date", "Due Date", "Client", "Email", "Currency", "Subtotal", "Tax", "Total"],
-        invoices.map((i) => [
+        rows.map((i) => [
           i.number,
           i.status,
           i.type,
@@ -78,7 +90,7 @@ export const exportsRouter = router({
           i.total,
         ]),
       );
-      return { csv, count: invoices.length };
+      return { csv, count: rows.length, truncated, cap: EXPORT_ROW_CAP };
     }),
 
   clientsCSV: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
@@ -98,14 +110,17 @@ export const exportsRouter = router({
           createdAt: true,
         },
         orderBy: { name: "asc" },
+        take: EXPORT_ROW_CAP + 1,
       });
+      const truncated = clients.length > EXPORT_ROW_CAP;
+      const rows = truncated ? clients.slice(0, EXPORT_ROW_CAP) : clients;
       const csv = buildCsv(
         ["Name", "Email", "Phone", "Address", "City", "State", "ZIP", "Country", "Tax ID", "Created"],
-        clients.map((c) => [
+        rows.map((c) => [
           c.name, c.email, c.phone, c.address, c.city, c.state, c.zip, c.country, c.taxId, c.createdAt,
         ]),
       );
-      return { csv, count: clients.length };
+      return { csv, count: rows.length, truncated, cap: EXPORT_ROW_CAP };
     }),
 
   expensesCSV: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
@@ -132,10 +147,13 @@ export const exportsRouter = router({
           createdAt: true,
         },
         orderBy: { createdAt: "desc" },
+        take: EXPORT_ROW_CAP + 1,
       });
+      const truncated = expenses.length > EXPORT_ROW_CAP;
+      const rows = truncated ? expenses.slice(0, EXPORT_ROW_CAP) : expenses;
       const csv = buildCsv(
         ["Name", "Description", "Qty", "Rate", "Category", "Supplier", "Project", "Reimbursable", "Paid At", "Due Date", "Created"],
-        expenses.map((e) => [
+        rows.map((e) => [
           e.name,
           e.description,
           e.qty,
@@ -149,6 +167,6 @@ export const exportsRouter = router({
           e.createdAt,
         ]),
       );
-      return { csv, count: expenses.length };
+      return { csv, count: rows.length, truncated, cap: EXPORT_ROW_CAP };
     }),
 });

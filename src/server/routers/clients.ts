@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { logAudit } from "../services/audit";
 import { getForOrg } from "../lib/get-for-org";
+import { generatePortalToken } from "@/lib/portal-session";
 
 const clientSchema = z.object({
   name: z.string().min(1),
@@ -21,7 +22,10 @@ const clientSchema = z.object({
   taxId: z.string().trim().max(64).optional(),
   isTaxExempt: z.boolean().optional(),
   notes: z.string().optional(),
-  portalPassphrase: z.string().optional(),
+  // Minimum 8 chars makes brute-force impractical given the rate-limit + lockout
+  // on /api/portal/dashboard/[clientToken]/auth (10 attempts / 15 min,
+  // 5-failure lockout). Max guards against accidental megabyte pastes.
+  portalPassphrase: z.string().min(8).max(255).optional(),
   defaultPaymentTermsDays: z.number().int().min(0).max(365).nullable().optional(),
 });
 
@@ -82,7 +86,13 @@ export const clientsRouter = router({
       const { portalPassphrase, ...rest } = input;
       const passHash = await hashPassphraseIfProvided({ portalPassphrase });
       const result = await ctx.db.client.create({
-        data: { ...rest, ...passHash, organizationId: ctx.orgId },
+        data: {
+          ...rest,
+          ...passHash,
+          organizationId: ctx.orgId,
+          // Override schema's @default(cuid()) with crypto-strong randomness.
+          portalToken: generatePortalToken(),
+        },
       });
       await logAudit({
         action: "CREATED",

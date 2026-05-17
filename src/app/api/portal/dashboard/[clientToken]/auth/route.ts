@@ -61,9 +61,14 @@ export async function POST(
   });
 
   // Always run a bcrypt compare so response time doesn't reveal client existence.
+  // Return identical 401 + generic message for both "client not found" and
+  // "wrong passphrase" so an attacker can't enumerate valid tokens by status
+  // code or response body shape.
+  const GENERIC_AUTH_ERROR = { error: "Invalid token or passphrase" };
+
   if (!client) {
     await bcrypt.compare(passphrase, DUMMY_HASH);
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(GENERIC_AUTH_ERROR, { status: 401 });
   }
 
   const storedHash = client.portalPassphraseHash;
@@ -78,10 +83,7 @@ export async function POST(
       }
       failedAttempts.set(clientToken, current);
       pruneFailedAttempts();
-      return NextResponse.json(
-        { error: "Incorrect passphrase" },
-        { status: 401 },
-      );
+      return NextResponse.json(GENERIC_AUTH_ERROR, { status: 401 });
     }
   } else {
     // No passphrase configured — still pay the bcrypt cost to keep timing flat.

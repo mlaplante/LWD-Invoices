@@ -839,21 +839,13 @@ describe("Notifications Router", () => {
       );
     });
 
-    it("throws NOT_FOUND when organization missing", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
-
-      await expect(caller.list({ limit: 20 })).rejects.toThrow(
-        "NOT_FOUND"
-      );
-    });
-
-    it("returns empty array on database error", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+    it("propagates database errors instead of silently returning []", async () => {
+      // We intentionally removed the try/catch that swallowed DB errors;
+      // letting the error bubble lets the client show a real failure state
+      // instead of an empty list that looks like "you have no notifications".
       ctx.db.notification.findMany.mockRejectedValue(new Error("DB Error"));
 
-      const result = await caller.list({ limit: 20 });
-
-      expect(result).toEqual([]);
+      await expect(caller.list({ limit: 20 })).rejects.toThrow("DB Error");
     });
   });
 
@@ -874,13 +866,10 @@ describe("Notifications Router", () => {
       );
     });
 
-    it("returns 0 on error", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123" });
+    it("propagates database errors instead of silently returning 0", async () => {
       ctx.db.notification.count.mockRejectedValue(new Error("DB Error"));
 
-      const result = await caller.unreadCount();
-
-      expect(result).toBe(0);
+      await expect(caller.unreadCount()).rejects.toThrow("DB Error");
     });
   });
 
@@ -901,11 +890,21 @@ describe("Notifications Router", () => {
       );
     });
 
-    it("throws NOT_FOUND when organization missing", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
+    it("scopes the updateMany to the caller's org and user", async () => {
+      // We removed the upfront org lookup; isolation is enforced by the
+      // updateMany's where clause instead, so verify those filters are
+      // applied. A bogus org/user pair would silently update 0 rows.
+      ctx.db.notification.updateMany.mockResolvedValue({ count: 1 });
 
-      await expect(caller.markRead({ id: "notif_1" })).rejects.toThrow(
-        "NOT_FOUND"
+      await caller.markRead({ id: "notif_1" });
+
+      expect(ctx.db.notification.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: "notif_1",
+            organizationId: "test-org-123",
+          }),
+        }),
       );
     });
   });
@@ -924,10 +923,19 @@ describe("Notifications Router", () => {
       );
     });
 
-    it("throws NOT_FOUND when organization missing", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
+    it("scopes the updateMany to the caller's org and user", async () => {
+      ctx.db.notification.updateMany.mockResolvedValue({ count: 3 });
 
-      await expect(caller.markAllRead()).rejects.toThrow("NOT_FOUND");
+      await caller.markAllRead();
+
+      expect(ctx.db.notification.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "test-org-123",
+            isRead: false,
+          }),
+        }),
+      );
     });
   });
 });

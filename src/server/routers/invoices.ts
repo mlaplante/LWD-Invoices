@@ -22,6 +22,7 @@ import {
 } from "@/server/lib/invoice-includes";
 import { paginationFromInput } from "@/lib/pagination";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { generatePortalToken } from "@/lib/portal-session";
 
 // Bulk-payment limiter: a single org/user shouldn't fire markPaidMany more
 // than 5x per minute under any legitimate workflow. Anything higher means
@@ -261,6 +262,7 @@ export const invoicesRouter = router({
             notes: input.notes,
             clientId: input.clientId,
             organizationId: ctx.orgId,
+            portalToken: generatePortalToken(),
             reminderDaysOverride: input.reminderDaysOverride ?? [],
             discountType: input.discountType ?? null,
             discountAmount: input.discountAmount ?? 0,
@@ -536,6 +538,7 @@ export const invoicesRouter = router({
             notes: source.notes,
             clientId: source.clientId,
             organizationId: ctx.orgId,
+            portalToken: generatePortalToken(),
             subtotal: source.subtotal,
             discountTotal: source.discountTotal,
             taxTotal: source.taxTotal,
@@ -596,6 +599,7 @@ export const invoicesRouter = router({
             notes: source.notes,
             clientId: source.clientId,
             organizationId: ctx.orgId,
+            portalToken: generatePortalToken(),
             subtotal: source.subtotal,
             discountTotal: source.discountTotal,
             taxTotal: source.taxTotal,

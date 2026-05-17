@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
-import { env } from "@/lib/env";
-import { signPortalSession } from "@/lib/portal-session";
+import { getPortalSessionSecret, signPortalSession } from "@/lib/portal-session";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { createRateLimiter } from "@/lib/rate-limit";
@@ -59,9 +58,14 @@ export async function POST(
   const storedHash = invoice?.client?.portalPassphraseHash ?? null;
   const dummyHash = "$2a$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012";
 
+  // Return identical 401 + generic message for both "invoice not found" and
+  // "wrong passphrase" so an attacker can't enumerate valid portal tokens by
+  // status code or response body.
+  const GENERIC_AUTH_ERROR = { error: "Invalid token or passphrase" };
+
   if (!invoice) {
     await bcrypt.compare(passphrase, dummyHash);
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(GENERIC_AUTH_ERROR, { status: 401 });
   }
 
   if (!storedHash) {
@@ -81,14 +85,14 @@ export async function POST(
     failedAttempts.set(token, current);
     pruneFailedAttempts();
 
-    return NextResponse.json({ error: "Incorrect passphrase" }, { status: 401 });
+    return NextResponse.json(GENERIC_AUTH_ERROR, { status: 401 });
   }
 
   // Success — reset failed attempts
   failedAttempts.delete(token);
 
   // Set HttpOnly cookie with a signed session token (not the hash itself)
-  const sessionVal = signPortalSession(token, env.SUPABASE_SERVICE_ROLE_KEY);
+  const sessionVal = signPortalSession(token, getPortalSessionSecret());
   const cookieStore = await cookies();
   cookieStore.set(`portal_auth_${token}`, sessionVal, {
     httpOnly: true,

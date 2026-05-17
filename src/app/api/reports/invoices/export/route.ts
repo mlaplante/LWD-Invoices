@@ -1,11 +1,16 @@
 import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 
+// Soft cap to keep response sizes serverless-friendly. Mirrors EXPORT_ROW_CAP
+// in src/server/routers/exports.ts.
+const EXPORT_ROW_CAP = 5000;
+
 function escapeCsv(val: string | number | null | undefined): string {
   if (val === null || val === undefined) return "";
   let s = String(val);
-  // Prevent formula injection before quoting so it isn't bypassed by commas
-  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  // Prevent formula injection before quoting so it isn't bypassed by commas.
+  // Tab (\t) is also a known injection trigger in some locales.
+  if (/^[=+\-@\t]/.test(s)) s = `'${s}`;
   if (s.includes(",") || s.includes('"') || s.includes("\n")) {
     return `"${s.replace(/"/g, '""')}"`;
   }
@@ -25,6 +30,7 @@ export async function GET() {
       payments: { select: { amount: true } },
     },
     orderBy: { date: "desc" },
+    take: EXPORT_ROW_CAP,
   });
 
   const headers = [
