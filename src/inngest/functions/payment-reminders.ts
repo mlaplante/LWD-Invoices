@@ -78,8 +78,12 @@ export const processPaymentReminders = inngest.createFunction(
           }),
         );
 
-        const { generateInvoicePDF } = await import("@/server/services/invoice-pdf");
-        const pdfBuffer = await generateInvoicePDF(invoice);
+        // Cached render: reminders re-attach the same PDF the customer
+        // already received with the "sent" email, so the first cron hit warms
+        // the cache and every subsequent reminder is a Supabase Storage
+        // download instead of a React-PDF render.
+        const { getOrRenderInvoicePDF } = await import("@/server/services/invoice-pdf-cache");
+        const pdfBuffer = await getOrRenderInvoicePDF(invoice);
 
         await sendEmail({
           organizationId: invoice.organizationId,
