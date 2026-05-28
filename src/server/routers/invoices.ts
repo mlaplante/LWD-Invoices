@@ -922,13 +922,21 @@ export const invoicesRouter = router({
 
       return {
         to: invoice.client.email ?? "(no email)",
+        cc: invoice.client.ccEmails ?? [],
         subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
         html,
       };
     }),
 
   send: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(
+      z.object({
+        id: z.string(),
+        // Per-send override; when omitted, the service falls back to
+        // client.ccEmails. Capped at 10 to match MAX_CC_RECIPIENTS.
+        cc: z.array(z.string().email()).max(10).optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -948,7 +956,7 @@ export const invoicesRouter = router({
 
       try {
         const { sendInvoiceSentEmail } = await import("@/server/services/invoice-sent-email");
-        await sendInvoiceSentEmail(invoice, appUrl);
+        await sendInvoiceSentEmail(invoice, appUrl, input.cc);
       } catch (err) {
         console.error("[invoices.send] Failed to send invoice email:", err);
       }
@@ -1122,8 +1130,35 @@ export const invoicesRouter = router({
       return result;
     }),
 
-  sendReceipt: requireRole("OWNER", "ADMIN")
+  // Lightweight lookup used by SendReceiptButton to pre-fill the CC dialog
+  // without re-rendering the full receipt HTML (no template needed at confirm
+  // time — the user is just choosing recipients).
+  receiptRecipients: requireRole("OWNER", "ADMIN")
     .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+        select: {
+          number: true,
+          client: { select: { email: true, ccEmails: true, name: true } },
+        },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+      return {
+        invoiceNumber: invoice.number,
+        clientName: invoice.client.name,
+        to: invoice.client.email ?? "(no email)",
+        cc: invoice.client.ccEmails ?? [],
+      };
+    }),
+
+  sendReceipt: requireRole("OWNER", "ADMIN")
+    .input(
+      z.object({
+        id: z.string(),
+        cc: z.array(z.string().email()).max(10).optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -1139,6 +1174,7 @@ export const invoicesRouter = router({
         invoiceId: input.id,
         amountPaid: lastPayment?.amount.toNumber() ?? invoice.total.toNumber(),
         organizationId: ctx.orgId,
+        ccOverride: input.cc,
       });
 
       return { sent: true };

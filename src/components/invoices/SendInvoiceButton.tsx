@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -15,6 +16,15 @@ import {
 import { Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function parseCc(raw: string): string[] {
+  return raw
+    .split(/[,;\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function SendInvoiceButton({
   invoiceId,
   autoSend = false,
@@ -25,6 +35,8 @@ export function SendInvoiceButton({
   const router = useRouter();
   const didAutoSend = useRef(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [ccInput, setCcInput] = useState("");
+  const [ccDirty, setCcDirty] = useState(false);
 
   const send = trpc.invoices.send.useMutation({
     onSuccess: () => {
@@ -39,6 +51,32 @@ export function SendInvoiceButton({
     { id: invoiceId },
     { enabled: previewOpen },
   );
+
+  // Pre-fill the CC input from the client's saved list the first time the
+  // preview loads. `ccDirty` keeps the user's edits from being clobbered if
+  // the preview query refetches.
+  useEffect(() => {
+    if (preview.data && !ccDirty) {
+      setCcInput((preview.data.cc ?? []).join(", "));
+    }
+  }, [preview.data, ccDirty]);
+
+  // Reset the dirty flag whenever the dialog closes so reopening pre-fills again.
+  useEffect(() => {
+    if (!previewOpen) {
+      setCcDirty(false);
+      setCcInput("");
+    }
+  }, [previewOpen]);
+
+  const ccList = parseCc(ccInput);
+  const ccInvalid = ccList.filter((e) => !EMAIL_RE.test(e));
+  const ccTooMany = ccList.length > 10;
+  const canSend = !send.isPending && !preview.isLoading && ccInvalid.length === 0 && !ccTooMany;
+
+  function handleSend() {
+    send.mutate({ id: invoiceId, cc: ccList.length > 0 ? ccList : undefined });
+  }
 
   // Auto-send skips preview (used for programmatic redirects)
   useEffect(() => {
@@ -66,9 +104,33 @@ export function SendInvoiceButton({
             <AlertDialogTitle>Preview & Send Invoice</AlertDialogTitle>
             {preview.data && (
               <AlertDialogDescription asChild>
-                <div className="space-y-1 text-sm">
+                <div className="space-y-2 text-sm">
                   <div><span className="font-medium">To:</span> {preview.data.to}</div>
                   <div><span className="font-medium">Subject:</span> {preview.data.subject}</div>
+                  <div className="space-y-1">
+                    <label className="font-medium" htmlFor="cc-input">CC:</label>
+                    <Input
+                      id="cc-input"
+                      value={ccInput}
+                      onChange={(e) => {
+                        setCcInput(e.target.value);
+                        setCcDirty(true);
+                      }}
+                      placeholder="accountant@example.com, ap@example.com"
+                      aria-invalid={ccInvalid.length > 0 || ccTooMany}
+                    />
+                    {ccInvalid.length > 0 && (
+                      <p className="text-xs text-destructive">
+                        Invalid: {ccInvalid.join(", ")}
+                      </p>
+                    )}
+                    {ccTooMany && (
+                      <p className="text-xs text-destructive">Limit is 10 addresses.</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Comma-separated. Defaults to this client&apos;s saved CC list; edit for a one-off send.
+                    </p>
+                  </div>
                 </div>
               </AlertDialogDescription>
             )}
@@ -102,8 +164,8 @@ export function SendInvoiceButton({
               Cancel
             </Button>
             <Button
-              onClick={() => send.mutate({ id: invoiceId })}
-              disabled={send.isPending || preview.isLoading}
+              onClick={handleSend}
+              disabled={!canSend}
             >
               {send.isPending ? (
                 <>

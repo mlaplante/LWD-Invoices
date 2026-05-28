@@ -30,6 +30,7 @@ type Client = {
   id: string;
   name: string;
   email: string | null;
+  ccEmails: string[];
   phone: string | null;
   address: string | null;
   city: string | null;
@@ -54,6 +55,7 @@ export function ClientForm({ mode, client }: Props) {
   const [form, setForm] = useState({
     name: client?.name ?? "",
     email: client?.email ?? "",
+    ccEmails: (client?.ccEmails ?? []).join(", "),
     phone: client?.phone ?? "",
     address: client?.address ?? "",
     city: client?.city ?? "",
@@ -67,6 +69,19 @@ export function ClientForm({ mode, client }: Props) {
   });
   const [error, setError] = useState<string | null>(null);
 
+  // Parse the comma/whitespace-separated CC input into a clean array. Same
+  // shape the server expects (each entry must be a valid email).
+  function parseCcEmails(raw: string): string[] {
+    return raw
+      .split(/[,;\s]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+
+  const ccList = parseCcEmails(form.ccEmails);
+  const ccInvalid = ccList.filter((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+  const ccTooMany = ccList.length > 10;
+
   const createMutation = trpc.clients.create.useMutation();
   const updateMutation = trpc.clients.update.useMutation();
 
@@ -78,9 +93,19 @@ export function ClientForm({ mode, client }: Props) {
     e.preventDefault();
     setError(null);
 
+    if (ccInvalid.length > 0) {
+      setError(`Invalid CC email${ccInvalid.length > 1 ? "s" : ""}: ${ccInvalid.join(", ")}`);
+      return;
+    }
+    if (ccTooMany) {
+      setError("CC list is limited to 10 addresses.");
+      return;
+    }
+
     const data = {
       name: form.name,
       email: form.email || undefined,
+      ccEmails: ccList,
       phone: form.phone || undefined,
       address: form.address || undefined,
       city: form.city || undefined,
@@ -155,6 +180,28 @@ export function ClientForm({ mode, client }: Props) {
               className="mt-1"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">CC Emails</label>
+          <Input
+            value={form.ccEmails}
+            onChange={(e) => handleChange("ccEmails", e.target.value)}
+            placeholder="accountant@example.com, ap@example.com"
+            className="mt-1"
+            aria-invalid={ccInvalid.length > 0 || ccTooMany}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Comma-separated. Copied on invoice and receipt emails to this client. Up to 10 addresses.
+          </p>
+          {ccInvalid.length > 0 && (
+            <p className="text-xs text-destructive mt-1">
+              Invalid: {ccInvalid.join(", ")}
+            </p>
+          )}
+          {ccTooMany && (
+            <p className="text-xs text-destructive mt-1">Limit is 10 addresses.</p>
+          )}
         </div>
 
         <div>

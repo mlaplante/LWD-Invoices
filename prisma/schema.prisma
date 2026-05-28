@@ -316,6 +316,10 @@ model Client {
   id               String   @id @default(cuid())
   name             String
   email            String?
+  // Additional recipients copied on invoice + receipt emails. Persisted per
+  // client so the typical "always CC the accountant" case is one-time setup.
+  // Send dialogs can override on a per-send basis without mutating this list.
+  ccEmails         String[] @default([])
   phone            String?
   address          String?
   city             String?
