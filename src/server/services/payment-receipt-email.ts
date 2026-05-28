@@ -1,21 +1,27 @@
 import { db } from "@/server/db";
 import { sendEmail } from "./email-sender";
+import { sanitizeCcList } from "./cc-emails";
 import { formatDate } from "@/lib/format";
 
 /**
  * Sends a payment receipt email to the client with BCC to the org owner.
  * Used by both the Stripe webhook and manual payment flows.
+ *
+ * `ccOverride` lets the send-receipt dialog supply a one-off CC list — when
+ * provided, it replaces the client's saved ccEmails for this send only.
  */
 export async function sendPaymentReceiptEmail({
   invoiceId,
   amountPaid,
   organizationId,
   partialPaymentId,
+  ccOverride,
 }: {
   invoiceId: string;
   amountPaid: number;
   organizationId: string;
   partialPaymentId?: string;
+  ccOverride?: string[];
 }) {
   const fullInvoice = await db.invoice.findUnique({
     where: { id: invoiceId },
@@ -80,9 +86,13 @@ export async function sendPaymentReceiptEmail({
     })
   );
 
+  const ccSource = ccOverride ?? fullInvoice.client.ccEmails ?? [];
+  const cc = sanitizeCcList(ccSource, fullInvoice.client.email);
+
   await sendEmail({
     organizationId,
     to: fullInvoice.client.email,
+    cc: cc.length > 0 ? cc : undefined,
     subject: `Payment received — Invoice #${fullInvoice.number}`,
     html,
   });

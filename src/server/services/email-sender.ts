@@ -4,6 +4,7 @@ import { getOwnerBcc } from "./email-bcc";
 export type SendEmailOptions = {
   organizationId: string;
   to: string | string[];
+  cc?: string[];
   subject: string;
   html: string;
   attachments?: { filename: string; content: Buffer }[];
@@ -40,6 +41,26 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
     return { resendId: null, suppressed: true, reason };
   }
 
+  // Drop CC addresses that belong to a bounced/complained client in this org.
+  // The primary recipient is the hard block above — CCs are best-effort, so
+  // we silently filter rather than aborting the whole send.
+  let cc = opts.cc && opts.cc.length > 0 ? opts.cc : undefined;
+  if (cc) {
+    const flaggedCcs = await db.client.findMany({
+      where: {
+        organizationId: opts.organizationId,
+        email: { in: cc },
+        OR: [{ emailBouncedAt: { not: null } }, { emailComplainedAt: { not: null } }],
+      },
+      select: { email: true },
+    });
+    if (flaggedCcs.length > 0) {
+      const flaggedSet = new Set(flaggedCcs.map((c) => c.email).filter(Boolean) as string[]);
+      cc = cc.filter((addr) => !flaggedSet.has(addr));
+    }
+    if (cc.length === 0) cc = undefined;
+  }
+
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -51,6 +72,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
     subject: opts.subject,
     html: opts.html,
     tags: [{ name: "org_id", value: opts.organizationId }],
+    ...(cc ? { cc } : {}),
     ...(bcc ? { bcc } : {}),
     ...(opts.attachments ? { attachments: opts.attachments } : {}),
   });

@@ -9,6 +9,9 @@ import { generatePortalToken } from "@/lib/portal-session";
 const clientSchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional().or(z.literal("")),
+  // Capped at 10 so a malicious admin can't fan out one invoice send into
+  // a mass-mail; matches MAX_CC_RECIPIENTS in cc-emails.ts.
+  ccEmails: z.array(z.string().email()).max(10).optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
