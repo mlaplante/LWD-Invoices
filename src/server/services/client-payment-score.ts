@@ -76,3 +76,53 @@ export async function isReliablePayer(
   if (percent === null) return false;
   return percent >= threshold;
 }
+
+export async function getClientPaymentBehaviorSummary(
+  db: PrismaClient,
+  clientId: string
+): Promise<{ paidInvoiceCount: number; onTimePercent: number | null; lateInvoiceCount: number }> {
+  const paidInvoices = await db.invoice.findMany({
+    where: {
+      clientId,
+      status: "PAID",
+      dueDate: { not: null },
+    },
+    select: {
+      dueDate: true,
+      payments: {
+        select: { paidAt: true },
+        orderBy: { paidAt: "desc" },
+        take: 1,
+      },
+    },
+  });
+
+  if (paidInvoices.length < MIN_INVOICES) {
+    return { paidInvoiceCount: paidInvoices.length, onTimePercent: null, lateInvoiceCount: 0 };
+  }
+
+  let onTime = 0;
+  let late = 0;
+  for (const inv of paidInvoices) {
+    if (!inv.dueDate || inv.payments.length === 0) continue;
+    const lastPayment = inv.payments[0];
+    const dueDay = Date.UTC(
+      inv.dueDate.getUTCFullYear(),
+      inv.dueDate.getUTCMonth(),
+      inv.dueDate.getUTCDate()
+    );
+    const paidDay = Date.UTC(
+      lastPayment.paidAt.getUTCFullYear(),
+      lastPayment.paidAt.getUTCMonth(),
+      lastPayment.paidAt.getUTCDate()
+    );
+    if (paidDay <= dueDay) onTime++;
+    else late++;
+  }
+
+  return {
+    paidInvoiceCount: paidInvoices.length,
+    onTimePercent: Math.round((onTime / paidInvoices.length) * 100),
+    lateInvoiceCount: late,
+  };
+}
