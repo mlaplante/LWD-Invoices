@@ -233,6 +233,91 @@ describe("receipt OCR service", () => {
     Object.assign(envMod.env, original);
   });
 
+  it("falls back to the next Gemini model when one returns a 429 quota error", async () => {
+    const envMod = await import("@/lib/env");
+    const original = { ...envMod.env } as Record<string, unknown>;
+    (envMod.env as Record<string, unknown>).GEMINI_API_KEY = "test-gemini";
+    (envMod.env as Record<string, unknown>).RECEIPT_OCR_PROVIDER = "gemini";
+    (envMod.env as Record<string, unknown>).GEMINI_OCR_MODELS = "gemini-2.0-flash,gemini-1.5-flash";
+
+    const quotaBody = JSON.stringify({
+      error: {
+        code: 429,
+        message: "Quota exceeded ... limit: 0, model: gemini-2.0-flash",
+        status: "RESOURCE_EXHAUSTED",
+      },
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 429, statusText: "Too Many Requests", text: async () => quotaBody })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: JSON.stringify({ vendor: "Fallback Mart", confidence: 0.9 }) }] } }],
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await parseReceiptWithOCR(fakeImage, "image/png");
+
+    expect(result.vendor).toBe("Fallback Mart");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("models/gemini-2.0-flash:");
+    expect(String(fetchMock.mock.calls[1][0])).toContain("models/gemini-1.5-flash:");
+
+    vi.unstubAllGlobals();
+    delete (envMod.env as Record<string, unknown>).GEMINI_API_KEY;
+    delete (envMod.env as Record<string, unknown>).RECEIPT_OCR_PROVIDER;
+    delete (envMod.env as Record<string, unknown>).GEMINI_OCR_MODELS;
+    Object.assign(envMod.env, original);
+  });
+
+  it("throws a rate-limit error when every Gemini model is exhausted", async () => {
+    const envMod = await import("@/lib/env");
+    const original = { ...envMod.env } as Record<string, unknown>;
+    (envMod.env as Record<string, unknown>).GEMINI_API_KEY = "test-gemini";
+    (envMod.env as Record<string, unknown>).RECEIPT_OCR_PROVIDER = "gemini";
+    (envMod.env as Record<string, unknown>).GEMINI_OCR_MODELS = "gemini-2.0-flash,gemini-1.5-flash";
+
+    const quotaBody = JSON.stringify({ error: { code: 429, message: "Quota exceeded ... limit: 0" } });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 429, statusText: "Too Many Requests", text: async () => quotaBody });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(parseReceiptWithOCR(fakeImage, "image/png")).rejects.toThrow(/rate-limited/);
+    // Each model tried once — "limit: 0" is non-retryable, so no extra attempts.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    vi.unstubAllGlobals();
+    delete (envMod.env as Record<string, unknown>).GEMINI_API_KEY;
+    delete (envMod.env as Record<string, unknown>).RECEIPT_OCR_PROVIDER;
+    delete (envMod.env as Record<string, unknown>).GEMINI_OCR_MODELS;
+    Object.assign(envMod.env, original);
+  });
+
+  it("does not try other Gemini models on a non-429 error", async () => {
+    const envMod = await import("@/lib/env");
+    const original = { ...envMod.env } as Record<string, unknown>;
+    (envMod.env as Record<string, unknown>).GEMINI_API_KEY = "test-gemini";
+    (envMod.env as Record<string, unknown>).RECEIPT_OCR_PROVIDER = "gemini";
+    (envMod.env as Record<string, unknown>).GEMINI_OCR_MODELS = "gemini-2.0-flash,gemini-1.5-flash";
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 400, statusText: "Bad Request", text: async () => "invalid request" });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(parseReceiptWithOCR(fakeImage, "image/png")).rejects.toThrow(/400/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
+    delete (envMod.env as Record<string, unknown>).GEMINI_API_KEY;
+    delete (envMod.env as Record<string, unknown>).RECEIPT_OCR_PROVIDER;
+    delete (envMod.env as Record<string, unknown>).GEMINI_OCR_MODELS;
+    Object.assign(envMod.env, original);
+  });
+
   it("throws if ANTHROPIC_API_KEY is not set", async () => {
     // Re-mock env without key
     const envMod = await import("@/lib/env");

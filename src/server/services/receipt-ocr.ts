@@ -58,9 +58,18 @@ Rules:
 
 const OPENAI_MODEL = "gpt-4.1-mini";
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
-// Vision-capable, handles both images and PDFs, and is available on Google's
-// free Gemini API tier. Override per call via options.provider if needed.
-const GEMINI_MODEL = "gemini-2.0-flash";
+// Ordered fallback chain of vision-capable Gemini models. All handle both
+// images and PDFs via inlineData. When a model returns a 429 (rate-limit or
+// quota), the next model is tried — this rescues the case where Google has
+// zeroed the free-tier quota on one specific model but not others. Override
+// the whole chain via the GEMINI_OCR_MODELS env var.
+const GEMINI_DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+// This OCR runs inside a request the user is actively waiting on, so we never
+// sleep long: a 429 on any model that still has a fallback falls straight
+// through to the next model. Only the final model in the chain retries with a
+// short, capped backoff before giving up.
+const GEMINI_MAX_RETRY_DELAY_MS = 2000;
+const GEMINI_LAST_MODEL_RETRIES = 2;
 
 export async function parseReceiptWithOCR(
   fileData: Buffer,
@@ -191,43 +200,131 @@ async function parseReceiptWithGemini(fileData: Buffer, mimeType: string): Promi
 
   // Gemini handles both images and PDFs via inline_data, so no PDF guard.
   const base64 = fileData.toString("base64");
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: "Extract all expense data from this receipt." },
-              { inlineData: { mimeType, data: base64 } },
-            ],
-          },
-        ],
-        // responseMimeType forces pure-JSON output (no markdown fences), and
-        // maxOutputTokens guards against a long receipt truncating the JSON.
-        generationConfig: {
-          temperature: 0,
-          maxOutputTokens: 2048,
-          responseMimeType: "application/json",
-        },
-      }),
-    },
-  );
+  const models = resolveGeminiModels();
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Gemini receipt OCR failed (${response.status}): ${body || response.statusText}`);
+  let lastRateLimit: Error | null = null;
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const isLastModel = i === models.length - 1;
+    // Only the final model retries with backoff; earlier models fall straight
+    // through to the next model on a 429 (faster than sleeping in-request).
+    const maxAttempts = isLastModel ? GEMINI_LAST_MODEL_RETRIES + 1 : 1;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const response = await fetch(geminiGenerateContentUrl(model), {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: "Extract all expense data from this receipt." },
+                { inlineData: { mimeType, data: base64 } },
+              ],
+            },
+          ],
+          // responseMimeType forces pure-JSON output (no markdown fences), and
+          // maxOutputTokens guards against a long receipt truncating the JSON.
+          generationConfig: {
+            temperature: 0,
+            maxOutputTokens: 2048,
+            responseMimeType: "application/json",
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const json = await response.json() as Record<string, unknown>;
+        return normalizeOCRPayload(extractGeminiText(json));
+      }
+
+      const body = await response.text().catch(() => "");
+
+      // Only 429 (rate-limit/quota) is worth trying another model for. Auth,
+      // bad-request, and 404 (e.g. a misspelled model id) errors won't be
+      // fixed by a different model, so fail loudly and immediately.
+      if (response.status !== 429) {
+        throw new Error(
+          `Gemini receipt OCR failed on ${model} (${response.status}): ${body || response.statusText}`,
+        );
+      }
+
+      lastRateLimit = new Error(
+        `Gemini receipt OCR rate-limited on ${model} (429): ${body || response.statusText}`,
+      );
+
+      // A daily / "limit: 0" quota can't be cleared by waiting, so never sleep
+      // on it — fall straight through to the next model.
+      const exhausted = isGeminiQuotaExhausted(body);
+      const retryDelayMs = parseGeminiRetryDelayMs(body);
+      const canRetrySameModel =
+        isLastModel && !exhausted && attempt < maxAttempts && retryDelayMs !== null;
+
+      if (canRetrySameModel) {
+        await sleep(Math.min(retryDelayMs, GEMINI_MAX_RETRY_DELAY_MS));
+        continue;
+      }
+
+      break; // try the next model, or exit the loop if this was the last one
+    }
   }
 
-  const json = await response.json() as Record<string, unknown>;
-  return normalizeOCRPayload(extractGeminiText(json));
+  throw lastRateLimit ?? new Error("Gemini receipt OCR failed: no models configured");
+}
+
+function resolveGeminiModels(): string[] {
+  const raw = env.GEMINI_OCR_MODELS;
+  if (raw) {
+    const list = raw.split(",").map((m) => m.trim()).filter(Boolean);
+    if (list.length > 0) return list;
+  }
+  return GEMINI_DEFAULT_MODELS;
+}
+
+function geminiGenerateContentUrl(model: string): string {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
+
+// A daily request quota or a hard "limit: 0" free-tier disablement won't be
+// cleared by the RetryInfo delay, so treat those as non-retryable on the same
+// model and move on to the next one immediately.
+function isGeminiQuotaExhausted(body: string): boolean {
+  return /limit:\s*0\b/.test(body) || /PerDay/i.test(body);
+}
+
+// Gemini 429s carry a google.rpc.RetryInfo detail with retryDelay like "8s" or
+// "8.152848623s". Returns the delay in ms, or null if none is present.
+function parseGeminiRetryDelayMs(body: string): number | null {
+  try {
+    const json = JSON.parse(body) as {
+      error?: { details?: Array<Record<string, unknown>> };
+    };
+    const details = json.error?.details;
+    if (Array.isArray(details)) {
+      for (const detail of details) {
+        const type = detail["@type"];
+        const retryDelay = detail.retryDelay;
+        if (typeof type === "string" && type.includes("RetryInfo") && typeof retryDelay === "string") {
+          const match = retryDelay.match(/([\d.]+)s/);
+          if (match) return Math.ceil(parseFloat(match[1]) * 1000);
+        }
+      }
+    }
+  } catch {
+    // Body wasn't JSON — fall through to the text-scan heuristics below.
+  }
+  const match =
+    body.match(/"retryDelay"\s*:\s*"([\d.]+)s"/) || body.match(/retry in ([\d.]+)s/i);
+  return match ? Math.ceil(parseFloat(match[1]) * 1000) : null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function extractGeminiText(response: Record<string, unknown>): string {
