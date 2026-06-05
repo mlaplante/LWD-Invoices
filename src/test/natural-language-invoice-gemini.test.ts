@@ -21,15 +21,18 @@ describe("natural-language invoice — Gemini provider", () => {
   const originalProvider = env.INVOICE_PARSER_PROVIDER;
   const originalGeminiKey = env.GEMINI_API_KEY;
   const originalOpenAIKey = env.OPENAI_API_KEY;
+  const originalGeminiModels = env.GEMINI_INVOICE_PARSER_MODELS;
 
   beforeEach(() => {
     vi.unstubAllGlobals();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     (env as Record<string, unknown>).INVOICE_PARSER_PROVIDER = originalProvider;
     (env as Record<string, unknown>).GEMINI_API_KEY = originalGeminiKey;
     (env as Record<string, unknown>).OPENAI_API_KEY = originalOpenAIKey;
+    (env as Record<string, unknown>).GEMINI_INVOICE_PARSER_MODELS = originalGeminiModels;
   });
 
   describe("resolveInvoiceParserProvider", () => {
@@ -127,6 +130,92 @@ describe("natural-language invoice — Gemini provider", () => {
       await expect(
         extractNaturalLanguageInvoice("Bill Acme", { provider: "gemini" }),
       ).rejects.toThrow(/GEMINI_API_KEY/);
+    });
+  });
+
+  describe("Gemini model fallback chain", () => {
+    const okResponse = () =>
+      geminiResponse(JSON.stringify({ clientName: "Acme", lines: [], notes: null, dueDate: null, taxNames: [], ambiguities: [], confidence: 0.9 }));
+    // "limit: 0" marks a daily/hard quota — non-retryable, so the loop moves to
+    // the next model immediately without sleeping.
+    const exhausted429 = () => ({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      text: async () => JSON.stringify({ error: { code: 429, message: "Quota exceeded ... limit: 0" } }),
+    });
+
+    beforeEach(() => {
+      (env as Record<string, unknown>).GEMINI_API_KEY = "test-gemini";
+      (env as Record<string, unknown>).GEMINI_INVOICE_PARSER_MODELS = "gemini-2.0-flash,gemini-1.5-flash";
+    });
+
+    it("falls through to the next model on a 429 and succeeds", async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce(exhausted429()).mockResolvedValueOnce(okResponse());
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await extractNaturalLanguageInvoice("Bill Acme", { provider: "gemini" });
+
+      expect(result.clientName).toBe("Acme");
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(String(fetchMock.mock.calls[0][0])).toContain("models/gemini-2.0-flash:");
+      expect(String(fetchMock.mock.calls[1][0])).toContain("models/gemini-1.5-flash:");
+    });
+
+    it("throws a rate-limit error when every model is exhausted", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(exhausted429());
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(
+        extractNaturalLanguageInvoice("Bill Acme", { provider: "gemini" }),
+      ).rejects.toThrow(/rate-limited/);
+      // Each model tried once — "limit: 0" is non-retryable, no extra attempts.
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not try other models on a non-429 error", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: "Bad Request",
+        text: async () => "invalid request",
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(
+        extractNaturalLanguageInvoice("Bill Acme", { provider: "gemini" }),
+      ).rejects.toThrow(/400/);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("retries the final model with a capped backoff on a retryable 429", async () => {
+      vi.useFakeTimers();
+      // Single-model chain so model 1 is also the last model (the only one that
+      // retries). A RetryInfo delay with no "limit: 0" is retryable.
+      (env as Record<string, unknown>).GEMINI_INVOICE_PARSER_MODELS = "gemini-2.0-flash";
+      const retryable429 = {
+        ok: false,
+        status: 429,
+        statusText: "Too Many Requests",
+        text: async () => JSON.stringify({
+          error: {
+            code: 429,
+            message: "Rate limited",
+            details: [{ "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "1s" }],
+          },
+        }),
+      };
+      const fetchMock = vi.fn().mockResolvedValueOnce(retryable429).mockResolvedValueOnce(okResponse());
+      vi.stubGlobal("fetch", fetchMock);
+
+      const promise = extractNaturalLanguageInvoice("Bill Acme", { provider: "gemini" });
+      await vi.runAllTimersAsync();
+      const result = await promise;
+
+      expect(result.clientName).toBe("Acme");
+      // Same model retried after the backoff sleep.
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(String(fetchMock.mock.calls[1][0])).toContain("models/gemini-2.0-flash:");
     });
   });
 });
