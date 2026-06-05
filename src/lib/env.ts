@@ -30,6 +30,11 @@ export const env = createEnv({
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
     GEMINI_API_KEY: z.string().min(1).optional(),
     RECEIPT_OCR_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
+    // Comma-separated, ordered list of Gemini vision models to try for receipt
+    // OCR. When one model returns a 429 (rate-limit/quota), the next is tried.
+    // Leave unset to use the built-in default chain. Example:
+    //   GEMINI_OCR_MODELS="gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash"
+    GEMINI_OCR_MODELS: z.string().min(1).optional(),
     // Which provider drafts invoices from natural-language prompts. Defaults
     // to openai when unset; gemini requires GEMINI_API_KEY. When unset and no
     // OPENAI_API_KEY is present, falls back to gemini if its key is configured.
@@ -63,6 +68,7 @@ export const env = createEnv({
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     RECEIPT_OCR_PROVIDER: process.env.RECEIPT_OCR_PROVIDER,
+    GEMINI_OCR_MODELS: process.env.GEMINI_OCR_MODELS,
     INVOICE_PARSER_PROVIDER: process.env.INVOICE_PARSER_PROVIDER,
     OPENAI_INVOICE_PARSER_MODEL: process.env.OPENAI_INVOICE_PARSER_MODEL,
     GEMINI_INVOICE_PARSER_MODEL: process.env.GEMINI_INVOICE_PARSER_MODEL,
