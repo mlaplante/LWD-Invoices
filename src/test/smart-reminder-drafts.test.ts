@@ -87,6 +87,9 @@ describe("generateSmartReminderDraft", () => {
     const draft = await generateSmartReminderDraft({
       ...baseInput,
       paymentProfile: { paidInvoiceCount: 5, onTimePercent: 80, lateInvoiceCount: 1 },
+      // The global test setup sets OPENAI_API_KEY, so force the no-key path with
+      // an explicit empty key rather than relying on the env var being absent.
+      openAI: { apiKey: "" },
     });
 
     expect(draft.source).toBe("template_fallback");
