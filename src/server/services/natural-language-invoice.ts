@@ -1,0 +1,342 @@
+import { InvoiceStatus, LineType } from "@/generated/prisma";
+
+export type NaturalLanguageInvoiceContext = {
+  defaultCurrencyId: string;
+  clients: Array<{ id: string; name: string }>;
+  items: Array<{ id: string; name: string; description?: string | null; rate?: number | null; unit?: string | null }>;
+  taxes: Array<{ id: string; name: string; rate?: number | null }>;
+};
+
+export type NaturalLanguageInvoiceExtractedLine = {
+  name: string;
+  description?: string;
+  quantity?: number;
+  unit?: string;
+  rate?: number;
+  lineType?: "standard" | "expense" | "flat_rate";
+  confidence?: number;
+};
+
+export type NaturalLanguageInvoiceExtraction = {
+  clientName?: string;
+  lines: NaturalLanguageInvoiceExtractedLine[];
+  notes?: string;
+  dueDate?: string;
+  taxNames?: string[];
+  ambiguities?: string[];
+  confidence?: number;
+};
+
+type NaturalLanguageInvoiceDraftLine = {
+  sort: number;
+  lineType: LineType;
+  name: string;
+  description?: string;
+  qty: number;
+  rate: number;
+  period?: number;
+  discount: number;
+  discountIsPercentage: boolean;
+  taxIds: string[];
+  sourceTable?: string;
+  sourceId?: string;
+  matchConfidence?: number;
+  warnings: string[];
+};
+
+export type NaturalLanguageInvoiceAmbiguity = {
+  field: string;
+  message: string;
+  options?: Array<{ id: string; name: string }>;
+};
+
+export type NaturalLanguageInvoiceDraft = {
+  status: InvoiceStatus;
+  requiresReview: true;
+  prompt: string;
+  currencyId: string;
+  clientId?: string;
+  clientName?: string;
+  dueDate?: string;
+  notes?: string;
+  lines: NaturalLanguageInvoiceDraftLine[];
+  ambiguities: NaturalLanguageInvoiceAmbiguity[];
+};
+
+export type BuildNaturalLanguageInvoiceDraftInput = {
+  prompt: string;
+  extraction: NaturalLanguageInvoiceExtraction;
+  context: NaturalLanguageInvoiceContext;
+};
+
+const MIN_CONFIDENT_MATCH = 0.58;
+const AMBIGUOUS_DELTA = 0.12;
+
+function normalize(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\b(ux|ui|the|a|an|monthly|hour|hours|hr|hrs|license|licence)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function tokenSet(value: string): Set<string> {
+  return new Set(normalize(value).split(" ").filter(Boolean));
+}
+
+function scoreTextMatch(query: string, candidate: string): number {
+  const q = normalize(query);
+  const c = normalize(candidate);
+  if (!q || !c) return 0;
+  if (q === c) return 1;
+  if (c.includes(q) || q.includes(c)) return 0.86;
+
+  const qTokens = tokenSet(q);
+  const cTokens = tokenSet(c);
+  const intersection = [...qTokens].filter((token) => cTokens.has(token)).length;
+  const union = new Set([...qTokens, ...cTokens]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function rankedMatches<T extends { name: string }>(query: string | undefined, candidates: T[]) {
+  if (!query) return [];
+  return candidates
+    .map((candidate) => ({ candidate, score: scoreTextMatch(query, candidate.name) }))
+    .filter((match) => match.score > 0)
+    .sort((a, b) => b.score - a.score || a.candidate.name.localeCompare(b.candidate.name));
+}
+
+function resolveClient(
+  extraction: NaturalLanguageInvoiceExtraction,
+  context: NaturalLanguageInvoiceContext,
+): { clientId?: string; clientName?: string; ambiguities: NaturalLanguageInvoiceAmbiguity[] } {
+  const matches = rankedMatches(extraction.clientName, context.clients);
+  if (matches.length === 0) {
+    return {
+      clientName: extraction.clientName,
+      ambiguities: extraction.clientName
+        ? [{ field: "client", message: `No client matched '${extraction.clientName}'.` }]
+        : [{ field: "client", message: "No client was identified from the prompt." }],
+    };
+  }
+
+  const [best, second] = matches;
+  const likelyAmbiguous =
+    (extraction.confidence ?? 1) < 0.7 && matches.length > 1
+    || (!!second && best.score < 1 && best.score - second.score <= AMBIGUOUS_DELTA);
+
+  if (likelyAmbiguous) {
+    return {
+      clientName: extraction.clientName,
+      ambiguities: [
+        {
+          field: "client",
+          message: `Multiple clients may match '${extraction.clientName}'. Confirm the client before saving.`,
+          options: matches.slice(0, 5).map((m) => ({ id: m.candidate.id, name: m.candidate.name })),
+        },
+      ],
+    };
+  }
+
+  return { clientId: best.candidate.id, clientName: best.candidate.name, ambiguities: [] };
+}
+
+function toLineType(line: NaturalLanguageInvoiceExtractedLine): LineType {
+  if (line.lineType === "expense") return LineType.EXPENSE;
+  if (line.lineType === "flat_rate") return LineType.FLAT_RATE;
+  return LineType.STANDARD;
+}
+
+function taxIdsForExtraction(extraction: NaturalLanguageInvoiceExtraction, context: NaturalLanguageInvoiceContext): string[] {
+  const requested = extraction.taxNames ?? [];
+  if (requested.length === 0) return [];
+  return requested.flatMap((taxName) => {
+    const match = rankedMatches(taxName, context.taxes)[0];
+    return match && match.score >= MIN_CONFIDENT_MATCH ? [match.candidate.id] : [];
+  });
+}
+
+function buildLine(
+  line: NaturalLanguageInvoiceExtractedLine,
+  sort: number,
+  context: NaturalLanguageInvoiceContext,
+  taxIds: string[],
+): { line: NaturalLanguageInvoiceDraftLine; ambiguities: NaturalLanguageInvoiceAmbiguity[] } {
+  const matches = rankedMatches(line.name, context.items);
+  const [best, second] = matches;
+  const warnings: string[] = [];
+  const ambiguities: NaturalLanguageInvoiceAmbiguity[] = [];
+
+  let matchedItem: NaturalLanguageInvoiceContext["items"][number] | undefined;
+  let matchConfidence = 0;
+
+  if (best && best.score >= MIN_CONFIDENT_MATCH) {
+    if (second && second.score >= MIN_CONFIDENT_MATCH && best.score - second.score <= AMBIGUOUS_DELTA) {
+      ambiguities.push({
+        field: `line[${sort}].item`,
+        message: `Multiple items may match '${line.name}'. Confirm the item or keep this as a freeform line.`,
+        options: matches.slice(0, 5).map((m) => ({ id: m.candidate.id, name: m.candidate.name })),
+      });
+    } else {
+      matchedItem = best.candidate;
+      matchConfidence = best.score;
+      if (line.name.trim().toLowerCase() !== matchedItem.name.trim().toLowerCase()) {
+        warnings.push(`Matched '${line.name}' to item '${matchedItem.name}'.`);
+      }
+    }
+  }
+
+  if ((line.confidence ?? 1) < 0.65) {
+    ambiguities.push({
+      field: `line[${sort}]`,
+      message: `Low confidence parsing '${line.name}'. Confirm quantity, rate, and item before saving.`,
+    });
+  }
+
+  const qty = line.quantity ?? 1;
+  const rate = line.rate ?? matchedItem?.rate ?? 0;
+
+  return {
+    line: {
+      sort,
+      lineType: toLineType(line),
+      name: matchedItem?.name ?? line.name,
+      description: line.description ?? matchedItem?.description ?? undefined,
+      qty,
+      rate: Number(rate),
+      discount: 0,
+      discountIsPercentage: false,
+      taxIds,
+      sourceTable: matchedItem ? "items" : undefined,
+      sourceId: matchedItem?.id,
+      matchConfidence: matchedItem ? matchConfidence : undefined,
+      warnings,
+    },
+    ambiguities,
+  };
+}
+
+export function buildNaturalLanguageInvoiceDraft({
+  prompt,
+  extraction,
+  context,
+}: BuildNaturalLanguageInvoiceDraftInput): NaturalLanguageInvoiceDraft {
+  const resolvedClient = resolveClient(extraction, context);
+  const taxIds = taxIdsForExtraction(extraction, context);
+  const lineResults = extraction.lines.map((line, index) => buildLine(line, index, context, taxIds));
+
+  const extractionAmbiguities = (extraction.ambiguities ?? []).map((message) => ({
+    field: "prompt",
+    message,
+  }));
+
+  return {
+    status: InvoiceStatus.DRAFT,
+    requiresReview: true,
+    prompt,
+    currencyId: context.defaultCurrencyId,
+    clientId: resolvedClient.clientId,
+    clientName: resolvedClient.clientName,
+    dueDate: extraction.dueDate,
+    notes: extraction.notes,
+    lines: lineResults.map((result) => result.line),
+    ambiguities: [
+      ...resolvedClient.ambiguities,
+      ...lineResults.flatMap((result) => result.ambiguities),
+      ...extractionAmbiguities,
+    ],
+  };
+}
+
+export async function extractNaturalLanguageInvoiceWithOpenAI(prompt: string): Promise<NaturalLanguageInvoiceExtraction> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_INVOICE_PARSER_MODEL ?? "gpt-4.1-mini",
+      input: [
+        {
+          role: "system",
+          content:
+            "Extract draft invoice data from the user's natural-language prompt. Return only JSON with keys: clientName, lines [{name, description, quantity, unit, rate, lineType, confidence}], notes, dueDate (YYYY-MM-DD), taxNames, ambiguities, confidence. Do not invent customers or send/save invoices.",
+        },
+        { role: "user", content: prompt },
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "invoice_extraction",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              clientName: { type: ["string", "null"] },
+              lines: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    name: { type: "string" },
+                    description: { type: ["string", "null"] },
+                    quantity: { type: ["number", "null"] },
+                    unit: { type: ["string", "null"] },
+                    rate: { type: ["number", "null"] },
+                    lineType: { type: ["string", "null"], enum: ["standard", "expense", "flat_rate", null] },
+                    confidence: { type: ["number", "null"] },
+                  },
+                  required: ["name", "description", "quantity", "unit", "rate", "lineType", "confidence"],
+                },
+              },
+              notes: { type: ["string", "null"] },
+              dueDate: { type: ["string", "null"] },
+              taxNames: { type: "array", items: { type: "string" } },
+              ambiguities: { type: "array", items: { type: "string" } },
+              confidence: { type: ["number", "null"] },
+            },
+            required: ["clientName", "lines", "notes", "dueDate", "taxNames", "ambiguities", "confidence"],
+          },
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI invoice parsing failed (${response.status})`);
+  }
+
+  const payload = await response.json() as {
+    output_text?: string;
+    output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+  };
+  const raw = payload.output_text
+    ?? payload.output?.flatMap((item) => item.content ?? []).find((part) => part.type === "output_text")?.text;
+  if (!raw) throw new Error("OpenAI invoice parsing returned no JSON output");
+
+  const parsed = JSON.parse(raw) as NaturalLanguageInvoiceExtraction;
+  return {
+    ...parsed,
+    clientName: parsed.clientName ?? undefined,
+    notes: parsed.notes ?? undefined,
+    dueDate: parsed.dueDate ?? undefined,
+    lines: parsed.lines.map((line) => ({
+      ...line,
+      description: line.description ?? undefined,
+      quantity: line.quantity ?? undefined,
+      unit: line.unit ?? undefined,
+      rate: line.rate ?? undefined,
+      lineType: line.lineType ?? undefined,
+      confidence: line.confidence ?? undefined,
+    })),
+  };
+}
