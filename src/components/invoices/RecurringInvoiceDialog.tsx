@@ -58,9 +58,17 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
     new Date().toISOString().split("T")[0],
   );
   const [autoSend, setAutoSend] = useState(false);
+  const [autoCharge, setAutoCharge] = useState(false);
 
   useEffect(() => {
     if (existing) {
+      // Hydrate the form once the recurring config loads. This is the
+      // established form-from-query pattern shared by the other dialogs in this
+      // app (PaymentScheduleDialog, AutomationForm, etc.). The
+      // set-state-in-effect rule was newly enabled by a dependency bump and
+      // flags this pattern repo-wide; a coordinated migration is tracked
+      // separately, so suppress it here rather than diverge this one dialog.
+      /* eslint-disable react-hooks/set-state-in-effect */
       setFrequency(existing.frequency);
       setInterval(existing.interval);
       // Use local date parts to avoid UTC-offset shifting the displayed day
@@ -70,6 +78,8 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
       const dd = String(d.getDate()).padStart(2, "0");
       setStartDate(`${yyyy}-${mm}-${dd}`);
       setAutoSend(existing.autoSend);
+      setAutoCharge(existing.autoCharge);
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [existing]);
 
@@ -84,6 +94,7 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
         interval,
         startDate: new Date(`${startDate}T00:00:00`),
         autoSend,
+        autoCharge,
       },
     });
   }
@@ -137,6 +148,10 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
           <div className="flex items-center gap-2">
             <Switch checked={autoSend} onCheckedChange={setAutoSend} />
             <Label>Auto-send generated invoices</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={autoCharge} onCheckedChange={setAutoCharge} />
+            <Label>Auto-charge saved card on generated invoices</Label>
           </div>
           <div className="flex gap-2 justify-end">
             {isActive && (
