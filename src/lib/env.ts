@@ -33,6 +33,11 @@ export const env = createEnv({
     GEMINI_REMINDER_MODEL: z.string().min(1).optional(),
     REMINDER_AI_PROVIDER: z.enum(["openai", "gemini"]).optional(),
     RECEIPT_OCR_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
+    // Comma-separated, ordered list of Gemini vision models to try for receipt
+    // OCR. When one model returns a 429 (rate-limit/quota), the next is tried.
+    // Leave unset to use the built-in default chain. Example:
+    //   GEMINI_OCR_MODELS="gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash"
+    GEMINI_OCR_MODELS: z.string().min(1).optional(),
     // Dedicated HMAC secret for signing public-portal session cookies.
     // Optional for back-compat: when unset, the portal-session helpers fall
     // back to SUPABASE_SERVICE_ROLE_KEY. Set this in production so the
@@ -63,6 +68,7 @@ export const env = createEnv({
     GEMINI_REMINDER_MODEL: process.env.GEMINI_REMINDER_MODEL,
     REMINDER_AI_PROVIDER: process.env.REMINDER_AI_PROVIDER,
     RECEIPT_OCR_PROVIDER: process.env.RECEIPT_OCR_PROVIDER,
+    GEMINI_OCR_MODELS: process.env.GEMINI_OCR_MODELS,
     PORTAL_SESSION_SECRET: process.env.PORTAL_SESSION_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
