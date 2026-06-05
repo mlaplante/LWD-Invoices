@@ -162,6 +162,12 @@ enum ReportFrequency {
   QUARTERLY
 }
 
+enum PaymentAttemptStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
 // ─── Core Models ──────────────────────────────────────────────────────────────
 
 model Organization {
@@ -227,6 +233,7 @@ model Organization {
   invoices          Invoice[]
   partialPayments   PartialPayment[]
   payments          Payment[]
+  paymentAttempts   PaymentAttempt[]
   gateways          GatewaySetting[]
   comments          Comment[]
   projects          Project[]
@@ -496,7 +503,8 @@ model Invoice {
 
   lines           InvoiceLine[]
   partialPayments PartialPayment[]
-  payments        Payment[]
+  payments          Payment[]
+  paymentAttempts  PaymentAttempt[]
   comments        Comment[]
   recurringInvoice        RecurringInvoice?
   creditNotesIssued       CreditNoteApplication[] @relation("CreditNoteSource")
@@ -631,6 +639,34 @@ model Payment {
   @@index([invoiceId])
 }
 
+model PaymentAttempt {
+  id                   String               @id @default(cuid())
+  kind                 String               @default("AUTOPAY")
+  status               PaymentAttemptStatus @default(PENDING)
+  amount               Decimal              @db.Decimal(20, 10)
+  method               String
+  processor            String?
+  processorId          String?
+  processorError       String?
+  idempotencyKey       String               @unique
+  attemptedAt          DateTime             @default(now())
+  completedAt          DateTime?
+
+  invoiceId            String
+  invoice              Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId       String
+  organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  savedPaymentMethodId String?
+  savedPaymentMethod   SavedPaymentMethod?  @relation(fields: [savedPaymentMethodId], references: [id], onDelete: SetNull)
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@unique([invoiceId, kind])
+  @@index([organizationId, status])
+  @@index([invoiceId])
+}
+
 model SavedPaymentMethod {
   id                    String   @id @default(cuid())
   clientId              String
@@ -645,6 +681,7 @@ model SavedPaymentMethod {
 
   client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  paymentAttempts PaymentAttempt[]
 
   @@unique([clientId, organizationId, stripePaymentMethodId])
   @@index([clientId, organizationId])
@@ -957,6 +994,7 @@ model RecurringInvoice {
   occurrenceCount Int                @default(0)
   isActive        Boolean            @default(true)
   autoSend        Boolean            @default(false)
+  autoCharge      Boolean            @default(false)
   // Optional anchor for MONTHLY/YEARLY schedules. 1-31; values past the
   // last day of a given month clamp to the last day (Feb 30 → Feb 28/29).
   // Null falls back to startDate's day-of-month.

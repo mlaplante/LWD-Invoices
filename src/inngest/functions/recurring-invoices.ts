@@ -68,23 +68,19 @@ export const processRecurringInvoices = inngest.createFunction(
   },
 );
 
-const recurringInvoiceWithRelations = Prisma.validator<Prisma.RecurringInvoiceDefaultArgs>()({
+type RecurringInvoiceWithRelations = Prisma.RecurringInvoiceGetPayload<{
   include: {
     invoice: {
       include: {
-        lines: { include: { taxes: true } },
-        currency: true,
-      },
-    },
-    organization: true,
-  },
-});
+        lines: { include: { taxes: true } };
+        currency: true;
+      };
+    };
+    organization: true;
+  };
+}>;
 
-type RecurringInvoiceWithRelations = Prisma.RecurringInvoiceGetPayload<
-  typeof recurringInvoiceWithRelations
->;
-
-async function generateRecurringInvoice(rec: RecurringInvoiceWithRelations) {
+export async function generateRecurringInvoice(rec: RecurringInvoiceWithRelations) {
   const template = rec.invoice;
   let autoCharged = 0;
 
@@ -106,7 +102,7 @@ async function generateRecurringInvoice(rec: RecurringInvoiceWithRelations) {
       data: {
         number,
         type: template.type,
-        status: rec.autoSend ? "SENT" : "DRAFT",
+        status: rec.autoSend || rec.autoCharge ? "SENT" : "DRAFT",
         date: new Date(),
         dueDate:
           template.dueDate
@@ -197,126 +193,23 @@ async function generateRecurringInvoice(rec: RecurringInvoiceWithRelations) {
     return invoice;
   });
 
-  // Auto-charge: attempt Stripe payment for clients with saved cards
-  if (rec.autoSend && newInvoice) {
-    const client = await db.client.findUnique({
-      where: { id: template.clientId },
-      select: { stripeCustomerId: true, autoChargeEnabled: true, email: true, name: true },
+  if (rec.autoCharge && newInvoice) {
+    const { attemptRecurringInvoiceAutopay } = await import(
+      "@/server/services/recurring-autopay"
+    );
+    const { sendPaymentReceiptEmail } = await import(
+      "@/server/services/payment-receipt-email"
+    );
+    const { notifyOrgAdmins } = await import("@/server/services/notifications");
+
+    const result = await attemptRecurringInvoiceAutopay({
+      invoiceId: newInvoice.id,
+      recurringInvoiceId: rec.id,
+      autoCharge: rec.autoCharge,
+      sendReceipt: sendPaymentReceiptEmail,
+      notifyAdmins: notifyOrgAdmins,
     });
-
-    if (client?.stripeCustomerId && client.autoChargeEnabled) {
-      try {
-        // Get the org's Stripe config
-        const gateway = await db.gatewaySetting.findUnique({
-          where: {
-            organizationId_gatewayType: {
-              organizationId: template.organizationId,
-              gatewayType: "STRIPE",
-            },
-          },
-        });
-
-        if (gateway?.isEnabled) {
-          const { decryptJson } = await import("@/server/services/encryption");
-          const { getStripeClient } = await import("@/server/services/stripe");
-          const config = decryptJson<{ secretKey: string }>(gateway.configJson);
-          const stripe = getStripeClient(config.secretKey);
-
-          // Get the customer's default payment method
-          const customer = await stripe.customers.retrieve(client.stripeCustomerId);
-          if (customer.deleted) throw new Error("Customer deleted");
-
-          const defaultPm =
-            (customer as import("stripe").Stripe.Customer).invoice_settings
-              ?.default_payment_method as string | null ??
-            ((customer as import("stripe").Stripe.Customer).default_source as string | null);
-
-          let pmToCharge: string | undefined;
-          if (!defaultPm) {
-            // No payment method on file — try to get the most recent one
-            const paymentMethods = await stripe.paymentMethods.list({
-              customer: client.stripeCustomerId,
-              type: "card",
-              limit: 1,
-            });
-            pmToCharge = paymentMethods.data[0]?.id;
-          } else {
-            pmToCharge = defaultPm;
-          }
-
-          if (pmToCharge) {
-            // Attempt off-session charge
-            const invoice = await db.invoice.findUnique({
-              where: { id: newInvoice.id },
-              include: { currency: true },
-            });
-            if (invoice) {
-              const amountCents = Math.round(invoice.total.toNumber() * 100);
-              const paymentIntent = await stripe.paymentIntents.create({
-                amount: amountCents,
-                currency: invoice.currency.code.toLowerCase(),
-                customer: client.stripeCustomerId,
-                payment_method: pmToCharge,
-                off_session: true,
-                confirm: true,
-                metadata: {
-                  invoiceId: newInvoice.id,
-                  orgId: template.organizationId,
-                  clientId: template.clientId,
-                  autoCharge: "true",
-                },
-              });
-
-              if (paymentIntent.status === "succeeded") {
-                // Mark invoice as paid
-                await db.$transaction(async (tx) => {
-                  await tx.payment.create({
-                    data: {
-                      amount: invoice.total.toNumber(),
-                      method: "stripe",
-                      transactionId: paymentIntent.id,
-                      invoiceId: newInvoice.id,
-                      organizationId: template.organizationId,
-                    },
-                  });
-                  await tx.invoice.update({
-                    where: { id: newInvoice.id },
-                    data: { status: "PAID" },
-                  });
-                });
-
-                // Send receipt
-                const { sendPaymentReceiptEmail } = await import(
-                  "@/server/services/payment-receipt-email"
-                );
-                await sendPaymentReceiptEmail({
-                  invoiceId: newInvoice.id,
-                  amountPaid: invoice.total.toNumber(),
-                  organizationId: template.organizationId,
-                }).catch(() => {});
-
-                autoCharged++;
-              }
-            }
-          }
-        }
-      } catch (err) {
-        // Auto-charge failed — fall through to normal send
-        console.error(
-          `[recurring-invoices] Auto-charge failed for invoice ${newInvoice.number}:`,
-          err,
-        );
-
-        // Notify org admin of the failure
-        const { notifyOrgAdmins } = await import("@/server/services/notifications");
-        await notifyOrgAdmins(template.organizationId, {
-          type: "INVOICE_OVERDUE",
-          title: `Auto-charge failed for Invoice #${newInvoice.number}`,
-          body: `Card charge declined for ${client.name ?? "client"}. Invoice was sent to their email instead.`,
-          link: `/invoices/${newInvoice.id}`,
-        }).catch(() => {});
-      }
-    }
+    if (result.status === "SUCCEEDED") autoCharged++;
   }
 
   return { invoice: newInvoice, autoCharged };

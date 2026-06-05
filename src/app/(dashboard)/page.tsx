@@ -9,6 +9,7 @@ import { TopClients } from "@/components/dashboard/TopClients";
 import { AgingReceivables } from "@/components/dashboard/AgingReceivables";
 import { EstimateConversion } from "@/components/dashboard/EstimateConversion";
 import { DueThisWeek } from "@/components/dashboard/DueThisWeek";
+import { CashFlowInsights } from "@/components/dashboard/CashFlowInsights";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Lazy-load chart components to defer the ~400KB Recharts bundle
@@ -71,6 +72,11 @@ async function InsightsSection() {
   );
 }
 
+async function CashFlowInsightSection() {
+  const data = await api.dashboard.cashFlowInsights();
+  return <CashFlowInsights data={data} />;
+}
+
 async function ActivitySection() {
   const items = await api.dashboard.activityFeed();
   return (
@@ -130,6 +136,11 @@ export default async function DashboardPage() {
 
       <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
         <ExpensesSection />
+      </Suspense>
+
+      {/* AI cash-flow narrative — deterministic metrics with optional OpenAI summarization */}
+      <Suspense fallback={<Skeleton className="h-64 rounded-2xl" />}>
+        <CashFlowInsightSection />
       </Suspense>
 
       {/* Insights — Top Clients, Aging, Conversion */}

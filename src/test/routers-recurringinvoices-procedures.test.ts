@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { recurringInvoicesRouter } from "@/server/routers/recurringInvoices";
 import { createMockContext } from "./mocks/trpc-context";
+import type { MockTRPCContext } from "./mocks/trpc-context";
 import { RecurringFrequency } from "@/generated/prisma";
-import { TRPCError } from "@trpc/server";
 
 describe("RecurringInvoices Router Procedures", () => {
-  let ctx: any;
-  let caller: any;
+  let ctx: MockTRPCContext;
+  let caller: ReturnType<typeof recurringInvoicesRouter.createCaller>;
 
   beforeEach(() => {
     ctx = createMockContext();
@@ -84,6 +84,7 @@ describe("RecurringInvoices Router Procedures", () => {
           interval: 1,
           startDate: new Date("2026-03-01"),
           autoSend: false,
+          autoCharge: true,
         },
       };
 
@@ -97,6 +98,7 @@ describe("RecurringInvoices Router Procedures", () => {
         endDate: null,
         maxOccurrences: null,
         autoSend: false,
+        autoCharge: true,
         nextRunAt: new Date("2026-03-01"),
         isActive: true,
         createdAt: new Date("2026-02-26"),
