@@ -1,4 +1,5 @@
 import { InvoiceStatus, LineType } from "@/generated/prisma";
+import { env } from "@/lib/env";
 
 export type NaturalLanguageInvoiceContext = {
   defaultCurrencyId: string;
@@ -249,8 +250,87 @@ export function buildNaturalLanguageInvoiceDraft({
   };
 }
 
+// ─── Provider-agnostic prompt extraction ────────────────────────────────────
+
+export type InvoiceParserProvider = "openai" | "gemini";
+
+export type ExtractNaturalLanguageInvoiceOptions = {
+  provider?: InvoiceParserProvider;
+};
+
+const SYSTEM_PROMPT =
+  "Extract draft invoice data from the user's natural-language prompt. Return only JSON with keys: clientName, lines [{name, description, quantity, unit, rate, lineType, confidence}], notes, dueDate (YYYY-MM-DD), taxNames, ambiguities, confidence. lineType is one of standard, expense, flat_rate. Use null for anything you cannot determine. Do not invent customers, and never send or save invoices.";
+
+const OPENAI_DEFAULT_MODEL = "gpt-4.1-mini";
+// Vision-and-text model on Google's free Gemini API tier; matches the model
+// the receipt-OCR service defaults to. Override via GEMINI_INVOICE_PARSER_MODEL.
+const GEMINI_DEFAULT_MODEL = "gemini-2.0-flash";
+
+// Strict JSON schema shared with the OpenAI Responses API. Gemini relies on
+// responseMimeType + the system prompt instead (its strict-schema support is
+// shape-incompatible with OpenAI's), but both funnel through normalizeExtraction.
+const EXTRACTION_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    clientName: { type: ["string", "null"] },
+    lines: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          description: { type: ["string", "null"] },
+          quantity: { type: ["number", "null"] },
+          unit: { type: ["string", "null"] },
+          rate: { type: ["number", "null"] },
+          lineType: { type: ["string", "null"], enum: ["standard", "expense", "flat_rate", null] },
+          confidence: { type: ["number", "null"] },
+        },
+        required: ["name", "description", "quantity", "unit", "rate", "lineType", "confidence"],
+      },
+    },
+    notes: { type: ["string", "null"] },
+    dueDate: { type: ["string", "null"] },
+    taxNames: { type: "array", items: { type: "string" } },
+    ambiguities: { type: "array", items: { type: "string" } },
+    confidence: { type: ["number", "null"] },
+  },
+  required: ["clientName", "lines", "notes", "dueDate", "taxNames", "ambiguities", "confidence"],
+} as const;
+
+/**
+ * Pick the parser provider: explicit override → INVOICE_PARSER_PROVIDER →
+ * whichever API key is configured (preferring OpenAI). Mirrors the
+ * resolveProvider precedence in receipt-ocr.ts.
+ */
+export function resolveInvoiceParserProvider(override?: InvoiceParserProvider): InvoiceParserProvider {
+  if (override) return override;
+  if (env.INVOICE_PARSER_PROVIDER === "openai" || env.INVOICE_PARSER_PROVIDER === "gemini") {
+    return env.INVOICE_PARSER_PROVIDER;
+  }
+  if (env.OPENAI_API_KEY) return "openai";
+  if (env.GEMINI_API_KEY) return "gemini";
+  return "openai";
+}
+
+/**
+ * Provider-agnostic entry point. Routes the prompt to OpenAI or Gemini and
+ * returns a normalized extraction. This is what the router should call.
+ */
+export async function extractNaturalLanguageInvoice(
+  prompt: string,
+  options: ExtractNaturalLanguageInvoiceOptions = {},
+): Promise<NaturalLanguageInvoiceExtraction> {
+  const provider = resolveInvoiceParserProvider(options.provider);
+  return provider === "gemini"
+    ? extractNaturalLanguageInvoiceWithGemini(prompt)
+    : extractNaturalLanguageInvoiceWithOpenAI(prompt);
+}
+
 export async function extractNaturalLanguageInvoiceWithOpenAI(prompt: string): Promise<NaturalLanguageInvoiceExtraction> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
@@ -262,13 +342,9 @@ export async function extractNaturalLanguageInvoiceWithOpenAI(prompt: string): P
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_INVOICE_PARSER_MODEL ?? "gpt-4.1-mini",
+      model: env.OPENAI_INVOICE_PARSER_MODEL ?? OPENAI_DEFAULT_MODEL,
       input: [
-        {
-          role: "system",
-          content:
-            "Extract draft invoice data from the user's natural-language prompt. Return only JSON with keys: clientName, lines [{name, description, quantity, unit, rate, lineType, confidence}], notes, dueDate (YYYY-MM-DD), taxNames, ambiguities, confidence. Do not invent customers or send/save invoices.",
-        },
+        { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: prompt },
       ],
       text: {
@@ -276,36 +352,7 @@ export async function extractNaturalLanguageInvoiceWithOpenAI(prompt: string): P
           type: "json_schema",
           name: "invoice_extraction",
           strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              clientName: { type: ["string", "null"] },
-              lines: {
-                type: "array",
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    name: { type: "string" },
-                    description: { type: ["string", "null"] },
-                    quantity: { type: ["number", "null"] },
-                    unit: { type: ["string", "null"] },
-                    rate: { type: ["number", "null"] },
-                    lineType: { type: ["string", "null"], enum: ["standard", "expense", "flat_rate", null] },
-                    confidence: { type: ["number", "null"] },
-                  },
-                  required: ["name", "description", "quantity", "unit", "rate", "lineType", "confidence"],
-                },
-              },
-              notes: { type: ["string", "null"] },
-              dueDate: { type: ["string", "null"] },
-              taxNames: { type: "array", items: { type: "string" } },
-              ambiguities: { type: "array", items: { type: "string" } },
-              confidence: { type: ["number", "null"] },
-            },
-            required: ["clientName", "lines", "notes", "dueDate", "taxNames", "ambiguities", "confidence"],
-          },
+          schema: EXTRACTION_JSON_SCHEMA,
         },
       },
     }),
@@ -323,13 +370,82 @@ export async function extractNaturalLanguageInvoiceWithOpenAI(prompt: string): P
     ?? payload.output?.flatMap((item) => item.content ?? []).find((part) => part.type === "output_text")?.text;
   if (!raw) throw new Error("OpenAI invoice parsing returned no JSON output");
 
+  return normalizeExtraction(raw);
+}
+
+export async function extractNaturalLanguageInvoiceWithGemini(prompt: string): Promise<NaturalLanguageInvoiceExtraction> {
+  const apiKey = env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  const model = env.GEMINI_INVOICE_PARSER_MODEL ?? GEMINI_DEFAULT_MODEL;
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        // responseMimeType forces pure-JSON output (no markdown fences); temp 0
+        // keeps extraction deterministic.
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: "application/json",
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Gemini invoice parsing failed (${response.status})`);
+  }
+
+  const raw = extractGeminiText(await response.json() as Record<string, unknown>);
+  if (!raw) throw new Error("Gemini invoice parsing returned no JSON output");
+
+  return normalizeExtraction(raw);
+}
+
+/** Pull the concatenated text parts out of a Gemini generateContent response. */
+export function extractGeminiText(response: Record<string, unknown>): string {
+  const candidates = response.candidates;
+  if (!Array.isArray(candidates)) return "";
+  return candidates
+    .flatMap((candidate) => {
+      if (!candidate || typeof candidate !== "object") return [];
+      const content = (candidate as { content?: unknown }).content;
+      if (!content || typeof content !== "object") return [];
+      const parts = (content as { parts?: unknown }).parts;
+      return Array.isArray(parts) ? parts : [];
+    })
+    .map((part) => {
+      if (!part || typeof part !== "object") return "";
+      const text = (part as { text?: unknown }).text;
+      return typeof text === "string" ? text : "";
+    })
+    .join("");
+}
+
+/**
+ * Parse a raw JSON string from any provider into a normalized extraction,
+ * coercing the schema's nullable fields to `undefined` so downstream matching
+ * doesn't have to special-case null.
+ */
+export function normalizeExtraction(raw: string): NaturalLanguageInvoiceExtraction {
   const parsed = JSON.parse(raw) as NaturalLanguageInvoiceExtraction;
   return {
     ...parsed,
     clientName: parsed.clientName ?? undefined,
     notes: parsed.notes ?? undefined,
     dueDate: parsed.dueDate ?? undefined,
-    lines: parsed.lines.map((line) => ({
+    taxNames: parsed.taxNames ?? [],
+    ambiguities: parsed.ambiguities ?? [],
+    lines: (parsed.lines ?? []).map((line) => ({
       ...line,
       description: line.description ?? undefined,
       quantity: line.quantity ?? undefined,

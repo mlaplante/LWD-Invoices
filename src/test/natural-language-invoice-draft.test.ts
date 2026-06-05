@@ -1,11 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvoiceStatus, LineType } from "@/generated/prisma";
+import { env } from "@/lib/env";
 import {
   buildNaturalLanguageInvoiceDraft,
   extractNaturalLanguageInvoiceWithOpenAI,
   type NaturalLanguageInvoiceExtraction,
   type NaturalLanguageInvoiceContext,
 } from "@/server/services/natural-language-invoice";
+
+// The service reads keys/models from the validated env object (cached at load),
+// so mutate that — not process.env — and restore afterEach.
+const originalOpenAIKey = env.OPENAI_API_KEY;
+const originalOpenAIModel = env.OPENAI_INVOICE_PARSER_MODEL;
 
 const context: NaturalLanguageInvoiceContext = {
   defaultCurrencyId: "usd",
@@ -42,8 +48,8 @@ function extraction(overrides: Partial<NaturalLanguageInvoiceExtraction> = {}): 
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  delete process.env.OPENAI_API_KEY;
-  delete process.env.OPENAI_INVOICE_PARSER_MODEL;
+  (env as Record<string, unknown>).OPENAI_API_KEY = originalOpenAIKey;
+  (env as Record<string, unknown>).OPENAI_INVOICE_PARSER_MODEL = originalOpenAIModel;
 });
 
 describe("buildNaturalLanguageInvoiceDraft", () => {
@@ -174,6 +180,7 @@ describe("buildNaturalLanguageInvoiceDraft", () => {
 
 describe("extractNaturalLanguageInvoiceWithOpenAI", () => {
   it("fails before making a network request when OPENAI_API_KEY is not configured", async () => {
+    (env as Record<string, unknown>).OPENAI_API_KEY = undefined;
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -184,8 +191,8 @@ describe("extractNaturalLanguageInvoiceWithOpenAI", () => {
   });
 
   it("uses the configured OpenAI key and model while parsing mocked JSON output", async () => {
-    process.env.OPENAI_API_KEY = "test-openai-key";
-    process.env.OPENAI_INVOICE_PARSER_MODEL = "test-invoice-model";
+    (env as Record<string, unknown>).OPENAI_API_KEY = "test-openai-key";
+    (env as Record<string, unknown>).OPENAI_INVOICE_PARSER_MODEL = "test-invoice-model";
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({

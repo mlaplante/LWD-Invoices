@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import { invoicesRouter, draftFromPromptLimiter } from "@/server/routers/invoices";
-import { extractNaturalLanguageInvoiceWithOpenAI } from "@/server/services/natural-language-invoice";
+import { extractNaturalLanguageInvoice } from "@/server/services/natural-language-invoice";
 import { createMockContext, type MockTRPCContext } from "./mocks/trpc-context";
 import { InvoiceStatus } from "@/generated/prisma";
 import { Decimal } from "@prisma/client-runtime-utils";
@@ -11,7 +11,7 @@ vi.mock("@/server/services/natural-language-invoice", async () => {
   );
   return {
     ...actual,
-    extractNaturalLanguageInvoiceWithOpenAI: vi.fn().mockResolvedValue({
+    extractNaturalLanguageInvoice: vi.fn().mockResolvedValue({
       clientName: "Acme",
       lines: [
         { name: "Design", quantity: 8, unit: "hours", rate: 120 },
@@ -33,7 +33,7 @@ describe("Invoices Router natural-language draft", () => {
     // The limiter holds module-scope state — reset it so call order between
     // tests can't trip (or mask) the rate limit.
     draftFromPromptLimiter.clear();
-    vi.mocked(extractNaturalLanguageInvoiceWithOpenAI).mockClear();
+    vi.mocked(extractNaturalLanguageInvoice).mockClear();
     ctx = createMockContext();
     caller = invoicesRouter.createCaller(ctx);
     ctx.db.client.findMany.mockResolvedValue([
@@ -63,8 +63,8 @@ describe("Invoices Router natural-language draft", () => {
     expect(ctx.db.invoice.create).not.toHaveBeenCalled();
   });
 
-  it("rate-limits repeated drafting and skips the OpenAI call when limited", async () => {
-    const extractSpy = vi.mocked(extractNaturalLanguageInvoiceWithOpenAI);
+  it("rate-limits repeated drafting and skips the AI call when limited", async () => {
+    const extractSpy = vi.mocked(extractNaturalLanguageInvoice);
 
     // The limiter allows 10 drafts per minute per org; exhaust the window.
     for (let i = 0; i < 10; i++) {
@@ -73,7 +73,7 @@ describe("Invoices Router natural-language draft", () => {
     expect(extractSpy).toHaveBeenCalledTimes(10);
 
     // The 11th call within the window must be rejected before the expensive
-    // OpenAI call runs — that's the whole point of the limit.
+    // AI provider call runs — that's the whole point of the limit.
     await expect(
       caller.draftFromPrompt({ prompt: "Bill Acme for design work" }),
     ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });

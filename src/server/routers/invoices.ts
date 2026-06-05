@@ -25,7 +25,7 @@ import { createRateLimiter } from "@/lib/rate-limit";
 import { generatePortalToken } from "@/lib/portal-session";
 import {
   buildNaturalLanguageInvoiceDraft,
-  extractNaturalLanguageInvoiceWithOpenAI,
+  extractNaturalLanguageInvoice,
   type NaturalLanguageInvoiceContext,
 } from "../services/natural-language-invoice";
 
@@ -279,7 +279,7 @@ export const invoicesRouter = router({
         })),
       };
 
-      const extraction = await extractNaturalLanguageInvoiceWithOpenAI(input.prompt);
+      const extraction = await extractNaturalLanguageInvoice(input.prompt);
       return buildNaturalLanguageInvoiceDraft({ prompt: input.prompt, extraction, context });
     }),
 
