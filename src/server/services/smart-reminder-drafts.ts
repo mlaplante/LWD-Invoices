@@ -3,10 +3,11 @@ import { interpolateTemplate } from "./automation-template";
 
 export type ReminderTone = "helpful" | "professional" | "firm";
 export type ReminderDraftSource = "ai" | "template_fallback";
+export type ReminderAIProvider = "openai" | "gemini";
 export type ReminderDraftFallbackReason =
-  | "missing_openai_config"
+  | "missing_ai_config"
   | "insufficient_payment_history"
-  | "openai_call_failed"
+  | "ai_call_failed"
   | "invalid_ai_response"
   | "ai_fact_mismatch";
 
@@ -30,15 +31,23 @@ export interface ReminderPaymentProfile {
   lateInvoiceCount: number;
 }
 
-export interface OpenAIConfig {
+export interface AIProviderConfig {
   apiKey?: string;
   model?: string;
 }
+
+// Back-compat alias: callers and tests used `OpenAIConfig` before Gemini support.
+export type OpenAIConfig = AIProviderConfig;
 
 export interface AIReminderResponse {
   subject: string;
   body: string;
 }
+
+export type AIReminderCall = (
+  prompt: string,
+  config: Required<AIProviderConfig>,
+) => Promise<AIReminderResponse>;
 
 export interface GenerateReminderDraftInput {
   invoice: ReminderInvoiceFacts;
@@ -46,8 +55,14 @@ export interface GenerateReminderDraftInput {
   organization: { name: string };
   paymentProfile: ReminderPaymentProfile;
   reliablePayerThreshold?: number;
-  openAI?: OpenAIConfig;
-  callOpenAI?: (prompt: string, config: Required<OpenAIConfig>) => Promise<AIReminderResponse>;
+  // Explicit provider override. When unset, falls back to REMINDER_AI_PROVIDER,
+  // then to whichever provider has an API key configured (openai preferred).
+  provider?: ReminderAIProvider;
+  openAI?: AIProviderConfig;
+  gemini?: AIProviderConfig;
+  // Test seams: override the network call for the resolved provider.
+  callOpenAI?: AIReminderCall;
+  callGemini?: AIReminderCall;
 }
 
 export interface ReminderDraft {
@@ -61,7 +76,10 @@ export interface ReminderDraft {
 
 const MIN_HISTORY_FOR_AI_TONE = 3;
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
+const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
 const DEFAULT_RELIABLE_PAYER_THRESHOLD = 90;
+const REMINDER_SYSTEM_PROMPT =
+  "You draft safe, concise invoice reminder emails and return strict JSON only.";
 
 export function selectReminderTone(
   profile: ReminderPaymentProfile,
@@ -212,7 +230,7 @@ function parseAIResponse(value: AIReminderResponse): AIReminderResponse | null {
   return { subject, body };
 }
 
-async function callOpenAIChatCompletionsAPI(prompt: string, config: Required<OpenAIConfig>): Promise<AIReminderResponse> {
+async function callOpenAIChatCompletionsAPI(prompt: string, config: Required<AIProviderConfig>): Promise<AIReminderResponse> {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -222,7 +240,7 @@ async function callOpenAIChatCompletionsAPI(prompt: string, config: Required<Ope
     body: JSON.stringify({
       model: config.model,
       messages: [
-        { role: "system", content: "You draft safe, concise invoice reminder emails and return strict JSON only." },
+        { role: "system", content: REMINDER_SYSTEM_PROMPT },
         { role: "user", content: prompt },
       ],
       temperature: 0.2,
@@ -240,6 +258,87 @@ async function callOpenAIChatCompletionsAPI(prompt: string, config: Required<Ope
   return JSON.parse(content) as AIReminderResponse;
 }
 
+// Mirrors the Gemini call shape used by receipt-ocr: x-goog-api-key header,
+// systemInstruction + contents parts, and responseMimeType to force pure JSON.
+async function callGeminiGenerateContentAPI(prompt: string, config: Required<AIProviderConfig>): Promise<AIReminderResponse> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": config.apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: REMINDER_SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: "application/json",
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Gemini reminder draft request failed: ${response.status}`);
+  }
+
+  const data = await response.json() as Record<string, unknown>;
+  const content = extractGeminiText(data);
+  if (!content) throw new Error("Gemini reminder draft response was empty");
+  return JSON.parse(content) as AIReminderResponse;
+}
+
+// Defensive extraction mirroring receipt-ocr's helper: Gemini may return
+// multiple candidates/parts, so join all text rather than reading parts[0].
+function extractGeminiText(response: Record<string, unknown>): string {
+  const candidates = response.candidates;
+  if (!Array.isArray(candidates)) return "";
+  return candidates
+    .flatMap((candidate) => {
+      if (!candidate || typeof candidate !== "object") return [];
+      const content = (candidate as { content?: unknown }).content;
+      if (!content || typeof content !== "object") return [];
+      const parts = (content as { parts?: unknown }).parts;
+      return Array.isArray(parts) ? parts : [];
+    })
+    .map((part) => {
+      if (!part || typeof part !== "object") return "";
+      const text = (part as { text?: unknown }).text;
+      return typeof text === "string" ? text : "";
+    })
+    .join("\n");
+}
+
+// Resolve the provider: explicit input wins, then REMINDER_AI_PROVIDER, then
+// whichever provider has an API key (openai preferred). Mirrors receipt-ocr's
+// resolveProvider so config behaves consistently across AI features.
+function resolveReminderProvider(input: GenerateReminderDraftInput): ReminderAIProvider {
+  const explicit = input.provider ?? env.REMINDER_AI_PROVIDER;
+  if (explicit === "openai" || explicit === "gemini") return explicit;
+  if (input.gemini?.apiKey ?? env.GEMINI_API_KEY) {
+    if (!(input.openAI?.apiKey ?? env.OPENAI_API_KEY)) return "gemini";
+  }
+  return "openai";
+}
+
+function resolveProviderConfig(
+  input: GenerateReminderDraftInput,
+  provider: ReminderAIProvider,
+): { apiKey: string | undefined; model: string } {
+  if (provider === "gemini") {
+    return {
+      apiKey: input.gemini?.apiKey ?? env.GEMINI_API_KEY,
+      model: input.gemini?.model ?? env.GEMINI_REMINDER_MODEL ?? DEFAULT_GEMINI_MODEL,
+    };
+  }
+  return {
+    apiKey: input.openAI?.apiKey ?? env.OPENAI_API_KEY,
+    model: input.openAI?.model ?? env.OPENAI_REMINDER_MODEL ?? DEFAULT_OPENAI_MODEL,
+  };
+}
+
 export async function generateSmartReminderDraft(input: GenerateReminderDraftInput): Promise<ReminderDraft> {
   const tone = selectReminderTone(
     input.paymentProfile,
@@ -254,13 +353,11 @@ export async function generateSmartReminderDraft(input: GenerateReminderDraftInp
     return templateDraft(input, tone, "insufficient_payment_history");
   }
 
-  const config = {
-    apiKey: input.openAI?.apiKey ?? env.OPENAI_API_KEY,
-    model: input.openAI?.model ?? env.OPENAI_REMINDER_MODEL ?? DEFAULT_OPENAI_MODEL,
-  };
+  const provider = resolveReminderProvider(input);
+  const config = resolveProviderConfig(input, provider);
 
   if (!config.apiKey) {
-    return templateDraft(input, tone, "missing_openai_config");
+    return templateDraft(input, tone, "missing_ai_config");
   }
 
   const prompt = buildOpenAIReminderPrompt({
@@ -271,11 +368,15 @@ export async function generateSmartReminderDraft(input: GenerateReminderDraftInp
     tone,
   });
 
+  const callModel = provider === "gemini"
+    ? (input.callGemini ?? callGeminiGenerateContentAPI)
+    : (input.callOpenAI ?? callOpenAIChatCompletionsAPI);
+
   let aiResponse: AIReminderResponse;
   try {
-    aiResponse = await (input.callOpenAI ?? callOpenAIChatCompletionsAPI)(prompt, config as Required<OpenAIConfig>);
+    aiResponse = await callModel(prompt, config as Required<AIProviderConfig>);
   } catch {
-    return templateDraft(input, tone, "openai_call_failed");
+    return templateDraft(input, tone, "ai_call_failed");
   }
 
   const parsed = parseAIResponse(aiResponse);

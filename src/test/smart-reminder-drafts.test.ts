@@ -83,17 +83,18 @@ describe("generateSmartReminderDraft", () => {
     expect(draft.body).toContain("21 days overdue");
   });
 
-  it("falls back to the deterministic template when OpenAI config is missing", async () => {
+  it("falls back to the deterministic template when no AI provider is configured", async () => {
     const draft = await generateSmartReminderDraft({
       ...baseInput,
       paymentProfile: { paidInvoiceCount: 5, onTimePercent: 80, lateInvoiceCount: 1 },
       // The global test setup sets OPENAI_API_KEY, so force the no-key path with
-      // an explicit empty key rather than relying on the env var being absent.
+      // explicit empty keys rather than relying on the env vars being absent.
       openAI: { apiKey: "" },
+      gemini: { apiKey: "" },
     });
 
     expect(draft.source).toBe("template_fallback");
-    expect(draft.fallbackReason).toBe("missing_openai_config");
+    expect(draft.fallbackReason).toBe("missing_ai_config");
     expect(draft.reviewRequired).toBe(true);
     expect(draft.body).toContain("Invoice INV-1001 for 1250.00 USD");
     expect(draft.body).toContain("https://app.example.com/pay/token");
@@ -209,5 +210,63 @@ describe("generateSmartReminderDraft", () => {
 
     expect(draft.source).toBe("ai");
     expect(draft.body).toContain("June 15, 2026");
+  });
+
+  it("uses Gemini when explicitly selected as the provider", async () => {
+    let calledWith: { prompt: string; model: string } | null = null;
+    const draft = await generateSmartReminderDraft({
+      ...baseInput,
+      provider: "gemini",
+      paymentProfile: { paidInvoiceCount: 7, onTimePercent: 100, lateInvoiceCount: 0 },
+      gemini: { apiKey: "gemini-test-key", model: "gemini-2.0-flash" },
+      callGemini: async (prompt, config) => {
+        calledWith = { prompt, model: config.model };
+        return {
+          subject: "A quick reminder about invoice INV-1001",
+          body: "Invoice INV-1001 for 1250.00 USD is due 2026-06-15. Pay at https://app.example.com/pay/token.",
+        };
+      },
+      // An OpenAI seam is also provided to prove the provider override routes away from it.
+      callOpenAI: async () => ({ subject: "should-not-run", body: "should-not-run" }),
+    });
+
+    expect(draft.source).toBe("ai");
+    expect(draft.tone).toBe("helpful");
+    expect(calledWith).not.toBeNull();
+    expect(calledWith!.model).toBe("gemini-2.0-flash");
+    expect(draft.body).not.toContain("should-not-run");
+  });
+
+  it("auto-selects Gemini when only a Gemini key is configured", async () => {
+    const draft = await generateSmartReminderDraft({
+      ...baseInput,
+      paymentProfile: { paidInvoiceCount: 7, onTimePercent: 100, lateInvoiceCount: 0 },
+      // No explicit provider; OpenAI key blanked so resolution falls to Gemini.
+      openAI: { apiKey: "" },
+      gemini: { apiKey: "gemini-test-key" },
+      callGemini: async () => ({
+        subject: "A quick reminder about invoice INV-1001",
+        body: "Invoice INV-1001 for 1250.00 USD is due 2026-06-15. Pay at https://app.example.com/pay/token.",
+      }),
+    });
+
+    expect(draft.source).toBe("ai");
+  });
+
+  it("applies the fact guard to Gemini drafts too", async () => {
+    const draft = await generateSmartReminderDraft({
+      ...baseInput,
+      provider: "gemini",
+      paymentProfile: { paidInvoiceCount: 7, onTimePercent: 100, lateInvoiceCount: 0 },
+      gemini: { apiKey: "gemini-test-key" },
+      callGemini: async () => ({
+        subject: "Reminder: invoice INV-1001",
+        body: "Invoice INV-1001 for 1250.00 USD is due 2026-06-15. Pay at https://evil.example.net/collect.",
+      }),
+    });
+
+    expect(draft.source).toBe("template_fallback");
+    expect(draft.fallbackReason).toBe("ai_fact_mismatch");
+    expect(draft.body).not.toContain("evil.example.net");
   });
 });
