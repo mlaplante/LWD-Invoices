@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, requireRole, protectedProcedure } from "../trpc";
+import { generateSmartReminderDraft } from "@/server/services/smart-reminder-drafts";
+import { getClientPaymentBehaviorSummary } from "@/server/services/client-payment-score";
 
 const stepSchema = z.object({
   daysRelativeToDue: z.number().int().min(-90).max(365),
@@ -163,6 +165,54 @@ export const reminderSequencesRouter = router({
           },
         },
         orderBy: { sentAt: "desc" },
+      });
+    }),
+
+  // Generate an AI-assisted draft for human review; this never sends email.
+  generateDraft: requireRole("OWNER", "ADMIN")
+    .input(z.object({ invoiceId: z.string(), stepId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findFirst({
+        where: { id: input.invoiceId, organizationId: ctx.orgId },
+        include: {
+          client: { select: { id: true } },
+          currency: { select: { code: true } },
+          organization: { select: { name: true, smartRemindersThreshold: true } },
+        },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      if (!invoice.dueDate) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice needs a due date before drafting a reminder" });
+      }
+
+      const step = await ctx.db.reminderStep.findFirst({
+        where: {
+          id: input.stepId,
+          sequence: { organizationId: ctx.orgId },
+        },
+        select: { subject: true, body: true },
+      });
+      if (!step) throw new TRPCError({ code: "NOT_FOUND", message: "Reminder step not found" });
+
+      const paymentProfile = await getClientPaymentBehaviorSummary(ctx.db, invoice.client.id);
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.example.com";
+      const now = new Date();
+      const dueMidnight = Date.UTC(invoice.dueDate.getUTCFullYear(), invoice.dueDate.getUTCMonth(), invoice.dueDate.getUTCDate());
+      const nowMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
+      return generateSmartReminderDraft({
+        invoice: {
+          invoiceNumber: invoice.number,
+          amountDue: Number(invoice.total).toFixed(2),
+          currencyCode: invoice.currency.code,
+          dueDate: invoice.dueDate.toISOString().slice(0, 10),
+          daysOverdue: Math.max(0, Math.round((nowMidnight - dueMidnight) / 86400000)),
+          paymentUrl: `${appUrl}/portal/${invoice.portalToken}`,
+        },
+        template: step,
+        organization: invoice.organization,
+        paymentProfile,
+        reliablePayerThreshold: invoice.organization.smartRemindersThreshold,
       });
     }),
 });

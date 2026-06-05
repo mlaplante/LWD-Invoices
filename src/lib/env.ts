@@ -29,6 +29,12 @@ export const env = createEnv({
     OPENAI_API_KEY: z.string().min(1).optional(),
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
     GEMINI_API_KEY: z.string().min(1).optional(),
+    OPENAI_REMINDER_MODEL: z.string().min(1).optional(),
+    // Comma-separated, ordered Gemini model fallback chain for reminder drafting
+    // (same 429 fallback behavior as GEMINI_OCR_MODELS). Leave unset for the
+    // built-in default chain.
+    GEMINI_REMINDER_MODELS: z.string().min(1).optional(),
+    REMINDER_AI_PROVIDER: z.enum(["openai", "gemini"]).optional(),
     RECEIPT_OCR_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
     // Comma-separated, ordered list of Gemini vision models to try for receipt
     // OCR. When one model returns a 429 (rate-limit/quota), the next is tried.
@@ -70,6 +76,9 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    OPENAI_REMINDER_MODEL: process.env.OPENAI_REMINDER_MODEL,
+    GEMINI_REMINDER_MODELS: process.env.GEMINI_REMINDER_MODELS,
+    REMINDER_AI_PROVIDER: process.env.REMINDER_AI_PROVIDER,
     RECEIPT_OCR_PROVIDER: process.env.RECEIPT_OCR_PROVIDER,
     GEMINI_OCR_MODELS: process.env.GEMINI_OCR_MODELS,
     INVOICE_PARSER_PROVIDER: process.env.INVOICE_PARSER_PROVIDER,

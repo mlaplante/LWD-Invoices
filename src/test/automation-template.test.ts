@@ -46,18 +46,19 @@ describe("interpolateTemplate", () => {
 
   it("replaces all available variable types", () => {
     const template =
-      "{{clientName}} {{invoiceNumber}} {{amountDue}} {{dueDate}} {{paymentLink}} {{orgName}} {{amountPaid}} {{paymentDate}}";
+      "{{clientName}} {{invoiceNumber}} {{amountDue}} {{dueDate}} {{paymentLink}} {{paymentUrl}} {{orgName}} {{amountPaid}} {{paymentDate}}";
     const result = interpolateTemplate(template, {
       clientName: "C",
       invoiceNumber: "N",
       amountDue: "A",
       dueDate: "D",
       paymentLink: "L",
+      paymentUrl: "U",
       orgName: "O",
       amountPaid: "P",
       paymentDate: "PD",
     });
-    expect(result).toBe("C N A D L O P PD");
+    expect(result).toBe("C N A D L U O P PD");
   });
 });
 
@@ -68,10 +69,11 @@ describe("AVAILABLE_VARIABLES", () => {
     expect(AVAILABLE_VARIABLES).toContain("amountDue");
     expect(AVAILABLE_VARIABLES).toContain("dueDate");
     expect(AVAILABLE_VARIABLES).toContain("paymentLink");
+    expect(AVAILABLE_VARIABLES).toContain("paymentUrl");
     expect(AVAILABLE_VARIABLES).toContain("orgName");
     expect(AVAILABLE_VARIABLES).toContain("amountPaid");
     expect(AVAILABLE_VARIABLES).toContain("paymentDate");
-    expect(AVAILABLE_VARIABLES).toHaveLength(8);
+    expect(AVAILABLE_VARIABLES).toHaveLength(9);
   });
 });
 
@@ -91,6 +93,7 @@ describe("buildTemplateVariables", () => {
     expect(vars.invoiceNumber).toBe("INV-001");
     expect(vars.amountDue).toBe("$500.00");
     expect(vars.paymentLink).toContain("/portal/token123");
+    expect(vars.paymentUrl).toBe(vars.paymentLink);
     expect(vars.orgName).toBe("My Biz");
     expect(vars.amountPaid).toBe("$200.00");
     expect(vars.paymentDate).toBe("2026-03-15");
