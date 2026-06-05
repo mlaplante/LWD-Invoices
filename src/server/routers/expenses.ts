@@ -4,9 +4,21 @@ import { router, protectedProcedure, requireRole } from "../trpc";
 import { PrismaClient, LineType, Prisma } from "@/generated/prisma";
 import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
 import { generateExpensesForRecurring } from "../services/recurring-expense-generator";
+import { buildExpenseDraftFromReceipt } from "../services/expense-receipt-draft";
 import { detailExpenseInclude } from "@/server/lib/expense-includes";
 import { getOrgTaxList } from "@/server/lib/tax-helpers";
 import { logAudit } from "../services/audit";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+// Per-org throttle on the paid-LLM receipt scan. In-process (per serverless
+// instance), so the effective limit is this × replicas — enough to stop a
+// runaway loop from one tab racking up OpenAI spend.
+const scanReceiptLimiter = createRateLimiter({ limit: 20, windowMs: 60 * 60 * 1000 });
+
+// ~3 MB binary, base64-encoded (~4/3 expansion) plus JSON framing must stay
+// under Netlify's 6 MB synchronous-function body limit. The client enforces a
+// matching 3 MB file-size guard before upload.
+const MAX_RECEIPT_BASE64_CHARS = 4_200_000;
 
 async function generateDueExpenses(db: PrismaClient, orgId: string) {
   const now = new Date();
@@ -64,6 +76,37 @@ export const expensesRouter = router({
     .mutation(async ({ ctx }) => {
       await generateDueExpenses(ctx.db, ctx.orgId);
       return { success: true };
+    }),
+
+  scanReceipt: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(
+      z.object({
+        projectId: z.string().min(1).optional(),
+        fileName: z.string().min(1).max(255).optional(),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"]),
+        dataBase64: z.string().min(1).max(MAX_RECEIPT_BASE64_CHARS),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (scanReceiptLimiter.isLimited(ctx.orgId)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many receipt scans. Please wait a bit and try again.",
+        });
+      }
+      // Strip a leading data-URL prefix (e.g. "data:image/png;base64,") if the
+      // client sent one; a bare base64 string passes through unchanged.
+      const cleanBase64 = input.dataBase64.replace(/^data:[^;]+;base64,/, "");
+      const file = Buffer.from(cleanBase64, "base64");
+      if (file.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Receipt file is empty." });
+      }
+      return buildExpenseDraftFromReceipt(ctx.db as unknown as PrismaClient, ctx.orgId, {
+        file,
+        mimeType: input.mimeType,
+        fileName: input.fileName,
+        projectId: input.projectId,
+      });
     }),
 
   getById: protectedProcedure
