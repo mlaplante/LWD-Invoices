@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildOpenAIReminderPrompt,
   generateSmartReminderDraft,
@@ -268,5 +268,63 @@ describe("generateSmartReminderDraft", () => {
     expect(draft.source).toBe("template_fallback");
     expect(draft.fallbackReason).toBe("ai_fact_mismatch");
     expect(draft.body).not.toContain("evil.example.net");
+  });
+
+  it("falls back to the next Gemini model on a 429 (real fallback chain)", async () => {
+    const envMod = await import("@/lib/env");
+    const original = { ...envMod.env } as Record<string, unknown>;
+    (envMod.env as Record<string, unknown>).GEMINI_REMINDER_MODELS = "gemini-2.0-flash,gemini-1.5-flash";
+
+    const rateLimited = JSON.stringify({ error: { code: 429, message: "Quota exceeded ... limit: 0" } });
+    const goodDraft = JSON.stringify({
+      subject: "A quick reminder about invoice INV-1001",
+      body: "Invoice INV-1001 for 1250.00 USD is due 2026-06-15. Pay at https://app.example.com/pay/token.",
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 429, statusText: "Too Many Requests", text: async () => rateLimited })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ candidates: [{ content: { parts: [{ text: goodDraft }] } }] }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // No callGemini seam, so the real model-fallback path runs.
+    const draft = await generateSmartReminderDraft({
+      ...baseInput,
+      provider: "gemini",
+      paymentProfile: { paidInvoiceCount: 7, onTimePercent: 100, lateInvoiceCount: 0 },
+      gemini: { apiKey: "test-gemini" },
+    });
+
+    expect(draft.source).toBe("ai");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("models/gemini-2.0-flash:");
+    expect(String(fetchMock.mock.calls[1][0])).toContain("models/gemini-1.5-flash:");
+
+    vi.unstubAllGlobals();
+    delete (envMod.env as Record<string, unknown>).GEMINI_REMINDER_MODELS;
+    Object.assign(envMod.env, original);
+  });
+
+  it("falls back to the template when Gemini returns a non-429 error", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 400, statusText: "Bad Request", text: async () => "invalid request" });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const draft = await generateSmartReminderDraft({
+      ...baseInput,
+      provider: "gemini",
+      paymentProfile: { paidInvoiceCount: 7, onTimePercent: 100, lateInvoiceCount: 0 },
+      // Per-call model pins a single model (no fallback); 400 should fail immediately.
+      gemini: { apiKey: "test-gemini", model: "gemini-2.0-flash" },
+    });
+
+    expect(draft.source).toBe("template_fallback");
+    expect(draft.fallbackReason).toBe("ai_call_failed");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
   });
 });

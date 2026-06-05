@@ -1,5 +1,6 @@
 import { env } from "@/lib/env";
 import { interpolateTemplate } from "./automation-template";
+import { callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "./gemini-fallback";
 
 export type ReminderTone = "helpful" | "professional" | "firm";
 export type ReminderDraftSource = "ai" | "template_fallback";
@@ -76,7 +77,9 @@ export interface ReminderDraft {
 
 const MIN_HISTORY_FOR_AI_TONE = 3;
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
-const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
+// Ordered Gemini fallback chain; on a 429 the next model is tried. Mirrors the
+// receipt-OCR default chain. Override via GEMINI_REMINDER_MODELS.
+const DEFAULT_GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
 const DEFAULT_RELIABLE_PAYER_THRESHOLD = 90;
 const REMINDER_SYSTEM_PROMPT =
   "You draft safe, concise invoice reminder emails and return strict JSON only.";
@@ -258,57 +261,27 @@ async function callOpenAIChatCompletionsAPI(prompt: string, config: Required<AIP
   return JSON.parse(content) as AIReminderResponse;
 }
 
-// Mirrors the Gemini call shape used by receipt-ocr: x-goog-api-key header,
-// systemInstruction + contents parts, and responseMimeType to force pure JSON.
-async function callGeminiGenerateContentAPI(prompt: string, config: Required<AIProviderConfig>): Promise<AIReminderResponse> {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": config.apiKey,
-        "Content-Type": "application/json",
+// Default network call for Gemini: runs the shared model-fallback chain (429 →
+// next model, capped retry on the last) over the resolved reminder model chain.
+async function callGeminiReminderDraft(prompt: string, apiKey: string, models: string[]): Promise<AIReminderResponse> {
+  return callGeminiWithModelFallback({
+    apiKey,
+    models,
+    body: {
+      systemInstruction: { parts: [{ text: REMINDER_SYSTEM_PROMPT }] },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: "application/json",
       },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: REMINDER_SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: "application/json",
-        },
-      }),
     },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Gemini reminder draft request failed: ${response.status}`);
-  }
-
-  const data = await response.json() as Record<string, unknown>;
-  const content = extractGeminiText(data);
-  if (!content) throw new Error("Gemini reminder draft response was empty");
-  return JSON.parse(content) as AIReminderResponse;
-}
-
-// Defensive extraction mirroring receipt-ocr's helper: Gemini may return
-// multiple candidates/parts, so join all text rather than reading parts[0].
-function extractGeminiText(response: Record<string, unknown>): string {
-  const candidates = response.candidates;
-  if (!Array.isArray(candidates)) return "";
-  return candidates
-    .flatMap((candidate) => {
-      if (!candidate || typeof candidate !== "object") return [];
-      const content = (candidate as { content?: unknown }).content;
-      if (!content || typeof content !== "object") return [];
-      const parts = (content as { parts?: unknown }).parts;
-      return Array.isArray(parts) ? parts : [];
-    })
-    .map((part) => {
-      if (!part || typeof part !== "object") return "";
-      const text = (part as { text?: unknown }).text;
-      return typeof text === "string" ? text : "";
-    })
-    .join("\n");
+    onOk: (json) => {
+      const content = extractGeminiText(json);
+      if (!content) throw new Error("Gemini reminder draft response was empty");
+      return JSON.parse(content) as AIReminderResponse;
+    },
+    label: "reminder draft",
+  });
 }
 
 // Resolve the provider: explicit input wins, then REMINDER_AI_PROVIDER, then
@@ -323,20 +296,12 @@ function resolveReminderProvider(input: GenerateReminderDraftInput): ReminderAIP
   return "openai";
 }
 
-function resolveProviderConfig(
-  input: GenerateReminderDraftInput,
-  provider: ReminderAIProvider,
-): { apiKey: string | undefined; model: string } {
-  if (provider === "gemini") {
-    return {
-      apiKey: input.gemini?.apiKey ?? env.GEMINI_API_KEY,
-      model: input.gemini?.model ?? env.GEMINI_REMINDER_MODEL ?? DEFAULT_GEMINI_MODEL,
-    };
-  }
-  return {
-    apiKey: input.openAI?.apiKey ?? env.OPENAI_API_KEY,
-    model: input.openAI?.model ?? env.OPENAI_REMINDER_MODEL ?? DEFAULT_OPENAI_MODEL,
-  };
+// A per-call model override (input.gemini.model) pins a single model and
+// disables fallback; otherwise use the GEMINI_REMINDER_MODELS chain (or the
+// built-in default chain).
+function resolveReminderGeminiModels(input: GenerateReminderDraftInput): string[] {
+  if (input.gemini?.model) return [input.gemini.model];
+  return resolveGeminiModels(env.GEMINI_REMINDER_MODELS, DEFAULT_GEMINI_MODELS);
 }
 
 export async function generateSmartReminderDraft(input: GenerateReminderDraftInput): Promise<ReminderDraft> {
@@ -354,9 +319,11 @@ export async function generateSmartReminderDraft(input: GenerateReminderDraftInp
   }
 
   const provider = resolveReminderProvider(input);
-  const config = resolveProviderConfig(input, provider);
+  const apiKey = provider === "gemini"
+    ? (input.gemini?.apiKey ?? env.GEMINI_API_KEY)
+    : (input.openAI?.apiKey ?? env.OPENAI_API_KEY);
 
-  if (!config.apiKey) {
+  if (!apiKey) {
     return templateDraft(input, tone, "missing_ai_config");
   }
 
@@ -368,13 +335,19 @@ export async function generateSmartReminderDraft(input: GenerateReminderDraftInp
     tone,
   });
 
-  const callModel = provider === "gemini"
-    ? (input.callGemini ?? callGeminiGenerateContentAPI)
-    : (input.callOpenAI ?? callOpenAIChatCompletionsAPI);
-
   let aiResponse: AIReminderResponse;
   try {
-    aiResponse = await callModel(prompt, config as Required<AIProviderConfig>);
+    if (provider === "gemini") {
+      const models = resolveReminderGeminiModels(input);
+      // The test seam (callGemini) takes the primary model; the real path runs
+      // the whole fallback chain.
+      aiResponse = input.callGemini
+        ? await input.callGemini(prompt, { apiKey, model: models[0] })
+        : await callGeminiReminderDraft(prompt, apiKey, models);
+    } else {
+      const model = input.openAI?.model ?? env.OPENAI_REMINDER_MODEL ?? DEFAULT_OPENAI_MODEL;
+      aiResponse = await (input.callOpenAI ?? callOpenAIChatCompletionsAPI)(prompt, { apiKey, model });
+    }
   } catch {
     return templateDraft(input, tone, "ai_call_failed");
   }
