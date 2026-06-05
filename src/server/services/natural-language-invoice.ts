@@ -1,5 +1,6 @@
 import { InvoiceStatus, LineType } from "@/generated/prisma";
 import { env } from "@/lib/env";
+import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 
 export type NaturalLanguageInvoiceContext = {
   defaultCurrencyId: string;
@@ -267,14 +268,6 @@ const OPENAI_DEFAULT_MODEL = "gpt-4.1-mini";
 // one model but not others. Mirrors GEMINI_DEFAULT_MODELS in receipt-ocr.ts;
 // override the whole chain via GEMINI_INVOICE_PARSER_MODELS.
 const GEMINI_DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
-// The parse runs inside a request the user is waiting on, so we never sleep
-// long: a 429 on any model that still has a fallback falls straight through to
-// the next model. Only the final model retries with a short, capped backoff.
-// NOTE: this 429 fallback machinery is intentionally duplicated from
-// receipt-ocr.ts to keep each AI service self-contained; a shared
-// `src/server/lib/gemini.ts` is a reasonable future refactor (see PR #41).
-const GEMINI_MAX_RETRY_DELAY_MS = 2000;
-const GEMINI_LAST_MODEL_RETRIES = 2;
 
 // Strict JSON schema shared with the OpenAI Responses API. Gemini relies on
 // responseMimeType + the system prompt instead (its strict-schema support is
@@ -389,125 +382,31 @@ export async function extractNaturalLanguageInvoiceWithGemini(prompt: string): P
     throw new Error("GEMINI_API_KEY is not configured");
   }
 
-  const body = JSON.stringify({
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    // responseMimeType forces pure-JSON output (no markdown fences); temp 0
-    // keeps extraction deterministic.
-    generationConfig: {
-      temperature: 0,
-      responseMimeType: "application/json",
+  // The model-chain loop + 429 retry/fallthrough lives in the shared
+  // gemini-fallback runner (also used by receipt-ocr and reminder drafting).
+  // We keep the local extractGeminiText below (its ""-join reconstructs JSON
+  // split across parts; the shared one joins with "\n", which would corrupt a
+  // string token straddling two parts).
+  return callGeminiWithModelFallback({
+    apiKey,
+    models: resolveGeminiModels(env.GEMINI_INVOICE_PARSER_MODELS, GEMINI_DEFAULT_MODELS),
+    body: {
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      // responseMimeType forces pure-JSON output (no markdown fences); temp 0
+      // keeps extraction deterministic.
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: "application/json",
+      },
+    },
+    label: "invoice parsing",
+    onOk: (json) => {
+      const raw = extractGeminiText(json);
+      if (!raw) throw new Error("Gemini invoice parsing returned no JSON output");
+      return normalizeExtraction(raw);
     },
   });
-
-  const models = resolveGeminiInvoiceModels();
-  let lastRateLimit: Error | null = null;
-
-  for (let i = 0; i < models.length; i++) {
-    const model = models[i];
-    const isLastModel = i === models.length - 1;
-    // Only the final model retries with backoff; earlier models fall straight
-    // through to the next model on a 429 (faster than sleeping in-request).
-    const maxAttempts = isLastModel ? GEMINI_LAST_MODEL_RETRIES + 1 : 1;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const response = await fetch(geminiGenerateContentUrl(model), {
-        method: "POST",
-        headers: {
-          "x-goog-api-key": apiKey,
-          "Content-Type": "application/json",
-        },
-        body,
-      });
-
-      if (response.ok) {
-        const raw = extractGeminiText(await response.json() as Record<string, unknown>);
-        if (!raw) throw new Error(`Gemini invoice parsing returned no JSON output (${model})`);
-        return normalizeExtraction(raw);
-      }
-
-      const errorBody = await response.text().catch(() => "");
-
-      // Only 429 (rate-limit/quota) is worth trying another model for. Auth,
-      // bad-request, and 404 (e.g. a misspelled model id) won't be fixed by a
-      // different model, so fail loudly and immediately.
-      if (response.status !== 429) {
-        throw new Error(
-          `Gemini invoice parsing failed on ${model} (${response.status}): ${errorBody || response.statusText}`,
-        );
-      }
-
-      lastRateLimit = new Error(
-        `Gemini invoice parsing rate-limited on ${model} (429): ${errorBody || response.statusText}`,
-      );
-
-      // A daily / "limit: 0" quota can't be cleared by waiting, so never sleep
-      // on it — fall straight through to the next model.
-      const exhausted = isGeminiQuotaExhausted(errorBody);
-      const retryDelayMs = parseGeminiRetryDelayMs(errorBody);
-      const canRetrySameModel =
-        isLastModel && !exhausted && attempt < maxAttempts && retryDelayMs !== null;
-
-      if (canRetrySameModel) {
-        await sleep(Math.min(retryDelayMs, GEMINI_MAX_RETRY_DELAY_MS));
-        continue;
-      }
-
-      break; // try the next model, or exit the loop if this was the last one
-    }
-  }
-
-  throw lastRateLimit ?? new Error("Gemini invoice parsing failed: no models configured");
-}
-
-function resolveGeminiInvoiceModels(): string[] {
-  const raw = env.GEMINI_INVOICE_PARSER_MODELS;
-  if (raw) {
-    const list = raw.split(",").map((m) => m.trim()).filter(Boolean);
-    if (list.length > 0) return list;
-  }
-  return GEMINI_DEFAULT_MODELS;
-}
-
-function geminiGenerateContentUrl(model: string): string {
-  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-}
-
-// A daily request quota or a hard "limit: 0" free-tier disablement won't be
-// cleared by the RetryInfo delay, so treat those as non-retryable on the same
-// model and move on to the next one immediately.
-function isGeminiQuotaExhausted(body: string): boolean {
-  return /limit:\s*0\b/.test(body) || /PerDay/i.test(body);
-}
-
-// Gemini 429s carry a google.rpc.RetryInfo detail with retryDelay like "8s" or
-// "8.152848623s". Returns the delay in ms, or null if none is present.
-function parseGeminiRetryDelayMs(body: string): number | null {
-  try {
-    const json = JSON.parse(body) as {
-      error?: { details?: Array<Record<string, unknown>> };
-    };
-    const details = json.error?.details;
-    if (Array.isArray(details)) {
-      for (const detail of details) {
-        const type = detail["@type"];
-        const retryDelay = detail.retryDelay;
-        if (typeof type === "string" && type.includes("RetryInfo") && typeof retryDelay === "string") {
-          const match = retryDelay.match(/([\d.]+)s/);
-          if (match) return Math.ceil(parseFloat(match[1]) * 1000);
-        }
-      }
-    }
-  } catch {
-    // Body wasn't JSON — fall through to the text-scan heuristics below.
-  }
-  const match =
-    body.match(/"retryDelay"\s*:\s*"([\d.]+)s"/) || body.match(/retry in ([\d.]+)s/i);
-  return match ? Math.ceil(parseFloat(match[1]) * 1000) : null;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Pull the concatenated text parts out of a Gemini generateContent response. */
