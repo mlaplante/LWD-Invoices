@@ -20,7 +20,7 @@ export interface OCRResult {
   rawResponse: Record<string, unknown>;
 }
 
-export type ReceiptOCRProvider = "openai" | "anthropic";
+export type ReceiptOCRProvider = "openai" | "anthropic" | "gemini";
 
 export type ReceiptOCROptions = {
   provider?: ReceiptOCRProvider;
@@ -58,6 +58,9 @@ Rules:
 
 const OPENAI_MODEL = "gpt-4.1-mini";
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+// Vision-capable, handles both images and PDFs, and is available on Google's
+// free Gemini API tier. Override per call via options.provider if needed.
+const GEMINI_MODEL = "gemini-2.0-flash";
 
 export async function parseReceiptWithOCR(
   fileData: Buffer,
@@ -68,14 +71,21 @@ export async function parseReceiptWithOCR(
   if (provider === "openai") {
     return parseReceiptWithOpenAI(fileData, mimeType, options.fileName);
   }
+  if (provider === "gemini") {
+    return parseReceiptWithGemini(fileData, mimeType);
+  }
   return parseReceiptWithAnthropic(fileData, mimeType);
 }
 
 function resolveProvider(override?: ReceiptOCRProvider): ReceiptOCRProvider {
   if (override) return override;
   const configured = env.RECEIPT_OCR_PROVIDER;
-  if (configured === "openai" || configured === "anthropic") return configured;
+  if (configured === "openai" || configured === "anthropic" || configured === "gemini") {
+    return configured;
+  }
+  // Fall back to whichever key is present, preferring PDF-capable providers.
   if (env.OPENAI_API_KEY) return "openai";
+  if (env.GEMINI_API_KEY) return "gemini";
   return "anthropic";
 }
 
@@ -171,6 +181,72 @@ async function parseReceiptWithAnthropic(fileData: Buffer, mimeType: string): Pr
   const textBlock = response.content.find((b) => b.type === "text");
   const rawText = textBlock && "text" in textBlock ? textBlock.text : "";
   return normalizeOCRPayload(rawText);
+}
+
+async function parseReceiptWithGemini(fileData: Buffer, mimeType: string): Promise<OCRResult> {
+  const apiKey = env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  // Gemini handles both images and PDFs via inline_data, so no PDF guard.
+  const base64 = fileData.toString("base64");
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: "Extract all expense data from this receipt." },
+              { inlineData: { mimeType, data: base64 } },
+            ],
+          },
+        ],
+        // responseMimeType forces pure-JSON output (no markdown fences), and
+        // maxOutputTokens guards against a long receipt truncating the JSON.
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json",
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Gemini receipt OCR failed (${response.status}): ${body || response.statusText}`);
+  }
+
+  const json = await response.json() as Record<string, unknown>;
+  return normalizeOCRPayload(extractGeminiText(json));
+}
+
+function extractGeminiText(response: Record<string, unknown>): string {
+  const candidates = response.candidates;
+  if (!Array.isArray(candidates)) return "";
+  return candidates
+    .flatMap((candidate) => {
+      if (!candidate || typeof candidate !== "object") return [];
+      const content = (candidate as { content?: unknown }).content;
+      if (!content || typeof content !== "object") return [];
+      const parts = (content as { parts?: unknown }).parts;
+      return Array.isArray(parts) ? parts : [];
+    })
+    .map((part) => {
+      if (!part || typeof part !== "object") return "";
+      const text = (part as { text?: unknown }).text;
+      return typeof text === "string" ? text : "";
+    })
+    .join("\n");
 }
 
 function extractOpenAIText(response: Record<string, unknown>): string {

@@ -28,7 +28,8 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     OPENAI_API_KEY: z.string().min(1).optional(),
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
-    RECEIPT_OCR_PROVIDER: z.enum(["openai", "anthropic"]).optional(),
+    GEMINI_API_KEY: z.string().min(1).optional(),
+    RECEIPT_OCR_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
     // Dedicated HMAC secret for signing public-portal session cookies.
     // Optional for back-compat: when unset, the portal-session helpers fall
     // back to SUPABASE_SERVICE_ROLE_KEY. Set this in production so the
@@ -54,6 +55,7 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     RECEIPT_OCR_PROVIDER: process.env.RECEIPT_OCR_PROVIDER,
     PORTAL_SESSION_SECRET: process.env.PORTAL_SESSION_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
