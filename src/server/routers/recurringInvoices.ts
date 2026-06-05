@@ -10,6 +10,7 @@ const recurringSchema = z.object({
   endDate: z.coerce.date().optional(),
   maxOccurrences: z.number().int().min(1).optional(),
   autoSend: z.boolean().default(false),
+  autoCharge: z.boolean().default(false),
   // 1-31; clamped to the last day of short months at run time.
   dayOfMonth: z.number().int().min(1).max(31).optional(),
   // IANA timezone string, validated lazily by Intl.DateTimeFormat at
