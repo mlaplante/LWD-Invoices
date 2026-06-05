@@ -3,7 +3,7 @@ import type { Prisma } from "@/generated/prisma";
 type Decimal = Prisma.Decimal;
 
 export function getStripeClient(secretKey: string): Stripe {
-  return new Stripe(secretKey, { apiVersion: "2026-04-22.dahlia" });
+  return new Stripe(secretKey, { apiVersion: "2026-05-27.dahlia" });
 }
 
 export async function createCheckoutSession(opts: {
