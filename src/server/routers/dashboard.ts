@@ -3,6 +3,10 @@ import { unstable_cache } from "next/cache";
 import { router, protectedProcedure } from "../trpc";
 import { InvoiceStatus } from "@/generated/prisma";
 import { orgTag } from "../cached";
+import {
+  calculateCashFlowInsightMetrics,
+  generateCashFlowNarrative,
+} from "@/server/services/cash-flow-insights";
 
 // Passive 60s cache on dashboard aggregates. No mutation-driven invalidation —
 // invoice/payment/expense write paths fan out across many routers and the cost
@@ -426,4 +430,86 @@ export const dashboardRouter = router({
       { tags: [dashTag(ctx.orgId)], revalidate: DASHBOARD_TTL }
     )()
   ),
+
+  cashFlowInsights: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+    const currentQuarterStart = new Date(Date.UTC(now.getUTCFullYear(), Math.floor(now.getUTCMonth() / 3) * 3, 1));
+    const previousQuarterStart = new Date(Date.UTC(currentQuarterStart.getUTCFullYear(), currentQuarterStart.getUTCMonth() - 3, 1));
+    const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const previousMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const dataStart = new Date(Math.min(previousQuarterStart.getTime(), previousMonthStart.getTime(), sixMonthsAgo.getTime()));
+
+    const [payments, expenses, openInvoices, retainerTimeEntries] = await Promise.all([
+      ctx.db.payment.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          paidAt: { gte: dataStart },
+        },
+        select: {
+          amount: true,
+          paidAt: true,
+          invoice: {
+            select: {
+              clientId: true,
+              date: true,
+              dueDate: true,
+              client: { select: { name: true } },
+            },
+          },
+        },
+      }),
+      ctx.db.expense.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          createdAt: { gte: dataStart },
+        },
+        select: { rate: true, qty: true, createdAt: true },
+      }),
+      ctx.db.invoice.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          isArchived: false,
+          status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
+        },
+        select: {
+          id: true,
+          total: true,
+          dueDate: true,
+          status: true,
+          payments: { select: { amount: true } },
+          client: { select: { id: true, name: true } },
+        },
+      }),
+      ctx.db.timeEntry.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          retainerId: { not: null },
+          invoiceLineId: null,
+          date: { gte: currentMonthStart },
+        },
+        select: {
+          minutes: true,
+          invoiceLineId: true,
+          retainerId: true,
+          retainer: {
+            select: {
+              name: true,
+              clientId: true,
+              hourlyRate: true,
+              client: { select: { name: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const metrics = calculateCashFlowInsightMetrics(
+      { payments, expenses, openInvoices, retainerTimeEntries },
+      now,
+    );
+    const narrative = await generateCashFlowNarrative(metrics);
+
+    return { metrics, narrative };
+  }),
 });

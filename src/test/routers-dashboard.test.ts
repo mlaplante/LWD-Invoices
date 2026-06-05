@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { dashboardRouter } from "@/server/routers/dashboard";
 import { createMockContext } from "./mocks/trpc-context";
+import type { MockTRPCContext } from "./mocks/trpc-context";
 
 describe("Dashboard Router", () => {
-  let ctx: any;
-  let caller: any;
+  let ctx: MockTRPCContext;
+  let caller: ReturnType<typeof dashboardRouter.createCaller>;
 
   beforeEach(() => {
     ctx = createMockContext();
@@ -106,6 +107,76 @@ describe("Dashboard Router", () => {
       expect(result[0]).toHaveProperty("month");
       expect(result[0]).toHaveProperty("revenue");
       expect(result[0]).toHaveProperty("expenses");
+    });
+  });
+
+  describe("cashFlowInsights", () => {
+    it("returns deterministic metrics and a guarded narrative payload", async () => {
+      ctx.db.payment.findMany.mockResolvedValue([
+        {
+          amount: 1000,
+          paidAt: new Date("2026-06-01"),
+          invoice: {
+            clientId: "c1",
+            date: new Date("2026-05-01"),
+            dueDate: new Date("2026-06-01"),
+            client: { name: "Reliable Co" },
+          },
+        },
+        {
+          amount: 900,
+          paidAt: new Date("2026-05-01"),
+          invoice: {
+            clientId: "c1",
+            date: new Date("2026-04-01"),
+            dueDate: new Date("2026-05-01"),
+            client: { name: "Reliable Co" },
+          },
+        },
+        {
+          amount: 1100,
+          paidAt: new Date("2026-04-01"),
+          invoice: {
+            clientId: "c1",
+            date: new Date("2026-03-01"),
+            dueDate: new Date("2026-04-01"),
+            client: { name: "Reliable Co" },
+          },
+        },
+      ]);
+      ctx.db.expense.findMany.mockResolvedValue([]);
+      ctx.db.invoice.findMany.mockResolvedValue([
+        {
+          id: "i1",
+          total: 500,
+          dueDate: new Date("2026-01-01"),
+          status: "OVERDUE",
+          payments: [],
+          client: { id: "c2", name: "Late Co" },
+        },
+      ]);
+      ctx.db.timeEntry.findMany.mockResolvedValue([
+        {
+          minutes: 120,
+          invoiceLineId: null,
+          retainerId: "r1",
+          retainer: {
+            name: "Support",
+            clientId: "c1",
+            hourlyRate: 125,
+            client: { name: "Reliable Co" },
+          },
+        },
+      ]);
+
+      const result = await caller.cashFlowInsights();
+
+      expect(result.metrics.overdue.total).toBe(500);
+      expect(result.metrics.reliablePayers[0].clientId).toBe("c1");
+      expect(result.metrics.unbilledRetainerOpportunities[0]).toEqual(
+        expect.objectContaining({ hours: 2, estimatedValue: 250 }),
+      );
+      expect(result.narrative.summary).toContain("unbilled retainer");
     });
   });
 });
