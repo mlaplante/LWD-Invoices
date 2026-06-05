@@ -23,11 +23,24 @@ import {
 import { paginationFromInput } from "@/lib/pagination";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { generatePortalToken } from "@/lib/portal-session";
+import {
+  buildNaturalLanguageInvoiceDraft,
+  extractNaturalLanguageInvoice,
+  type NaturalLanguageInvoiceContext,
+} from "../services/natural-language-invoice";
 
 // Bulk-payment limiter: a single org/user shouldn't fire markPaidMany more
 // than 5x per minute under any legitimate workflow. Anything higher means
 // either a script gone wrong or abuse — both of which we want to slow down.
 const markPaidManyLimiter = createRateLimiter({ limit: 5, windowMs: 60_000 });
+
+// Natural-language drafting calls the OpenAI API, which costs real money per
+// request. We throttle it per-org (not per-user) because the spend is an
+// org-level resource — keying per-user would let N admins multiply the cost.
+// This mirrors the in-process markPaidManyLimiter; the ceiling is therefore
+// per-instance (limit × replicas), which is an acceptable worst-case OpenAI
+// spend for an interactive drafting feature. Exported so tests can reset it.
+export const draftFromPromptLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
 
 // ─── Input Schemas ─────────────────────────────────────────────────────────────
 
@@ -210,6 +223,64 @@ export const invoicesRouter = router({
         orderBy: { lastViewed: "desc" },
         take: input.limit,
       });
+    }),
+
+  draftFromPrompt: requireRole("OWNER", "ADMIN")
+    .input(z.object({ prompt: z.string().trim().min(5).max(2_000) }))
+    .mutation(async ({ ctx, input }) => {
+      // Throttle before any DB work or the OpenAI call — a runaway client or
+      // script shouldn't be able to rack up API charges (or DB load) by
+      // hammering this endpoint.
+      if (draftFromPromptLimiter.isLimited(ctx.orgId)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many invoice drafting requests. Try again in a minute.",
+        });
+      }
+
+      const [clients, items, taxes, currencies] = await Promise.all([
+        ctx.db.client.findMany({
+          where: { organizationId: ctx.orgId, isArchived: false },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        }),
+        ctx.db.item.findMany({
+          where: { organizationId: ctx.orgId },
+          select: { id: true, name: true, description: true, rate: true, unit: true },
+          orderBy: { name: "asc" },
+        }),
+        ctx.db.tax.findMany({
+          where: { organizationId: ctx.orgId },
+          select: { id: true, name: true, rate: true },
+          orderBy: { name: "asc" },
+        }),
+        ctx.db.currency.findMany({
+          where: { organizationId: ctx.orgId },
+          orderBy: [{ isDefault: "desc" }, { code: "asc" }],
+          take: 1,
+        }),
+      ]);
+
+      const defaultCurrency = currencies[0];
+      if (!defaultCurrency) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Set up a currency before drafting an invoice." });
+      }
+
+      const context: NaturalLanguageInvoiceContext = {
+        defaultCurrencyId: defaultCurrency.id,
+        clients,
+        items: items.map((item) => ({
+          ...item,
+          rate: item.rate === null || item.rate === undefined ? null : Number(item.rate),
+        })),
+        taxes: taxes.map((tax) => ({
+          ...tax,
+          rate: tax.rate === null || tax.rate === undefined ? null : Number(tax.rate),
+        })),
+      };
+
+      const extraction = await extractNaturalLanguageInvoice(input.prompt);
+      return buildNaturalLanguageInvoiceDraft({ prompt: input.prompt, extraction, context });
     }),
 
   create: requireRole("OWNER", "ADMIN")

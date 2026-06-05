@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useTransition, useRef } from "react";
+import React, { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { InvoiceType } from "@/generated/prisma";
 import { toast } from "sonner";
@@ -131,6 +131,12 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
   const createMutation = trpc.invoices.create.useMutation();
   const updateMutation = trpc.invoices.update.useMutation();
+  const draftFromPromptMutation = trpc.invoices.draftFromPrompt.useMutation();
+  const [naturalPrompt, setNaturalPrompt] = useState("");
+  const [naturalDraftReview, setNaturalDraftReview] = useState<{
+    ambiguities: { field: string; message: string }[];
+    lineWarnings: string[];
+  } | null>(null);
   const { data: stripeTaxPreflight } = trpc.organization.stripeTaxPreflight.useQuery(
     { clientId: form.clientId || undefined },
     { staleTime: 30_000 },
@@ -156,6 +162,44 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
       const termsDays = client?.defaultPaymentTermsDays ?? orgPaymentTermsDays;
       return { ...p, date: newDate, dueDate: calcDueDate(newDate, termsDays) };
     });
+  }
+
+  async function handleNaturalDraft() {
+    const prompt = naturalPrompt.trim();
+    if (!prompt) return;
+
+    try {
+      const draft = await draftFromPromptMutation.mutateAsync({ prompt });
+      setForm((current) => ({
+        ...current,
+        type: InvoiceType.DETAILED,
+        currencyId: draft.currencyId || current.currencyId,
+        clientId: draft.clientId ?? current.clientId,
+        dueDate: draft.dueDate ?? current.dueDate,
+        notes: draft.notes ?? current.notes,
+        lines: draft.lines.map((line) => ({
+          sort: line.sort,
+          lineType: line.lineType,
+          name: line.name,
+          description: line.description ?? undefined,
+          qty: Number(line.qty),
+          rate: Number(line.rate),
+          period: line.period === null || line.period === undefined ? undefined : Number(line.period),
+          discount: Number(line.discount),
+          discountIsPercentage: line.discountIsPercentage,
+          taxIds: line.taxIds,
+          sourceTable: line.sourceTable ?? undefined,
+          sourceId: line.sourceId ?? undefined,
+        })),
+      }));
+      setNaturalDraftReview({
+        ambiguities: draft.ambiguities,
+        lineWarnings: draft.lines.flatMap((line) => line.warnings ?? []),
+      });
+      toast.success("Draft invoice created. Review and edit before saving or sending.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create draft from prompt");
+    }
   }
 
   function applyDepositSchedule(percent: number, dueDate: string | undefined) {
@@ -194,10 +238,12 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
   }
 
   const didInitDeposit = useRef(false);
-  if (mode === "create" && depositEnabled && schedule.length === 0 && !didInitDeposit.current) {
-    didInitDeposit.current = true;
-    queueMicrotask(() => applyDepositSchedule(depositPercent, form.dueDate));
-  }
+  useEffect(() => {
+    if (mode === "create" && depositEnabled && schedule.length === 0 && !didInitDeposit.current) {
+      didInitDeposit.current = true;
+      applyDepositSchedule(depositPercent, form.dueDate);
+    }
+  }, [depositEnabled, depositPercent, form.dueDate, mode, schedule.length]);
 
   function buildInput() {
     return {
@@ -258,9 +304,60 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
   }
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isDraftingFromPrompt = draftFromPromptMutation.isPending;
 
   return (
     <div className="space-y-6">
+      {mode === "create" && (
+        <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+          <div className="space-y-1">
+            <h2 className="text-sm font-semibold">Create from a prompt</h2>
+            <p className="text-sm text-muted-foreground">
+              Describe the invoice in plain English. We’ll draft it only — review all matches before saving or sending.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <label className="sr-only" htmlFor="natural-invoice-prompt">
+              Natural-language invoice prompt
+            </label>
+            <Textarea
+              id="natural-invoice-prompt"
+              value={naturalPrompt}
+              onChange={(event) => setNaturalPrompt(event.target.value)}
+              placeholder="Bill Acme 8 hrs design at $120 plus the Figma license"
+              className="min-h-20 flex-1 bg-background"
+            />
+            <Button
+              type="button"
+              onClick={handleNaturalDraft}
+              disabled={isDraftingFromPrompt || naturalPrompt.trim().length < 5}
+              className="sm:mt-0"
+            >
+              {isDraftingFromPrompt ? "Drafting…" : "Draft invoice"}
+            </Button>
+          </div>
+          {naturalDraftReview && (
+            <div className="rounded-lg border bg-background p-3 text-sm" role="status" aria-live="polite">
+              <p className="font-medium">Review required before saving or sending</p>
+              {naturalDraftReview.ambiguities.length === 0 && naturalDraftReview.lineWarnings.length === 0 ? (
+                <p className="mt-1 text-muted-foreground">
+                  Draft fields were filled from your prompt. Confirm the client, line items, taxes, and due date.
+                </p>
+              ) : (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  {naturalDraftReview.ambiguities.map((ambiguity, index) => (
+                    <li key={`ambiguity-${index}`}>{ambiguity.message}</li>
+                  ))}
+                  {naturalDraftReview.lineWarnings.map((warning, index) => (
+                    <li key={`warning-${index}`}>{warning}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Header fields */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Client */}

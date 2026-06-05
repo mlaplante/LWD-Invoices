@@ -41,6 +41,15 @@ export const env = createEnv({
     // Leave unset to use the built-in default chain. Example:
     //   GEMINI_OCR_MODELS="gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash"
     GEMINI_OCR_MODELS: z.string().min(1).optional(),
+    // Which provider drafts invoices from natural-language prompts. Defaults
+    // to openai when unset; gemini requires GEMINI_API_KEY. When unset and no
+    // OPENAI_API_KEY is present, falls back to gemini if its key is configured.
+    INVOICE_PARSER_PROVIDER: z.enum(["openai", "gemini"]).optional(),
+    OPENAI_INVOICE_PARSER_MODEL: z.string().min(1).optional(),
+    // Comma-separated, ordered Gemini model fallback chain for invoice drafting,
+    // mirroring GEMINI_OCR_MODELS: on a 429 the next model is tried. Leave unset
+    // for the built-in default chain.
+    GEMINI_INVOICE_PARSER_MODELS: z.string().min(1).optional(),
     // Dedicated HMAC secret for signing public-portal session cookies.
     // Optional for back-compat: when unset, the portal-session helpers fall
     // back to SUPABASE_SERVICE_ROLE_KEY. Set this in production so the
@@ -72,6 +81,9 @@ export const env = createEnv({
     REMINDER_AI_PROVIDER: process.env.REMINDER_AI_PROVIDER,
     RECEIPT_OCR_PROVIDER: process.env.RECEIPT_OCR_PROVIDER,
     GEMINI_OCR_MODELS: process.env.GEMINI_OCR_MODELS,
+    INVOICE_PARSER_PROVIDER: process.env.INVOICE_PARSER_PROVIDER,
+    OPENAI_INVOICE_PARSER_MODEL: process.env.OPENAI_INVOICE_PARSER_MODEL,
+    GEMINI_INVOICE_PARSER_MODELS: process.env.GEMINI_INVOICE_PARSER_MODELS,
     PORTAL_SESSION_SECRET: process.env.PORTAL_SESSION_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
