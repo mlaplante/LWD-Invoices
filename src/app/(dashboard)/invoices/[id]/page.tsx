@@ -19,6 +19,7 @@ import { ReminderOverrideSelect } from "@/components/invoices/ReminderOverrideSe
 import { ReminderHistory } from "@/components/invoices/ReminderHistory";
 import { EmailEngagementPanel } from "@/components/invoices/EmailEngagementPanel";
 import { InboundRepliesPanel } from "@/components/invoices/InboundRepliesPanel";
+import { InvoiceRemindersPanel } from "@/components/invoices/InvoiceRemindersPanel";
 import { ProposalEngagementPanel } from "@/components/invoices/ProposalEngagementPanel";
 import { ApplyRetainerDialog } from "@/components/invoices/ApplyRetainerDialog";
 import { IssueCreditNoteDialog } from "@/components/invoices/IssueCreditNoteDialog";
@@ -531,6 +532,9 @@ export default async function InvoiceDetailPage({
 
       {/* ── Late Fees ─────────────────────────────────────────────── */}
       <LateFeeSection invoiceId={invoice.id} />
+
+      {/* ── Reminders sent (manual + sequence) ───────────────────── */}
+      {invoice.type !== "ESTIMATE" && <InvoiceRemindersPanel invoiceId={invoice.id} />}
 
       {/* ── Client Replies (inbound email threading) ─────────────── */}
       {invoice.type !== "ESTIMATE" && <InboundRepliesPanel invoiceId={invoice.id} />}

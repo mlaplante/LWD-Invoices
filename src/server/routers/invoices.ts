@@ -244,6 +244,56 @@ export const invoicesRouter = router({
       });
     }),
 
+  // Combined reminder history for an invoice: ad-hoc manual sends
+  // (InvoiceReminder) + automated sequence sends (ReminderLog), newest first.
+  reminderHistory: protectedProcedure
+    .input(z.object({ invoiceId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findFirst({
+        where: { id: input.invoiceId, organizationId: ctx.orgId },
+        select: { id: true },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const [manual, sequence] = await Promise.all([
+        ctx.db.invoiceReminder.findMany({
+          where: { invoiceId: input.invoiceId, organizationId: ctx.orgId },
+          select: { id: true, sentAt: true, subject: true, tone: true, source: true },
+        }),
+        ctx.db.reminderLog.findMany({
+          where: { invoiceId: input.invoiceId },
+          select: {
+            id: true,
+            sentAt: true,
+            step: { select: { subject: true, sequence: { select: { name: true } } } },
+          },
+        }),
+      ]);
+
+      const entries = [
+        ...manual.map((m) => ({
+          id: m.id,
+          kind: "manual" as const,
+          sentAt: m.sentAt,
+          subject: m.subject,
+          tone: m.tone,
+          source: m.source,
+          sequenceName: null as string | null,
+        })),
+        ...sequence.map((s) => ({
+          id: s.id,
+          kind: "sequence" as const,
+          sentAt: s.sentAt,
+          subject: s.step.subject,
+          tone: null as string | null,
+          source: null as string | null,
+          sequenceName: s.step.sequence.name,
+        })),
+      ].sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+
+      return entries;
+    }),
+
   recentlyViewed: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(20).default(5) }))
     .query(async ({ ctx, input }) => {
