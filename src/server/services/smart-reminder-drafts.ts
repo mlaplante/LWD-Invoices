@@ -177,7 +177,7 @@ function stripTrailingPunctuation(token: string): string {
   return token.replace(/[.,;:!?)\]}>"']+$/, "");
 }
 
-function containsHallucinatedInvoiceFacts(text: string, invoice: ReminderInvoiceFacts): boolean {
+export function containsHallucinatedInvoiceFacts(text: string, invoice: ReminderInvoiceFacts): boolean {
   const allowedInvoice = invoice.invoiceNumber.toLowerCase();
   const invoiceLikeTokens = text.match(/\b[A-Z]{2,}-?\d{2,}\b/g) ?? [];
   if (invoiceLikeTokens.some((token) => token.toLowerCase() !== allowedInvoice)) return true;
@@ -187,11 +187,15 @@ function containsHallucinatedInvoiceFacts(text: string, invoice: ReminderInvoice
   // amount is a hallucinated figure. We do NOT exempt `daysOverdue`: the overdue
   // count is rendered as a bare integer ("21 days overdue") that never matches
   // this 2-decimal pattern, so the previous carve-out only opened a bypass for a
-  // wrong amount that happened to equal the overdue count. Known limitation: a
-  // locale-formatted year ("2,026.00") would also match here and trip a fallback
-  // — acceptable, since a failed guard only downgrades to the safe template.
+  // wrong amount that happened to equal the overdue count. The integer part
+  // matches either a comma-grouped figure ("1,250.00") OR a plain run of digits
+  // ("9999.00") — the bare-digit alternation is essential, since without it a
+  // 4+-digit amount with no thousands separator slipped past the guard entirely
+  // (caught by the AI eval golden set). Known limitation: a locale-formatted year
+  // ("2,026.00") would also match here and trip a fallback — acceptable, since a
+  // failed guard only downgrades to the safe template.
   const expectedAmount = normalizeAmount(invoice.amountDue);
-  const amountTokens = text.match(/(?:[$€£]\s*)?\b\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/g) ?? [];
+  const amountTokens = text.match(/(?:[$€£]\s*)?\b(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{2})\b/g) ?? [];
   for (const token of amountTokens) {
     const normalized = normalizeAmount(token);
     if (normalized && normalized !== expectedAmount) {

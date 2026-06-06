@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:eval": "vitest run src/test/ai-eval"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
