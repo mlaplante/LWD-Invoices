@@ -68,10 +68,22 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - **AR Aging & DSO Dashboard** — Receivables bucketed by balance due (current / 1–30 / 31–60 / 61–90 / 90+) with a 12-month Days-Sales-Outstanding trend
 - **Year-End Export Pack** — Financial reports for accountants (P&L, Expense Ledger, Payment Ledger, Tax Liability, AR Aging snapshot) with CSV, PDF, and ZIP downloads
 - **1099 / Contractor Tax Pack** — Track contractor payments, collect W-9 details (with encrypted TIN storage and private W-9 document uploads), and auto-generate Form 1099-NEC at year end. Flags contractors over the $600 reporting threshold, surfaces missing W-9s, and downloads the filing pack (per-recipient 1099-NEC PDFs + summary CSV/PDF + ZIP). Card and third-party-network payments are auto-excluded as 1099-K.
+- **Contractor Portal** — Opt-in self-service portal (token link, no account) where contractors view their payment history, submit a W-9, and download their own 1099-NEC
+- **Inbound Email Threading** — Client replies to invoice emails (via a `reply+<invoiceId>@` Reply-To) are captured and threaded onto the invoice and a support ticket
 - **Support Tickets** — Internal ticket system with threaded discussions
 - **Items** — Saved line item library for quick invoice creation
 - **Currencies** — Multi-currency support
 - **Taxes** — Configurable tax rates with compound tax support
+
+### AI & Analytics
+- **Ask Your Books** — A chat assistant (Anthropic tool-calling agent) over your live data: "which clients owe me money?", "revenue last quarter?", "which invoices should I chase?", "projected cash position?". Read-only — it analyzes and recommends but never changes data.
+- **Cash-Flow Forecast** — Forward 30/60/90-day projected cash position from open AR (weighted by aging probability), recurring invoices, autopay, and recurring expenses, with "what if a client pays late?" scenario planning
+- **Client Health Scoring** — Composite per-client score (payment behavior, email engagement, revenue trend, overdue pressure) with churn-risk band and upsell signals
+- **Recurring Revenue (MRR/ARR)** — Subscription-style MRR, ARR, ARPA, and revenue/logo churn across recurring invoices and hours-retainers
+- **Smart Collections** — Open invoices ranked by predicted late-payment risk with a recommended dunning action and tone for each
+- **Expense Anomaly Detection** — Duplicate-receipt clustering and per-supplier amount outliers from your OCR expense data
+- **AI Cash-Flow Insights** — Deterministic dashboard metrics with an optional AI narrative summary
+- **Natural-Language Invoicing, AI Reminders & Receipt OCR** — Draft invoices from a prompt, AI-drafted payment reminders with tone selection + fact guard, and receipt scanning to prefill expenses
 
 ### Platform
 - **Multi-tenancy** — Full organization isolation via Supabase Auth; users can belong to multiple organizations
