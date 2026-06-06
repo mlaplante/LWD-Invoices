@@ -6,7 +6,7 @@ import { BrandingForm } from "@/components/settings/BrandingForm";
 import { PortalBrandingForm } from "@/components/settings/PortalBrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell, Shield, User, HeartHandshake, Newspaper } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell, Shield, User, HeartHandshake, Newspaper, Workflow } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
@@ -73,6 +73,13 @@ const subPages = [
     description: "Automated emails triggered by invoice events.",
     icon: <Mail className="w-4 h-4" />,
     color: "bg-indigo-50 text-indigo-600",
+  },
+  {
+    href: "/settings/automation-rules",
+    label: "Automation Rules",
+    description: "No-code trigger → conditions → actions rules over your invoices.",
+    icon: <Workflow className="w-4 h-4" />,
+    color: "bg-fuchsia-50 text-fuchsia-600",
   },
   {
     href: "/settings/policies",

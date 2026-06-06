@@ -34,6 +34,7 @@ import { recurringExpensesRouter } from "./recurringExpenses";
 import { contractorsRouter } from "./contractors";
 import { teamRouter } from "./team";
 import { emailAutomationsRouter } from "./emailAutomations";
+import { automationRulesRouter } from "./automationRules";
 import { lateFeesRouter } from "./lateFees";
 import { hoursRetainersRouter } from "./hoursRetainers";
 import { retainersRouter } from "./retainers";
@@ -96,6 +97,7 @@ export const appRouter = router({
   contractors: contractorsRouter,
   team: teamRouter,
   emailAutomations: emailAutomationsRouter,
+  automationRules: automationRulesRouter,
   lateFees: lateFeesRouter,
   hoursRetainers: hoursRetainersRouter,
   retainers: retainersRouter,

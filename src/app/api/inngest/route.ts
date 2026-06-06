@@ -14,8 +14,9 @@ import { processRetentionCheckIns } from "@/inngest/functions/retention-checkins
 import { processProposalNudges } from "@/inngest/functions/proposal-nudges";
 import { processWeeklyBriefing } from "@/inngest/functions/weekly-briefing";
 import { processCreditHoldEvaluation } from "@/inngest/functions/credit-hold-evaluation";
+import { handleAutomationRuleEvent, processAutomationRules } from "@/inngest/functions/automation-rules";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, processRecurringExpenses, processEmailAutomations, handleAutomationEvent, processLateFees, processScheduledReports, processReminderSequences, recalculateInvoiceTotals, processRetentionCheckIns, processProposalNudges, processWeeklyBriefing, processCreditHoldEvaluation],
+  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, processRecurringExpenses, processEmailAutomations, handleAutomationEvent, processLateFees, processScheduledReports, processReminderSequences, recalculateInvoiceTotals, processRetentionCheckIns, processProposalNudges, processWeeklyBriefing, processCreditHoldEvaluation, handleAutomationRuleEvent, processAutomationRules],
 });
