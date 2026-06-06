@@ -31,6 +31,7 @@ import { discussionsRouter } from "./discussions";
 import { proposalTemplatesRouter } from "./proposal-templates";
 import { proposalsRouter } from "./proposals";
 import { recurringExpensesRouter } from "./recurringExpenses";
+import { contractorsRouter } from "./contractors";
 import { teamRouter } from "./team";
 import { emailAutomationsRouter } from "./emailAutomations";
 import { lateFeesRouter } from "./lateFees";
@@ -80,6 +81,7 @@ export const appRouter = router({
   proposalTemplates: proposalTemplatesRouter,
   proposals: proposalsRouter,
   recurringExpenses: recurringExpensesRouter,
+  contractors: contractorsRouter,
   team: teamRouter,
   emailAutomations: emailAutomationsRouter,
   lateFees: lateFeesRouter,

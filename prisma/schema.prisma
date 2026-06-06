@@ -173,6 +173,34 @@ enum PaymentAttemptStatus {
   FAILED
 }
 
+// ─── 1099 / Contractor Tax Pack ───────────────────────────────────────────────
+
+// W-9 collection lifecycle for a contractor (payee).
+enum W9Status {
+  NOT_REQUESTED
+  REQUESTED
+  RECEIVED
+}
+
+// Taxpayer Identification Number type from the contractor's W-9.
+enum ContractorTinType {
+  SSN
+  EIN
+}
+
+// How a contractor payment was made. CARD and THIRD_PARTY (PayPal/Venmo/etc.)
+// are reported to the IRS by the payment processor on a 1099-K, so they are
+// excluded from the payer's 1099-NEC box 1 total by default.
+enum ContractorPaymentMethod {
+  CHECK
+  ACH
+  WIRE
+  CASH
+  CARD
+  THIRD_PARTY
+  OTHER
+}
+
 // ─── Core Models ──────────────────────────────────────────────────────────────
 
 model Organization {
@@ -226,6 +254,10 @@ model Organization {
   postalCode          String?
   country             String?
   phone               String?
+  // ─── 1099 / Contractor Tax Pack ─────────────────────────────────────────────
+  // Payer's federal Tax ID (EIN/SSN), printed in the PAYER block of generated
+  // 1099-NEC forms. Stored as entered; surfaced only to org admins.
+  payerTin            String?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
@@ -252,6 +284,8 @@ model Organization {
   expenseCategories       ExpenseCategory[]
   expenseSuppliers        ExpenseSupplier[]
   recurringExpenses       RecurringExpense[]
+  contractors             Contractor[]
+  contractorPayments      ContractorPayment[]
   recurringInvoices       RecurringInvoice[]
   creditNoteApplications  CreditNoteApplication[]
   attachments             Attachment[]
@@ -985,6 +1019,80 @@ model RecurringExpense {
 
   @@index([organizationId])
   @@index([isActive, nextRunAt])
+}
+
+// ─── 1099 / Contractor Tax Pack ───────────────────────────────────────────────
+
+// A contractor (payee) the org pays during the year. Holds the W-9 identity
+// fields needed to issue a Form 1099-NEC at year end. The TIN (SSN/EIN) is
+// stored encrypted at rest; only the last four digits are kept in clear text
+// for display.
+model Contractor {
+  id                String   @id @default(cuid())
+  // ── W-9 identity (Form W-9, Part I) ──
+  legalName         String                       // Line 1: name as shown on the tax return
+  businessName      String?                      // Line 2: business / disregarded-entity name (DBA)
+  taxClassification String?                      // Line 3: "individual", "c_corp", "s_corp", "partnership", "trust", "llc"
+  tinType           ContractorTinType?
+  tinEncrypted      String?                      // AES-GCM ciphertext of the SSN/EIN
+  tinLast4          String?                      // last 4 digits, for display
+  // ── Address + contact ──
+  email             String?
+  phone             String?
+  addressLine1      String?
+  addressLine2      String?
+  city              String?
+  state             String?
+  zip               String?
+  country           String?  @default("US")
+  // ── W-9 collection ──
+  w9Status          W9Status @default(NOT_REQUESTED)
+  w9DocumentPath    String?                      // private storage path of the signed W-9 PDF
+  w9ReceivedAt      DateTime?
+  // ── 1099 eligibility ──
+  // Corporations (C/S) are generally exempt from 1099-NEC reporting. When the
+  // user marks a payee exempt, it is excluded from the 1099 pack regardless of
+  // how much was paid.
+  exemptFrom1099    Boolean  @default(false)
+  notes             String?
+  isArchived        Boolean  @default(false)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payments       ContractorPayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, isArchived])
+}
+
+// A single payment made to a contractor. The reportable flag controls whether
+// the amount rolls up into the contractor's 1099-NEC box 1 total.
+model ContractorPayment {
+  id             String                  @id @default(cuid())
+  amount         Decimal                 @db.Decimal(20, 10)
+  paidAt         DateTime
+  method         ContractorPaymentMethod @default(CHECK)
+  memo           String?
+  reference      String?                                       // check #, ACH trace, txn id
+  // Defaults follow the method: CARD / THIRD_PARTY payments are reported by the
+  // processor on a 1099-K and so are not reportable here; everything else is.
+  reportable     Boolean                 @default(true)
+  // Optional link back to an Expense, so a payment recorded in the expense
+  // ledger can also be tracked against the contractor's 1099 total.
+  expenseId      String?
+
+  contractorId   String
+  contractor     Contractor              @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, paidAt])
+  @@index([contractorId])
 }
 
 // ─── Recurring Invoices ───────────────────────────────────────────────────────

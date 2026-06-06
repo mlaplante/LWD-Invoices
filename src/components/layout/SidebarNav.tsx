@@ -15,6 +15,7 @@ import {
   LifeBuoy,
   Settings,
   UsersRound,
+  Contact,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ const primaryNav: NavItem[] = [
   { href: "/timesheets", label: "Timesheets", icon: Clock },
   { href: "/items", label: "Items", icon: Package },
   { href: "/expenses", label: "Expenses", icon: Wallet },
+  { href: "/contractors", label: "Contractors", icon: Contact },
 ];
 
 const secondaryNav: NavItem[] = [
