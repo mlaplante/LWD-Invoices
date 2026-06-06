@@ -8,6 +8,13 @@ export type SendEmailOptions = {
   subject: string;
   html: string;
   attachments?: { filename: string; content: Buffer }[];
+  /**
+   * When the email relates to a specific invoice, pass its id. It's sent as an
+   * `invoice_id` Resend tag that the webhook handler reads back to attribute
+   * delivery/open/click events to the invoice — powering the engagement timeline
+   * and the "viewed but unpaid" reminder trigger.
+   */
+  invoiceId?: string;
 };
 
 export type SendEmailResult =
@@ -71,7 +78,10 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
-    tags: [{ name: "org_id", value: opts.organizationId }],
+    tags: [
+      { name: "org_id", value: opts.organizationId },
+      ...(opts.invoiceId ? [{ name: "invoice_id", value: opts.invoiceId }] : []),
+    ],
     ...(cc ? { cc } : {}),
     ...(bcc ? { bcc } : {}),
     ...(opts.attachments ? { attachments: opts.attachments } : {}),

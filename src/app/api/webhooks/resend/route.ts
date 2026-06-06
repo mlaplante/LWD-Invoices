@@ -18,12 +18,20 @@ type ResendPayload = {
   };
 };
 
-function readOrgIdTag(tags: ResendTag[] | Record<string, string> | undefined): string | null {
+/**
+ * Reads a named tag from a Resend webhook payload. Resend echoes the tags set
+ * at send time, but the shape varies (array of {name,value} vs. plain object),
+ * so we normalize both.
+ */
+export function readTagValue(
+  tags: ResendTag[] | Record<string, string> | undefined,
+  name: string
+): string | null {
   if (!tags) return null;
   if (Array.isArray(tags)) {
-    return tags.find((t) => t?.name === "org_id")?.value ?? null;
+    return tags.find((t) => t?.name === name)?.value ?? null;
   }
-  const v = tags.org_id;
+  const v = tags[name];
   return typeof v === "string" ? v : null;
 }
 
@@ -62,7 +70,20 @@ export async function POST(req: NextRequest) {
     : payload.data?.to ?? "";
   const occurredAt = payload.created_at ? new Date(payload.created_at) : new Date();
   const link = payload.data?.click?.link ?? null;
-  const orgId = readOrgIdTag(payload.data?.tags);
+  const orgId = readTagValue(payload.data?.tags, "org_id");
+  const taggedInvoiceId = readTagValue(payload.data?.tags, "invoice_id");
+
+  // Only link to an invoice that still exists (and, when we know the org, that
+  // belongs to it) — the FK insert would otherwise throw and force Resend to
+  // retry forever after an invoice is deleted between send and event delivery.
+  let invoiceId: string | null = null;
+  if (taggedInvoiceId) {
+    const invoice = await db.invoice.findFirst({
+      where: { id: taggedInvoiceId, ...(orgId ? { organizationId: orgId } : {}) },
+      select: { id: true },
+    });
+    invoiceId = invoice?.id ?? null;
+  }
 
   await db.emailEvent.create({
     data: {
@@ -72,6 +93,7 @@ export async function POST(req: NextRequest) {
       recipient,
       link,
       organizationId: orgId,
+      invoiceId,
     },
   });
 

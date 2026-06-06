@@ -5,7 +5,10 @@ import { generateSmartReminderDraft } from "@/server/services/smart-reminder-dra
 import { getClientPaymentBehaviorSummary } from "@/server/services/client-payment-score";
 
 const stepSchema = z.object({
+  trigger: z.enum(["DUE_DATE_OFFSET", "VIEWED_UNPAID"]).default("DUE_DATE_OFFSET"),
   daysRelativeToDue: z.number().int().min(-90).max(365),
+  // For VIEWED_UNPAID steps: hours after the first email open before nudging.
+  viewedDelayHours: z.number().int().min(0).max(720).nullable().optional(),
   subject: z.string().min(1).max(200),
   body: z.string().min(1).max(5000),
   sort: z.number().int().default(0),
@@ -69,7 +72,9 @@ export const reminderSequencesRouter = router({
             organizationId: ctx.orgId,
             steps: {
               create: input.steps.map((step, i) => ({
+                trigger: step.trigger,
                 daysRelativeToDue: step.daysRelativeToDue,
+                viewedDelayHours: step.trigger === "VIEWED_UNPAID" ? step.viewedDelayHours ?? 24 : null,
                 subject: step.subject,
                 body: step.body,
                 sort: step.sort ?? i,
@@ -112,7 +117,9 @@ export const reminderSequencesRouter = router({
           await tx.reminderStep.createMany({
             data: steps.map((step, i) => ({
               sequenceId: id,
+              trigger: step.trigger,
               daysRelativeToDue: step.daysRelativeToDue,
+              viewedDelayHours: step.trigger === "VIEWED_UNPAID" ? step.viewedDelayHours ?? 24 : null,
               subject: step.subject,
               body: step.body,
               sort: step.sort ?? i,

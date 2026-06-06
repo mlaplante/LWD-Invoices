@@ -17,6 +17,7 @@ import { ConvertEstimateButton } from "@/components/invoices/ConvertEstimateButt
 import { LateFeeSection } from "@/components/invoices/LateFeeSection";
 import { ReminderOverrideSelect } from "@/components/invoices/ReminderOverrideSelect";
 import { ReminderHistory } from "@/components/invoices/ReminderHistory";
+import { EmailEngagementPanel } from "@/components/invoices/EmailEngagementPanel";
 import { ApplyRetainerDialog } from "@/components/invoices/ApplyRetainerDialog";
 import { IssueCreditNoteDialog } from "@/components/invoices/IssueCreditNoteDialog";
 import { CreditNoteActions } from "@/components/invoices/CreditNoteActions";
@@ -528,6 +529,11 @@ export default async function InvoiceDetailPage({
 
       {/* ── Late Fees ─────────────────────────────────────────────── */}
       <LateFeeSection invoiceId={invoice.id} />
+
+      {/* ── Email Engagement ─────────────────────────────────────── */}
+      {invoice.type !== "ESTIMATE" && (
+        <EmailEngagementPanel invoiceId={invoice.id} hasSent={invoice.lastSent != null} />
+      )}
 
       {/* ── Reminder History ─────────────────────────────────────── */}
       <ReminderHistory invoiceId={invoice.id} />

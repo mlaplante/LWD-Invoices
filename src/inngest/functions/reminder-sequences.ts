@@ -30,6 +30,30 @@ export function getStepDueToday(
   return null;
 }
 
+/**
+ * Determines which VIEWED_UNPAID step should fire for an invoice that has been
+ * opened but not paid. Engagement (the email was opened) is a stronger signal
+ * than a fixed calendar offset, so these steps anchor to the first open rather
+ * than the due date.
+ *
+ * Returns the not-yet-sent step with the smallest elapsed delay that has been
+ * satisfied (so a multi-step cascade drips one nudge per cron run). Returns
+ * null when the invoice was never opened or no step's delay has elapsed yet.
+ */
+export function getViewedUnpaidStepDue(
+  now: Date,
+  firstOpenedAt: Date | null | undefined,
+  steps: { id: string; viewedDelayHours: number | null }[],
+  sentStepIds: Set<string>
+): { id: string } | null {
+  if (!firstOpenedAt) return null;
+  const elapsedHours = (now.getTime() - firstOpenedAt.getTime()) / 3_600_000;
+  const eligible = steps
+    .filter((s) => !sentStepIds.has(s.id) && elapsedHours >= (s.viewedDelayHours ?? 24))
+    .sort((a, b) => (a.viewedDelayHours ?? 24) - (b.viewedDelayHours ?? 24));
+  return eligible[0] ?? null;
+}
+
 export const processReminderSequences = inngest.createFunction(
   { id: "process-reminder-sequences", name: "Process Reminder Sequences", triggers: [{ cron: "0 8 * * *" }] }, // daily at 8am UTC
   async () => {
@@ -95,6 +119,17 @@ export const processReminderSequences = inngest.createFunction(
       sentMap.set(log.invoiceId, set);
     }
 
+    // Earliest "opened" event per invoice — the anchor for VIEWED_UNPAID steps.
+    const openEvents = await db.emailEvent.groupBy({
+      by: ["invoiceId"],
+      where: { invoiceId: { in: invoiceIds }, type: "email.opened" },
+      _min: { occurredAt: true },
+    });
+    const firstOpenMap = new Map<string, Date>();
+    for (const e of openEvents) {
+      if (e.invoiceId && e._min.occurredAt) firstOpenMap.set(e.invoiceId, e._min.occurredAt);
+    }
+
     let sent = 0;
     let skipped = 0;
     let failed = 0;
@@ -125,7 +160,19 @@ export const processReminderSequences = inngest.createFunction(
         : invoice.dueDate;
 
       const sentStepIds = sentMap.get(invoice.id) ?? new Set();
-      const step = getStepDueToday(now, effectiveDueDate, sequence.steps, sentStepIds);
+
+      // Two kinds of steps can fire: calendar-based (DUE_DATE_OFFSET) and
+      // engagement-based (VIEWED_UNPAID, anchored to the first email open).
+      // Calendar steps take precedence; viewed steps fill in when none is due.
+      const dueDateSteps = sequence.steps.filter((s) => s.trigger === "DUE_DATE_OFFSET");
+      const viewedSteps = sequence.steps.filter((s) => s.trigger === "VIEWED_UNPAID");
+
+      let step: { id: string } | null = getStepDueToday(now, effectiveDueDate, dueDateSteps, sentStepIds);
+      let isViewedStep = false;
+      if (!step) {
+        step = getViewedUnpaidStepDue(now, firstOpenMap.get(invoice.id), viewedSteps, sentStepIds);
+        isViewedStep = !!step;
+      }
 
       if (!step) {
         skipped++;
@@ -139,8 +186,10 @@ export const processReminderSequences = inngest.createFunction(
         continue;
       }
 
-      // Smart reminders: skip pre-due steps for reliable clients
-      if (fullStep.daysRelativeToDue < 0) {
+      // Smart reminders: skip pre-due calendar steps for reliable clients.
+      // VIEWED_UNPAID nudges always send — the client demonstrably opened the
+      // invoice and still hasn't paid, so reliability history is moot.
+      if (!isViewedStep && fullStep.daysRelativeToDue < 0) {
         const orgSetting = orgSettingsMap.get(invoice.organizationId);
         if (orgSetting?.smartRemindersEnabled) {
           const reliable = await isReliablePayer(db, invoice.clientId, orgSetting.smartRemindersThreshold);
@@ -170,6 +219,7 @@ export const processReminderSequences = inngest.createFunction(
 
         await sendEmail({
           organizationId: invoice.organizationId,
+          invoiceId: invoice.id,
           to: invoice.client.email,
           subject,
           html: body,

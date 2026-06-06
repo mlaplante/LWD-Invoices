@@ -6,19 +6,23 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 
+type StepTrigger = "DUE_DATE_OFFSET" | "VIEWED_UNPAID";
+
 type StepInput = {
+  trigger: StepTrigger;
   daysRelativeToDue: number;
+  viewedDelayHours: number | null;
   subject: string;
   body: string;
   sort: number;
 };
 
 const DEFAULT_STEPS: StepInput[] = [
-  { daysRelativeToDue: -3, subject: "Upcoming: Invoice #{{ invoiceNumber }} due in 3 days", body: "<p>Hi {{ clientName }},</p><p>This is a friendly reminder that Invoice #{{ invoiceNumber }} for {{ amountDue }} is due on {{ dueDate }}.</p><p><a href=\"{{ paymentLink }}\">View & Pay</a></p><p>{{ orgName }}</p>", sort: 0 },
-  { daysRelativeToDue: 0, subject: "Due today: Invoice #{{ invoiceNumber }}", body: "<p>Hi {{ clientName }},</p><p>Invoice #{{ invoiceNumber }} for {{ amountDue }} is due today.</p><p><a href=\"{{ paymentLink }}\">View & Pay</a></p><p>{{ orgName }}</p>", sort: 1 },
-  { daysRelativeToDue: 7, subject: "Overdue: Invoice #{{ invoiceNumber }} (7 days past due)", body: "<p>Hi {{ clientName }},</p><p>Invoice #{{ invoiceNumber }} for {{ amountDue }} is now 7 days overdue.</p><p><a href=\"{{ paymentLink }}\">View & Pay</a></p><p>{{ orgName }}</p>", sort: 2 },
-  { daysRelativeToDue: 14, subject: "Second notice: Invoice #{{ invoiceNumber }} (14 days overdue)", body: "<p>Hi {{ clientName }},</p><p>This is a second reminder that Invoice #{{ invoiceNumber }} for {{ amountDue }} is 14 days past due.</p><p><a href=\"{{ paymentLink }}\">View & Pay Now</a></p><p>{{ orgName }}</p>", sort: 3 },
-  { daysRelativeToDue: 30, subject: "Final notice: Invoice #{{ invoiceNumber }} (30 days overdue)", body: "<p>Hi {{ clientName }},</p><p>Invoice #{{ invoiceNumber }} for {{ amountDue }} is now 30 days overdue. Please arrange payment immediately.</p><p><a href=\"{{ paymentLink }}\">View & Pay Now</a></p><p>{{ orgName }}</p>", sort: 4 },
+  { trigger: "DUE_DATE_OFFSET", daysRelativeToDue: -3, viewedDelayHours: null, subject: "Upcoming: Invoice #{{ invoiceNumber }} due in 3 days", body: "<p>Hi {{ clientName }},</p><p>This is a friendly reminder that Invoice #{{ invoiceNumber }} for {{ amountDue }} is due on {{ dueDate }}.</p><p><a href=\"{{ paymentLink }}\">View & Pay</a></p><p>{{ orgName }}</p>", sort: 0 },
+  { trigger: "DUE_DATE_OFFSET", daysRelativeToDue: 0, viewedDelayHours: null, subject: "Due today: Invoice #{{ invoiceNumber }}", body: "<p>Hi {{ clientName }},</p><p>Invoice #{{ invoiceNumber }} for {{ amountDue }} is due today.</p><p><a href=\"{{ paymentLink }}\">View & Pay</a></p><p>{{ orgName }}</p>", sort: 1 },
+  { trigger: "DUE_DATE_OFFSET", daysRelativeToDue: 7, viewedDelayHours: null, subject: "Overdue: Invoice #{{ invoiceNumber }} (7 days past due)", body: "<p>Hi {{ clientName }},</p><p>Invoice #{{ invoiceNumber }} for {{ amountDue }} is now 7 days overdue.</p><p><a href=\"{{ paymentLink }}\">View & Pay</a></p><p>{{ orgName }}</p>", sort: 2 },
+  { trigger: "DUE_DATE_OFFSET", daysRelativeToDue: 14, viewedDelayHours: null, subject: "Second notice: Invoice #{{ invoiceNumber }} (14 days overdue)", body: "<p>Hi {{ clientName }},</p><p>This is a second reminder that Invoice #{{ invoiceNumber }} for {{ amountDue }} is 14 days past due.</p><p><a href=\"{{ paymentLink }}\">View & Pay Now</a></p><p>{{ orgName }}</p>", sort: 3 },
+  { trigger: "DUE_DATE_OFFSET", daysRelativeToDue: 30, viewedDelayHours: null, subject: "Final notice: Invoice #{{ invoiceNumber }} (30 days overdue)", body: "<p>Hi {{ clientName }},</p><p>Invoice #{{ invoiceNumber }} for {{ amountDue }} is now 30 days overdue. Please arrange payment immediately.</p><p><a href=\"{{ paymentLink }}\">View & Pay Now</a></p><p>{{ orgName }}</p>", sort: 4 },
 ];
 
 type Props = {
@@ -45,7 +49,9 @@ export function ReminderSequenceForm({ editId, onClose }: Props) {
       setEnabled(existing.enabled);
       setSteps(
         existing.steps.map((s) => ({
+          trigger: s.trigger,
           daysRelativeToDue: s.daysRelativeToDue,
+          viewedDelayHours: s.viewedDelayHours,
           subject: s.subject,
           body: s.body,
           sort: s.sort,
@@ -77,7 +83,9 @@ export function ReminderSequenceForm({ editId, onClose }: Props) {
     setSteps([
       ...steps,
       {
+        trigger: "DUE_DATE_OFFSET",
         daysRelativeToDue: maxDay + 7,
+        viewedDelayHours: null,
         subject: "Reminder: Invoice #{{ invoiceNumber }}",
         body: "<p>Hi {{ clientName }},</p><p>This is a reminder about Invoice #{{ invoiceNumber }} for {{ amountDue }}.</p><p><a href=\"{{ paymentLink }}\">View & Pay</a></p><p>{{ orgName }}</p>",
         sort: steps.length,
@@ -89,9 +97,21 @@ export function ReminderSequenceForm({ editId, onClose }: Props) {
     setSteps(steps.filter((_, i) => i !== index).map((s, i) => ({ ...s, sort: i })));
   }
 
-  function updateStep(index: number, field: keyof StepInput, value: string | number) {
+  function updateStep(index: number, field: keyof StepInput, value: string | number | null) {
     const updated = [...steps];
     updated[index] = { ...updated[index], [field]: value };
+    setSteps(updated);
+  }
+
+  // Switching trigger seeds a sensible default for the newly relevant field so
+  // the step is immediately valid (viewed steps need a delay; calendar steps a day).
+  function changeTrigger(index: number, trigger: StepTrigger) {
+    const updated = [...steps];
+    updated[index] = {
+      ...updated[index],
+      trigger,
+      viewedDelayHours: trigger === "VIEWED_UNPAID" ? updated[index].viewedDelayHours ?? 48 : null,
+    };
     setSteps(updated);
   }
 
@@ -152,7 +172,14 @@ export function ReminderSequenceForm({ editId, onClose }: Props) {
           <div key={i} className="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">
-                Step {i + 1}: {step.daysRelativeToDue < 0 ? `${Math.abs(step.daysRelativeToDue)} days before due` : step.daysRelativeToDue === 0 ? "On due date" : `${step.daysRelativeToDue} days after due`}
+                Step {i + 1}:{" "}
+                {step.trigger === "VIEWED_UNPAID"
+                  ? `${step.viewedDelayHours ?? 48}h after opened, if unpaid`
+                  : step.daysRelativeToDue < 0
+                  ? `${Math.abs(step.daysRelativeToDue)} days before due`
+                  : step.daysRelativeToDue === 0
+                  ? "On due date"
+                  : `${step.daysRelativeToDue} days after due`}
               </span>
               {steps.length > 1 && (
                 <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removeStep(i)}>
@@ -160,16 +187,40 @@ export function ReminderSequenceForm({ editId, onClose }: Props) {
                 </Button>
               )}
             </div>
-            <div className="grid grid-cols-[100px_1fr] gap-3">
+            <div className="grid grid-cols-[150px_120px_1fr] gap-3">
               <div>
-                <label className="text-xs text-muted-foreground">Days</label>
-                <input
-                  type="number"
-                  value={step.daysRelativeToDue}
-                  onChange={(e) => updateStep(i, "daysRelativeToDue", parseInt(e.target.value) || 0)}
+                <label className="text-xs text-muted-foreground">Trigger</label>
+                <select
+                  value={step.trigger}
+                  onChange={(e) => changeTrigger(i, e.target.value as StepTrigger)}
                   className="mt-1 block w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
-                />
+                >
+                  <option value="DUE_DATE_OFFSET">Relative to due date</option>
+                  <option value="VIEWED_UNPAID">After opened (unpaid)</option>
+                </select>
               </div>
+              {step.trigger === "VIEWED_UNPAID" ? (
+                <div>
+                  <label className="text-xs text-muted-foreground">Hours after open</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={step.viewedDelayHours ?? 48}
+                    onChange={(e) => updateStep(i, "viewedDelayHours", parseInt(e.target.value) || 0)}
+                    className="mt-1 block w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs text-muted-foreground">Days</label>
+                  <input
+                    type="number"
+                    value={step.daysRelativeToDue}
+                    onChange={(e) => updateStep(i, "daysRelativeToDue", parseInt(e.target.value) || 0)}
+                    className="mt-1 block w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+                  />
+                </div>
+              )}
               <div>
                 <label className="text-xs text-muted-foreground">Subject</label>
                 <input

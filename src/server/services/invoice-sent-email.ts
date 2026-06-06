@@ -56,6 +56,7 @@ export async function sendInvoiceSentEmail(
 
   await sendEmail({
     organizationId: invoice.organizationId,
+    invoiceId: invoice.id,
     to: invoice.client.email,
     cc: cc.length > 0 ? cc : undefined,
     subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
