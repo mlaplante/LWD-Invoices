@@ -44,3 +44,16 @@ export function decryptJson<T>(ciphertext: string): T {
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
   return JSON.parse(decrypted.toString("utf8")) as T;
 }
+
+/**
+ * Encrypts a plain string (e.g. a contractor's SSN/EIN) to the same
+ * "iv:authTag:ciphertext" envelope used by {@link encryptJson}.
+ */
+export function encryptString(value: string): string {
+  return encryptJson(value);
+}
+
+/** Decrypts a string produced by {@link encryptString}. */
+export function decryptString(ciphertext: string): string {
+  return decryptJson<string>(ciphertext);
+}

@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact } from "lucide-react";
 
 const reports = [
   {
@@ -79,6 +79,13 @@ const reports = [
     description: "P&L, expenses, payments, and tax reports for your accountant.",
     icon: <Download className="w-4 h-4" />,
     color: "bg-rose-50 text-rose-600",
+  },
+  {
+    href: "/reports/1099",
+    label: "1099 / Contractor Tax Pack",
+    description: "1099-NEC forms and a filing summary for contractors paid $600+.",
+    icon: <Contact className="w-4 h-4" />,
+    color: "bg-lime-50 text-lime-600",
   },
 ];
 

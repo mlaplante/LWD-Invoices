@@ -67,6 +67,7 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - **Reports** — Revenue, payment, and unpaid invoice reports
 - **AR Aging & DSO Dashboard** — Receivables bucketed by balance due (current / 1–30 / 31–60 / 61–90 / 90+) with a 12-month Days-Sales-Outstanding trend
 - **Year-End Export Pack** — Financial reports for accountants (P&L, Expense Ledger, Payment Ledger, Tax Liability, AR Aging snapshot) with CSV, PDF, and ZIP downloads
+- **1099 / Contractor Tax Pack** — Track contractor payments, collect W-9 details (with encrypted TIN storage and private W-9 document uploads), and auto-generate Form 1099-NEC at year end. Flags contractors over the $600 reporting threshold, surfaces missing W-9s, and downloads the filing pack (per-recipient 1099-NEC PDFs + summary CSV/PDF + ZIP). Card and third-party-network payments are auto-excluded as 1099-K.
 - **Support Tickets** — Internal ticket system with threaded discussions
 - **Items** — Saved line item library for quick invoice creation
 - **Currencies** — Multi-currency support
