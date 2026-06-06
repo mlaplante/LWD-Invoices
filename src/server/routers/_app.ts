@@ -52,6 +52,7 @@ import { contractorPortalRouter } from "./contractor-portal";
 import { collectionsRouter } from "./collections";
 import { disputesRouter } from "./disputes";
 import { refundsRouter } from "./refunds";
+import { monthEndCloseRouter } from "./monthEndClose";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -61,6 +62,7 @@ export const appRouter = router({
   collections: collectionsRouter,
   disputes: disputesRouter,
   refunds: refundsRouter,
+  monthEndClose: monthEndCloseRouter,
   search: searchRouter,
   organization: organizationRouter,
   clients: clientsRouter,
