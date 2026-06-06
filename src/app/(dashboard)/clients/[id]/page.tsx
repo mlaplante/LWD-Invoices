@@ -10,6 +10,7 @@ import { RetainerPanel } from "@/components/clients/RetainerPanel";
 import { RetainerList } from "@/components/admin/retainers/RetainerList";
 import { AutoChargeBadge } from "@/components/clients/AutoChargeBadge";
 import { ClientHealthBadge } from "@/components/clients/ClientHealthBadge";
+import { ClientRemindersPanel } from "@/components/clients/ClientRemindersPanel";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, ExternalLink, FileText, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -251,6 +252,9 @@ export default async function ClientDetailPage({
       <div className="rounded-2xl border border-border/50 bg-card p-5">
         <RetainerList clientId={id} />
       </div>
+
+      {/* ── Reminders sent (across this client's invoices) ────────── */}
+      <ClientRemindersPanel clientId={id} />
 
       {/* ── Invoices ─────────────────────────────────────────────── */}
       <div className="space-y-3">

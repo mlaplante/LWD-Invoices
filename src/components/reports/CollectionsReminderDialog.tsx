@@ -53,8 +53,10 @@ export function CollectionsReminderDialog({ invoiceId, invoiceNumber, onClose }:
         toast.error(`Not sent — recipient previously ${res.reason}.`);
       } else {
         toast.success("Reminder sent");
-        // Refresh the dunning queue so the row reflects the send (count + cooldown).
+        // Refresh the dunning queue (count + cooldown) and the invoice's reminder
+        // history so both surfaces reflect the send without a reload.
         void utils.analytics.collectionsRisk.invalidate();
+        if (invoiceId) void utils.invoices.reminderHistory.invalidate({ invoiceId });
         onClose();
       }
     },
