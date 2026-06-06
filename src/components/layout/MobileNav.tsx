@@ -18,6 +18,7 @@ import {
   BarChart2,
   LifeBuoy,
   Settings,
+  Sparkles,
   Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const moreItems = [
   { href: "/timesheets", label: "Timesheets", icon: Clock },
   { href: "/items", label: "Items", icon: Package },
   { href: "/contractors", label: "Contractors", icon: Contact },
+  { href: "/assistant", label: "Ask AI", icon: Sparkles },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/tickets", label: "Tickets", icon: LifeBuoy },
   { href: "/settings/team", label: "Team", icon: UsersRound },

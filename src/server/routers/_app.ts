@@ -45,9 +45,13 @@ import { exportsRouter } from "./exports";
 import { fxRouter } from "./fx";
 import { clientCheckInsRouter } from "./clientCheckIns";
 import { checkInTemplatesRouter } from "./checkInTemplates";
+import { analyticsRouter } from "./analytics";
+import { assistantRouter } from "./assistant";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
+  analytics: analyticsRouter,
+  assistant: assistantRouter,
   search: searchRouter,
   organization: organizationRouter,
   clients: clientsRouter,

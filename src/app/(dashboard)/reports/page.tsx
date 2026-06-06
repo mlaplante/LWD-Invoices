@@ -1,8 +1,43 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing } from "lucide-react";
 
 const reports = [
+  {
+    href: "/reports/client-health",
+    label: "Client Health",
+    description: "Composite health score, churn risk, and upsell signals per client.",
+    icon: <HeartPulse className="w-4 h-4" />,
+    color: "bg-rose-50 text-rose-600",
+  },
+  {
+    href: "/reports/cash-flow-forecast",
+    label: "Cash-Flow Forecast",
+    description: "Projected 30/60/90-day cash position with what-if late-payment scenarios.",
+    icon: <LineChart className="w-4 h-4" />,
+    color: "bg-emerald-50 text-emerald-600",
+  },
+  {
+    href: "/reports/recurring-revenue",
+    label: "Recurring Revenue",
+    description: "MRR, ARR, ARPA, and revenue/logo churn across recurring streams.",
+    icon: <Repeat className="w-4 h-4" />,
+    color: "bg-indigo-50 text-indigo-600",
+  },
+  {
+    href: "/reports/collections",
+    label: "Smart Collections",
+    description: "Open invoices ranked by late-payment risk with recommended dunning actions.",
+    icon: <BellRing className="w-4 h-4" />,
+    color: "bg-amber-50 text-amber-600",
+  },
+  {
+    href: "/reports/expense-anomalies",
+    label: "Expense Anomalies",
+    description: "Duplicate-receipt detection and out-of-pattern spend, from your OCR data.",
+    icon: <AlertTriangle className="w-4 h-4" />,
+    color: "bg-orange-50 text-orange-600",
+  },
   {
     href: "/reports/unpaid",
     label: "Unpaid Invoices",
