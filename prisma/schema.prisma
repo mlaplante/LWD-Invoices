@@ -304,6 +304,7 @@ model Organization {
   savedPaymentMethods     SavedPaymentMethod[]
   emailEvents             EmailEvent[]
   inboundEmails           InboundEmail[]
+  invoiceReminders        InvoiceReminder[]
   clientCheckIns          ClientCheckIn[]
   checkInTemplates        CheckInTemplate[]
   // Retention/check-in automation feature flag. retentionEnabledAt is the
@@ -560,6 +561,7 @@ model Invoice {
   lateFeeEntries          LateFeeEntry[]
   retainerTransactions    RetainerTransaction[]
   reminderLogs            ReminderLog[]
+  manualReminders         InvoiceReminder[]
   emailEvents             EmailEvent[]
   inboundEmails           InboundEmail[]
   milestone               Milestone?
@@ -1362,6 +1364,30 @@ model ReminderLog {
 
   @@unique([stepId, invoiceId])   // prevents double-sends
   @@index([invoiceId])
+}
+
+// An ad-hoc reminder sent outside the automated sequences (e.g. the one-click
+// "Send reminder" in Smart Collections). Unlike ReminderLog it isn't tied to a
+// sequence step, so it lives here. Feeds the collections risk model's
+// remindersSent / last-reminded signals so the dunning queue reflects manual
+// follow-ups.
+model InvoiceReminder {
+  id             String   @id @default(cuid())
+  sentAt         DateTime @default(now())
+  subject        String
+  tone           String?  // helpful | professional | firm
+  source         String?  // ai | template_fallback
+  channel        String   @default("email")
+
+  invoiceId      String
+  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId, sentAt])
+  @@index([organizationId, sentAt])
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

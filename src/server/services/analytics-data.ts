@@ -442,7 +442,7 @@ export async function buildCollectionRiskInputs(
   now: Date,
   reliablePayerThreshold: number,
 ): Promise<CollectionRiskInput[]> {
-  const [allInvoices, engagement, reminderCounts] = await Promise.all([
+  const [allInvoices, engagement, reminderCounts, manualReminders] = await Promise.all([
     db.invoice.findMany({
       where: { organizationId: orgId, isArchived: false },
       select: {
@@ -458,15 +458,36 @@ export async function buildCollectionRiskInputs(
       },
     }),
     loadInvoiceEngagement(db, orgId),
+    // Sequence reminders (ReminderLog) + ad-hoc reminders (InvoiceReminder):
+    // count both toward remindersSent and take the most recent send for recency.
     db.reminderLog.groupBy({
       by: ["invoiceId"],
       where: { invoice: { organizationId: orgId } },
       _count: { _all: true },
+      _max: { sentAt: true },
+    }),
+    db.invoiceReminder.groupBy({
+      by: ["invoiceId"],
+      where: { organizationId: orgId },
+      _count: { _all: true },
+      _max: { sentAt: true },
     }),
   ]);
 
   const stats = aggregateClientStats(allInvoices, now);
-  const reminderByInvoice = new Map(reminderCounts.map((r) => [r.invoiceId, r._count._all]));
+
+  // Merge sequence + manual reminders per invoice: total count and latest sentAt.
+  const reminderByInvoice = new Map<string, { count: number; lastSentAt: Date | null }>();
+  const mergeReminder = (invoiceId: string, count: number, lastSentAt: Date | null) => {
+    const entry = reminderByInvoice.get(invoiceId) ?? { count: 0, lastSentAt: null };
+    entry.count += count;
+    if (lastSentAt && (!entry.lastSentAt || lastSentAt > entry.lastSentAt)) {
+      entry.lastSentAt = lastSentAt;
+    }
+    reminderByInvoice.set(invoiceId, entry);
+  };
+  for (const r of reminderCounts) mergeReminder(r.invoiceId, r._count._all, r._max.sentAt);
+  for (const r of manualReminders) mergeReminder(r.invoiceId, r._count._all, r._max.sentAt);
 
   return allInvoices
     .filter((inv) => OPEN_STATUSES.includes(inv.status))
@@ -483,6 +504,11 @@ export async function buildCollectionRiskInputs(
       const daysUntilDue = inv.dueDate
         ? Math.round((utcDay(inv.dueDate) - utcDay(now)) / DAY_MS)
         : 0;
+      const reminders = reminderByInvoice.get(inv.id);
+      const daysSinceLastReminder =
+        reminders?.lastSentAt != null
+          ? Math.max(0, Math.round((utcDay(now) - utcDay(reminders.lastSentAt)) / DAY_MS))
+          : null;
       return {
         invoiceId: inv.id,
         invoiceNumber: inv.number,
@@ -493,7 +519,8 @@ export async function buildCollectionRiskInputs(
         clientOnTimePercent: onTimePercent,
         clientAvgDaysLate: avgDaysLate,
         isReliablePayer: onTimePercent !== null && onTimePercent >= reliablePayerThreshold,
-        remindersSent: reminderByInvoice.get(inv.id) ?? 0,
+        remindersSent: reminders?.count ?? 0,
+        daysSinceLastReminder,
         invoiceOpened: eng?.opened ?? false,
         invoiceClicked: eng?.clicked ?? false,
       };

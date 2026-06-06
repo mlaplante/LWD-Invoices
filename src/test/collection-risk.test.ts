@@ -89,6 +89,51 @@ describe("scoreCollectionRisk", () => {
     expect(result.band).toBe("severe");
   });
 
+  it("holds off a soft reminder when one was sent within the cooldown window", () => {
+    const justReminded = scoreCollectionRisk(
+      input({
+        daysUntilDue: -10,
+        clientOnTimePercent: 70,
+        isReliablePayer: false,
+        remindersSent: 1,
+        daysSinceLastReminder: 1,
+      }),
+    );
+    // A firm_reminder would normally fire at 10 days overdue; the recent send holds it.
+    expect(justReminded.recommendedAction).toBe("monitor");
+    expect(justReminded.actionDue).toBe(false);
+    expect(justReminded.daysSinceLastReminder).toBe(1);
+    expect(justReminded.reasons.some((r) => r.includes("Reminder sent recently"))).toBe(true);
+  });
+
+  it("resumes the reminder once the cooldown has elapsed", () => {
+    const cooledDown = scoreCollectionRisk(
+      input({
+        daysUntilDue: -10,
+        clientOnTimePercent: 70,
+        isReliablePayer: false,
+        remindersSent: 1,
+        daysSinceLastReminder: 5,
+      }),
+    );
+    expect(cooledDown.recommendedAction).toBe("firm_reminder");
+    expect(cooledDown.actionDue).toBe(true);
+  });
+
+  it("still escalates a far-overdue invoice even within the cooldown window", () => {
+    const result = scoreCollectionRisk(
+      input({
+        daysUntilDue: -40,
+        clientOnTimePercent: 40,
+        isReliablePayer: false,
+        remindersSent: 2,
+        daysSinceLastReminder: 1,
+      }),
+    );
+    // final_notice is a deliberate escalation and ignores the soft cooldown.
+    expect(result.recommendedAction).toBe("final_notice");
+  });
+
   it("lowers risk when the payment link was clicked", () => {
     const clicked = scoreCollectionRisk(
       input({ daysUntilDue: -3, clientOnTimePercent: 60, isReliablePayer: false, invoiceClicked: true }),

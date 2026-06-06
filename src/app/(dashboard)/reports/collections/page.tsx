@@ -87,6 +87,11 @@ export default function CollectionsPage() {
                     <td className="px-5 py-3">
                       <span className="font-medium">{ACTION_LABELS[inv.recommendedAction]}</span>
                       <span className="text-xs text-muted-foreground ml-1.5">({inv.recommendedTone})</span>
+                      {inv.daysSinceLastReminder !== null && (
+                        <span className="block text-[11px] text-muted-foreground">
+                          Reminded {inv.daysSinceLastReminder === 0 ? "today" : `${inv.daysSinceLastReminder}d ago`}
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <button

@@ -46,12 +46,15 @@ export function CollectionsReminderDialog({ invoiceId, invoiceNumber, onClose }:
     onError: (err) => toast.error(err.message),
   });
 
+  const utils = trpc.useUtils();
   const send = trpc.collections.sendReminder.useMutation({
     onSuccess: (res) => {
       if (res.suppressed) {
         toast.error(`Not sent — recipient previously ${res.reason}.`);
       } else {
         toast.success("Reminder sent");
+        // Refresh the dunning queue so the row reflects the send (count + cooldown).
+        void utils.analytics.collectionsRisk.invalidate();
         onClose();
       }
     },
@@ -115,7 +118,16 @@ export function CollectionsReminderDialog({ invoiceId, invoiceNumber, onClose }:
             Cancel
           </Button>
           <Button
-            onClick={() => invoiceId && send.mutate({ invoiceId, subject, body })}
+            onClick={() =>
+              invoiceId &&
+              send.mutate({
+                invoiceId,
+                subject,
+                body,
+                tone: (tone as "helpful" | "professional" | "firm" | null) ?? undefined,
+                source: (source as "ai" | "template_fallback" | null) ?? undefined,
+              })
+            }
             disabled={draft.isPending || send.isPending || !subject.trim() || !body.trim()}
           >
             <Send className="w-3.5 h-3.5 mr-1.5" />

@@ -39,8 +39,10 @@ export interface CollectionRiskInput {
   clientAvgDaysLate: number;
   /** Whether the client clears the org's reliable-payer threshold. */
   isReliablePayer: boolean;
-  /** Reminder emails already sent for this invoice. */
+  /** Reminder emails already sent for this invoice (sequence + manual). */
   remindersSent: number;
+  /** Days since the most recent reminder was sent, or null if none sent. */
+  daysSinceLastReminder?: number | null;
   /** Whether the most recent invoice email was opened. */
   invoiceOpened: boolean;
   /** Whether a payment link in the invoice email was clicked. */
@@ -61,6 +63,8 @@ export interface CollectionRiskScore {
   recommendedTone: ReminderTone;
   /** Whether action is recommended now (vs. monitor). */
   actionDue: boolean;
+  /** Days since the last reminder was sent, or null if none. Surfaced in the UI. */
+  daysSinceLastReminder: number | null;
   reasons: string[];
 }
 
@@ -131,9 +135,17 @@ export function scoreCollectionRisk(input: CollectionRiskInput): CollectionRiskS
     reasons.push(`${input.remindersSent} reminders already sent.`);
   }
 
+  const daysSinceLastReminder = input.daysSinceLastReminder ?? null;
+  if (input.remindersSent > 0 && daysSinceLastReminder !== null) {
+    reasons.push(
+      `Last reminder ${daysSinceLastReminder === 0 ? "today" : `${daysSinceLastReminder}d ago`}.`,
+    );
+  }
+
   const lateRiskPercent = round(clamp(risk));
   const band = bandFor(lateRiskPercent);
-  const { action, tone } = recommendAction(input, daysOverdue, band);
+  const { action, tone, reason } = recommendAction(input, daysOverdue, band, daysSinceLastReminder);
+  if (reason) reasons.push(reason);
 
   return {
     invoiceId: input.invoiceId,
@@ -147,11 +159,39 @@ export function scoreCollectionRisk(input: CollectionRiskInput): CollectionRiskS
     recommendedAction: action,
     recommendedTone: tone,
     actionDue: action !== "monitor",
+    daysSinceLastReminder,
     reasons,
   };
 }
 
+// Hold soft follow-ups (nudge/reminder/firm reminder) for a few days after a
+// reminder goes out, so the queue doesn't urge you to re-nag a client you just
+// emailed. Deliberate escalations (final notice / human escalation) ignore it.
+const REMINDER_COOLDOWN_DAYS = 3;
+const SOFT_ACTIONS: CollectionAction[] = ["pre_due_nudge", "reminder", "firm_reminder"];
+
 function recommendAction(
+  input: CollectionRiskInput,
+  daysOverdue: number,
+  band: CollectionRiskBand,
+  daysSinceLastReminder: number | null,
+): { action: CollectionAction; tone: ReminderTone; reason?: string } {
+  const raw = rawRecommendation(input, daysOverdue, band);
+  if (
+    daysSinceLastReminder !== null &&
+    daysSinceLastReminder < REMINDER_COOLDOWN_DAYS &&
+    SOFT_ACTIONS.includes(raw.action)
+  ) {
+    return {
+      action: "monitor",
+      tone: raw.tone,
+      reason: "Reminder sent recently — holding off to avoid over-nagging.",
+    };
+  }
+  return raw;
+}
+
+function rawRecommendation(
   input: CollectionRiskInput,
   daysOverdue: number,
   band: CollectionRiskBand,

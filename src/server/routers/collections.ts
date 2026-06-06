@@ -93,6 +93,8 @@ export const collectionsRouter = router({
         invoiceId: z.string(),
         subject: z.string().min(1).max(300),
         body: z.string().min(1).max(10000),
+        tone: z.enum(["helpful", "professional", "firm"]).optional(),
+        source: z.enum(["ai", "template_fallback"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -118,6 +120,19 @@ export const collectionsRouter = router({
       if ("suppressed" in result && result.suppressed) {
         return { sent: false, suppressed: true, reason: result.reason };
       }
+
+      // Record the send so the collections risk model counts it toward
+      // remindersSent and holds off re-nagging for the cooldown window.
+      await ctx.db.invoiceReminder.create({
+        data: {
+          invoiceId: invoice.id,
+          organizationId: invoice.organizationId,
+          subject: input.subject,
+          tone: input.tone,
+          source: input.source,
+        },
+      });
+
       return { sent: true, suppressed: false as const };
     }),
 });
