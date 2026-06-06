@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { env } from "@/lib/env";
 import { getOwnerBcc } from "./email-bcc";
 
 export type SendEmailOptions = {
@@ -73,6 +74,14 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
 
   const bcc = await getOwnerBcc(opts.organizationId);
 
+  // Inbound threading: when an inbound domain is configured and the email
+  // relates to an invoice, route replies to reply+<invoiceId>@<domain> so the
+  // inbound webhook can thread the reply back onto the invoice.
+  const replyTo =
+    env.RESEND_INBOUND_DOMAIN && opts.invoiceId
+      ? `reply+${opts.invoiceId}@${env.RESEND_INBOUND_DOMAIN}`
+      : undefined;
+
   const result = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
     to: opts.to,
@@ -82,6 +91,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
       { name: "org_id", value: opts.organizationId },
       ...(opts.invoiceId ? [{ name: "invoice_id", value: opts.invoiceId }] : []),
     ],
+    ...(replyTo ? { replyTo } : {}),
     ...(cc ? { cc } : {}),
     ...(bcc ? { bcc } : {}),
     ...(opts.attachments ? { attachments: opts.attachments } : {}),

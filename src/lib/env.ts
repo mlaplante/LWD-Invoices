@@ -11,6 +11,12 @@ export const env = createEnv({
     // in the EmailEvent table. Get the secret from the Resend dashboard
     // when adding a webhook endpoint.
     RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
+    // Inbound email threading. When RESEND_INBOUND_DOMAIN is set, invoice
+    // emails get a Reply-To of reply+<invoiceId>@<domain> so client replies
+    // route to the inbound webhook and thread onto the invoice/ticket.
+    // RESEND_INBOUND_WEBHOOK_SECRET verifies the inbound webhook (Svix).
+    RESEND_INBOUND_DOMAIN: z.string().min(1).optional(),
+    RESEND_INBOUND_WEBHOOK_SECRET: z.string().min(1).optional(),
     GATEWAY_ENCRYPTION_KEY: z
       .string()
       .length(64)
@@ -70,6 +76,8 @@ export const env = createEnv({
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
+    RESEND_INBOUND_DOMAIN: process.env.RESEND_INBOUND_DOMAIN,
+    RESEND_INBOUND_WEBHOOK_SECRET: process.env.RESEND_INBOUND_WEBHOOK_SECRET,
     GATEWAY_ENCRYPTION_KEY: process.env.GATEWAY_ENCRYPTION_KEY,
     NODE_ENV: process.env.NODE_ENV,
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,

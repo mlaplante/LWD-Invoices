@@ -303,6 +303,7 @@ model Organization {
   reminderSequences       ReminderSequence[]
   savedPaymentMethods     SavedPaymentMethod[]
   emailEvents             EmailEvent[]
+  inboundEmails           InboundEmail[]
   clientCheckIns          ClientCheckIn[]
   checkInTemplates        CheckInTemplate[]
   // Retention/check-in automation feature flag. retentionEnabledAt is the
@@ -408,6 +409,7 @@ model Client {
   hoursRetainers        HoursRetainer[]
   savedPaymentMethods   SavedPaymentMethod[]
   checkIns              ClientCheckIn[]
+  inboundEmails         InboundEmail[]
 }
 
 model ClientPortalSession {
@@ -559,6 +561,7 @@ model Invoice {
   retainerTransactions    RetainerTransaction[]
   reminderLogs            ReminderLog[]
   emailEvents             EmailEvent[]
+  inboundEmails           InboundEmail[]
   milestone               Milestone?
 
   createdAt DateTime @default(now())
@@ -1254,6 +1257,37 @@ model EmailEvent {
   @@index([invoiceId, occurredAt])
 }
 
+// A client reply captured by the inbound-email webhook. Outbound invoice emails
+// carry a Reply-To of reply+<invoiceId>@<inbound-domain>; when the client
+// replies, the webhook resolves the invoice from that address, records the
+// message here, and threads it onto a support ticket so the conversation is
+// captured in one place.
+model InboundEmail {
+  id         String   @id @default(cuid())
+  fromEmail  String
+  subject    String?
+  bodyText   String?
+  // Provider message id + In-Reply-To header, for de-duplication and threading.
+  messageId  String?
+  inReplyTo  String?
+  receivedAt DateTime @default(now())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId      String?
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  clientId       String?
+  client         Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  ticketId       String?
+  ticket         Ticket?  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, receivedAt])
+  @@index([invoiceId])
+  @@index([messageId])
+}
+
 // ─── Scheduled Reports ───────────────────────────────────────────────────────
 
 model ScheduledReport {
@@ -1379,6 +1413,7 @@ model Ticket {
   client       Client?         @relation(fields: [clientId], references: [id])
   assignedToId String?
   messages     TicketMessage[]
+  inboundEmails InboundEmail[]
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

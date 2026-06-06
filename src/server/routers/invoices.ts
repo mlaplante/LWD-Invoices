@@ -219,6 +219,31 @@ export const invoicesRouter = router({
       });
     }),
 
+  // Client replies captured by the inbound-email webhook and threaded onto this
+  // invoice (closes the communication loop).
+  inboundReplies: protectedProcedure
+    .input(z.object({ invoiceId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findFirst({
+        where: { id: input.invoiceId, organizationId: ctx.orgId },
+        select: { id: true },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return ctx.db.inboundEmail.findMany({
+        where: { invoiceId: input.invoiceId, organizationId: ctx.orgId },
+        select: {
+          id: true,
+          fromEmail: true,
+          subject: true,
+          bodyText: true,
+          receivedAt: true,
+          ticketId: true,
+        },
+        orderBy: { receivedAt: "desc" },
+      });
+    }),
+
   recentlyViewed: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(20).default(5) }))
     .query(async ({ ctx, input }) => {
