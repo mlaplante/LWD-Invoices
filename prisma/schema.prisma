@@ -148,6 +148,11 @@ enum EmailAutomationTrigger {
   INVOICE_OVERDUE
 }
 
+enum ReminderStepTrigger {
+  DUE_DATE_OFFSET
+  VIEWED_UNPAID
+}
+
 enum ReportType {
   PROFIT_LOSS
   AGING
@@ -514,6 +519,7 @@ model Invoice {
   lateFeeEntries          LateFeeEntry[]
   retainerTransactions    RetainerTransaction[]
   reminderLogs            ReminderLog[]
+  emailEvents             EmailEvent[]
   milestone               Milestone?
 
   createdAt DateTime @default(now())
@@ -1114,10 +1120,17 @@ model EmailEvent {
   // ingest events for emails sent before tagging was wired in.
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  // Resolved from the `invoice_id` tag on the original send. Optional because not
+  // every email relates to an invoice (e.g. scheduled reports) and legacy sends
+  // predate the tag. Powers the per-invoice engagement timeline and the
+  // "viewed but unpaid" reminder trigger.
+  invoiceId      String?
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
 
   @@index([resendId])
   @@index([organizationId, type, occurredAt])
+  @@index([invoiceId, occurredAt])
 }
 
 // ─── Scheduled Reports ───────────────────────────────────────────────────────
@@ -1163,7 +1176,12 @@ model ReminderSequence {
 
 model ReminderStep {
   id                  String   @id @default(cuid())
-  daysRelativeToDue   Int      // negative = before due, 0 = on due, positive = after due
+  // How this step is scheduled. DUE_DATE_OFFSET uses daysRelativeToDue; VIEWED_UNPAID
+  // fires once the invoice email has been opened and remains unpaid (see viewedDelayHours).
+  trigger             ReminderStepTrigger @default(DUE_DATE_OFFSET)
+  daysRelativeToDue   Int      // negative = before due, 0 = on due, positive = after due (DUE_DATE_OFFSET only)
+  // For VIEWED_UNPAID steps: hours to wait after the first open before nudging.
+  viewedDelayHours    Int?
   subject             String
   body                String
   sort                Int      @default(0)

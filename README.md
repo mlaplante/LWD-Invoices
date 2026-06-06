@@ -36,6 +36,7 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - Credit notes against invoices
 - Recurring invoices (daily / weekly / monthly / yearly) via background jobs
 - Multiple invoice types: SIMPLE, DETAILED, ESTIMATE, CREDIT_NOTE
+- **Email Engagement Panel** — per-invoice delivery/open/click timeline on the invoice detail page (powered by Resend webhook tracking)
 
 ### Client Portal
 - Shareable token-based portal for clients to view invoices and estimates (no account required)
@@ -49,6 +50,7 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - Encrypted gateway credentials stored per-organization
 - Support for multiple payment methods: STRIPE, PAYPAL, BANK_TRANSFER, CASH, CHECK, MONEY_ORDER
 - **Smart Payment Nudges** — Automatic identification of reliable payers who skip pre-due reminders (80%+ on-time payment rate)
+- **"Viewed but Unpaid" Reminders** — Reminder-sequence steps that trigger off real email-open engagement (sent N hours after the client opened the invoice and still hasn't paid) instead of a fixed calendar delay
 
 ### Projects & Time Tracking
 - Project management with milestones and tasks

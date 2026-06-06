@@ -91,6 +91,7 @@ export async function sendPaymentReceiptEmail({
 
   await sendEmail({
     organizationId,
+    invoiceId: fullInvoice.id,
     to: fullInvoice.client.email,
     cc: cc.length > 0 ? cc : undefined,
     subject: `Payment received — Invoice #${fullInvoice.number}`,

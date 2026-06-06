@@ -201,6 +201,24 @@ export const invoicesRouter = router({
       return invoice;
     }),
 
+  // Email engagement timeline (delivery/open/click events) for one invoice.
+  // Populated by the Resend webhook via the `invoice_id` tag on outgoing mail.
+  getEmailEvents: protectedProcedure
+    .input(z.object({ invoiceId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findFirst({
+        where: { id: input.invoiceId, organizationId: ctx.orgId },
+        select: { id: true },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return ctx.db.emailEvent.findMany({
+        where: { invoiceId: input.invoiceId },
+        select: { id: true, type: true, occurredAt: true, recipient: true, link: true },
+        orderBy: { occurredAt: "asc" },
+      });
+    }),
+
   recentlyViewed: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(20).default(5) }))
     .query(async ({ ctx, input }) => {
