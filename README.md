@@ -282,6 +282,25 @@ Configure payment gateways to accept online payments:
 3. Set `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 4. Set up webhook endpoint at `https://yourdomain.com/api/webhooks/stripe`
 5. Copy webhook signing secret → set as `STRIPE_WEBHOOK_SECRET`
+6. Enable the following events on the webhook endpoint (Dashboard → Developers → Webhooks → your endpoint → "Select events"):
+
+   | Event | Powers |
+   | --- | --- |
+   | `checkout.session.completed` | Recording payments, deposits, installments, saved cards |
+   | `payment_intent.payment_failed` | Logging failed checkouts on the invoice |
+   | `payment_intent.canceled` | Logging canceled checkouts on the invoice |
+   | `charge.refunded` | Refund reconciliation + invoice status (Refund management) |
+   | `charge.dispute.created` | Opening a dispute in the dispute management surface |
+   | `charge.dispute.updated` | Tracking dispute status changes |
+   | `charge.dispute.closed` | Marking a dispute won/lost |
+   | `charge.dispute.funds_withdrawn` | Reflecting funds pulled while a dispute is open |
+   | `charge.dispute.funds_reinstated` | Reflecting funds returned after winning a dispute |
+
+   > Dispute and refund events don't carry org metadata, so the handler resolves
+   > the owning org from the related payment (the signature is still verified
+   > with that org's webhook secret). They only work for payments taken through
+   > Stripe Checkout in this app — make sure the events above are enabled or
+   > disputes/refunds won't appear.
 
 **PayPal:**
 1. Create account at https://developer.paypal.com
@@ -335,7 +354,9 @@ After deployment:
 
 1. **Update webhook URLs** in:
    - Supabase: Set auth webhook to `https://yourdomain.com/api/webhooks/supabase`
-   - Stripe: Point to `https://yourdomain.com/api/webhooks/stripe`
+   - Stripe: Point to `https://yourdomain.com/api/webhooks/stripe` (and enable the
+     events listed in [Payment Gateway Setup](#5-payment-gateway-setup-optional) — including
+     the `charge.refunded` and `charge.dispute.*` events that power refunds and disputes)
    - PayPal: Point to `https://yourdomain.com/api/webhooks/paypal`
    - Inngest: Point to `https://yourdomain.com/api/inngest`
 
