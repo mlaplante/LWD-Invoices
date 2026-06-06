@@ -6,7 +6,7 @@ import {
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
-import type { PLRow, ExpenseRow, PaymentRow, TaxRow } from "./year-end-reports";
+import type { PLRow, ExpenseRow, PaymentRow, TaxRow, AgingSnapshotRow } from "./year-end-reports";
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
@@ -226,4 +226,51 @@ function TaxDoc({ rows, year }: { rows: TaxRow[]; year: number }) {
 
 export async function renderTaxPdf(rows: TaxRow[], year: number): Promise<Buffer> {
   return renderToBuffer(<TaxDoc rows={rows} year={year} />);
+}
+
+// ── AR Aging Snapshot ──────────────────────────────────────────────────────────
+
+function AgingDoc({ rows, year }: { rows: AgingSnapshotRow[]; year: number }) {
+  const totalBalance = rows.reduce((sum, r) => sum + r.balance, 0);
+
+  return (
+    <Document>
+      <Page size="A4" style={s.page}>
+        <Text style={s.title}>Accounts Receivable Aging</Text>
+        <Text style={s.subtitle}>As of December 31, {year}</Text>
+        <View style={s.table}>
+          <View style={s.headerRow}>
+            <Text style={s.cell}>Invoice #</Text>
+            <Text style={s.cellWide}>Client</Text>
+            <Text style={s.cell}>Due Date</Text>
+            <Text style={s.cell}>Bucket</Text>
+            <Text style={s.cellRight}>Days Overdue</Text>
+            <Text style={s.cellRight}>Balance Due</Text>
+          </View>
+          {rows.map((r, i) => (
+            <View key={i} style={i % 2 === 0 ? s.row : s.rowAlt}>
+              <Text style={s.cell}>{r.number}</Text>
+              <Text style={s.cellWide}>{r.client}</Text>
+              <Text style={s.cell}>{r.dueDate}</Text>
+              <Text style={s.cell}>{r.bucket}</Text>
+              <Text style={s.cellRight}>{r.daysOverdue > 0 ? r.daysOverdue : "—"}</Text>
+              <Text style={s.cellRight}>{money(r.balance)}</Text>
+            </View>
+          ))}
+          <View style={s.totalsRow}>
+            <Text style={s.cell}>Total</Text>
+            <Text style={s.cellWide} />
+            <Text style={s.cell} />
+            <Text style={s.cell} />
+            <Text style={s.cellRight} />
+            <Text style={s.cellRight}>{money(totalBalance)}</Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+export async function renderAgingPdf(rows: AgingSnapshotRow[], year: number): Promise<Buffer> {
+  return renderToBuffer(<AgingDoc rows={rows} year={year} />);
 }

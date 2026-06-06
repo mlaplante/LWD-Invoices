@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, FileText, Receipt, CreditCard, Scale } from "lucide-react";
+import { ArrowLeft, Download, FileText, Receipt, CreditCard, Scale, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -43,6 +43,13 @@ const reports = [
     description: "Tax collected by type, ready for your accountant.",
     icon: Scale,
     color: "bg-orange-50 text-orange-600",
+  },
+  {
+    id: "aging",
+    label: "AR Aging Snapshot",
+    description: "Outstanding receivables by aging bucket as of December 31.",
+    icon: Gauge,
+    color: "bg-fuchsia-50 text-fuchsia-600",
   },
 ];
 

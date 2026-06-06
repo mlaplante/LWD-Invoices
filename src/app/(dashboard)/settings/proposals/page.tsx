@@ -1,8 +1,12 @@
 import { api } from "@/trpc/server";
 import { ProposalTemplateList } from "@/components/settings/ProposalTemplateList";
+import { ProposalNudgeSettings } from "@/components/settings/ProposalNudgeSettings";
 
 export default async function ProposalTemplatesSettingsPage() {
-  const templates = await api.proposalTemplates.list();
+  const [templates, org] = await Promise.all([
+    api.proposalTemplates.list(),
+    api.organization.get(),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -13,6 +17,10 @@ export default async function ProposalTemplatesSettingsPage() {
         </p>
       </div>
       <ProposalTemplateList initialTemplates={templates} />
+      <ProposalNudgeSettings
+        initialEnabled={org.proposalNudgeEnabled}
+        initialDelayHours={org.proposalNudgeDelayHours}
+      />
     </div>
   );
 }

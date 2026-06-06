@@ -276,6 +276,11 @@ model Organization {
   // flooded with historical backfill.
   retentionEnabled        Boolean   @default(false)
   retentionEnabledAt      DateTime?
+  // ─── Proposal "viewed but not signed" nudge ─────────────────────────────────
+  // When enabled, the proposal-nudge cron emails the client once a sent proposal
+  // has been opened but remains unsigned after proposalNudgeDelayHours.
+  proposalNudgeEnabled    Boolean   @default(true)
+  proposalNudgeDelayHours Int       @default(48)
 }
 
 model User {
@@ -1339,6 +1344,9 @@ model ProposalContent {
   fileUrl         String?  // Supabase Storage path for uploaded proposal file
   fileName        String?  // Original filename (e.g., "proposal-v2.pdf")
   version         String   @default("1.0")
+  // Set when the "viewed but not signed" nudge fires, so the cron only sends one
+  // nudge per proposal (mirrors ReminderLog's double-send guard for invoices).
+  nudgeSentAt     DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

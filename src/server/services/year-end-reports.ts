@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma";
+import { getArAgingAsOf, AGING_BUCKETS } from "./ar-reports";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,15 @@ export type TaxRow = {
   rate: number;
   totalCollected: number;
   invoiceCount: number;
+};
+
+export type AgingSnapshotRow = {
+  number: string;
+  client: string;
+  dueDate: string;
+  bucket: string;
+  daysOverdue: number;
+  balance: number;
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -202,4 +212,32 @@ export async function getTaxLiability(
     totalCollected: v.total,
     invoiceCount: v.invoiceIds.size,
   }));
+}
+
+// ── AR Aging Snapshot (as of year-end) ─────────────────────────────────────────
+
+export async function getArAgingSnapshot(
+  db: PrismaClient,
+  orgId: string,
+  year: number,
+): Promise<AgingSnapshotRow[]> {
+  // Point-in-time as of the last instant of December 31 that year.
+  const asOf = new Date(Date.UTC(year + 1, 0, 1) - 1);
+  const aging = await getArAgingAsOf(db, orgId, asOf);
+  const bucketLabel = Object.fromEntries(AGING_BUCKETS.map((b) => [b.key, b.label]));
+
+  const rows: AgingSnapshotRow[] = [];
+  for (const { key } of AGING_BUCKETS) {
+    for (const r of aging.buckets[key].rows) {
+      rows.push({
+        number: r.number,
+        client: r.clientName,
+        dueDate: r.dueDate ? r.dueDate.toISOString().slice(0, 10) : "",
+        bucket: bucketLabel[key],
+        daysOverdue: r.daysPastDue > 0 ? r.daysPastDue : 0,
+        balance: r.balance,
+      });
+    }
+  }
+  return rows;
 }

@@ -18,6 +18,7 @@ import { LateFeeSection } from "@/components/invoices/LateFeeSection";
 import { ReminderOverrideSelect } from "@/components/invoices/ReminderOverrideSelect";
 import { ReminderHistory } from "@/components/invoices/ReminderHistory";
 import { EmailEngagementPanel } from "@/components/invoices/EmailEngagementPanel";
+import { ProposalEngagementPanel } from "@/components/invoices/ProposalEngagementPanel";
 import { ApplyRetainerDialog } from "@/components/invoices/ApplyRetainerDialog";
 import { IssueCreditNoteDialog } from "@/components/invoices/IssueCreditNoteDialog";
 import { CreditNoteActions } from "@/components/invoices/CreditNoteActions";
@@ -531,8 +532,14 @@ export default async function InvoiceDetailPage({
       <LateFeeSection invoiceId={invoice.id} />
 
       {/* ── Email Engagement ─────────────────────────────────────── */}
-      {invoice.type !== "ESTIMATE" && (
+      {invoice.type !== "ESTIMATE" ? (
         <EmailEngagementPanel invoiceId={invoice.id} hasSent={invoice.lastSent != null} />
+      ) : (
+        <ProposalEngagementPanel
+          invoiceId={invoice.id}
+          hasSent={invoice.lastSent != null}
+          signedAt={invoice.signedAt}
+        />
       )}
 
       {/* ── Reminder History ─────────────────────────────────────── */}

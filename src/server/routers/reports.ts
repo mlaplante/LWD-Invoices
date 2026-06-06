@@ -3,6 +3,7 @@ import { Prisma } from "@/generated/prisma";
 import { router, protectedProcedure } from "../trpc";
 import { InvoiceStatus, InvoiceType, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
+import { getArAgingAsOf, getDsoTrend } from "@/server/services/ar-reports";
 
 export function groupByMonth<T>(
   items: T[],
@@ -916,5 +917,19 @@ export const reportsRouter = router({
           overdueAmount: Math.round(overdueAmount * 100) / 100,
         },
       };
+    }),
+
+  // AR aging by outstanding balance (net of payments), as of now. Unlike
+  // invoiceAging above (which buckets gross invoice totals), this nets payments
+  // so the numbers reconcile to the actual receivable, and powers the DSO board.
+  arAging: protectedProcedure.query(async ({ ctx }) => {
+    return getArAgingAsOf(ctx.db, ctx.orgId);
+  }),
+
+  // Days-Sales-Outstanding at each of the last 12 month-ends.
+  dsoTrend: protectedProcedure
+    .input(z.object({ months: z.number().int().min(3).max(24).default(12) }).optional())
+    .query(async ({ ctx, input }) => {
+      return getDsoTrend(ctx.db, ctx.orgId, input?.months ?? 12);
     }),
 });
