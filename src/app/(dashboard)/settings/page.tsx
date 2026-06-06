@@ -6,7 +6,7 @@ import { BrandingForm } from "@/components/settings/BrandingForm";
 import { PortalBrandingForm } from "@/components/settings/PortalBrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell, Shield, User, HeartHandshake } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell, Shield, User, HeartHandshake, Newspaper } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
@@ -101,6 +101,13 @@ const subPages = [
     description: "Weekly check-in queue and message templates for past clients.",
     icon: <HeartHandshake className="w-4 h-4" />,
     color: "bg-pink-50 text-pink-600",
+  },
+  {
+    href: "/settings/briefing",
+    label: "Weekly Briefing",
+    description: "Proactive Monday email: overdue total, at-risk clients, projected cash.",
+    icon: <Newspaper className="w-4 h-4" />,
+    color: "bg-cyan-50 text-cyan-600",
   },
 ];
 

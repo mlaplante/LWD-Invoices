@@ -27,6 +27,7 @@ import { CreditNoteActions } from "@/components/invoices/CreditNoteActions";
 import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButton";
 import { SendReceiptButton } from "@/components/invoices/SendReceiptButton";
 import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButton";
+import { InvoiceRefundsPanel } from "@/components/invoices/InvoiceRefundsPanel";
 import { CopyPaymentLinkButton } from "@/components/invoices/CopyPaymentLinkButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
@@ -472,6 +473,9 @@ export default async function InvoiceDetailPage({
           </div>
         </div>
       )}
+
+      {/* ── Refunds ──────────────────────────────────────────────── */}
+      <InvoiceRefundsPanel invoiceId={invoice.id} />
 
       {/* ── Payment Schedule ─────────────────────────────────────── */}
       {invoice.partialPayments.length > 0 && (
