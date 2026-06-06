@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
+import { env } from "@/lib/env";
 import {
   buildCashFlowNarrativePrompt,
   calculateCashFlowInsightMetrics,
@@ -154,5 +155,34 @@ describe("cash-flow insights", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(narrative.source).toBe("deterministic");
     expect(narrative.summary).toContain("Estimates are based on payment timing");
+  });
+
+  describe("Gemini-first default", () => {
+    const originalGeminiKey = env.GEMINI_API_KEY;
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      (env as Record<string, unknown>).GEMINI_API_KEY = originalGeminiKey;
+    });
+
+    it("uses Gemini (its model-fallback chain) by default when GEMINI_API_KEY is set", async () => {
+      (env as Record<string, unknown>).GEMINI_API_KEY = "test-gemini";
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: "Cash is healthy this quarter." }] } }],
+        }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      // No explicit apiKey option → provider is resolved automatically (Gemini first).
+      const narrative = await generateCashFlowNarrative(narrativeReadyMetrics());
+
+      expect(fetchMock).toHaveBeenCalled();
+      const calledUrl = String(fetchMock.mock.calls[0][0]);
+      expect(calledUrl).toContain("generativelanguage.googleapis.com");
+      expect(narrative.source).toBe("gemini");
+      expect(narrative.summary).toBe("Cash is healthy this quarter.");
+    });
   });
 });

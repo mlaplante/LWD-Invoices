@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Decimal } from "@prisma/client-runtime-utils";
+import { Prisma } from "@/generated/prisma";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { resolvePeriodLabel, defaultPeriodBounds } from "@/server/services/hours-retainers";
@@ -54,7 +55,7 @@ export const hoursRetainersRouter = router({
       });
       if (!client) throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
 
-      return ctx.db.$transaction(async (tx: any) => {
+      return ctx.db.$transaction(async (tx: Prisma.TransactionClient) => {
         const retainer = await tx.hoursRetainer.create({
           data: {
             organizationId: ctx.orgId,
@@ -90,7 +91,7 @@ export const hoursRetainersRouter = router({
             entityLabel: retainer.name,
             organizationId: ctx.orgId,
             userId: ctx.userId,
-            diff: { type: input.type, includedHours: input.includedHours } as any,
+            diff: { type: input.type, includedHours: input.includedHours } as Prisma.InputJsonValue,
           },
         });
 
@@ -133,7 +134,7 @@ export const hoursRetainersRouter = router({
           entityId: input.id,
           organizationId: ctx.orgId,
           userId: ctx.userId,
-          diff: updatedFields as any,
+          diff: updatedFields as Prisma.InputJsonValue,
         },
       });
 
@@ -234,7 +235,7 @@ export const hoursRetainersRouter = router({
           entityLabel: label,
           organizationId: ctx.orgId,
           userId: ctx.userId,
-          diff: { retainerId: retainer.id, status: "ACTIVE" } as any,
+          diff: { retainerId: retainer.id, status: "ACTIVE" } as Prisma.InputJsonValue,
         },
       });
 
@@ -252,7 +253,7 @@ export const hoursRetainersRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Not a monthly retainer." });
       }
 
-      return ctx.db.$transaction(async (tx: any) => {
+      return ctx.db.$transaction(async (tx: Prisma.TransactionClient) => {
         const active = await tx.hoursRetainerPeriod.findFirst({
           where: { retainerId: retainer.id, status: "ACTIVE" },
         });
@@ -286,7 +287,7 @@ export const hoursRetainersRouter = router({
             entityLabel: active.label,
             organizationId: ctx.orgId,
             userId: ctx.userId,
-            diff: { from: "ACTIVE", to: "CLOSED" } as any,
+            diff: { from: "ACTIVE", to: "CLOSED" } as Prisma.InputJsonValue,
           },
         });
 
@@ -298,7 +299,7 @@ export const hoursRetainersRouter = router({
             entityLabel: newLabel,
             organizationId: ctx.orgId,
             userId: ctx.userId,
-            diff: { retainerId: retainer.id, status: "ACTIVE" } as any,
+            diff: { retainerId: retainer.id, status: "ACTIVE" } as Prisma.InputJsonValue,
           },
         });
 
@@ -359,7 +360,7 @@ export const hoursRetainersRouter = router({
           entityLabel: input.label,
           organizationId: ctx.orgId,
           userId: ctx.userId,
-          diff: updatedFields as any,
+          diff: updatedFields as Prisma.InputJsonValue,
         },
       });
 

@@ -83,6 +83,87 @@ export const clientsRouter = router({
       return getForOrg(ctx.db.client, input.id, ctx.orgId, { entityName: "Client" });
     }),
 
+  // Combined reminder history across all of a client's invoices: ad-hoc manual
+  // sends (InvoiceReminder) + automated sequence sends (ReminderLog), newest
+  // first, each linked to its invoice.
+  reminderHistory: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await getForOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
+
+      const [manual, sequence] = await Promise.all([
+        ctx.db.invoiceReminder.findMany({
+          where: { organizationId: ctx.orgId, invoice: { clientId: input.clientId } },
+          select: {
+            id: true,
+            sentAt: true,
+            subject: true,
+            tone: true,
+            source: true,
+            invoice: { select: { id: true, number: true } },
+          },
+        }),
+        ctx.db.reminderLog.findMany({
+          where: { invoice: { clientId: input.clientId, organizationId: ctx.orgId } },
+          select: {
+            id: true,
+            sentAt: true,
+            invoice: { select: { id: true, number: true } },
+            step: { select: { subject: true, sequence: { select: { name: true } } } },
+          },
+        }),
+      ]);
+
+      const entries = [
+        ...manual.map((m) => ({
+          id: m.id,
+          kind: "manual" as const,
+          sentAt: m.sentAt,
+          subject: m.subject,
+          tone: m.tone,
+          source: m.source,
+          sequenceName: null as string | null,
+          invoiceId: m.invoice.id,
+          invoiceNumber: m.invoice.number,
+        })),
+        ...sequence.map((s) => ({
+          id: s.id,
+          kind: "sequence" as const,
+          sentAt: s.sentAt,
+          subject: s.step.subject,
+          tone: null as string | null,
+          source: null as string | null,
+          sequenceName: s.step.sequence.name,
+          invoiceId: s.invoice.id,
+          invoiceNumber: s.invoice.number,
+        })),
+      ].sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+
+      return entries;
+    }),
+
+  // Most recent reminder sent to a client across any of its invoices (manual or
+  // sequence). Lightweight — powers the "last reminded" chip on the header.
+  lastReminded: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [manual, sequence] = await Promise.all([
+        ctx.db.invoiceReminder.findFirst({
+          where: { organizationId: ctx.orgId, invoice: { clientId: input.clientId } },
+          orderBy: { sentAt: "desc" },
+          select: { sentAt: true },
+        }),
+        ctx.db.reminderLog.findFirst({
+          where: { invoice: { clientId: input.clientId, organizationId: ctx.orgId } },
+          orderBy: { sentAt: "desc" },
+          select: { sentAt: true },
+        }),
+      ]);
+      const times = [manual?.sentAt, sequence?.sentAt].filter((d): d is Date => d != null);
+      const lastRemindedAt = times.length > 0 ? new Date(Math.max(...times.map((d) => d.getTime()))) : null;
+      return { lastRemindedAt };
+    }),
+
   create: requireRole("OWNER", "ADMIN")
     .input(clientSchema)
     .mutation(async ({ ctx, input }) => {

@@ -11,6 +11,12 @@ export const env = createEnv({
     // in the EmailEvent table. Get the secret from the Resend dashboard
     // when adding a webhook endpoint.
     RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
+    // Inbound email threading. When RESEND_INBOUND_DOMAIN is set, invoice
+    // emails get a Reply-To of reply+<invoiceId>@<domain> so client replies
+    // route to the inbound webhook and thread onto the invoice/ticket.
+    // RESEND_INBOUND_WEBHOOK_SECRET verifies the inbound webhook (Svix).
+    RESEND_INBOUND_DOMAIN: z.string().min(1).optional(),
+    RESEND_INBOUND_WEBHOOK_SECRET: z.string().min(1).optional(),
     GATEWAY_ENCRYPTION_KEY: z
       .string()
       .length(64)
@@ -28,6 +34,16 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     OPENAI_API_KEY: z.string().min(1).optional(),
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    // Model used by the "Ask your books" assistant on the Anthropic fallback
+    // path. Defaults to claude-opus-4-8; override for a cheaper/faster model.
+    ANTHROPIC_AGENT_MODEL: z.string().min(1).optional(),
+    // Which provider powers the books assistant. Defaults to Gemini first (its
+    // function-calling + model-fallback chain) when GEMINI_API_KEY is set,
+    // otherwise Anthropic. Set explicitly to pin a provider.
+    ASSISTANT_AI_PROVIDER: z.enum(["gemini", "anthropic"]).optional(),
+    // Ordered Gemini model fallback chain for the assistant (429 → next model).
+    // Leave unset for the built-in default chain.
+    GEMINI_AGENT_MODELS: z.string().min(1).optional(),
     GEMINI_API_KEY: z.string().min(1).optional(),
     OPENAI_REMINDER_MODEL: z.string().min(1).optional(),
     // Comma-separated, ordered Gemini model fallback chain for reminder drafting
@@ -35,15 +51,19 @@ export const env = createEnv({
     // built-in default chain.
     GEMINI_REMINDER_MODELS: z.string().min(1).optional(),
     REMINDER_AI_PROVIDER: z.enum(["openai", "gemini"]).optional(),
+    // Comma-separated, ordered Gemini model fallback chain for the cash-flow
+    // narrative (same 429 fallback behavior as GEMINI_OCR_MODELS). Leave unset
+    // for the built-in default chain.
+    GEMINI_CASHFLOW_MODELS: z.string().min(1).optional(),
     RECEIPT_OCR_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
     // Comma-separated, ordered list of Gemini vision models to try for receipt
     // OCR. When one model returns a 429 (rate-limit/quota), the next is tried.
     // Leave unset to use the built-in default chain. Example:
     //   GEMINI_OCR_MODELS="gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash"
     GEMINI_OCR_MODELS: z.string().min(1).optional(),
-    // Which provider drafts invoices from natural-language prompts. Defaults
-    // to openai when unset; gemini requires GEMINI_API_KEY. When unset and no
-    // OPENAI_API_KEY is present, falls back to gemini if its key is configured.
+    // Which provider drafts invoices from natural-language prompts. Defaults to
+    // Gemini (its model-fallback chain) when GEMINI_API_KEY is set, otherwise
+    // OpenAI. Set explicitly to pin a provider.
     INVOICE_PARSER_PROVIDER: z.enum(["openai", "gemini"]).optional(),
     OPENAI_INVOICE_PARSER_MODEL: z.string().min(1).optional(),
     // Comma-separated, ordered Gemini model fallback chain for invoice drafting,
@@ -67,6 +87,8 @@ export const env = createEnv({
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
+    RESEND_INBOUND_DOMAIN: process.env.RESEND_INBOUND_DOMAIN,
+    RESEND_INBOUND_WEBHOOK_SECRET: process.env.RESEND_INBOUND_WEBHOOK_SECRET,
     GATEWAY_ENCRYPTION_KEY: process.env.GATEWAY_ENCRYPTION_KEY,
     NODE_ENV: process.env.NODE_ENV,
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
@@ -75,10 +97,14 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    ANTHROPIC_AGENT_MODEL: process.env.ANTHROPIC_AGENT_MODEL,
+    ASSISTANT_AI_PROVIDER: process.env.ASSISTANT_AI_PROVIDER,
+    GEMINI_AGENT_MODELS: process.env.GEMINI_AGENT_MODELS,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     OPENAI_REMINDER_MODEL: process.env.OPENAI_REMINDER_MODEL,
     GEMINI_REMINDER_MODELS: process.env.GEMINI_REMINDER_MODELS,
     REMINDER_AI_PROVIDER: process.env.REMINDER_AI_PROVIDER,
+    GEMINI_CASHFLOW_MODELS: process.env.GEMINI_CASHFLOW_MODELS,
     RECEIPT_OCR_PROVIDER: process.env.RECEIPT_OCR_PROVIDER,
     GEMINI_OCR_MODELS: process.env.GEMINI_OCR_MODELS,
     INVOICE_PARSER_PROVIDER: process.env.INVOICE_PARSER_PROVIDER,

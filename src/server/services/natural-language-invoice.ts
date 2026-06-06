@@ -305,17 +305,20 @@ const EXTRACTION_JSON_SCHEMA = {
 
 /**
  * Pick the parser provider: explicit override → INVOICE_PARSER_PROVIDER →
- * whichever API key is configured (preferring OpenAI). Mirrors the
- * resolveProvider precedence in receipt-ocr.ts.
+ * whichever API key is configured, preferring Gemini (which runs the 429
+ * model-fallback chain). Mirrors the resolveProvider precedence in
+ * receipt-ocr.ts.
  */
 export function resolveInvoiceParserProvider(override?: InvoiceParserProvider): InvoiceParserProvider {
   if (override) return override;
   if (env.INVOICE_PARSER_PROVIDER === "openai" || env.INVOICE_PARSER_PROVIDER === "gemini") {
     return env.INVOICE_PARSER_PROVIDER;
   }
-  if (env.OPENAI_API_KEY) return "openai";
+  // Default to Gemini first (runs the 429 model-fallback chain); fall back to
+  // OpenAI when only its key is configured. Set INVOICE_PARSER_PROVIDER to override.
   if (env.GEMINI_API_KEY) return "gemini";
-  return "openai";
+  if (env.OPENAI_API_KEY) return "openai";
+  return "gemini";
 }
 
 /**

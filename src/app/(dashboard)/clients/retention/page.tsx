@@ -17,7 +17,7 @@ export default function ClientRetentionPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Client Retention</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Past clients you're due to reach out to. The system surfaces the
+              Past clients you&apos;re due to reach out to. The system surfaces the
               reminder; you write the message.
             </p>
           </div>

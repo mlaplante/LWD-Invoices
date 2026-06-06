@@ -52,6 +52,20 @@ describe("natural-language invoice — Gemini provider", () => {
       expect(resolveInvoiceParserProvider()).toBe("gemini");
       (env as Record<string, unknown>).OPENAI_API_KEY = "test-openai-key";
     });
+
+    it("prefers gemini over openai when both keys are present (Gemini-first default)", () => {
+      (env as Record<string, unknown>).INVOICE_PARSER_PROVIDER = undefined;
+      (env as Record<string, unknown>).OPENAI_API_KEY = "test-openai-key";
+      (env as Record<string, unknown>).GEMINI_API_KEY = "test-gemini";
+      expect(resolveInvoiceParserProvider()).toBe("gemini");
+    });
+
+    it("uses openai only when it is the sole configured key", () => {
+      (env as Record<string, unknown>).INVOICE_PARSER_PROVIDER = undefined;
+      (env as Record<string, unknown>).GEMINI_API_KEY = undefined;
+      (env as Record<string, unknown>).OPENAI_API_KEY = "test-openai-key";
+      expect(resolveInvoiceParserProvider()).toBe("openai");
+    });
   });
 
   describe("extractGeminiText", () => {
