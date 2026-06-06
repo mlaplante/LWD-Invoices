@@ -28,6 +28,7 @@ import { MarkPartialPaidButton } from "@/components/invoices/MarkPartialPaidButt
 import { SendReceiptButton } from "@/components/invoices/SendReceiptButton";
 import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButton";
 import { InvoiceRefundsPanel } from "@/components/invoices/InvoiceRefundsPanel";
+import { ClientCreditHoldBanner } from "@/components/clients/ClientCreditHoldBanner";
 import { CopyPaymentLinkButton } from "@/components/invoices/CopyPaymentLinkButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
@@ -231,6 +232,9 @@ export default async function InvoiceDetailPage({
           )}
         </div>
       </div>
+
+      {/* ── Credit hold / over-limit warning (advisory) ──────────── */}
+      <ClientCreditHoldBanner clientId={invoice.client.id} />
 
       {/* ── Invoice document card ─────────────────────────────────── */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
