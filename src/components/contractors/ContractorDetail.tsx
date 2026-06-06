@@ -98,6 +98,14 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
     onError: (err) => { toast.error(err.message); setDeleteContractor(false); },
   });
 
+  const setPortalAccessMutation = trpc.contractors.setPortalAccess.useMutation({
+    onSuccess: (res) => {
+      utils.contractors.getById.invalidate({ id: contractorId });
+      toast.success(res.portalEnabled ? "Portal enabled" : "Portal disabled");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!contractor) return <p className="text-sm text-muted-foreground">Contractor not found.</p>;
 
@@ -105,6 +113,8 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
     .filter((p) => p.reportable)
     .reduce((s, p) => s + p.amount, 0);
   const eligible = !contractor.exemptFrom1099 && reportableTotal >= NEC_1099_THRESHOLD;
+  const portalOrigin = typeof window !== "undefined" ? window.location.origin : "";
+  const portalUrl = `${portalOrigin}/contractor/${contractor.portalToken}`;
   const needsW9 = eligible && contractor.w9Status !== "RECEIVED";
 
   async function handleW9Upload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -275,6 +285,49 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
               </label>
             )}
           </div>
+        </div>
+
+        {/* Contractor portal */}
+        <div className="rounded-2xl border border-border/50 bg-card p-5 lg:col-span-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Self-Service Portal</p>
+              <p className="text-sm mt-1 text-muted-foreground">
+                Let this contractor view their payment history, submit a W-9, and download their
+                1099-NEC from a private link — no account needed.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant={contractor.portalEnabled ? "outline" : "default"}
+              disabled={setPortalAccessMutation.isPending}
+              onClick={() =>
+                setPortalAccessMutation.mutate({ id: contractorId, enabled: !contractor.portalEnabled })
+              }
+            >
+              {contractor.portalEnabled ? "Disable portal" : "Enable portal"}
+            </Button>
+          </div>
+          {contractor.portalEnabled && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <code className="flex-1 min-w-0 truncate text-xs bg-muted/40 rounded-lg px-3 py-2">
+                {portalUrl}
+              </code>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  void navigator.clipboard.writeText(portalUrl);
+                  toast.success("Portal link copied");
+                }}
+              >
+                Copy link
+              </Button>
+              <a href={portalUrl} target="_blank" rel="noreferrer" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                Open <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Payments */}

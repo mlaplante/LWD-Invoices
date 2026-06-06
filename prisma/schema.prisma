@@ -1062,6 +1062,14 @@ model Contractor {
   notes             String?
   isArchived        Boolean  @default(false)
 
+  // ── Self-service contractor portal ──
+  // Opt-in per contractor. The token is the bearer secret for the portal URL
+  // (same model as the client invoice portal token); the org enables access and
+  // shares the link so the contractor can view their payment history, submit a
+  // W-9, and download their 1099-NEC without an account.
+  portalEnabled     Boolean  @default(false)
+  portalToken       String   @unique @default(cuid())
+
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   payments       ContractorPayment[]

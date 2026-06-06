@@ -203,6 +203,20 @@ export const contractorsRouter = router({
       return redactTin(updated);
     }),
 
+  // Toggle the self-service contractor portal for a contractor. Returns the
+  // portal token so the admin can copy/share the link.
+  setPortalAccess: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(z.object({ id: z.string(), enabled: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await getForOrg(ctx.db.contractor, input.id, ctx.orgId, { entityName: "Contractor" });
+      const updated = await ctx.db.contractor.update({
+        where: { id: input.id },
+        data: { portalEnabled: input.enabled },
+        select: { id: true, portalEnabled: true, portalToken: true },
+      });
+      return updated;
+    }),
+
   // Decrypt and return the full TIN — restricted to org admins, and only when
   // they need it to file. Logged as a VIEWED audit event.
   revealTin: requireRole("OWNER", "ADMIN")

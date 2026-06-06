@@ -47,11 +47,13 @@ import { clientCheckInsRouter } from "./clientCheckIns";
 import { checkInTemplatesRouter } from "./checkInTemplates";
 import { analyticsRouter } from "./analytics";
 import { assistantRouter } from "./assistant";
+import { contractorPortalRouter } from "./contractor-portal";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
   analytics: analyticsRouter,
   assistant: assistantRouter,
+  contractorPortal: contractorPortalRouter,
   search: searchRouter,
   organization: organizationRouter,
   clients: clientsRouter,
