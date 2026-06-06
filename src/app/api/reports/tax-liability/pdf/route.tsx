@@ -221,7 +221,7 @@ export async function GET(request: Request) {
       : "All Time";
 
   let summary: SummaryItem[] = [];
-  let details: DetailItem[] = [];
+  const details: DetailItem[] = [];
   let grandTotal = 0;
 
   if (basis === "accrual") {

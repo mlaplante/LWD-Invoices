@@ -26,7 +26,7 @@ export const proposalTemplatesRouter = router({
       isDefault: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!validateSections(input.sections as any)) {
+      if (!validateSections(input.sections)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Duplicate section keys" });
       }
 
@@ -62,7 +62,7 @@ export const proposalTemplatesRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      if (input.sections && !validateSections(input.sections as any)) {
+      if (input.sections && !validateSections(input.sections)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Duplicate section keys" });
       }
 

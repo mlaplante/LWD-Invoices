@@ -428,7 +428,7 @@ export const portalRouter = router({
       const { listPortalRetainers } = await import(
         "@/server/services/portal-hours-retainers"
       );
-      return listPortalRetainers(ctx.db as any, client.id);
+      return listPortalRetainers(ctx.db, client.id);
     }),
 
   savedCards: publicProcedure

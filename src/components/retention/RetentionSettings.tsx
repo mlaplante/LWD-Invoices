@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,10 +45,10 @@ export function RetentionSettings() {
             <p className="text-base font-semibold">Enable retention automation</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md">
               Weekly cron surfaces due check-ins into the{" "}
-              <a href="/clients/retention" className="text-primary hover:underline">
+              <Link href="/clients/retention" className="text-primary hover:underline">
                 retention queue
-              </a>
-              . You'll get a notification on Mondays when there's something to review.
+              </Link>
+              . You&apos;ll get a notification on Mondays when there&apos;s something to review.
             </p>
             {settings?.retentionEnabledAt && (
               <p className="text-xs text-muted-foreground mt-2">

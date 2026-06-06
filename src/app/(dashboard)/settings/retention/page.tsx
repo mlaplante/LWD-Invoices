@@ -16,7 +16,7 @@ export default function RetentionSettingsPage() {
         <h1 className="text-2xl font-bold tracking-tight">Client Retention</h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
           A weekly queue of relationship touches with past clients. The system
-          surfaces who's due; you write the message. Visible only to admins.
+          surfaces who&apos;s due; you write the message. Visible only to admins.
         </p>
       </div>
       <RetentionSettings />

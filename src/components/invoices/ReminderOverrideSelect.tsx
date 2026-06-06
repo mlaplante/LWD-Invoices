@@ -32,7 +32,7 @@ export function ReminderOverrideSelect({ invoiceId, currentSequenceId }: Props) 
           updateInvoice.mutate({
             id: invoiceId,
             reminderSequenceId: val,
-          } as any);
+          });
         }}
         disabled={updateInvoice.isPending}
         className="rounded-lg border border-border bg-background px-2 py-1 text-xs"
