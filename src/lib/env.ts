@@ -34,9 +34,16 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     OPENAI_API_KEY: z.string().min(1).optional(),
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
-    // Model used by the "Ask your books" assistant (Anthropic tool-calling
-    // agent). Defaults to claude-opus-4-8; override for a cheaper/faster model.
+    // Model used by the "Ask your books" assistant on the Anthropic fallback
+    // path. Defaults to claude-opus-4-8; override for a cheaper/faster model.
     ANTHROPIC_AGENT_MODEL: z.string().min(1).optional(),
+    // Which provider powers the books assistant. Defaults to Gemini first (its
+    // function-calling + model-fallback chain) when GEMINI_API_KEY is set,
+    // otherwise Anthropic. Set explicitly to pin a provider.
+    ASSISTANT_AI_PROVIDER: z.enum(["gemini", "anthropic"]).optional(),
+    // Ordered Gemini model fallback chain for the assistant (429 → next model).
+    // Leave unset for the built-in default chain.
+    GEMINI_AGENT_MODELS: z.string().min(1).optional(),
     GEMINI_API_KEY: z.string().min(1).optional(),
     OPENAI_REMINDER_MODEL: z.string().min(1).optional(),
     // Comma-separated, ordered Gemini model fallback chain for reminder drafting
@@ -91,6 +98,8 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     ANTHROPIC_AGENT_MODEL: process.env.ANTHROPIC_AGENT_MODEL,
+    ASSISTANT_AI_PROVIDER: process.env.ASSISTANT_AI_PROVIDER,
+    GEMINI_AGENT_MODELS: process.env.GEMINI_AGENT_MODELS,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     OPENAI_REMINDER_MODEL: process.env.OPENAI_REMINDER_MODEL,
     GEMINI_REMINDER_MODELS: process.env.GEMINI_REMINDER_MODELS,

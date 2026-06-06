@@ -1,21 +1,22 @@
 /**
- * "Ask your books" assistant — an Anthropic tool-calling agent over the org's
- * data.
+ * "Ask your books" assistant — a tool-calling agent over the org's data.
  *
  * Composes the existing data-access patterns + analytics cores into a chat
  * surface: "which clients owe me money?", "what was my revenue last quarter?",
- * "which invoices should I chase?", "what's my projected cash position?". The
- * agent runs a manual tool-use loop (Claude API, official SDK) where every
- * tool is READ-ONLY and org-scoped — the assistant can analyze and propose, but
- * cannot mutate data, so there's no destructive action to gate. Drafting/sending
- * still goes through the existing reviewed flows.
+ * "which invoices should I chase?", "what's my projected cash position?". Every
+ * tool is READ-ONLY and org-scoped — the assistant analyzes and proposes but
+ * cannot mutate data, so there's no destructive action to gate.
  *
- * The loop is intentionally bounded (MAX_ITERATIONS) and returns the final text
- * plus a trace of which tools ran, so the UI can show its work.
+ * Provider: Gemini first (its function-calling + 429 model-fallback chain) when
+ * GEMINI_API_KEY is set, otherwise Anthropic tool-use — matching the
+ * Gemini-first default of the other AI features. Both run the same bounded
+ * manual loop over the same tool registry and return the final text plus a
+ * trace of which tools ran.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/lib/env";
+import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 import type { db as Db } from "../db";
 import {
   OPEN_STATUSES,
@@ -28,10 +29,14 @@ import { calculateClientHealthScores } from "./client-health-score";
 import { projectCashFlow } from "./cash-flow-forecast";
 import { prioritizeCollections } from "./collection-risk";
 
-const DEFAULT_MODEL = "claude-opus-4-8";
+const DEFAULT_ANTHROPIC_MODEL = "claude-opus-4-8";
+// Gemini models that support function calling; override via GEMINI_AGENT_MODELS.
+const DEFAULT_GEMINI_AGENT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
 const MAX_ITERATIONS = 6;
 const MAX_TOKENS = 1500;
 const DAY_MS = 86_400_000;
+
+export type BooksAssistantProvider = "gemini" | "anthropic";
 
 export interface BooksAssistantMessage {
   role: "user" | "assistant";
@@ -46,7 +51,7 @@ export interface BooksAssistantToolCall {
 export interface BooksAssistantResult {
   reply: string;
   toolCalls: BooksAssistantToolCall[];
-  /** True when ANTHROPIC_API_KEY is unset — caller should surface a config hint. */
+  /** True when no AI provider key is configured — caller should surface a hint. */
   unavailable: boolean;
 }
 
@@ -391,31 +396,64 @@ async function executeTool(
   }
 }
 
-// ─── Agentic loop ──────────────────────────────────────────────────────────────
+// ─── Gemini function-calling: schema conversion ─────────────────────────────────
 
-export async function runBooksAssistant(
+const JSON_TO_GEMINI_TYPE: Record<string, string> = {
+  object: "OBJECT",
+  string: "STRING",
+  integer: "INTEGER",
+  number: "NUMBER",
+  boolean: "BOOLEAN",
+  array: "ARRAY",
+};
+
+type JsonSchema = {
+  type?: string;
+  description?: string;
+  enum?: unknown[];
+  properties?: Record<string, JsonSchema>;
+  items?: JsonSchema;
+  required?: string[];
+};
+
+// Convert an Anthropic/JSON-Schema tool input_schema into a Gemini Schema
+// (uppercase Type enum), so both providers share one tool definition source.
+function toGeminiSchema(schema: JsonSchema): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    type: JSON_TO_GEMINI_TYPE[schema.type ?? "object"] ?? "OBJECT",
+  };
+  if (schema.description) out.description = schema.description;
+  if (schema.enum) out.enum = schema.enum;
+  if (schema.properties) {
+    out.properties = Object.fromEntries(
+      Object.entries(schema.properties).map(([key, value]) => [key, toGeminiSchema(value)]),
+    );
+  }
+  if (schema.items) out.items = toGeminiSchema(schema.items);
+  if (schema.required && schema.required.length > 0) out.required = schema.required;
+  return out;
+}
+
+export function geminiFunctionDeclarations() {
+  return TOOLS.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    parameters: toGeminiSchema(tool.input_schema as JsonSchema),
+  }));
+}
+
+// ─── Provider loops ──────────────────────────────────────────────────────────
+
+async function runAnthropicAssistant(
   ctx: BooksAssistantContext,
   history: BooksAssistantMessage[],
+  apiKey: string,
+  now: Date,
 ): Promise<BooksAssistantResult> {
-  const apiKey = env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return {
-      reply:
-        "The books assistant needs an Anthropic API key. Set ANTHROPIC_API_KEY to enable it.",
-      toolCalls: [],
-      unavailable: true,
-    };
-  }
-
   const client = new Anthropic({ apiKey });
-  const model = env.ANTHROPIC_AGENT_MODEL ?? DEFAULT_MODEL;
-  const now = new Date();
+  const model = env.ANTHROPIC_AGENT_MODEL ?? DEFAULT_ANTHROPIC_MODEL;
 
-  const messages: Anthropic.MessageParam[] = history.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
-
+  const messages: Anthropic.MessageParam[] = history.map((m) => ({ role: m.role, content: m.content }));
   const toolCalls: BooksAssistantToolCall[] = [];
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
@@ -436,7 +474,6 @@ export async function runBooksAssistant(
       return { reply: text || "I wasn't able to find an answer to that.", toolCalls, unavailable: false };
     }
 
-    // Append the assistant turn (preserving tool_use blocks), then run each tool.
     messages.push({ role: "assistant", content: response.content });
 
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
@@ -450,26 +487,18 @@ export async function runBooksAssistant(
       } catch (err) {
         result = { error: err instanceof Error ? err.message : "Tool execution failed." };
       }
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: block.id,
-        content: JSON.stringify(result),
-      });
+      toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) });
     }
     messages.push({ role: "user", content: toolResults });
   }
 
-  // Ran out of iterations — make one final, tool-free request for a summary.
   const final = await client.messages.create({
     model,
     max_tokens: MAX_TOKENS,
     system: SYSTEM_PROMPT,
     messages: [
       ...messages,
-      {
-        role: "user",
-        content: "Please summarize what you found so far and answer as best you can without further tools.",
-      },
+      { role: "user", content: "Please summarize what you found so far and answer as best you can without further tools." },
     ],
   });
   const text = final.content
@@ -478,4 +507,155 @@ export async function runBooksAssistant(
     .join("\n")
     .trim();
   return { reply: text || "I gathered some data but couldn't finish the analysis.", toolCalls, unavailable: false };
+}
+
+// Gemini content part shapes we care about.
+type GeminiPart =
+  | { text: string }
+  | { functionCall: { name: string; args?: Record<string, unknown> } }
+  | { functionResponse: { name: string; response: Record<string, unknown> } };
+
+function firstCandidateParts(json: Record<string, unknown>): GeminiPart[] {
+  const candidates = json.candidates;
+  if (!Array.isArray(candidates) || candidates.length === 0) return [];
+  const content = (candidates[0] as { content?: { parts?: unknown } }).content;
+  const parts = content?.parts;
+  return Array.isArray(parts) ? (parts as GeminiPart[]) : [];
+}
+
+function partsText(parts: GeminiPart[]): string {
+  return parts
+    .map((p) => ("text" in p && typeof p.text === "string" ? p.text : ""))
+    .join("")
+    .trim();
+}
+
+async function runGeminiAssistant(
+  ctx: BooksAssistantContext,
+  history: BooksAssistantMessage[],
+  apiKey: string,
+  now: Date,
+): Promise<BooksAssistantResult> {
+  const models = resolveGeminiModels(env.GEMINI_AGENT_MODELS, DEFAULT_GEMINI_AGENT_MODELS);
+  const tools = [{ functionDeclarations: geminiFunctionDeclarations() }];
+  const systemInstruction = { parts: [{ text: SYSTEM_PROMPT }] };
+  const toolCalls: BooksAssistantToolCall[] = [];
+
+  // Gemini roles are "user" / "model".
+  const contents: Array<{ role: "user" | "model"; parts: GeminiPart[] }> = history.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+    const parts = await callGeminiWithModelFallback<GeminiPart[]>({
+      apiKey,
+      models,
+      body: {
+        systemInstruction,
+        contents,
+        tools,
+        toolConfig: { functionCallingConfig: { mode: "AUTO" } },
+        generationConfig: { temperature: 0.2 },
+      },
+      label: "books assistant",
+      onOk: (json) => firstCandidateParts(json),
+    });
+
+    const functionCalls = parts.filter(
+      (p): p is { functionCall: { name: string; args?: Record<string, unknown> } } => "functionCall" in p,
+    );
+
+    if (functionCalls.length === 0) {
+      const text = partsText(parts);
+      return { reply: text || "I wasn't able to find an answer to that.", toolCalls, unavailable: false };
+    }
+
+    // Echo the model's turn (the function calls), then answer each one.
+    contents.push({ role: "model", parts });
+
+    const responseParts: GeminiPart[] = [];
+    for (const { functionCall } of functionCalls) {
+      const args = functionCall.args ?? {};
+      toolCalls.push({ tool: functionCall.name, input: args });
+      let result: unknown;
+      try {
+        result = await executeTool(functionCall.name, args, ctx, now);
+      } catch (err) {
+        result = { error: err instanceof Error ? err.message : "Tool execution failed." };
+      }
+      // functionResponse.response must be a JSON object.
+      const response =
+        result && typeof result === "object" && !Array.isArray(result)
+          ? (result as Record<string, unknown>)
+          : { result };
+      responseParts.push({ functionResponse: { name: functionCall.name, response } });
+    }
+    contents.push({ role: "user", parts: responseParts });
+  }
+
+  // Out of iterations — one final, tool-free pass for a summary.
+  const finalParts = await callGeminiWithModelFallback<GeminiPart[]>({
+    apiKey,
+    models,
+    body: {
+      systemInstruction,
+      contents: [
+        ...contents,
+        {
+          role: "user",
+          parts: [{ text: "Please summarize what you found so far and answer as best you can without further tools." }],
+        },
+      ],
+      generationConfig: { temperature: 0.2 },
+    },
+    label: "books assistant",
+    onOk: (json) => firstCandidateParts(json),
+  });
+  const text = partsText(finalParts);
+  return { reply: text || "I gathered some data but couldn't finish the analysis.", toolCalls, unavailable: false };
+}
+
+// ─── Provider dispatch ───────────────────────────────────────────────────────
+
+// Gemini first (function-calling + model-fallback chain) when its key is set,
+// then Anthropic. Override via ASSISTANT_AI_PROVIDER.
+export function resolveAssistantProvider(): BooksAssistantProvider | null {
+  const explicit = env.ASSISTANT_AI_PROVIDER;
+  if (explicit === "gemini") return env.GEMINI_API_KEY ? "gemini" : null;
+  if (explicit === "anthropic") return env.ANTHROPIC_API_KEY ? "anthropic" : null;
+  if (env.GEMINI_API_KEY) return "gemini";
+  if (env.ANTHROPIC_API_KEY) return "anthropic";
+  return null;
+}
+
+export async function runBooksAssistant(
+  ctx: BooksAssistantContext,
+  history: BooksAssistantMessage[],
+): Promise<BooksAssistantResult> {
+  const provider = resolveAssistantProvider();
+  if (!provider) {
+    return {
+      reply:
+        "The books assistant needs an AI provider key. Set GEMINI_API_KEY (preferred) or ANTHROPIC_API_KEY to enable it.",
+      toolCalls: [],
+      unavailable: true,
+    };
+  }
+
+  const now = new Date();
+  try {
+    if (provider === "gemini") {
+      return await runGeminiAssistant(ctx, history, env.GEMINI_API_KEY!, now);
+    }
+    return await runAnthropicAssistant(ctx, history, env.ANTHROPIC_API_KEY!, now);
+  } catch (err) {
+    // A provider/network failure shouldn't 500 the chat — surface a friendly note.
+    console.error("[books-assistant]", err);
+    return {
+      reply: "Sorry — I hit an error reaching the AI service. Please try again in a moment.",
+      toolCalls: [],
+      unavailable: false,
+    };
+  }
 }
