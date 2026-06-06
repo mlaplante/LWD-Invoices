@@ -35,18 +35,22 @@ export async function validateStripeWebhook(req: NextRequest): Promise<Result> {
     return { ok: false, response: NextResponse.json({ error: "Missing signature" }, { status: 400 }) };
   }
 
-  let preEvent: { data?: { object?: { metadata?: Record<string, string> } } };
+  let preEvent: PreEvent;
   try {
-    preEvent = JSON.parse(rawBody) as typeof preEvent;
+    preEvent = JSON.parse(rawBody) as PreEvent;
   } catch {
     return { ok: false, response: NextResponse.json({ error: "Invalid JSON" }, { status: 400 }) };
   }
 
-  const orgId = preEvent?.data?.object?.metadata?.orgId;
+  // Resolve which org this event belongs to. Most events carry orgId directly
+  // in object metadata; dispute/refund events (Stripe Dispute / Charge objects)
+  // don't, so we fall back to the related Payment. Either way the signature is
+  // verified below with *that* org's secret, so a forged event can't pass.
+  const orgId = await resolveWebhookOrgId(preEvent);
   if (!orgId) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Missing orgId in metadata" }, { status: 400 }),
+      response: NextResponse.json({ error: "Could not resolve org for event" }, { status: 400 }),
     };
   }
 
@@ -90,10 +94,59 @@ export async function validateStripeWebhook(req: NextRequest): Promise<Result> {
     };
   }
 
+  // When the event object carries an orgId in metadata, cross-check it against
+  // the org whose secret verified the signature. Events without metadata.orgId
+  // (disputes/refunds) were resolved via the Payment lookup above and have
+  // nothing to cross-check.
   const verifiedOrgId = (event.data.object as { metadata?: Record<string, string> })?.metadata?.orgId;
-  if (verifiedOrgId !== orgId) {
+  if (verifiedOrgId && verifiedOrgId !== orgId) {
     return { ok: false, response: NextResponse.json({ error: "OrgId mismatch" }, { status: 400 }) };
   }
 
   return { ok: true, event, orgId, config, rawBody };
+}
+
+type PreEvent = {
+  type?: string;
+  data?: {
+    object?: {
+      id?: string;
+      metadata?: Record<string, string>;
+      payment_intent?: string | { id?: string } | null;
+      charge?: string | { id?: string } | null;
+    };
+  };
+};
+
+/**
+ * Determine the owning org for an incoming Stripe event. Tries object metadata
+ * first (set on checkout sessions + payment intents), then falls back to the
+ * related Payment for charge/dispute/refund events whose object carries no
+ * metadata. Returns null when neither resolves.
+ */
+async function resolveWebhookOrgId(preEvent: PreEvent): Promise<string | null> {
+  const obj = preEvent?.data?.object;
+  const metaOrg = obj?.metadata?.orgId;
+  if (typeof metaOrg === "string" && metaOrg) return metaOrg;
+  if (!obj) return null;
+
+  // Collect candidate transaction identifiers. Payment.transactionId stores the
+  // PaymentIntent id, so that's the reliable join key; we also try the charge id.
+  const candidates: string[] = [];
+  const pi = obj.payment_intent;
+  if (typeof pi === "string") candidates.push(pi);
+  else if (pi && typeof pi === "object" && pi.id) candidates.push(pi.id);
+  const charge = obj.charge;
+  if (typeof charge === "string") candidates.push(charge);
+  else if (charge && typeof charge === "object" && charge.id) candidates.push(charge.id);
+  if (preEvent.type?.startsWith("charge.") && typeof obj.id === "string") {
+    candidates.push(obj.id);
+  }
+  if (candidates.length === 0) return null;
+
+  const payment = await db.payment.findFirst({
+    where: { transactionId: { in: candidates } },
+    select: { organizationId: true },
+  });
+  return payment?.organizationId ?? null;
 }

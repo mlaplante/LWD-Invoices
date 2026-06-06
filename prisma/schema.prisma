@@ -89,6 +89,10 @@ enum NotificationType {
   TICKET_CREATED
   TICKET_REPLIED
   RETENTION_QUEUE_READY
+  DISPUTE_CREATED
+  DISPUTE_UPDATED
+  REFUND_ISSUED
+  CREDIT_HOLD_PLACED
 }
 
 enum ClientCheckInTouchType {
@@ -317,6 +321,16 @@ model Organization {
   // has been opened but remains unsigned after proposalNudgeDelayHours.
   proposalNudgeEnabled    Boolean   @default(true)
   proposalNudgeDelayHours Int       @default(48)
+  // ─── Weekly AI Business Briefing ────────────────────────────────────────────
+  // Proactive Monday email composing overdue total, at-risk clients, and the
+  // projected cash position from the analytics cores. When recipients is empty
+  // the briefing cron falls back to the org's admin/owner email addresses.
+  weeklyBriefingEnabled    Boolean   @default(false)
+  weeklyBriefingRecipients String[]  @default([])
+  weeklyBriefingLastSentAt DateTime?
+
+  disputes          Dispute[]
+  refunds           Refund[]
 }
 
 model User {
@@ -391,6 +405,23 @@ model Client {
   stripeCustomerId   String?
   autoChargeEnabled  Boolean @default(false)
   creditBalance    Decimal @default(0)
+  // ─── Credit limit / credit hold ─────────────────────────────────────────────
+  // creditLimit caps the open AR (sum of unpaid invoice balances) you're willing
+  // to carry for this client; null means no limit. When on creditHold, the UI
+  // surfaces a prominent warning before sending invoices or charging cards — it
+  // is advisory (warn-only), not a hard block.
+  creditLimit            Decimal?  @db.Decimal(20, 2)
+  creditHold             Boolean   @default(false)
+  creditHoldReason       String?
+  creditHoldSetAt        DateTime?
+  // True when the current hold was placed automatically by the health-score
+  // trigger (vs. set by an admin). Auto-holds are released automatically when
+  // the score recovers; manual holds are only released by an admin.
+  creditHoldAuto         Boolean   @default(false)
+  // Policy: auto-place a credit hold when this client's health score drops below
+  // autoCreditHoldThreshold. Connects the client-health-score core to collections.
+  autoCreditHoldEnabled  Boolean   @default(false)
+  autoCreditHoldThreshold Int?
   isArchived       Boolean  @default(false)
   // Email deliverability — populated by the Resend webhook handler when
   // a client's address bounces (hard) or marks an email as spam. Used to
@@ -411,6 +442,7 @@ model Client {
   savedPaymentMethods   SavedPaymentMethod[]
   checkIns              ClientCheckIn[]
   inboundEmails         InboundEmail[]
+  disputes              Dispute[]
 }
 
 model ClientPortalSession {
@@ -565,6 +597,8 @@ model Invoice {
   emailEvents             EmailEvent[]
   inboundEmails           InboundEmail[]
   milestone               Milestone?
+  disputes                Dispute[]
+  refunds                 Refund[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -682,6 +716,8 @@ model Payment {
   invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  disputes       Dispute[]
+  refunds        Refund[]
 
   createdAt DateTime @default(now())
 
@@ -1669,4 +1705,98 @@ model CheckInTemplate {
   updatedAt       DateTime @updatedAt
 
   @@unique([organizationId, touchType])
+}
+
+// ─── Disputes / Chargebacks ─────────────────────────────────────────────────────
+// A Stripe dispute (chargeback) against a recorded payment. Mirrored from
+// charge.dispute.* webhook events and updated as the dispute progresses.
+// Evidence is submitted back to Stripe via the disputes router; we never
+// auto-mutate the source invoice (a dispute can be won and re-charged).
+
+enum DisputeStatus {
+  NEEDS_RESPONSE          // Stripe: needs_response / warning_needs_response
+  UNDER_REVIEW            // Stripe: under_review / warning_under_review
+  WON                     // Stripe: won
+  LOST                    // Stripe: lost
+  WARNING_CLOSED          // Stripe: warning_closed (early-warning resolved)
+  CHARGE_REFUNDED         // Stripe: charge_refunded (resolved by refund)
+  CLOSED                  // Stripe: any other terminal state
+}
+
+model Dispute {
+  id              String        @id @default(cuid())
+  stripeDisputeId String        @unique
+  stripeChargeId  String?
+  paymentIntentId String?
+  amount          Decimal       @db.Decimal(20, 2)
+  currency        String
+  reason          String?       // Stripe dispute reason (fraudulent, product_not_received, ...)
+  status          DisputeStatus @default(NEEDS_RESPONSE)
+  // Raw Stripe status string, kept verbatim for display + forward-compat with
+  // statuses we don't normalize into the enum.
+  stripeStatus    String
+  evidenceDueBy   DateTime?
+  evidenceSubmittedAt DateTime?
+  // Whether the underlying charge is still refundable (Stripe's is_charge_refundable).
+  isRefundable    Boolean       @default(true)
+  // Free-form internal working notes (not sent to Stripe).
+  internalNotes   String?
+
+  paymentId       String?
+  payment         Payment?      @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  invoiceId       String?
+  invoice         Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  clientId        String?
+  client          Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@index([invoiceId])
+}
+
+// ─── Refunds ────────────────────────────────────────────────────────────────────
+// First-class refund record tied to a Payment + Invoice. Stripe refunds are
+// issued via the refunds router (stripe.refunds.create) and reconciled by the
+// charge.refunded webhook; manual refunds record an off-platform return.
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+model Refund {
+  id              String       @id @default(cuid())
+  stripeRefundId  String?      @unique
+  amount          Decimal      @db.Decimal(20, 2)
+  currency        String
+  // Stripe refund reason: duplicate | fraudulent | requested_by_customer, or null.
+  reason          String?
+  status          RefundStatus @default(PENDING)
+  method          String       @default("stripe") // stripe | manual
+  notes           String?
+  // When the refund should also produce a credit note, the issued credit-note
+  // invoice id is recorded here (credit notes are modeled as Invoice rows).
+  creditNoteId    String?
+  createdByUserId String?
+
+  paymentId       String
+  payment         Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceId       String
+  invoice         Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([organizationId, createdAt])
+  @@index([invoiceId])
+  @@index([paymentId])
 }

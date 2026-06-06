@@ -67,6 +67,14 @@ export async function createCheckoutSession(opts: {
     ],
     payment_intent_data: {
       setup_future_usage: "off_session",
+      // Carry attribution onto the PaymentIntent + Charge so dispute/refund
+      // webhooks (whose objects lack our metadata) can be traced back to the org.
+      metadata: {
+        invoiceId: invoice.id,
+        orgId: invoice.organizationId,
+        clientId: invoice.clientId,
+        ...(partialPaymentId ? { partialPaymentId } : {}),
+      },
     },
     metadata: {
       invoiceId: invoice.id,

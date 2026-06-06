@@ -49,6 +49,8 @@ import { analyticsRouter } from "./analytics";
 import { assistantRouter } from "./assistant";
 import { contractorPortalRouter } from "./contractor-portal";
 import { collectionsRouter } from "./collections";
+import { disputesRouter } from "./disputes";
+import { refundsRouter } from "./refunds";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -56,6 +58,8 @@ export const appRouter = router({
   assistant: assistantRouter,
   contractorPortal: contractorPortalRouter,
   collections: collectionsRouter,
+  disputes: disputesRouter,
+  refunds: refundsRouter,
   search: searchRouter,
   organization: organizationRouter,
   clients: clientsRouter,

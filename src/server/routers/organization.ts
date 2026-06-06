@@ -42,6 +42,9 @@ export const organizationRouter = router({
         smartRemindersThreshold: true,
         proposalNudgeEnabled: true,
         proposalNudgeDelayHours: true,
+        weeklyBriefingEnabled: true,
+        weeklyBriefingRecipients: true,
+        weeklyBriefingLastSentAt: true,
         stripeTaxEnabled: true,
         addressLine1: true,
         addressLine2: true,
@@ -142,6 +145,9 @@ export const organizationRouter = router({
         smartRemindersThreshold: z.number().int().min(50).max(100).optional(),
         proposalNudgeEnabled: z.boolean().optional(),
         proposalNudgeDelayHours: z.number().int().min(1).max(720).optional(),
+        weeklyBriefingEnabled: z.boolean().optional(),
+        // Capped at 10 recipients to match other fan-out limits in the app.
+        weeklyBriefingRecipients: z.array(z.string().email()).max(10).optional(),
         // stripeTaxEnabled intentionally omitted — flip via setStripeTaxEnabled
         // so the preflight (Stripe gateway active + complete origin address) runs.
         addressLine1: z.string().max(200).nullable().optional(),
