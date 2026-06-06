@@ -16,7 +16,11 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/lib/env";
-import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
+import {
+  callGeminiWithModelFallback,
+  resolveGeminiModels,
+  streamGeminiGenerateContent,
+} from "./gemini-fallback";
 import type { db as Db } from "../db";
 import {
   OPEN_STATUSES,
@@ -657,5 +661,120 @@ export async function runBooksAssistant(
       toolCalls: [],
       unavailable: false,
     };
+  }
+}
+
+// ─── Streaming ───────────────────────────────────────────────────────────────
+
+export type BooksAssistantStreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "done"; toolCalls: BooksAssistantToolCall[] }
+  | { type: "error"; message: string };
+
+async function* streamGeminiAssistant(
+  ctx: BooksAssistantContext,
+  history: BooksAssistantMessage[],
+  apiKey: string,
+  now: Date,
+): AsyncGenerator<BooksAssistantStreamEvent> {
+  const models = resolveGeminiModels(env.GEMINI_AGENT_MODELS, DEFAULT_GEMINI_AGENT_MODELS);
+  const tools = [{ functionDeclarations: geminiFunctionDeclarations() }];
+  const systemInstruction = { parts: [{ text: SYSTEM_PROMPT }] };
+  const toolCalls: BooksAssistantToolCall[] = [];
+  const contents: Array<{ role: "user" | "model"; parts: GeminiPart[] }> = history.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+    const isFinalPass = iteration === MAX_ITERATIONS - 1;
+    // The final pass drops tools to force a text answer (matches the
+    // non-streaming loop's out-of-iterations summary).
+    const body = {
+      systemInstruction,
+      contents,
+      ...(isFinalPass ? {} : { tools, toolConfig: { functionCallingConfig: { mode: "AUTO" } } }),
+      generationConfig: { temperature: 0.2 },
+    };
+
+    const functionCalls: Array<{ name: string; args?: Record<string, unknown> }> = [];
+    let turnText = "";
+
+    for await (const chunk of streamGeminiGenerateContent({ apiKey, models, body, label: "books assistant" })) {
+      for (const part of firstCandidateParts(chunk)) {
+        if ("text" in part && typeof part.text === "string" && part.text) {
+          turnText += part.text;
+          yield { type: "delta", text: part.text };
+        } else if ("functionCall" in part) {
+          functionCalls.push(part.functionCall);
+        }
+      }
+    }
+
+    if (functionCalls.length === 0) {
+      yield { type: "done", toolCalls };
+      return;
+    }
+
+    // Echo the model's turn, then answer each tool call.
+    const modelParts: GeminiPart[] = [];
+    if (turnText) modelParts.push({ text: turnText });
+    for (const fc of functionCalls) modelParts.push({ functionCall: fc });
+    contents.push({ role: "model", parts: modelParts });
+
+    const responseParts: GeminiPart[] = [];
+    for (const fc of functionCalls) {
+      const args = fc.args ?? {};
+      toolCalls.push({ tool: fc.name, input: args });
+      let result: unknown;
+      try {
+        result = await executeTool(fc.name, args, ctx, now);
+      } catch (err) {
+        result = { error: err instanceof Error ? err.message : "Tool execution failed." };
+      }
+      const response =
+        result && typeof result === "object" && !Array.isArray(result)
+          ? (result as Record<string, unknown>)
+          : { result };
+      responseParts.push({ functionResponse: { name: fc.name, response } });
+    }
+    contents.push({ role: "user", parts: responseParts });
+  }
+
+  yield { type: "done", toolCalls };
+}
+
+/**
+ * Streaming variant of the assistant. The Gemini path streams the answer token
+ * by token (favoring Gemini + its model-fallback chain); the Anthropic fallback
+ * runs the non-streaming loop and emits the final answer as a single delta.
+ */
+export async function* streamBooksAssistant(
+  ctx: BooksAssistantContext,
+  history: BooksAssistantMessage[],
+): AsyncGenerator<BooksAssistantStreamEvent> {
+  const provider = resolveAssistantProvider();
+  if (!provider) {
+    yield {
+      type: "delta",
+      text: "The books assistant needs an AI provider key. Set GEMINI_API_KEY (preferred) or ANTHROPIC_API_KEY to enable it.",
+    };
+    yield { type: "done", toolCalls: [] };
+    return;
+  }
+
+  const now = new Date();
+  try {
+    if (provider === "gemini") {
+      yield* streamGeminiAssistant(ctx, history, env.GEMINI_API_KEY!, now);
+      return;
+    }
+    // Anthropic fallback: no token streaming — run to completion, emit once.
+    const result = await runAnthropicAssistant(ctx, history, env.ANTHROPIC_API_KEY!, now);
+    yield { type: "delta", text: result.reply };
+    yield { type: "done", toolCalls: result.toolCalls };
+  } catch (err) {
+    console.error("[books-assistant:stream]", err);
+    yield { type: "error", message: "Sorry — I hit an error reaching the AI service. Please try again in a moment." };
   }
 }

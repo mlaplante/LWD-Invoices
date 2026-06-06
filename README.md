@@ -76,7 +76,7 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - **Taxes** — Configurable tax rates with compound tax support
 
 ### AI & Analytics
-- **Ask Your Books** — A chat assistant (Gemini-first tool-calling agent, with an Anthropic fallback) over your live data: "which clients owe me money?", "revenue last quarter?", "which invoices should I chase?", "projected cash position?". Read-only — it analyzes and recommends but never changes data.
+- **Ask Your Books** — A streaming chat assistant (Gemini-first tool-calling agent, with an Anthropic fallback) over your live data: "which clients owe me money?", "revenue last quarter?", "which invoices should I chase?", "projected cash position?". The answer streams token-by-token (Gemini `streamGenerateContent`). Read-only — it analyzes and recommends but never changes data.
 - **Cash-Flow Forecast** — Forward 30/60/90-day projected cash position from open AR (weighted by aging probability), recurring invoices, autopay, and recurring expenses, with "what if a client pays late?" scenario planning
 - **Client Health Scoring** — Composite per-client score (payment behavior, email engagement, revenue trend, overdue pressure) with churn-risk band and upsell signals
 - **Recurring Revenue (MRR/ARR)** — Subscription-style MRR, ARR, ARPA, and revenue/logo churn across recurring invoices and hours-retainers

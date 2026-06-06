@@ -163,3 +163,72 @@ export async function callGeminiWithModelFallback<T>(opts: GeminiFallbackOptions
 
   throw lastRateLimit ?? new Error(`Gemini ${label} failed: no models configured`);
 }
+
+function geminiStreamUrl(model: string): string {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
+}
+
+export interface GeminiStreamOptions {
+  apiKey: string;
+  models: string[];
+  body: unknown;
+  label: string;
+}
+
+/**
+ * Stream generateContent over the model-fallback chain. Model fallback only
+ * applies to the *initial* connection: a 429 before any bytes arrive falls
+ * through to the next model; once a model starts streaming we commit to it.
+ * Yields each parsed SSE chunk (a partial GenerateContentResponse).
+ */
+export async function* streamGeminiGenerateContent(
+  opts: GeminiStreamOptions,
+): AsyncGenerator<Record<string, unknown>> {
+  const { apiKey, models, body, label } = opts;
+  let response: Response | null = null;
+  let lastError: Error | null = null;
+
+  for (let i = 0; i < models.length; i++) {
+    const res = await fetch(geminiStreamUrl(models[i]), {
+      method: "POST",
+      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok && res.body) {
+      response = res;
+      break;
+    }
+    const errBody = await res.text().catch(() => "");
+    if (res.status !== 429) {
+      throw new Error(`Gemini ${label} stream failed on ${models[i]} (${res.status}): ${errBody || res.statusText}`);
+    }
+    lastError = new Error(`Gemini ${label} stream rate-limited on ${models[i]} (429)`);
+  }
+
+  if (!response || !response.body) {
+    throw lastError ?? new Error(`Gemini ${label} stream failed: no models configured`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // SSE events are newline-delimited "data: {json}" lines.
+    let newlineIndex: number;
+    while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+      const line = buffer.slice(0, newlineIndex).trim();
+      buffer = buffer.slice(newlineIndex + 1);
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      try {
+        yield JSON.parse(payload) as Record<string, unknown>;
+      } catch {
+        // Ignore a partial/non-JSON keep-alive line.
+      }
+    }
+  }
+}

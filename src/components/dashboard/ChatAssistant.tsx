@@ -8,6 +8,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   tools?: string[];
+  streaming?: boolean;
 }
 
 const SUGGESTIONS = [
@@ -29,36 +30,105 @@ const TOOL_LABELS: Record<string, string> = {
   get_collections_recommendations: "collections",
 };
 
+type StreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "done"; toolCalls?: { tool: string }[] }
+  | { type: "error"; message: string };
+
 export function ChatAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Non-streaming fallback if the SSE stream can't be established.
   const ask = trpc.assistant.ask.useMutation({
     onSuccess: (res) => {
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: res.reply, tools: res.toolCalls.map((t) => t.tool) },
       ]);
+      setBusy(false);
     },
     onError: (err) => {
       setMessages((prev) => [...prev, { role: "assistant", content: `Sorry — ${err.message}` }]);
+      setBusy(false);
     },
   });
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, ask.isPending]);
+  }, [messages, busy]);
 
-  function send(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed || ask.isPending) return;
-    const next: ChatMessage[] = [...messages, { role: "user", content: trimmed }];
-    setMessages(next);
-    setInput("");
-    ask.mutate({
-      messages: next.map((m) => ({ role: m.role, content: m.content })),
+  function updateLastAssistant(fn: (m: ChatMessage) => ChatMessage) {
+    setMessages((prev) => {
+      const copy = [...prev];
+      const last = copy[copy.length - 1];
+      if (last?.role === "assistant") copy[copy.length - 1] = fn(last);
+      return copy;
     });
+  }
+
+  async function send(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || busy) return;
+
+    const history = [...messages, { role: "user" as const, content: trimmed }];
+    const payload = history.map((m) => ({ role: m.role, content: m.content }));
+    // Add the user turn plus an empty assistant placeholder we stream into.
+    setMessages([...history, { role: "assistant", content: "", tools: [], streaming: true }]);
+    setInput("");
+    setBusy(true);
+
+    try {
+      const res = await fetch("/api/assistant/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: payload }),
+      });
+      if (!res.ok || !res.body) throw new Error("stream unavailable");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let sep: number;
+        while ((sep = buffer.indexOf("\n\n")) !== -1) {
+          const line = buffer.slice(0, sep).trim();
+          buffer = buffer.slice(sep + 2);
+          if (!line.startsWith("data:")) continue;
+          let evt: StreamEvent;
+          try {
+            evt = JSON.parse(line.slice(5).trim()) as StreamEvent;
+          } catch {
+            continue;
+          }
+          if (evt.type === "delta") {
+            updateLastAssistant((m) => ({ ...m, content: m.content + evt.text }));
+          } else if (evt.type === "done") {
+            const tools = (evt.toolCalls ?? []).map((t) => t.tool);
+            updateLastAssistant((m) => ({ ...m, tools, streaming: false }));
+          } else if (evt.type === "error") {
+            updateLastAssistant((m) => ({ ...m, content: m.content || evt.message, streaming: false }));
+          }
+        }
+      }
+      updateLastAssistant((m) => ({ ...m, streaming: false }));
+      setBusy(false);
+    } catch {
+      // Streaming failed before producing output — drop the placeholder and
+      // fall back to the non-streaming endpoint.
+      setMessages((prev) => {
+        const copy = [...prev];
+        const last = copy[copy.length - 1];
+        if (last?.role === "assistant" && last.content === "") copy.pop();
+        return copy;
+      });
+      ask.mutate({ messages: payload });
+    }
   }
 
   return (
@@ -90,29 +160,36 @@ export function ChatAssistant() {
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
-            <div
-              className={
-                m.role === "user"
-                  ? "max-w-[80%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm whitespace-pre-wrap"
-                  : "max-w-[85%] rounded-2xl rounded-bl-sm bg-accent/50 px-4 py-2.5 text-sm whitespace-pre-wrap"
-              }
-            >
-              {m.content}
-              {m.tools && m.tools.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <Wrench className="w-3 h-3" />
-                  {Array.from(new Set(m.tools))
-                    .map((t) => TOOL_LABELS[t] ?? t)
-                    .join(", ")}
-                </div>
-              )}
+        {messages.map((m, i) => {
+          const showThinking = m.role === "assistant" && m.streaming && m.content === "";
+          return (
+            <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+              <div
+                className={
+                  m.role === "user"
+                    ? "max-w-[80%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm whitespace-pre-wrap"
+                    : "max-w-[85%] rounded-2xl rounded-bl-sm bg-accent/50 px-4 py-2.5 text-sm whitespace-pre-wrap"
+                }
+              >
+                {showThinking ? (
+                  <span className="text-muted-foreground">Looking through your books…</span>
+                ) : (
+                  m.content
+                )}
+                {m.tools && m.tools.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Wrench className="w-3 h-3" />
+                    {Array.from(new Set(m.tools))
+                      .map((t) => TOOL_LABELS[t] ?? t)
+                      .join(", ")}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
-        {ask.isPending && (
+        {busy && ask.isPending && (
           <div className="flex justify-start">
             <div className="rounded-2xl rounded-bl-sm bg-accent/50 px-4 py-2.5 text-sm text-muted-foreground">
               Looking through your books…
@@ -133,11 +210,11 @@ export function ChatAssistant() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about your books…"
           className="flex-1 bg-transparent px-3 py-2 text-sm outline-none"
-          disabled={ask.isPending}
+          disabled={busy}
         />
         <button
           type="submit"
-          disabled={ask.isPending || !input.trim()}
+          disabled={busy || !input.trim()}
           className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-primary-foreground disabled:opacity-40 transition-opacity"
         >
           <Send className="w-4 h-4" />
