@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
+import { buildWeeklyBriefing, resolveBriefingRecipients } from "@/server/services/weekly-briefing";
+import { getAppUrl } from "@/lib/app-url";
 import { calculateClientHealthScores, calculateClientHealthScore } from "@/server/services/client-health-score";
 import {
   projectCashFlow,
@@ -97,5 +99,72 @@ export const analyticsRouter = router({
       reliablePayerThreshold: threshold,
       invoices: prioritizeCollections(inputs),
     };
+  }),
+
+  // Live preview of the weekly business briefing (same payload the Monday cron
+  // emails) — powers the settings preview + the in-app briefing surface.
+  weeklyBriefing: protectedProcedure.query(async ({ ctx }) => {
+    return buildWeeklyBriefing(ctx.db, ctx.orgId, new Date());
+  }),
+
+  // Send the briefing to the configured recipients right now (or admin fallback).
+  // Useful to test delivery without waiting for Monday.
+  sendWeeklyBriefingNow: requireRole("OWNER", "ADMIN").mutation(async ({ ctx }) => {
+    const now = new Date();
+    const org = await ctx.db.organization.findUnique({
+      where: { id: ctx.orgId },
+      select: {
+        name: true,
+        logoUrl: true,
+        brandColor: true,
+        hidePoweredBy: true,
+        weeklyBriefingRecipients: true,
+      },
+    });
+    if (!org) throw new Error("Organization not found");
+
+    const recipients = await resolveBriefingRecipients(ctx.db, ctx.orgId, org.weeklyBriefingRecipients);
+    if (recipients.length === 0) {
+      return { sent: false as const, reason: "no_recipients" as const };
+    }
+
+    const data = await buildWeeklyBriefing(ctx.db, ctx.orgId, now);
+    const appUrl = await getAppUrl();
+
+    const { render } = await import("@react-email/render");
+    const { WeeklyBriefingEmail } = await import("@/emails/WeeklyBriefingEmail");
+    const { format } = await import("date-fns");
+    const { sendEmail } = await import("@/server/services/email-sender");
+
+    const html = await render(
+      WeeklyBriefingEmail({
+        orgName: data.orgName,
+        logoUrl: org.logoUrl ?? undefined,
+        brandColor: org.brandColor ?? undefined,
+        hidePoweredBy: org.hidePoweredBy,
+        appUrl,
+        currencySymbol: data.currencySymbol,
+        headline: data.headline,
+        overdue: data.overdue,
+        atRiskClients: data.atRiskClients,
+        forecast: data.forecast,
+        collections: data.collections,
+        periodLabel: `Week of ${format(now, "MMM d, yyyy")}`,
+      }),
+    );
+
+    await sendEmail({
+      organizationId: ctx.orgId,
+      to: recipients,
+      subject: `Your weekly briefing — ${data.headline}`,
+      html,
+    });
+
+    await ctx.db.organization.update({
+      where: { id: ctx.orgId },
+      data: { weeklyBriefingLastSentAt: now },
+    });
+
+    return { sent: true as const, recipients: recipients.length };
   }),
 });

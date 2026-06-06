@@ -69,37 +69,63 @@ export async function POST(req: NextRequest) {
         });
       }
     }
+    // Sync first-class Refund rows (app-issued + dashboard-issued). Non-fatal.
+    try {
+      const { reconcileChargeRefunds } = await import("@/server/services/refunds");
+      await reconcileChargeRefunds(db, orgId, charge);
+    } catch (err) {
+      console.error("[stripe-webhook] Refund reconcile failed:", err);
+    }
     processedEvents.set(event.id, Date.now());
     return NextResponse.json({ received: true });
   }
 
   // Disputes: never auto-mutate the invoice — disputes can be lost and
-  // re-charged. Just log so admins see it in the audit trail and can react.
-  if (event.type === "charge.dispute.created") {
+  // re-charged. Mirror the dispute into the Dispute table so it shows up in the
+  // dispute management surface, and notify admins when it's new or changes state.
+  if (
+    event.type === "charge.dispute.created" ||
+    event.type === "charge.dispute.updated" ||
+    event.type === "charge.dispute.closed" ||
+    event.type === "charge.dispute.funds_withdrawn" ||
+    event.type === "charge.dispute.funds_reinstated"
+  ) {
     const dispute = event.data.object as Stripe.Dispute;
-    const paymentIntentId = typeof dispute.payment_intent === "string"
-      ? dispute.payment_intent
-      : dispute.payment_intent?.id;
-    if (paymentIntentId) {
-      const payment = await db.payment.findFirst({
-        where: { transactionId: paymentIntentId, organizationId: orgId },
-        select: { invoiceId: true, invoice: { select: { number: true } } },
-      });
-      if (payment) {
+    try {
+      const { upsertDisputeFromStripe } = await import("@/server/services/disputes");
+      const result = await upsertDisputeFromStripe(db, orgId, dispute);
+
+      if (result.invoiceId) {
         await logAudit({
           action: "STATUS_CHANGED",
           entityType: "Invoice",
-          entityId: payment.invoiceId,
-          entityLabel: `Invoice #${payment.invoice.number}`,
+          entityId: result.invoiceId,
+          entityLabel: result.invoiceNumber ? `Invoice #${result.invoiceNumber}` : "Invoice",
           diff: {
-            event: "stripe_dispute_created",
+            event: event.type,
             reason: dispute.reason,
             amount: (dispute.amount ?? 0) / 100,
             disputeId: dispute.id,
+            status: dispute.status,
           },
           organizationId: orgId,
-        });
+        }).catch(() => {});
       }
+
+      const { notifyOrgAdmins } = await import("@/server/services/notifications");
+      const clientLabel = result.clientName ? `${result.clientName}'s ` : "";
+      await notifyOrgAdmins(orgId, {
+        type: result.isNew ? "DISPUTE_CREATED" : "DISPUTE_UPDATED",
+        title: result.isNew
+          ? `New dispute on ${clientLabel}payment`
+          : `Dispute ${dispute.status.replace(/_/g, " ")}`,
+        body: result.isNew
+          ? `A ${((dispute.amount ?? 0) / 100).toFixed(2)} ${(dispute.currency ?? "usd").toUpperCase()} dispute was opened${result.invoiceNumber ? ` on invoice #${result.invoiceNumber}` : ""}. Respond before the evidence deadline.`
+          : `Dispute${result.invoiceNumber ? ` on invoice #${result.invoiceNumber}` : ""} is now "${dispute.status.replace(/_/g, " ")}".`,
+        link: `/disputes`,
+      }).catch(() => {});
+    } catch (err) {
+      console.error("[stripe-webhook] Dispute upsert failed:", err);
     }
     processedEvents.set(event.id, Date.now());
     return NextResponse.json({ received: true });

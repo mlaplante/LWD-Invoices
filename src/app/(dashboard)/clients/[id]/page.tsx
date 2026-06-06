@@ -7,6 +7,7 @@ import { ClientForm } from "@/components/clients/ClientForm";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
 import { ClientStatementButton } from "@/components/clients/ClientStatementButton";
 import { RetainerPanel } from "@/components/clients/RetainerPanel";
+import { ClientCreditPanel } from "@/components/clients/ClientCreditPanel";
 import { RetainerList } from "@/components/admin/retainers/RetainerList";
 import { AutoChargeBadge } from "@/components/clients/AutoChargeBadge";
 import { ClientHealthBadge } from "@/components/clients/ClientHealthBadge";
@@ -244,6 +245,9 @@ export default async function ClientDetailPage({
           <ClientForm mode="edit" client={client} />
         </div>
       </div>
+
+      {/* ── Credit limit / hold ───────────────────────────────────── */}
+      <ClientCreditPanel clientId={id} />
 
       {/* ── Retainer ──────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border/50 bg-card p-5">

@@ -5,6 +5,9 @@ import { router, protectedProcedure, requireRole } from "../trpc";
 import { logAudit } from "../services/audit";
 import { getForOrg } from "../lib/get-for-org";
 import { generatePortalToken } from "@/lib/portal-session";
+import { getClientCreditStatus } from "../services/credit-hold";
+import { buildClientHealthInputForClient } from "../services/analytics-data";
+import { calculateClientHealthScore } from "../services/client-health-score";
 
 const clientSchema = z.object({
   name: z.string().min(1),
@@ -253,5 +256,79 @@ export const clientsRouter = router({
         where: { id: input.clientId, organizationId: ctx.orgId },
         data: { autoChargeEnabled: input.enabled },
       });
+    }),
+
+  // ─── Credit limit / credit hold ─────────────────────────────────────────────
+
+  // Read model for the client's credit section: open AR exposure vs. limit,
+  // hold status, auto-hold policy, and the current health score. Powers the
+  // warning banner shown before sending invoices / charging cards.
+  creditStatus: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const now = new Date();
+      const built = await buildClientHealthInputForClient(ctx.db, ctx.orgId, input.clientId, now);
+      const healthScore = built ? calculateClientHealthScore(built).score : null;
+      return getClientCreditStatus(ctx.db, ctx.orgId, input.clientId, healthScore);
+    }),
+
+  // Set the credit policy: hard limit on open AR + whether/when to auto-hold
+  // based on the health score.
+  setCreditPolicy: requireRole("OWNER", "ADMIN")
+    .input(
+      z.object({
+        clientId: z.string(),
+        creditLimit: z.number().min(0).nullable().optional(),
+        autoCreditHoldEnabled: z.boolean().optional(),
+        autoCreditHoldThreshold: z.number().int().min(0).max(100).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { clientId, ...rest } = input;
+      const result = await ctx.db.client.update({
+        where: { id: clientId, organizationId: ctx.orgId },
+        data: rest,
+      });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Client",
+        entityId: result.id,
+        entityLabel: `${result.name} — credit policy`,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return result;
+    }),
+
+  // Manually place or release a credit hold. A manual hold clears the auto flag
+  // so the daily evaluator won't release it on a score recovery.
+  setCreditHold: requireRole("OWNER", "ADMIN")
+    .input(z.object({ clientId: z.string(), hold: z.boolean(), reason: z.string().max(500).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db.client.update({
+        where: { id: input.clientId, organizationId: ctx.orgId },
+        data: input.hold
+          ? {
+              creditHold: true,
+              creditHoldAuto: false,
+              creditHoldReason: input.reason ?? "Manual credit hold.",
+              creditHoldSetAt: new Date(),
+            }
+          : {
+              creditHold: false,
+              creditHoldAuto: false,
+              creditHoldReason: null,
+              creditHoldSetAt: null,
+            },
+      });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Client",
+        entityId: result.id,
+        entityLabel: `${result.name} — credit hold ${input.hold ? "placed" : "released"}`,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return result;
     }),
 });
