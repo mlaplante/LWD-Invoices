@@ -3,9 +3,7 @@ import { automationRulesRouter } from "@/server/routers/automationRules";
 import { createMockContext } from "./mocks/trpc-context";
 
 describe("Automation Rules Router", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let ctx: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let caller: any;
 
   beforeEach(() => {
