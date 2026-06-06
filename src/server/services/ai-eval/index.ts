@@ -8,10 +8,11 @@
  */
 
 import { runSuite, suiteMeetsGate } from "./runner";
-import { gradeGrounding, gradeOcr, gradeReminderGuard } from "./graders";
+import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard } from "./graders";
 import { ocrCases } from "./fixtures/ocr.fixtures";
 import { reminderGuardCases } from "./fixtures/reminder-guard.fixtures";
 import { groundingCases } from "./fixtures/assistant-grounding.fixtures";
+import { monthEndCloseCases } from "./fixtures/month-end-close.fixtures";
 import type { SuiteReport } from "./types";
 
 export interface SuiteGate {
@@ -48,6 +49,12 @@ export function runAllEvalSuites(): EvalSuiteResult[] {
       report: runSuite("assistant-answer-grounding", groundingCases, gradeGrounding),
       gate: { minScore: 1, minPassRate: 1 },
     },
+    {
+      // The close agent's reconciliation/adjustment core is deterministic and
+      // safety-critical (revenue + cash integrity), so it must pass perfectly.
+      report: runSuite("month-end-close", monthEndCloseCases, gradeMonthEndClose),
+      gate: { minScore: 1, minPassRate: 1 },
+    },
   ];
 
   return suites.map(({ report, gate }) => ({
@@ -64,10 +71,13 @@ export {
   gradeOcr,
   gradeReminderGuard,
   gradeGrounding,
+  gradeMonthEndClose,
   type OcrEvalInput,
   type OcrEvalExpected,
   type ReminderGuardInput,
   type ReminderGuardExpected,
   type GroundingInput,
   type GroundingExpected,
+  type MonthEndCloseInput,
+  type MonthEndCloseExpected,
 } from "./graders";

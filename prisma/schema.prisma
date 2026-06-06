@@ -333,6 +333,7 @@ model Organization {
 
   disputes          Dispute[]
   refunds           Refund[]
+  periodCloses      PeriodClose[]
 }
 
 model User {
@@ -1916,4 +1917,55 @@ model AutomationRun {
   @@unique([ruleId, invoiceId]) // fire each rule at most once per invoice
   @@index([ruleId, createdAt])
   @@index([invoiceId])
+}
+
+// ─── Month-end close ──────────────────────────────────────────────────────────
+// A period-close record per (org, year, month). The month-end-close agent
+// reconciles the period, flags anomalies, and drafts adjusting entries; closing
+// freezes the full report into `snapshot` and locks the period (advisory). A
+// closed period can be reopened (status REOPENED, snapshot preserved) and later
+// re-closed with a fresh snapshot. A period is "locked" iff a row exists with
+// status CLOSED.
+
+enum PeriodCloseStatus {
+  CLOSED
+  REOPENED
+}
+
+model PeriodClose {
+  id          String            @id @default(cuid())
+  periodYear  Int
+  periodMonth Int               // 1-12
+  status      PeriodCloseStatus @default(CLOSED)
+
+  // Headline totals, denormalized for fast listing without parsing the snapshot.
+  invoiced  Decimal @default(0) @db.Decimal(20, 2)
+  collected Decimal @default(0) @db.Decimal(20, 2)
+  refunded  Decimal @default(0) @db.Decimal(20, 2)
+  expenses  Decimal @default(0) @db.Decimal(20, 2)
+  netCash   Decimal @default(0) @db.Decimal(20, 2)
+
+  errorCount      Int @default(0)
+  warningCount    Int @default(0)
+  adjustmentCount Int @default(0)
+
+  // The full MonthEndCloseReport at close time (reconciliation + anomalies +
+  // drafted adjusting entries + the AI/deterministic narrative).
+  snapshot Json
+
+  notes          String?
+  closedByUserId String?
+  closedByLabel  String?
+  closedAt       DateTime  @default(now())
+  reopenedByUserId String?
+  reopenedAt       DateTime?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, periodYear, periodMonth])
+  @@index([organizationId, periodYear, periodMonth])
 }

@@ -18,6 +18,7 @@ import {
   Contact,
   Sparkles,
   ShieldAlert,
+  CalendarCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,6 +42,7 @@ const primaryNav: NavItem[] = [
 const secondaryNav: NavItem[] = [
   { href: "/assistant", label: "Ask AI", icon: Sparkles },
   { href: "/reports", label: "Reports", icon: BarChart2 },
+  { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
   { href: "/disputes", label: "Disputes", icon: ShieldAlert },
   { href: "/tickets", label: "Tickets", icon: LifeBuoy },
   { href: "/settings/team", label: "Team", icon: UsersRound },

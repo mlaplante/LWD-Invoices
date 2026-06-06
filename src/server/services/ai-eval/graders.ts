@@ -9,6 +9,15 @@ import {
   containsHallucinatedInvoiceFacts,
   type ReminderInvoiceFacts,
 } from "../smart-reminder-drafts";
+import {
+  reconcileBooks,
+  draftAdjustingEntries,
+  summarizeClose,
+  type ReconcileInput,
+  type CloseAnomalies,
+  type ReconSeverity,
+  type AdjustingEntryKind,
+} from "../month-end-close";
 import { checkAnswerGrounding } from "./grounding";
 import type { Grader } from "./types";
 
@@ -119,6 +128,77 @@ export const gradeGrounding: Grader<GroundingInput, GroundingExpected> = (input,
     detail: expected.grounded
       ? `flagged a grounded answer (false positive); figures: ${result.statedFigures.join(", ")}`
       : `missed fabricated figure(s): ${result.unsupportedFigures.join(", ")} (false negative — unsafe)`,
+  };
+};
+
+// ─── Month-end close reconciliation + adjusting entries ─────────────────────────
+
+export interface MonthEndCloseInput {
+  reconcile: ReconcileInput;
+  anomalies: CloseAnomalies;
+}
+
+export interface MonthEndCloseExpected {
+  /** Reconciliation checks that must appear, each at the given severity. */
+  expectChecks?: Array<{ check: string; severity: ReconSeverity }>;
+  /** Reconciliation check ids that must NOT appear. */
+  forbidChecks?: string[];
+  /** Adjusting-entry kinds the agent must draft. */
+  expectAdjustments?: AdjustingEntryKind[];
+  /** Expected close-readiness flag. */
+  canClose?: boolean;
+}
+
+/**
+ * Grades the deterministic close core: that reconciliation flags the right
+ * exceptions at the right severity, drafts the matching adjusting entries, and
+ * computes readiness correctly. Critical cases (revenue/cash integrity) encode
+ * "must never regress" invariants.
+ */
+export const gradeMonthEndClose: Grader<MonthEndCloseInput, MonthEndCloseExpected> = (
+  input,
+  expected,
+) => {
+  const reconciliation = reconcileBooks(input.reconcile);
+  const adjustments = draftAdjustingEntries(input.reconcile, input.anomalies, reconciliation);
+  const summary = summarizeClose({ reconciliation, anomalies: input.anomalies, adjustments });
+
+  const checks: Array<{ ok: boolean; label: string }> = [];
+
+  for (const want of expected.expectChecks ?? []) {
+    const found = reconciliation.find((r) => r.check === want.check);
+    const ok = !!found && found.severity === want.severity;
+    checks.push({
+      ok,
+      label: ok
+        ? ""
+        : found
+          ? `${want.check}: severity ${found.severity} want ${want.severity}`
+          : `missing check ${want.check} (want ${want.severity})`,
+    });
+  }
+
+  for (const forbid of expected.forbidChecks ?? []) {
+    const ok = !reconciliation.some((r) => r.check === forbid);
+    checks.push({ ok, label: ok ? "" : `unexpected check ${forbid}` });
+  }
+
+  for (const kind of expected.expectAdjustments ?? []) {
+    const ok = adjustments.some((a) => a.kind === kind);
+    checks.push({ ok, label: ok ? "" : `missing adjusting entry ${kind}` });
+  }
+
+  if (expected.canClose !== undefined) {
+    const ok = summary.canClose === expected.canClose;
+    checks.push({ ok, label: ok ? "" : `canClose ${summary.canClose} want ${expected.canClose}` });
+  }
+
+  const total = checks.length;
+  const correct = checks.filter((c) => c.ok).length;
+  const misses = checks.filter((c) => !c.ok).map((c) => c.label);
+  return {
+    score: total === 0 ? 1 : correct / total,
+    detail: misses.length > 0 ? misses.join("; ") : undefined,
   };
 };
 
