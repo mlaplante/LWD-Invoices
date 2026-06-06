@@ -209,6 +209,77 @@ export async function buildClientHealthInputs(
   });
 }
 
+/**
+ * Build the health-score input for a single client (for the client-detail
+ * badge). Queries only that client's invoices + engagement rather than the
+ * whole org. Returns null when the client has no invoices to score.
+ */
+export async function buildClientHealthInputForClient(
+  db: typeof Db,
+  orgId: string,
+  clientId: string,
+  now: Date,
+): Promise<ClientHealthInput | null> {
+  const invoices = await db.invoice.findMany({
+    where: { organizationId: orgId, clientId, isArchived: false },
+    select: {
+      id: true,
+      clientId: true,
+      status: true,
+      total: true,
+      dueDate: true,
+      date: true,
+      client: { select: { id: true, name: true } },
+      payments: { select: { amount: true, paidAt: true } },
+    },
+  });
+  if (invoices.length === 0) return null;
+
+  const stats = aggregateClientStats(invoices, now).get(clientId);
+  if (!stats) return null;
+
+  const invoiceIds = invoices.map((inv) => inv.id);
+  const events = await db.emailEvent.findMany({
+    where: { organizationId: orgId, invoiceId: { in: invoiceIds } },
+    select: { invoiceId: true, type: true },
+  });
+  const perInvoice = new Map<string, { opened: boolean; clicked: boolean }>();
+  for (const e of events) {
+    if (!e.invoiceId) continue;
+    const entry = perInvoice.get(e.invoiceId) ?? { opened: false, clicked: false };
+    if (e.type === "email.opened") entry.opened = true;
+    if (e.type === "email.clicked") entry.clicked = true;
+    perInvoice.set(e.invoiceId, entry);
+  }
+  let sent = 0;
+  let opened = 0;
+  let clicked = 0;
+  for (const id of invoiceIds) {
+    const e = perInvoice.get(id);
+    if (!e) continue;
+    sent++;
+    if (e.opened) opened++;
+    if (e.clicked) clicked++;
+  }
+
+  return {
+    clientId: stats.clientId,
+    clientName: stats.clientName,
+    paidInvoiceCount: stats.paidInvoiceCount,
+    onTimeInvoiceCount: stats.onTimeInvoiceCount,
+    averageDaysLate: stats.paidInvoiceCount > 0 ? stats.totalDaysLate / stats.paidInvoiceCount : 0,
+    overdueOpenCount: stats.overdueOpenCount,
+    overdueOpenAmount: stats.overdueOpenAmount,
+    emailsSent: sent,
+    emailsOpened: opened,
+    emailsClicked: clicked,
+    recentRevenue: stats.recentRevenue,
+    priorRevenue: stats.priorRevenue,
+    daysSinceLastActivity:
+      stats.lastActivity === null ? null : Math.round((now.getTime() - stats.lastActivity) / DAY_MS),
+  };
+}
+
 export async function buildCashFlowForecastInput(
   db: typeof Db,
   orgId: string,

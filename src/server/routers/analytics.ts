@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
-import { calculateClientHealthScores } from "@/server/services/client-health-score";
+import { calculateClientHealthScores, calculateClientHealthScore } from "@/server/services/client-health-score";
 import {
   projectCashFlow,
   applyLatePaymentScenario,
@@ -11,6 +11,7 @@ import { detectExpenseAnomalies } from "@/server/services/expense-anomaly";
 import { prioritizeCollections } from "@/server/services/collection-risk";
 import {
   buildClientHealthInputs,
+  buildClientHealthInputForClient,
   buildCashFlowForecastInput,
   buildSubscriptionStreams,
   buildExpenseAnomalyInputs,
@@ -24,6 +25,17 @@ export const analyticsRouter = router({
     const inputs = await buildClientHealthInputs(ctx.db, ctx.orgId, now);
     return { generatedAt: now.toISOString(), scores: calculateClientHealthScores(inputs) };
   }),
+
+  // Health score for a single client (client-detail badge). Returns null when
+  // the client has no invoices to score yet.
+  clientHealthForClient: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const now = new Date();
+      const built = await buildClientHealthInputForClient(ctx.db, ctx.orgId, input.clientId, now);
+      if (!built) return { score: null };
+      return { score: calculateClientHealthScore(built) };
+    }),
 
   // Forward 30/60/90-day cash position with optional late-payment scenarios.
   cashFlowForecast: protectedProcedure

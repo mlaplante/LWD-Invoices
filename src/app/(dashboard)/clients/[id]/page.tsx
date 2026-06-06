@@ -9,6 +9,7 @@ import { ClientStatementButton } from "@/components/clients/ClientStatementButto
 import { RetainerPanel } from "@/components/clients/RetainerPanel";
 import { RetainerList } from "@/components/admin/retainers/RetainerList";
 import { AutoChargeBadge } from "@/components/clients/AutoChargeBadge";
+import { ClientHealthBadge } from "@/components/clients/ClientHealthBadge";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, ExternalLink, FileText, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -147,6 +148,7 @@ export default async function ClientDetailPage({
               Reliable payer
             </span>
           )}
+          <ClientHealthBadge clientId={client.id} />
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 lg:flex-wrap lg:overflow-visible">
           <Button asChild size="sm">
