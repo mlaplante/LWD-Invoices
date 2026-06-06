@@ -92,9 +92,11 @@ function resolveProvider(override?: ReceiptOCRProvider): ReceiptOCRProvider {
   if (configured === "openai" || configured === "anthropic" || configured === "gemini") {
     return configured;
   }
-  // Fall back to whichever key is present, preferring PDF-capable providers.
-  if (env.OPENAI_API_KEY) return "openai";
+  // Default to Gemini first (it runs the 429 model-fallback chain and handles
+  // both images and PDFs), then OpenAI, then Anthropic — based on which key is
+  // configured. Set RECEIPT_OCR_PROVIDER to override.
   if (env.GEMINI_API_KEY) return "gemini";
+  if (env.OPENAI_API_KEY) return "openai";
   return "anthropic";
 }
 

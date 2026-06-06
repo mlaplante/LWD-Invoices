@@ -84,6 +84,7 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - **Expense Anomaly Detection** — Duplicate-receipt clustering and per-supplier amount outliers from your OCR expense data
 - **AI Cash-Flow Insights** — Deterministic dashboard metrics with an optional AI narrative summary
 - **Natural-Language Invoicing, AI Reminders & Receipt OCR** — Draft invoices from a prompt, AI-drafted payment reminders with tone selection + fact guard, and receipt scanning to prefill expenses
+- **Gemini-first by default** — Receipt OCR, natural-language invoicing, smart reminders, and the cash-flow narrative default to Gemini (running an ordered model-fallback chain that retries the next model on a 429), falling back to OpenAI/Anthropic. Pin any provider via the `*_PROVIDER` env vars. (The "Ask your books" assistant uses Anthropic tool-calling.)
 
 ### Platform
 - **Multi-tenancy** — Full organization isolation via Supabase Auth; users can belong to multiple organizations

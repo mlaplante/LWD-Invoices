@@ -1,3 +1,6 @@
+import { env } from "@/lib/env";
+import { callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "./gemini-fallback";
+
 export type InsightSeverity = "info" | "success" | "warning" | "danger";
 
 export interface InsightCard {
@@ -99,11 +102,13 @@ export interface CashFlowInsightMetrics {
 
 export interface NarrativeResult {
   summary: string;
-  source: "openai" | "deterministic";
+  source: "openai" | "gemini" | "deterministic";
   model?: string;
 }
 
 export interface NarrativeOptions {
+  // Explicit OpenAI apiKey forces the OpenAI path (back-compat + test seam).
+  // When omitted, the provider is resolved automatically (Gemini first).
   apiKey?: string;
   model?: string;
   fetchImpl?: typeof fetch;
@@ -404,17 +409,21 @@ function deterministicNarrative(metrics: CashFlowInsightMetrics): string {
   return `${parts.join("; ")}. Estimates are based on payment timing, open invoice balances, and retainer time entries currently available.`;
 }
 
-export async function generateCashFlowNarrative(
-  metrics: CashFlowInsightMetrics,
-  options: NarrativeOptions = {},
-): Promise<NarrativeResult> {
-  const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY;
-  const model = options.model ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
-  if (!apiKey || metrics.insufficientData) {
-    return { summary: deterministicNarrative(metrics), source: "deterministic" };
-  }
+// Built-in Gemini model fallback chain for the narrative; override via
+// GEMINI_CASHFLOW_MODELS. Mirrors the OCR / reminder / invoice-parser chains.
+const GEMINI_NARRATIVE_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
 
-  const fetchImpl = options.fetchImpl ?? fetch;
+function deterministicResult(metrics: CashFlowInsightMetrics): NarrativeResult {
+  return { summary: deterministicNarrative(metrics), source: "deterministic" };
+}
+
+async function generateOpenAINarrative(
+  metrics: CashFlowInsightMetrics,
+  apiKey: string,
+  model: string,
+  fetchImpl: typeof fetch,
+): Promise<NarrativeResult> {
+  if (!apiKey) return deterministicResult(metrics);
   try {
     const response = await fetchImpl("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -436,6 +445,60 @@ export async function generateCashFlowNarrative(
     if (!text) throw new Error("OpenAI response did not include text");
     return { summary: text.trim(), source: "openai", model };
   } catch {
-    return { summary: deterministicNarrative(metrics), source: "deterministic" };
+    return deterministicResult(metrics);
   }
+}
+
+async function generateGeminiNarrative(metrics: CashFlowInsightMetrics): Promise<NarrativeResult> {
+  const apiKey = env.GEMINI_API_KEY;
+  if (!apiKey) return deterministicResult(metrics);
+  const models = resolveGeminiModels(env.GEMINI_CASHFLOW_MODELS, GEMINI_NARRATIVE_MODELS);
+  return callGeminiWithModelFallback({
+    apiKey,
+    models,
+    body: {
+      contents: [{ role: "user", parts: [{ text: buildCashFlowNarrativePrompt(metrics) }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 140 },
+    },
+    label: "cash-flow narrative",
+    onOk: (json) => {
+      const text = extractGeminiText(json);
+      if (!text) throw new Error("Gemini narrative returned no text");
+      return { summary: text.trim(), source: "gemini" as const, model: models[0] };
+    },
+  });
+}
+
+/**
+ * Generate a 1-2 sentence cash-flow narrative. Provider precedence:
+ *   1. An explicit OpenAI `apiKey` option (back-compat + test seam) → OpenAI.
+ *   2. Otherwise Gemini first (running its 429 model-fallback chain),
+ *   3. then OpenAI (env key), 4. then the deterministic fallback.
+ */
+export async function generateCashFlowNarrative(
+  metrics: CashFlowInsightMetrics,
+  options: NarrativeOptions = {},
+): Promise<NarrativeResult> {
+  if (metrics.insufficientData) return deterministicResult(metrics);
+
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const openAIModel = options.model ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+
+  // An explicitly-provided OpenAI key pins the OpenAI path.
+  if (options.apiKey !== undefined) {
+    return generateOpenAINarrative(metrics, options.apiKey, openAIModel, fetchImpl);
+  }
+
+  // Default: Gemini first, then OpenAI, then deterministic.
+  if (env.GEMINI_API_KEY) {
+    try {
+      return await generateGeminiNarrative(metrics);
+    } catch {
+      // fall through to OpenAI / deterministic
+    }
+  }
+  if (process.env.OPENAI_API_KEY) {
+    return generateOpenAINarrative(metrics, process.env.OPENAI_API_KEY, openAIModel, fetchImpl);
+  }
+  return deterministicResult(metrics);
 }

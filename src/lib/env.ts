@@ -44,15 +44,19 @@ export const env = createEnv({
     // built-in default chain.
     GEMINI_REMINDER_MODELS: z.string().min(1).optional(),
     REMINDER_AI_PROVIDER: z.enum(["openai", "gemini"]).optional(),
+    // Comma-separated, ordered Gemini model fallback chain for the cash-flow
+    // narrative (same 429 fallback behavior as GEMINI_OCR_MODELS). Leave unset
+    // for the built-in default chain.
+    GEMINI_CASHFLOW_MODELS: z.string().min(1).optional(),
     RECEIPT_OCR_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
     // Comma-separated, ordered list of Gemini vision models to try for receipt
     // OCR. When one model returns a 429 (rate-limit/quota), the next is tried.
     // Leave unset to use the built-in default chain. Example:
     //   GEMINI_OCR_MODELS="gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash"
     GEMINI_OCR_MODELS: z.string().min(1).optional(),
-    // Which provider drafts invoices from natural-language prompts. Defaults
-    // to openai when unset; gemini requires GEMINI_API_KEY. When unset and no
-    // OPENAI_API_KEY is present, falls back to gemini if its key is configured.
+    // Which provider drafts invoices from natural-language prompts. Defaults to
+    // Gemini (its model-fallback chain) when GEMINI_API_KEY is set, otherwise
+    // OpenAI. Set explicitly to pin a provider.
     INVOICE_PARSER_PROVIDER: z.enum(["openai", "gemini"]).optional(),
     OPENAI_INVOICE_PARSER_MODEL: z.string().min(1).optional(),
     // Comma-separated, ordered Gemini model fallback chain for invoice drafting,
@@ -91,6 +95,7 @@ export const env = createEnv({
     OPENAI_REMINDER_MODEL: process.env.OPENAI_REMINDER_MODEL,
     GEMINI_REMINDER_MODELS: process.env.GEMINI_REMINDER_MODELS,
     REMINDER_AI_PROVIDER: process.env.REMINDER_AI_PROVIDER,
+    GEMINI_CASHFLOW_MODELS: process.env.GEMINI_CASHFLOW_MODELS,
     RECEIPT_OCR_PROVIDER: process.env.RECEIPT_OCR_PROVIDER,
     GEMINI_OCR_MODELS: process.env.GEMINI_OCR_MODELS,
     INVOICE_PARSER_PROVIDER: process.env.INVOICE_PARSER_PROVIDER,

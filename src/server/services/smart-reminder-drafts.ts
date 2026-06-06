@@ -285,14 +285,13 @@ async function callGeminiReminderDraft(prompt: string, apiKey: string, models: s
 }
 
 // Resolve the provider: explicit input wins, then REMINDER_AI_PROVIDER, then
-// whichever provider has an API key (openai preferred). Mirrors receipt-ocr's
-// resolveProvider so config behaves consistently across AI features.
+// Gemini first (it runs the 429 model-fallback chain), falling back to OpenAI
+// when only its key is configured. Mirrors receipt-ocr's resolveProvider so
+// config behaves consistently across AI features.
 function resolveReminderProvider(input: GenerateReminderDraftInput): ReminderAIProvider {
   const explicit = input.provider ?? env.REMINDER_AI_PROVIDER;
   if (explicit === "openai" || explicit === "gemini") return explicit;
-  if (input.gemini?.apiKey ?? env.GEMINI_API_KEY) {
-    if (!(input.openAI?.apiKey ?? env.OPENAI_API_KEY)) return "gemini";
-  }
+  if (input.gemini?.apiKey ?? env.GEMINI_API_KEY) return "gemini";
   return "openai";
 }
 
