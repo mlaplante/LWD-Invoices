@@ -70,6 +70,7 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - **1099 / Contractor Tax Pack** — Track contractor payments, collect W-9 details (with encrypted TIN storage and private W-9 document uploads), and auto-generate Form 1099-NEC at year end. Flags contractors over the $600 reporting threshold, surfaces missing W-9s, and downloads the filing pack (per-recipient 1099-NEC PDFs + summary CSV/PDF + ZIP). Card and third-party-network payments are auto-excluded as 1099-K.
 - **Contractor Portal** — Opt-in self-service portal (token link, no account) where contractors view their payment history, submit a W-9, and download their own 1099-NEC
 - **Inbound Email Threading** — Client replies to invoice emails (via a `reply+<invoiceId>@` Reply-To) are captured and threaded onto the invoice and a support ticket
+- **No-Code Automation Builder** — Generalizes email automations and reminder sequences into composable **trigger → conditions → actions** rules. Pick an invoice event (sent / viewed / paid / overdue), add conditions (balance due, days overdue, status, client, currency, with AND/OR logic), and choose actions (send a templated email, notify org admins). Each rule runs at most once per invoice; runs are logged for audit.
 - **Support Tickets** — Internal ticket system with threaded discussions
 - **Items** — Saved line item library for quick invoice creation
 - **Currencies** — Multi-currency support
@@ -82,6 +83,8 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - **Recurring Revenue (MRR/ARR)** — Subscription-style MRR, ARR, ARPA, and revenue/logo churn across recurring invoices and hours-retainers
 - **Smart Collections** — Open invoices ranked by predicted late-payment risk with a recommended dunning action and tone for each
 - **Expense Anomaly Detection** — Duplicate-receipt clustering and per-supplier amount outliers from your OCR expense data
+- **Anonymized Peer Benchmarking** — "Your DSO beats 78% of similar businesses." Compares your receivables metrics (DSO, share of AR past due) against a cohort of similar-sized businesses (by trailing-12-month revenue band). Privacy-safe: k-anonymized (only shown once a cohort is large enough) and aggregate-only — never another tenant's identity or raw figures
+- **AI Eval / Regression Harness** — A versioned golden-set suite (`npm run test:eval`) that pins the deterministic guard/parse layer behind the AI features — receipt-OCR output parsing, the reminder fact-guard, and assistant answer-grounding — so a model or provider swap can't silently regress. Per-suite CI gates with critical-case vetoes
 - **AI Cash-Flow Insights** — Deterministic dashboard metrics with an optional AI narrative summary
 - **Natural-Language Invoicing, AI Reminders & Receipt OCR** — Draft invoices from a prompt, AI-drafted payment reminders with tone selection + fact guard, and receipt scanning to prefill expenses
 - **Gemini-first by default** — Receipt OCR, natural-language invoicing, smart reminders, the cash-flow narrative, and the books assistant all default to Gemini (running an ordered model-fallback chain that retries the next model on a 429), falling back to OpenAI/Anthropic. Pin any provider via the `*_PROVIDER` env vars.
@@ -178,6 +181,7 @@ npm run build        # Build for production
 npm run test         # Run tests (watch mode)
 npm run test:run     # Run tests once
 npm run test:coverage # Run tests with coverage report
+npm run test:eval    # Run only the AI golden-set eval/regression suites
 npm run db:migrate   # Run pending database migrations
 npm run db:seed      # Seed the database with sample data
 npm run db:studio    # Open Prisma Studio

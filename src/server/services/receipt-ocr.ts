@@ -250,7 +250,7 @@ function extractOpenAIText(response: Record<string, unknown>): string {
     .join("\n");
 }
 
-function normalizeOCRPayload(rawText: string): OCRResult {
+export function normalizeOCRPayload(rawText: string): OCRResult {
   let parsed: Record<string, unknown>;
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);

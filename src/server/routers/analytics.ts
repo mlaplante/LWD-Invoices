@@ -19,8 +19,17 @@ import {
   buildExpenseAnomalyInputs,
   buildCollectionRiskInputs,
 } from "@/server/services/analytics-data";
+import { getBenchmarksForOrg } from "@/server/services/benchmarking-data";
 
 export const analyticsRouter = router({
+  // Anonymized cross-tenant benchmark: how this org's DSO / overdue share
+  // compares to similar-sized businesses. The output is aggregate + k-anonymized
+  // (no peer identities or raw values), so it's safe for any org member — and
+  // keeps parity with the rest of the AR/DSO dashboard it renders on.
+  benchmarks: protectedProcedure.query(async ({ ctx }) => {
+    return getBenchmarksForOrg(ctx.db, ctx.orgId, new Date());
+  }),
+
   // Composite per-client health scores (payment, engagement, revenue, overdue).
   clientHealth: protectedProcedure.query(async ({ ctx }) => {
     const now = new Date();

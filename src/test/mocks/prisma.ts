@@ -314,6 +314,27 @@ export function createMockPrismaClient() {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
     },
+    automationRule: {
+      create: vi.fn(),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    automationCondition: {
+      deleteMany: vi.fn(),
+      createMany: vi.fn(),
+    },
+    automationAction: {
+      deleteMany: vi.fn(),
+      createMany: vi.fn(),
+    },
+    automationRun: {
+      create: vi.fn(),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
     hoursRetainer: {
       create: vi.fn(),
       findUnique: vi.fn(),

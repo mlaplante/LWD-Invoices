@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, TrendingDown, TrendingUp } from "lucide-react";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { ReportHeader } from "@/components/reports/ReportHeader";
+import { BenchmarkCard } from "@/components/reports/BenchmarkCard";
 import { AGING_BUCKETS } from "@/server/services/ar-reports";
 
 const BUCKET_STYLES: Record<string, { color: string; dotColor: string }> = {
@@ -18,10 +19,11 @@ function fmtMoney(n: number) {
 }
 
 export default async function DsoDashboardPage() {
-  const [aging, trend, org] = await Promise.all([
+  const [aging, trend, org, benchmark] = await Promise.all([
     api.reports.arAging(),
     api.reports.dsoTrend(),
     api.organization.get(),
+    api.analytics.benchmarks(),
   ]);
 
   const current = trend[trend.length - 1];
@@ -89,6 +91,9 @@ export default async function DsoDashboardPage() {
           <p className="text-xs text-muted-foreground mt-0.5">With a balance due</p>
         </div>
       </div>
+
+      {/* Anonymized peer benchmark */}
+      <BenchmarkCard benchmark={benchmark} />
 
       {/* DSO trend chart */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">

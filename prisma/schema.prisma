@@ -93,6 +93,7 @@ enum NotificationType {
   DISPUTE_UPDATED
   REFUND_ISSUED
   CREDIT_HOLD_PLACED
+  AUTOMATION_TRIGGERED
 }
 
 enum ClientCheckInTouchType {
@@ -305,6 +306,7 @@ model Organization {
   retainers               Retainer[]
   hoursRetainers          HoursRetainer[]
   reminderSequences       ReminderSequence[]
+  automationRules         AutomationRule[]
   savedPaymentMethods     SavedPaymentMethod[]
   emailEvents             EmailEvent[]
   inboundEmails           InboundEmail[]
@@ -594,6 +596,7 @@ model Invoice {
   retainerTransactions    RetainerTransaction[]
   reminderLogs            ReminderLog[]
   manualReminders         InvoiceReminder[]
+  automationRuns          AutomationRun[]
   emailEvents             EmailEvent[]
   inboundEmails           InboundEmail[]
   milestone               Milestone?
@@ -1799,4 +1802,118 @@ model Refund {
   @@index([organizationId, createdAt])
   @@index([invoiceId])
   @@index([paymentId])
+}
+
+// ─── No-code Automation Builder ───────────────────────────────────────────────
+// Generalizes the fixed EmailAutomation + ReminderSequence features into
+// composable trigger → conditions → actions rules. A rule fires on an invoice
+// lifecycle event (or the daily overdue sweep), checks its conditions against
+// the invoice, and runs its ordered actions. AutomationRun records each
+// (rule, invoice) execution once, mirroring EmailAutomationLog's double-send
+// guard.
+
+enum AutomationTrigger {
+  PAYMENT_RECEIVED
+  INVOICE_SENT
+  INVOICE_VIEWED
+  INVOICE_OVERDUE
+}
+
+enum AutomationConditionField {
+  TOTAL
+  AMOUNT_DUE
+  DAYS_OVERDUE
+  STATUS
+  CLIENT_NAME
+  CURRENCY_CODE
+}
+
+enum AutomationOperator {
+  EQ
+  NEQ
+  GT
+  GTE
+  LT
+  LTE
+  CONTAINS
+  NOT_CONTAINS
+}
+
+enum AutomationConditionLogic {
+  AND
+  OR
+}
+
+enum AutomationActionType {
+  SEND_EMAIL
+  NOTIFY_ADMINS
+}
+
+model AutomationRule {
+  id             String                   @id @default(cuid())
+  name           String
+  trigger        AutomationTrigger
+  // How the conditions combine. With no conditions, the rule fires on every
+  // event of its trigger type.
+  conditionLogic AutomationConditionLogic @default(AND)
+  enabled        Boolean                  @default(true)
+
+  organizationId String
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  conditions     AutomationCondition[]
+  actions        AutomationAction[]
+  runs           AutomationRun[]
+
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@index([organizationId, trigger, enabled])
+}
+
+model AutomationCondition {
+  id       String                   @id @default(cuid())
+  field    AutomationConditionField
+  operator AutomationOperator
+  // Comparison value as text; the engine coerces to a number for numeric fields.
+  value    String
+  sort     Int                      @default(0)
+
+  ruleId   String
+  rule     AutomationRule           @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+}
+
+model AutomationAction {
+  id     String               @id @default(cuid())
+  type   AutomationActionType
+  // Type-specific payload, e.g. { subject, body } for SEND_EMAIL or
+  // { title, body } for NOTIFY_ADMINS. Templates support {{ variable }} tokens.
+  config Json
+  sort   Int                  @default(0)
+
+  ruleId String
+  rule   AutomationRule       @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+}
+
+model AutomationRun {
+  id         String         @id @default(cuid())
+  // executed | failed | partial — set by the runner after attempting actions.
+  status     String         @default("executed")
+  actionsRun Int            @default(0)
+  detail     String?
+
+  ruleId     String
+  rule       AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  invoiceId  String
+  invoice    Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime       @default(now())
+
+  @@unique([ruleId, invoiceId]) // fire each rule at most once per invoice
+  @@index([ruleId, createdAt])
+  @@index([invoiceId])
 }
