@@ -37,6 +37,7 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - Recurring invoices (daily / weekly / monthly / yearly) via background jobs
 - Multiple invoice types: SIMPLE, DETAILED, ESTIMATE, CREDIT_NOTE
 - **Email Engagement Panel** — per-invoice delivery/open/click timeline on the invoice detail page (powered by Resend webhook tracking)
+- **Proposal Engagement Tracking** — per-proposal delivery/open/click timeline on the estimate detail page, plus a "viewed but not signed" nudge that automatically follows up once a prospect opens a proposal but hasn't signed it (configurable per-org delay)
 
 ### Client Portal
 - Shareable token-based portal for clients to view invoices and estimates (no account required)
@@ -64,7 +65,8 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - **Reliable Payer Badge** — Visual indicator for clients with consistently on-time payments
 - **Expenses** — Categorized expense tracking with suppliers and file attachments
 - **Reports** — Revenue, payment, and unpaid invoice reports
-- **Year-End Export Pack** — Financial reports for accountants (P&L, Expense Ledger, Payment Ledger, Tax Liability) with CSV, PDF, and ZIP downloads
+- **AR Aging & DSO Dashboard** — Receivables bucketed by balance due (current / 1–30 / 31–60 / 61–90 / 90+) with a 12-month Days-Sales-Outstanding trend
+- **Year-End Export Pack** — Financial reports for accountants (P&L, Expense Ledger, Payment Ledger, Tax Liability, AR Aging snapshot) with CSV, PDF, and ZIP downloads
 - **1099 / Contractor Tax Pack** — Track contractor payments, collect W-9 details (with encrypted TIN storage and private W-9 document uploads), and auto-generate Form 1099-NEC at year end. Flags contractors over the $600 reporting threshold, surfaces missing W-9s, and downloads the filing pack (per-recipient 1099-NEC PDFs + summary CSV/PDF + ZIP). Card and third-party-network payments are auto-excluded as 1099-K.
 - **Support Tickets** — Internal ticket system with threaded discussions
 - **Items** — Saved line item library for quick invoice creation

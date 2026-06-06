@@ -15,6 +15,26 @@ export const proposalsRouter = router({
       return proposal;
     }),
 
+  // Email engagement timeline (delivery/open/click events) for one proposal.
+  // Estimates send through the same `invoice_id`-tagged path as invoices, so the
+  // Resend webhook already attributes events to the estimate's id — this just
+  // surfaces them. Mirrors invoices.getEmailEvents, scoped to ESTIMATE type.
+  getEngagementEvents: protectedProcedure
+    .input(z.object({ invoiceId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const estimate = await ctx.db.invoice.findFirst({
+        where: { id: input.invoiceId, organizationId: ctx.orgId, type: "ESTIMATE" },
+        select: { id: true },
+      });
+      if (!estimate) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return ctx.db.emailEvent.findMany({
+        where: { invoiceId: input.invoiceId },
+        select: { id: true, type: true, occurredAt: true, recipient: true, link: true },
+        orderBy: { occurredAt: "asc" },
+      });
+    }),
+
   create: protectedProcedure
     .input(
       z.object({

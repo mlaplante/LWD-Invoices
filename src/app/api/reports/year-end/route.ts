@@ -6,22 +6,34 @@ import {
   getExpenseLedger,
   getPaymentLedger,
   getTaxLiability,
+  getArAgingSnapshot,
 } from "@/server/services/year-end-reports";
 import {
   plToCsv,
   expensesToCsv,
   paymentsToCsv,
   taxToCsv,
+  agingToCsv,
 } from "@/server/services/year-end-csv";
 import {
   renderPLPdf,
   renderExpensePdf,
   renderPaymentPdf,
   renderTaxPdf,
+  renderAgingPdf,
 } from "@/server/services/year-end-pdf";
 
 const VALID_FORMATS = ["csv", "pdf", "zip"] as const;
-const VALID_REPORTS = ["pl", "expenses", "payments", "tax"] as const;
+const VALID_REPORTS = ["pl", "expenses", "payments", "tax", "aging"] as const;
+
+// Download filename stem per report (defaults to the report key).
+const REPORT_FILE_STEMS: Record<Report, string> = {
+  pl: "pl",
+  expenses: "expenses",
+  payments: "payments",
+  tax: "tax-liability",
+  aging: "ar-aging",
+};
 
 type Format = (typeof VALID_FORMATS)[number];
 type Report = (typeof VALID_REPORTS)[number];
@@ -80,13 +92,14 @@ export async function GET(request: Request) {
     expenses: () => getExpenseLedger(db, orgId, year),
     payments: () => getPaymentLedger(db, orgId, year),
     tax: () => getTaxLiability(db, orgId, year),
+    aging: () => getArAgingSnapshot(db, orgId, year),
   };
 
   if (format === "csv" && report) {
     const data = await fetchMap[report]();
-    const csvMap = { pl: plToCsv, expenses: expensesToCsv, payments: paymentsToCsv, tax: taxToCsv };
+    const csvMap = { pl: plToCsv, expenses: expensesToCsv, payments: paymentsToCsv, tax: taxToCsv, aging: agingToCsv };
     const csv = csvMap[report](data as never);
-    const filename = `${report === "tax" ? "tax-liability" : report}-${year}.csv`;
+    const filename = `${REPORT_FILE_STEMS[report]}-${year}.csv`;
 
     return new Response(csv, {
       headers: {
@@ -98,9 +111,9 @@ export async function GET(request: Request) {
 
   if (format === "pdf" && report) {
     const data = await fetchMap[report]();
-    const pdfMap = { pl: renderPLPdf, expenses: renderExpensePdf, payments: renderPaymentPdf, tax: renderTaxPdf };
+    const pdfMap = { pl: renderPLPdf, expenses: renderExpensePdf, payments: renderPaymentPdf, tax: renderTaxPdf, aging: renderAgingPdf };
     const pdfBuffer = await pdfMap[report](data as never, year);
-    const filename = `${report === "tax" ? "tax-liability" : report}-${year}.pdf`;
+    const filename = `${REPORT_FILE_STEMS[report]}-${year}.pdf`;
 
     return new Response(new Uint8Array(pdfBuffer) as unknown as BodyInit, {
       headers: {
@@ -110,20 +123,22 @@ export async function GET(request: Request) {
     });
   }
 
-  // format === "zip" — bundle all 4 CSVs + 4 PDFs
+  // format === "zip" — bundle all 5 CSVs + 5 PDFs
   const JSZip = (await import("jszip")).default;
-  const [plData, expensesData, paymentsData, taxData] = await Promise.all([
+  const [plData, expensesData, paymentsData, taxData, agingData] = await Promise.all([
     fetchMap.pl(),
     fetchMap.expenses(),
     fetchMap.payments(),
     fetchMap.tax(),
+    fetchMap.aging(),
   ]);
 
-  const [plPdf, expensesPdf, paymentsPdf, taxPdf] = await Promise.all([
+  const [plPdf, expensesPdf, paymentsPdf, taxPdf, agingPdf] = await Promise.all([
     renderPLPdf(plData as never, year),
     renderExpensePdf(expensesData as never, year),
     renderPaymentPdf(paymentsData as never, year),
     renderTaxPdf(taxData as never, year),
+    renderAgingPdf(agingData as never, year),
   ]);
 
   const zip = new JSZip();
@@ -135,6 +150,8 @@ export async function GET(request: Request) {
   zip.file(`payments-${year}.pdf`, paymentsPdf);
   zip.file(`tax-liability-${year}.csv`, taxToCsv(taxData as never));
   zip.file(`tax-liability-${year}.pdf`, taxPdf);
+  zip.file(`ar-aging-${year}.csv`, agingToCsv(agingData as never));
+  zip.file(`ar-aging-${year}.pdf`, agingPdf);
 
   const zipBuffer = await zip.generateAsync({ type: "uint8array" });
 
