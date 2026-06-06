@@ -19,6 +19,7 @@ import {
   LifeBuoy,
   Settings,
   Sparkles,
+  ShieldAlert,
   Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ const moreItems = [
   { href: "/contractors", label: "Contractors", icon: Contact },
   { href: "/assistant", label: "Ask AI", icon: Sparkles },
   { href: "/reports", label: "Reports", icon: BarChart2 },
+  { href: "/disputes", label: "Disputes", icon: ShieldAlert },
   { href: "/tickets", label: "Tickets", icon: LifeBuoy },
   { href: "/settings/team", label: "Team", icon: UsersRound },
   { href: "/settings", label: "Settings", icon: Settings },
