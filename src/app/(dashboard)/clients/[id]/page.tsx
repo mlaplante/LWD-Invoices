@@ -11,6 +11,7 @@ import { RetainerList } from "@/components/admin/retainers/RetainerList";
 import { AutoChargeBadge } from "@/components/clients/AutoChargeBadge";
 import { ClientHealthBadge } from "@/components/clients/ClientHealthBadge";
 import { ClientRemindersPanel } from "@/components/clients/ClientRemindersPanel";
+import { ClientLastRemindedBadge } from "@/components/clients/ClientLastRemindedBadge";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, ExternalLink, FileText, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -150,6 +151,7 @@ export default async function ClientDetailPage({
             </span>
           )}
           <ClientHealthBadge clientId={client.id} />
+          <ClientLastRemindedBadge clientId={client.id} />
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 lg:flex-wrap lg:overflow-visible">
           <Button asChild size="sm">

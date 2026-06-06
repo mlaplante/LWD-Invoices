@@ -57,6 +57,10 @@ export function CollectionsReminderDialog({ invoiceId, invoiceNumber, onClose }:
         // history so both surfaces reflect the send without a reload.
         void utils.analytics.collectionsRisk.invalidate();
         if (invoiceId) void utils.invoices.reminderHistory.invalidate({ invoiceId });
+        // Client-level surfaces (panel + "last reminded" chip) — invalidate all
+        // since the dialog only knows the invoice, not its client.
+        void utils.clients.reminderHistory.invalidate();
+        void utils.clients.lastReminded.invalidate();
         onClose();
       }
     },

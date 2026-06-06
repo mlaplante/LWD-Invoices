@@ -142,6 +142,28 @@ export const clientsRouter = router({
       return entries;
     }),
 
+  // Most recent reminder sent to a client across any of its invoices (manual or
+  // sequence). Lightweight — powers the "last reminded" chip on the header.
+  lastReminded: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [manual, sequence] = await Promise.all([
+        ctx.db.invoiceReminder.findFirst({
+          where: { organizationId: ctx.orgId, invoice: { clientId: input.clientId } },
+          orderBy: { sentAt: "desc" },
+          select: { sentAt: true },
+        }),
+        ctx.db.reminderLog.findFirst({
+          where: { invoice: { clientId: input.clientId, organizationId: ctx.orgId } },
+          orderBy: { sentAt: "desc" },
+          select: { sentAt: true },
+        }),
+      ]);
+      const times = [manual?.sentAt, sequence?.sentAt].filter((d): d is Date => d != null);
+      const lastRemindedAt = times.length > 0 ? new Date(Math.max(...times.map((d) => d.getTime()))) : null;
+      return { lastRemindedAt };
+    }),
+
   create: requireRole("OWNER", "ADMIN")
     .input(clientSchema)
     .mutation(async ({ ctx, input }) => {
