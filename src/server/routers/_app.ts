@@ -48,12 +48,14 @@ import { checkInTemplatesRouter } from "./checkInTemplates";
 import { analyticsRouter } from "./analytics";
 import { assistantRouter } from "./assistant";
 import { contractorPortalRouter } from "./contractor-portal";
+import { collectionsRouter } from "./collections";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
   analytics: analyticsRouter,
   assistant: assistantRouter,
   contractorPortal: contractorPortalRouter,
+  collections: collectionsRouter,
   search: searchRouter,
   organization: organizationRouter,
   clients: clientsRouter,

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { ChevronLeft } from "lucide-react";
+import { CollectionsReminderDialog } from "@/components/reports/CollectionsReminderDialog";
 
 const BAND_STYLES: Record<string, string> = {
   low: "bg-emerald-50 text-emerald-700",
@@ -26,6 +28,7 @@ function usd(n: number): string {
 
 export default function CollectionsPage() {
   const { data, isLoading, error } = trpc.analytics.collectionsRisk.useQuery();
+  const [reminder, setReminder] = useState<{ id: string; number: string } | null>(null);
 
   return (
     <div className="space-y-5">
@@ -62,6 +65,7 @@ export default function CollectionsPage() {
                   <th className="px-5 py-2 text-right">Overdue</th>
                   <th className="px-5 py-2 text-right">Late risk</th>
                   <th className="px-5 py-2 text-left">Recommended</th>
+                  <th className="px-5 py-2 text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,6 +88,14 @@ export default function CollectionsPage() {
                       <span className="font-medium">{ACTION_LABELS[inv.recommendedAction]}</span>
                       <span className="text-xs text-muted-foreground ml-1.5">({inv.recommendedTone})</span>
                     </td>
+                    <td className="px-5 py-3 text-right">
+                      <button
+                        onClick={() => setReminder({ id: inv.invoiceId, number: inv.invoiceNumber })}
+                        className="text-xs font-medium text-primary hover:underline whitespace-nowrap"
+                      >
+                        Send reminder
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -91,6 +103,12 @@ export default function CollectionsPage() {
           </div>
         </div>
       )}
+
+      <CollectionsReminderDialog
+        invoiceId={reminder?.id ?? null}
+        invoiceNumber={reminder?.number}
+        onClose={() => setReminder(null)}
+      />
     </div>
   );
 }
