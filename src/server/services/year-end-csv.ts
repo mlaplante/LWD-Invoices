@@ -1,4 +1,4 @@
-import type { PLRow, ExpenseRow, PaymentRow, TaxRow } from "./year-end-reports";
+import type { PLRow, ExpenseRow, PaymentRow, TaxRow, AgingSnapshotRow } from "./year-end-reports";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,5 +91,25 @@ export function taxToCsv(rows: TaxRow[]): string {
     (r) =>
       [esc(r.taxName), money(r.rate), money(r.totalCollected), r.invoiceCount].join(","),
   );
+  return [header, ...lines].join("\n");
+}
+
+// ── AR Aging Snapshot ──────────────────────────────────────────────────────────
+
+export function agingToCsv(rows: AgingSnapshotRow[]): string {
+  const header = "Invoice Number,Client,Due Date,Aging Bucket,Days Overdue,Balance Due";
+  const lines = rows.map(
+    (r) =>
+      [
+        esc(r.number),
+        esc(r.client),
+        esc(r.dueDate),
+        esc(r.bucket),
+        r.daysOverdue,
+        money(r.balance),
+      ].join(","),
+  );
+  const total = rows.reduce((s, r) => s + r.balance, 0);
+  lines.push(`Total,,,,,${money(total)}`);
   return [header, ...lines].join("\n");
 }

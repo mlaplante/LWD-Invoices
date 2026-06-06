@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3 } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge } from "lucide-react";
 
 const reports = [
   {
@@ -51,6 +51,13 @@ const reports = [
     description: "Outstanding invoices bucketed by days overdue.",
     icon: <Clock className="w-4 h-4" />,
     color: "bg-red-50 text-red-600",
+  },
+  {
+    href: "/reports/dso",
+    label: "AR Aging & DSO",
+    description: "Receivables by balance due with a Days-Sales-Outstanding trend.",
+    icon: <Gauge className="w-4 h-4" />,
+    color: "bg-fuchsia-50 text-fuchsia-600",
   },
   {
     href: "/reports/time",
