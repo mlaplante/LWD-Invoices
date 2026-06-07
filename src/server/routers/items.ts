@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 
 const itemSchema = z.object({
   name: z.string().min(1),
@@ -35,7 +36,7 @@ export const itemsRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       return ctx.db.item.delete({
         where: { id: input.id, organizationId: ctx.orgId },

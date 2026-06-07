@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
+import { idInput } from "../lib/schemas";
 
 const templateTaskSchema = z.object({
   name: z.string().min(1),
@@ -21,7 +22,7 @@ export const projectTemplatesRouter = router({
   }),
 
   get: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const template = await ctx.db.projectTemplate.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -107,7 +108,7 @@ export const projectTemplatesRouter = router({
     }),
 
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.projectTemplate.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },

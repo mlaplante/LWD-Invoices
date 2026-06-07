@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
+import { idInput } from "../lib/schemas";
 
 // ctx.orgId is already verified by protectedProcedure / its trpc middleware,
 // so re-fetching the organization just to read back its id was a wasted
@@ -43,7 +44,7 @@ export const notificationsRouter = router({
   }),
 
   markRead: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       return ctx.db.notification.updateMany({
         where: {
@@ -95,7 +96,7 @@ export const notificationsRouter = router({
     }),
 
   unsnooze: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       return ctx.db.notification.updateMany({
         where: {

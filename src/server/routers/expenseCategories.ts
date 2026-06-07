@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { getExpenseCategoriesForOrg, invalidateOrg } from "../cached";
 import { getForOrg } from "../lib/get-for-org";
 
@@ -29,7 +30,7 @@ export const expenseCategoriesRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       await getForOrg(ctx.db.expenseCategory, input.id, ctx.orgId, { entityName: "Expense category" });
       const deleted = await ctx.db.expenseCategory.delete({ where: { id: input.id } });

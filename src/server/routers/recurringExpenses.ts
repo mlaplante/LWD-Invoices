@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { Prisma, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 
@@ -36,7 +37,7 @@ export const recurringExpensesRouter = router({
   }),
 
   getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const rec = await ctx.db.recurringExpense.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -101,7 +102,7 @@ export const recurringExpensesRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.recurringExpense.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -113,7 +114,7 @@ export const recurringExpensesRouter = router({
     }),
 
   toggleActive: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.recurringExpense.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { generatePortalToken } from "@/lib/portal-session";
 
@@ -58,7 +59,7 @@ export const milestonesRouter = router({
     }),
 
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.milestone.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -88,7 +89,7 @@ export const milestonesRouter = router({
     }),
 
   complete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const milestone = await ctx.db.milestone.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -171,7 +172,7 @@ export const milestonesRouter = router({
     }),
 
   reopen: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const milestone = await ctx.db.milestone.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },

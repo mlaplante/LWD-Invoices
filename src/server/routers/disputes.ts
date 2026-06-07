@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { DisputeStatus } from "@/generated/prisma";
 import { logAudit } from "../services/audit";
 
@@ -42,7 +43,7 @@ export const disputesRouter = router({
     }),
 
   get: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const dispute = await ctx.db.dispute.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -138,7 +139,7 @@ export const disputesRouter = router({
   // Concede the dispute (don't contest). Stripe closes it in the customer's
   // favor; we mark it lost locally so the queue stops nagging.
   accept: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const dispute = await ctx.db.dispute.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },

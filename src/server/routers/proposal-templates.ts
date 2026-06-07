@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { TRPCError } from "@trpc/server";
 import { proposalSectionsSchema, validateSections } from "./proposal-templates-helpers";
 import { getProposalTemplatesForOrg, invalidateOrg } from "../cached";
@@ -10,7 +11,7 @@ export const proposalTemplatesRouter = router({
   }),
 
   get: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const template = await ctx.db.proposalTemplate.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -86,7 +87,7 @@ export const proposalTemplatesRouter = router({
     }),
 
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.proposalTemplate.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },

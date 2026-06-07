@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { logAudit } from "../services/audit";
 import { getForOrg } from "../lib/get-for-org";
+import { idInput, paginationInput } from "../lib/schemas";
 import { generatePortalToken } from "@/lib/portal-session";
 import { getClientCreditStatus } from "../services/credit-hold";
 import { buildClientHealthInputForClient } from "../services/analytics-data";
@@ -46,11 +47,9 @@ async function hashPassphraseIfProvided(
 export const clientsRouter = router({
   list: protectedProcedure
     .input(
-      z.object({
+      paginationInput.extend({
         includeArchived: z.boolean().default(false),
         search: z.string().max(100).optional(),
-        page: z.number().int().min(1).default(1),
-        pageSize: z.number().int().min(1).max(100).default(25),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -81,7 +80,7 @@ export const clientsRouter = router({
     }),
 
   get: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       return getForOrg(ctx.db.client, input.id, ctx.orgId, { entityName: "Client" });
     }),
@@ -233,7 +232,7 @@ export const clientsRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const result = await ctx.db.client.delete({
         where: { id: input.id, organizationId: ctx.orgId },

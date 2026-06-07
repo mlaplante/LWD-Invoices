@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { TRPCError } from "@trpc/server";
 import { calculateLateFee } from "@/server/services/late-fees";
 
@@ -19,7 +20,7 @@ export const lateFeesRouter = router({
 
   /** Waive a late fee entry (OWNER or ADMIN only) */
   waive: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const entry = await ctx.db.lateFeeEntry.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },

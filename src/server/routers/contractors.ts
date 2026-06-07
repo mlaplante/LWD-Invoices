@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { getForOrg } from "../lib/get-for-org";
 import { logAudit } from "../services/audit";
 import { encryptString, decryptString } from "../services/encryption";
@@ -127,7 +128,7 @@ export const contractorsRouter = router({
     }),
 
   getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const contractor = await ctx.db.contractor.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -220,7 +221,7 @@ export const contractorsRouter = router({
   // Decrypt and return the full TIN — restricted to org admins, and only when
   // they need it to file. Logged as a VIEWED audit event.
   revealTin: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const contractor = await getForOrg(ctx.db.contractor, input.id, ctx.orgId, {
         entityName: "Contractor",
@@ -252,7 +253,7 @@ export const contractorsRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await getForOrg(ctx.db.contractor, input.id, ctx.orgId, {
         entityName: "Contractor",
@@ -320,7 +321,7 @@ export const contractorsRouter = router({
     }),
 
   deletePayment: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       await getForOrg(ctx.db.contractorPayment, input.id, ctx.orgId, {
         entityName: "Payment",

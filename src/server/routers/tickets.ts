@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { TicketStatus, TicketPriority } from "@/generated/prisma";
 import { assertInOrg } from "../lib/get-for-org";
 
@@ -23,7 +24,7 @@ export const ticketsRouter = router({
     }),
 
   get: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const ticket = await ctx.db.ticket.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },

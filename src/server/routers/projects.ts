@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { Prisma, ProjectStatus } from "@/generated/prisma";
+import { idInput, paginationInput } from "../lib/schemas";
 import { generateProjectCloseCheckIn } from "../services/check-in-generator";
 
 const projectWriteSchema = z.object({
@@ -51,12 +52,10 @@ const fullProjectInclude = {
 export const projectsRouter = router({
   list: protectedProcedure
     .input(
-      z.object({
+      paginationInput.extend({
         status: z.nativeEnum(ProjectStatus).optional(),
         clientId: z.string().optional(),
         includeArchived: z.boolean().default(false),
-        page: z.number().int().min(1).default(1),
-        pageSize: z.number().int().min(1).max(100).default(25),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -90,7 +89,7 @@ export const projectsRouter = router({
     }),
 
   get: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const [project, timeAgg, expenseAgg] = await Promise.all([
         ctx.db.project.findUnique({
@@ -212,7 +211,7 @@ export const projectsRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.project.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },

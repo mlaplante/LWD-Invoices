@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "@/generated/prisma";
 import {
@@ -90,7 +91,7 @@ export const automationRulesRouter = router({
   }),
 
   get: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const rule = await ctx.db.automationRule.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -164,7 +165,7 @@ export const automationRulesRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.automationRule.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },

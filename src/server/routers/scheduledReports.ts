@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 
 export const scheduledReportsRouter = router({
   list: requireRole("OWNER", "ADMIN")
@@ -69,7 +70,7 @@ export const scheduledReportsRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.scheduledReport.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },

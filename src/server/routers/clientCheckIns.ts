@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import {
   ClientCheckInOutcome,
   ClientCheckInStatus,
@@ -57,7 +58,7 @@ export const clientCheckInsRouter = router({
   }),
 
   getDraft: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const checkIn = await ctx.db.clientCheckIn.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -159,7 +160,7 @@ export const clientCheckInsRouter = router({
     }),
 
   reopen: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.clientCheckIn.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },

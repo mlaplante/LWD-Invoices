@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { invalidateOrg } from "../cached";
 
 const currencySchema = z.object({
@@ -54,7 +55,7 @@ export const currenciesRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const result = await ctx.db.currency.delete({
         where: { id: input.id, organizationId: ctx.orgId },
