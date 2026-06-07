@@ -202,7 +202,7 @@ describe("Contractors Router", () => {
 
       const res = await caller.deletePayment({ id: "p_1" });
       expect(res).toEqual({ id: "p_1" });
-      expect(ctx.db.contractorPayment.delete).toHaveBeenCalledWith({ where: { id: "p_1" } });
+      expect(ctx.db.contractorPayment.delete).toHaveBeenCalledWith({ where: { id: "p_1", organizationId: "test-org-123" } });
     });
   });
 });

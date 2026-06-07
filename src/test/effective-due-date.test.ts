@@ -1,8 +1,33 @@
 import { describe, it, expect } from "vitest";
-import { getEffectiveDueDate } from "@/server/services/partial-payments";
+import {
+  getEffectiveDueDate,
+  resolvePartialPaymentAmount,
+} from "@/server/services/partial-payments";
 import { Prisma } from "@/generated/prisma";
 
 const dec = (n: number) => new Prisma.Decimal(n);
+
+describe("resolvePartialPaymentAmount", () => {
+  const invoiceTotal = dec(2000);
+
+  it("returns a flat amount unchanged", () => {
+    expect(
+      resolvePartialPaymentAmount({ amount: dec(750), isPercentage: false }, invoiceTotal),
+    ).toBe(750);
+  });
+
+  it("resolves a percentage against the invoice total", () => {
+    expect(
+      resolvePartialPaymentAmount({ amount: dec(25), isPercentage: true }, invoiceTotal),
+    ).toBe(500);
+  });
+
+  it("does not depend on the invoice total for flat amounts", () => {
+    expect(
+      resolvePartialPaymentAmount({ amount: dec(750), isPercentage: false }, dec(99999)),
+    ).toBe(750);
+  });
+});
 
 const makePayment = (overrides: Partial<{
   sortOrder: number;

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { invalidateOrg } from "../cached";
 
 const taxSchema = z.object({
@@ -40,7 +41,7 @@ export const taxesRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const result = await ctx.db.tax.delete({
         where: { id: input.id, organizationId: ctx.orgId },

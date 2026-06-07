@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 
 export const scheduledReportsRouter = router({
   list: requireRole("OWNER", "ADMIN")
@@ -65,11 +66,11 @@ export const scheduledReportsRouter = router({
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Scheduled report not found" });
       }
-      return ctx.db.scheduledReport.update({ where: { id }, data });
+      return ctx.db.scheduledReport.update({ where: { id, organizationId: ctx.orgId }, data });
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.scheduledReport.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -77,7 +78,7 @@ export const scheduledReportsRouter = router({
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Scheduled report not found" });
       }
-      await ctx.db.scheduledReport.delete({ where: { id: input.id } });
+      await ctx.db.scheduledReport.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       return { success: true };
     }),
 });

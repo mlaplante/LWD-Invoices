@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 
 export const commentsRouter = router({
   list: protectedProcedure
@@ -48,7 +49,7 @@ export const commentsRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const comment = await ctx.db.comment.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -59,6 +60,6 @@ export const commentsRouter = router({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      return ctx.db.comment.delete({ where: { id: input.id } });
+      return ctx.db.comment.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 });

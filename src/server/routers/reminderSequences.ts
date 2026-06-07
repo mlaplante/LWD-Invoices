@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, requireRole, protectedProcedure } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { generateSmartReminderDraft } from "@/server/services/smart-reminder-drafts";
 import { getClientPaymentBehaviorSummary } from "@/server/services/client-payment-score";
 
@@ -28,7 +29,7 @@ export const reminderSequencesRouter = router({
     }),
 
   getById: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const sequence = await ctx.db.reminderSequence.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -128,7 +129,7 @@ export const reminderSequencesRouter = router({
         }
 
         return tx.reminderSequence.update({
-          where: { id },
+          where: { id, organizationId: ctx.orgId },
           data,
           include: { steps: { orderBy: { sort: "asc" } } },
         });
@@ -136,7 +137,7 @@ export const reminderSequencesRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.reminderSequence.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -149,7 +150,7 @@ export const reminderSequencesRouter = router({
         data: { reminderSequenceId: null },
       });
 
-      await ctx.db.reminderSequence.delete({ where: { id: input.id } });
+      await ctx.db.reminderSequence.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       return { success: true };
     }),
 

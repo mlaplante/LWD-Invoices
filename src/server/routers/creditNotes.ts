@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { InvoiceType, InvoiceStatus } from "@/generated/prisma";
 import { generateCreditNoteNumber } from "../services/credit-note-numbering";
 import {
@@ -63,7 +64,7 @@ export const creditNotesRouter = router({
     }),
 
   get: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const creditNote = await ctx.db.invoice.findFirst({
         where: {
@@ -306,7 +307,7 @@ export const creditNotesRouter = router({
     }),
 
   issue: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const cn = await ctx.db.invoice.findFirst({
         where: {
@@ -391,7 +392,7 @@ export const creditNotesRouter = router({
     }),
 
   void: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const cn = await ctx.db.invoice.findFirst({
         where: {

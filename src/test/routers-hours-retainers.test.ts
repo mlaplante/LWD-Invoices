@@ -285,7 +285,7 @@ describe("hoursRetainers.delete", () => {
 
     const out = await caller.delete({ id: "hr_1" });
     expect(out).toEqual({ ok: true });
-    expect(ctx.db.hoursRetainer.delete).toHaveBeenCalledWith({ where: { id: "hr_1" } });
+    expect(ctx.db.hoursRetainer.delete).toHaveBeenCalledWith({ where: { id: "hr_1", organizationId: "test-org-123" } });
     expect(ctx.db.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

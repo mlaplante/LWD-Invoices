@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { PrismaClient, LineType, Prisma } from "@/generated/prisma";
 import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
 import { generateExpensesForRecurring } from "../services/recurring-expense-generator";
@@ -110,7 +111,7 @@ export const expensesRouter = router({
     }),
 
   getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const expense = await ctx.db.expense.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -212,7 +213,7 @@ export const expensesRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.expense.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },

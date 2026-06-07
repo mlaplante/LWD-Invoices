@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { LineType } from "@/generated/prisma";
 import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
 import { getForOrg } from "../lib/get-for-org";
@@ -101,7 +102,7 @@ export const tasksRouter = router({
     }),
 
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       await getForOrg(ctx.db.projectTask, input.id, ctx.orgId, { entityName: "Task" });
       return ctx.db.projectTask.delete({ where: { id: input.id, organizationId: ctx.orgId } });

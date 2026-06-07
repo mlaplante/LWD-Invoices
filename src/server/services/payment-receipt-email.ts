@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { sendEmail } from "./email-sender";
 import { sanitizeCcList } from "./cc-emails";
+import { resolvePartialPaymentAmount } from "./partial-payments";
 import { formatDate } from "@/lib/format";
 
 /**
@@ -52,12 +53,7 @@ export async function sendPaymentReceiptEmail({
     const totalInvoiceAmount = fullInvoice.total.toNumber();
     const totalPaid = sortedPayments
       .filter(pp => pp.isPaid)
-      .reduce((sum, pp) => {
-        const amount = pp.isPercentage
-          ? (pp.amount.toNumber() / 100) * totalInvoiceAmount
-          : pp.amount.toNumber();
-        return sum + amount;
-      }, 0);
+      .reduce((sum, pp) => sum + resolvePartialPaymentAmount(pp, fullInvoice.total), 0);
 
     const remaining = totalInvoiceAmount - totalPaid;
     if (remaining > 0.01) {

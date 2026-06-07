@@ -3,6 +3,7 @@ import { Decimal } from "@prisma/client-runtime-utils";
 import { Prisma } from "@/generated/prisma";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { resolvePeriodLabel, defaultPeriodBounds } from "@/server/services/hours-retainers";
 
 export const hoursRetainersRouter = router({
@@ -21,7 +22,7 @@ export const hoursRetainersRouter = router({
     }),
 
   getDetail: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const retainer = await ctx.db.hoursRetainer.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -142,7 +143,7 @@ export const hoursRetainersRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const retainer = await ctx.db.hoursRetainer.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -159,7 +160,7 @@ export const hoursRetainersRouter = router({
         });
       }
 
-      await ctx.db.hoursRetainer.delete({ where: { id: input.id } });
+      await ctx.db.hoursRetainer.delete({ where: { id: input.id, organizationId: ctx.orgId } });
 
       await ctx.db.auditLog.create({
         data: {

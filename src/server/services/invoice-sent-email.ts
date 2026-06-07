@@ -1,5 +1,6 @@
 import { sendEmail } from "./email-sender";
 import { sanitizeCcList } from "./cc-emails";
+import { resolvePartialPaymentAmount } from "./partial-payments";
 import { formatDate } from "@/lib/format";
 import type { FullInvoice } from "./invoice-pdf";
 
@@ -22,16 +23,11 @@ export async function sendInvoiceSentEmail(
 
   const partialPayments = invoice.partialPayments
     ?.sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((pp) => {
-      const amount = pp.isPercentage
-        ? ((pp.amount.toNumber() / 100) * invoice.total.toNumber()).toFixed(2)
-        : pp.amount.toNumber().toFixed(2);
-      return {
-        amount,
-        dueDate: pp.dueDate ? formatDate(pp.dueDate) : null,
-        isPaid: pp.isPaid,
-      };
-    });
+    .map((pp) => ({
+      amount: resolvePartialPaymentAmount(pp, invoice.total).toFixed(2),
+      dueDate: pp.dueDate ? formatDate(pp.dueDate) : null,
+      isPaid: pp.isPaid,
+    }));
 
   const html = await render(
     InvoiceSentEmail({

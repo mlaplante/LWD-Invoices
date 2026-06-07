@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, requireRole } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "@/generated/prisma";
 import {
@@ -90,7 +91,7 @@ export const automationRulesRouter = router({
   }),
 
   get: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const rule = await ctx.db.automationRule.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -135,7 +136,7 @@ export const automationRulesRouter = router({
         await tx.automationCondition.deleteMany({ where: { ruleId: input.id } });
         await tx.automationAction.deleteMany({ where: { ruleId: input.id } });
         return tx.automationRule.update({
-          where: { id: input.id },
+          where: { id: input.id, organizationId: ctx.orgId },
           data: {
             name: input.name,
             trigger: input.trigger,
@@ -158,20 +159,20 @@ export const automationRulesRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Automation rule not found" });
       return ctx.db.automationRule.update({
-        where: { id: input.id },
+        where: { id: input.id, organizationId: ctx.orgId },
         data: { enabled: input.enabled },
       });
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.automationRule.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
         select: { id: true },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Automation rule not found" });
-      await ctx.db.automationRule.delete({ where: { id: input.id } });
+      await ctx.db.automationRule.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       return { success: true };
     }),
 

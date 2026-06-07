@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { getTaskStatusesForOrg, invalidateOrg } from "../cached";
 
 export const taskStatusesRouter = router({
@@ -41,19 +42,19 @@ export const taskStatusesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      const updated = await ctx.db.taskStatus.update({ where: { id }, data });
+      const updated = await ctx.db.taskStatus.update({ where: { id, organizationId: ctx.orgId }, data });
       invalidateOrg(ctx.orgId, "taskStatuses");
       return updated;
     }),
 
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.taskStatus.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      const deleted = await ctx.db.taskStatus.delete({ where: { id: input.id } });
+      const deleted = await ctx.db.taskStatus.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       invalidateOrg(ctx.orgId, "taskStatuses");
       return deleted;
     }),

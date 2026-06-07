@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
+import { idInput } from "../lib/schemas";
 import { PrismaClient, LineType } from "@/generated/prisma";
 import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
 import { roundMinutes } from "../services/time-rounding";
@@ -134,7 +135,7 @@ export const timeEntriesRouter = router({
     }),
 
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.timeEntry.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },

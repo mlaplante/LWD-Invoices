@@ -10,6 +10,25 @@ type PartialPaymentRecord = {
 };
 
 /**
+ * Resolve a single installment to its concrete currency amount.
+ *
+ * An installment's `amount` is either a flat figure or a percentage of the
+ * invoice total, switched by `isPercentage`. This one-liner was previously
+ * copy-pasted across six call sites (invoice/receipt emails, the portal pay
+ * flow, autopay, PDF rendering); a divergence in any copy would make a
+ * customer's quoted installment disagree with what we actually charge. Keep
+ * this the single source of truth and call `.toFixed(2)` at display sites.
+ */
+export function resolvePartialPaymentAmount(
+  partial: { amount: Prisma.Decimal; isPercentage: boolean },
+  invoiceTotal: Prisma.Decimal,
+): number {
+  return partial.isPercentage
+    ? (partial.amount.toNumber() / 100) * invoiceTotal.toNumber()
+    : partial.amount.toNumber();
+}
+
+/**
  * Returns the effective due date for an invoice with installments.
  * For PARTIALLY_PAID invoices, this is the next unpaid installment's dueDate.
  * Falls back to the provided invoiceDueDate if no installment date exists.
@@ -44,9 +63,7 @@ export function getNextInstallmentInfo(
   return {
     installmentNumber: sorted.indexOf(nextUnpaid) + 1,
     totalInstallments: sorted.length,
-    amount: nextUnpaid.isPercentage
-      ? ((nextUnpaid.amount.toNumber() / 100) * invoiceTotal.toNumber()).toFixed(2)
-      : nextUnpaid.amount.toNumber().toFixed(2),
+    amount: resolvePartialPaymentAmount(nextUnpaid, invoiceTotal).toFixed(2),
     dueDate: nextUnpaid.dueDate?.toLocaleDateString() ?? null,
   };
 }

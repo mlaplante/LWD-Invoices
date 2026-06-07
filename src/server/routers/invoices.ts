@@ -2,14 +2,11 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { Prisma, PrismaClient, InvoiceStatus, InvoiceType, LineType } from "@/generated/prisma";
-import {
-  calculateLineTotals,
-  calculateInvoiceTotals,
-  calculateInvoiceTotalsWithDiscount,
-  type LineInput,
-} from "../services/tax-calculator";
-import { buildTaxInputs, getOrgTaxMap, type TaxInput } from "@/server/lib/tax-helpers";
+import { getOrgTaxMap } from "@/server/lib/tax-helpers";
 import { resolveInvoiceTax, type ResolverLineInput } from "../services/invoice-tax-resolver";
+import { assertInOrg } from "../lib/get-for-org";
+import { resolvePartialPaymentAmount } from "../services/partial-payments";
+import { idInput, paginationInput } from "../lib/schemas";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
@@ -91,18 +88,6 @@ const invoiceWriteWithScheduleSchema = invoiceWriteSchema.extend({
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function toLineInput(line: z.infer<typeof lineSchema>): LineInput {
-  return {
-    qty: line.qty,
-    rate: line.rate,
-    period: line.period,
-    lineType: line.lineType,
-    discount: line.discount,
-    discountIsPercentage: line.discountIsPercentage,
-    taxIds: line.taxIds,
-  };
-}
-
 function toResolverLine(line: z.infer<typeof lineSchema>): ResolverLineInput {
   return {
     reference: String(line.sort),
@@ -136,7 +121,7 @@ async function updateEstimateStatus(
 export const invoicesRouter = router({
   list: protectedProcedure
     .input(
-      z.object({
+      paginationInput.extend({
         status: z.array(z.nativeEnum(InvoiceStatus)).optional(),
         type: z.nativeEnum(InvoiceType).optional(),
         clientId: z.string().optional(),
@@ -145,8 +130,6 @@ export const invoicesRouter = router({
         dateFrom: z.coerce.date().optional(),
         dateTo: z.coerce.date().optional(),
         search: z.string().max(100).optional(),
-        page: z.number().int().min(1).default(1),
-        pageSize: z.number().int().min(1).max(100).default(25),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -191,7 +174,7 @@ export const invoicesRouter = router({
     }),
 
   get: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -394,6 +377,11 @@ export const invoicesRouter = router({
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
+      // The new invoice carries organizationId: ctx.orgId, but that does not
+      // verify the referenced client is in this tenant. Check it before any
+      // client-scoped read/write (tax resolution, credit-balance application).
+      await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
+
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
 
       // Resolve tax outside the transaction: Stripe Tax path makes an external
@@ -561,6 +549,12 @@ export const invoicesRouter = router({
         });
       }
 
+      // Re-pointing an invoice at a client from another tenant would leak that
+      // client into tax resolution and the persisted row; verify ownership.
+      if (input.clientId !== undefined) {
+        await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
+      }
+
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
       const { id, lines, partialPayments, discountType, discountAmount, discountDescription, ...rest } = input;
 
@@ -671,7 +665,7 @@ export const invoicesRouter = router({
     }),
 
   convertEstimateToInvoice: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const source = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -738,7 +732,7 @@ export const invoicesRouter = router({
     }),
 
   duplicate: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const source = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -808,7 +802,7 @@ export const invoicesRouter = router({
     }),
 
   delete: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -1039,7 +1033,7 @@ export const invoicesRouter = router({
     }),
 
   previewEmail: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -1059,16 +1053,11 @@ export const invoicesRouter = router({
 
       const partialPayments = invoice.partialPayments
         ?.sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((pp) => {
-          const amount = pp.isPercentage
-            ? ((pp.amount.toNumber() / 100) * invoice.total.toNumber()).toFixed(2)
-            : pp.amount.toNumber().toFixed(2);
-          return {
-            amount,
-            dueDate: pp.dueDate?.toLocaleDateString() ?? null,
-            isPaid: pp.isPaid,
-          };
-        });
+        .map((pp) => ({
+          amount: resolvePartialPaymentAmount(pp, invoice.total).toFixed(2),
+          dueDate: pp.dueDate?.toLocaleDateString() ?? null,
+          isPaid: pp.isPaid,
+        }));
 
       const html = await render(
         InvoiceSentEmail({
@@ -1278,9 +1267,7 @@ export const invoicesRouter = router({
 
       // Send payment receipt email directly (with BCC to owner)
       try {
-        const installmentAmount = partial.isPercentage
-          ? (partial.amount.toNumber() / 100) * partial.invoice.total.toNumber()
-          : partial.amount.toNumber();
+        const installmentAmount = resolvePartialPaymentAmount(partial, partial.invoice.total);
         await sendPaymentReceiptEmail({
           invoiceId: partial.invoiceId,
           amountPaid: installmentAmount,
@@ -1298,7 +1285,7 @@ export const invoicesRouter = router({
   // without re-rendering the full receipt HTML (no template needed at confirm
   // time — the user is just choosing recipients).
   receiptRecipients: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .query(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -1345,11 +1332,11 @@ export const invoicesRouter = router({
     }),
 
   acceptEstimate: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => updateEstimateStatus(ctx, input.id, "ACCEPTED")),
 
   declineEstimate: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => updateEstimateStatus(ctx, input.id, "REJECTED")),
 
   // Issues a fresh portalToken for an invoice, invalidating every existing
@@ -1357,7 +1344,7 @@ export const invoicesRouter = router({
   // beyond the intended audience (forwarded email, indexed accidentally,
   // exposed in a screenshot).
   rotatePortalToken: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.invoice.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
