@@ -100,7 +100,7 @@ describe("Automation Rules Router", () => {
       ctx.db.automationRule.update.mockResolvedValue({ id: "rule_1", enabled: false });
       await caller.setEnabled({ id: "rule_1", enabled: false });
       expect(ctx.db.automationRule.update).toHaveBeenCalledWith({
-        where: { id: "rule_1" },
+        where: { id: "rule_1", organizationId: "test-org-123" },
         data: { enabled: false },
       });
     });

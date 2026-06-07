@@ -259,7 +259,7 @@ export const contractorsRouter = router({
         entityName: "Contractor",
       });
       // Payments cascade on delete (see schema FK).
-      await ctx.db.contractor.delete({ where: { id: input.id } });
+      await ctx.db.contractor.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       await logAudit({
         action: "DELETED",
         entityType: "Contractor",
@@ -326,7 +326,7 @@ export const contractorsRouter = router({
       await getForOrg(ctx.db.contractorPayment, input.id, ctx.orgId, {
         entityName: "Payment",
       });
-      await ctx.db.contractorPayment.delete({ where: { id: input.id } });
+      await ctx.db.contractorPayment.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       return { id: input.id };
     }),
 });

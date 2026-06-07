@@ -66,7 +66,7 @@ export const scheduledReportsRouter = router({
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Scheduled report not found" });
       }
-      return ctx.db.scheduledReport.update({ where: { id }, data });
+      return ctx.db.scheduledReport.update({ where: { id, organizationId: ctx.orgId }, data });
     }),
 
   delete: requireRole("OWNER", "ADMIN")
@@ -78,7 +78,7 @@ export const scheduledReportsRouter = router({
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Scheduled report not found" });
       }
-      await ctx.db.scheduledReport.delete({ where: { id: input.id } });
+      await ctx.db.scheduledReport.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       return { success: true };
     }),
 });

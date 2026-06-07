@@ -75,7 +75,7 @@ export const proposalTemplatesRouter = router({
       }
 
       const updated = await ctx.db.proposalTemplate.update({
-        where: { id: input.id },
+        where: { id: input.id, organizationId: ctx.orgId },
         data: {
           ...(input.name !== undefined && { name: input.name }),
           ...(input.sections !== undefined && { sections: input.sections }),
@@ -94,7 +94,7 @@ export const proposalTemplatesRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      await ctx.db.proposalTemplate.delete({ where: { id: input.id } });
+      await ctx.db.proposalTemplate.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       invalidateOrg(ctx.orgId, "proposalTemplates");
       return { success: true };
     }),

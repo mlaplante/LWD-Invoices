@@ -160,7 +160,7 @@ export const hoursRetainersRouter = router({
         });
       }
 
-      await ctx.db.hoursRetainer.delete({ where: { id: input.id } });
+      await ctx.db.hoursRetainer.delete({ where: { id: input.id, organizationId: ctx.orgId } });
 
       await ctx.db.auditLog.create({
         data: {

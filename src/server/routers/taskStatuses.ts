@@ -42,7 +42,7 @@ export const taskStatusesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      const updated = await ctx.db.taskStatus.update({ where: { id }, data });
+      const updated = await ctx.db.taskStatus.update({ where: { id, organizationId: ctx.orgId }, data });
       invalidateOrg(ctx.orgId, "taskStatuses");
       return updated;
     }),
@@ -54,7 +54,7 @@ export const taskStatusesRouter = router({
         where: { id: input.id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      const deleted = await ctx.db.taskStatus.delete({ where: { id: input.id } });
+      const deleted = await ctx.db.taskStatus.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       invalidateOrg(ctx.orgId, "taskStatuses");
       return deleted;
     }),

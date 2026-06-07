@@ -60,6 +60,6 @@ export const commentsRouter = router({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      return ctx.db.comment.delete({ where: { id: input.id } });
+      return ctx.db.comment.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 });

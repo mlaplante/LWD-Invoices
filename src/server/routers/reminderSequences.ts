@@ -129,7 +129,7 @@ export const reminderSequencesRouter = router({
         }
 
         return tx.reminderSequence.update({
-          where: { id },
+          where: { id, organizationId: ctx.orgId },
           data,
           include: { steps: { orderBy: { sort: "asc" } } },
         });
@@ -150,7 +150,7 @@ export const reminderSequencesRouter = router({
         data: { reminderSequenceId: null },
       });
 
-      await ctx.db.reminderSequence.delete({ where: { id: input.id } });
+      await ctx.db.reminderSequence.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       return { success: true };
     }),
 

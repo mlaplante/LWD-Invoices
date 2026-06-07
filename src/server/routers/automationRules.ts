@@ -136,7 +136,7 @@ export const automationRulesRouter = router({
         await tx.automationCondition.deleteMany({ where: { ruleId: input.id } });
         await tx.automationAction.deleteMany({ where: { ruleId: input.id } });
         return tx.automationRule.update({
-          where: { id: input.id },
+          where: { id: input.id, organizationId: ctx.orgId },
           data: {
             name: input.name,
             trigger: input.trigger,
@@ -159,7 +159,7 @@ export const automationRulesRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Automation rule not found" });
       return ctx.db.automationRule.update({
-        where: { id: input.id },
+        where: { id: input.id, organizationId: ctx.orgId },
         data: { enabled: input.enabled },
       });
     }),
@@ -172,7 +172,7 @@ export const automationRulesRouter = router({
         select: { id: true },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Automation rule not found" });
-      await ctx.db.automationRule.delete({ where: { id: input.id } });
+      await ctx.db.automationRule.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       return { success: true };
     }),
 

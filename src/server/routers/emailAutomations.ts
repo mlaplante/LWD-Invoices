@@ -51,7 +51,7 @@ export const emailAutomationsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Automation not found" });
       }
       const updated = await ctx.db.emailAutomation.update({
-        where: { id },
+        where: { id, organizationId: ctx.orgId },
         data,
       });
       invalidateOrg(ctx.orgId, "emailAutomations");
@@ -67,7 +67,7 @@ export const emailAutomationsRouter = router({
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Automation not found" });
       }
-      await ctx.db.emailAutomation.delete({ where: { id: input.id } });
+      await ctx.db.emailAutomation.delete({ where: { id: input.id, organizationId: ctx.orgId } });
       invalidateOrg(ctx.orgId, "emailAutomations");
       return { success: true };
     }),

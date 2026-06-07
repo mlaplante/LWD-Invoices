@@ -95,7 +95,7 @@ describe("Email Automations Router", () => {
 
       expect(result.delayDays).toBe(3);
       expect(ctx.db.emailAutomation.update).toHaveBeenCalledWith({
-        where: { id: "ea_1" },
+        where: { id: "ea_1", organizationId: "test-org-123" },
         data: { delayDays: 3 },
       });
     });
@@ -121,7 +121,7 @@ describe("Email Automations Router", () => {
 
       expect(result).toEqual({ success: true });
       expect(ctx.db.emailAutomation.delete).toHaveBeenCalledWith({
-        where: { id: "ea_1" },
+        where: { id: "ea_1", organizationId: "test-org-123" },
       });
     });
 

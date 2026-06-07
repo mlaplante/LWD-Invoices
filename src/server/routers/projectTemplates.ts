@@ -84,7 +84,7 @@ export const projectTemplatesRouter = router({
         }
 
         return tx.projectTemplate.update({
-          where: { id },
+          where: { id, organizationId: ctx.orgId },
           data: {
             ...rest,
             ...(tasks !== undefined
@@ -114,7 +114,7 @@ export const projectTemplatesRouter = router({
         where: { id: input.id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.projectTemplate.delete({ where: { id: input.id } });
+      return ctx.db.projectTemplate.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
   applyToProject: protectedProcedure
