@@ -5,6 +5,7 @@ import { sendEmail } from "@/server/services/email-sender";
 import { GatewayType, InvoiceStatus, InvoiceType, ProjectStatus } from "@/generated/prisma";
 import { decryptJson } from "../services/encryption";
 import { getStripeClient, createCheckoutSession } from "../services/stripe";
+import { resolvePartialPaymentAmount } from "../services/partial-payments";
 import type { StripeConfig } from "../services/gateway-config";
 import {
   generateSessionToken,
@@ -146,10 +147,7 @@ export const portalRouter = router({
         if (partial.isPaid) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Installment already paid" });
         }
-        const invoiceTotal = invoice.total.toNumber();
-        amountOverride = partial.isPercentage
-          ? (partial.amount.toNumber() / 100) * invoiceTotal
-          : partial.amount.toNumber();
+        amountOverride = resolvePartialPaymentAmount(partial, invoice.total);
         partialPaymentId = partial.id;
       } else if (input.payFullBalance) {
         const invoiceTotal = invoice.total.toNumber();

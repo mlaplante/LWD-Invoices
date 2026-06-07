@@ -11,6 +11,7 @@ import {
 import { buildTaxInputs, getOrgTaxMap, type TaxInput } from "@/server/lib/tax-helpers";
 import { resolveInvoiceTax, type ResolverLineInput } from "../services/invoice-tax-resolver";
 import { assertInOrg } from "../lib/get-for-org";
+import { resolvePartialPaymentAmount } from "../services/partial-payments";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
@@ -1071,16 +1072,11 @@ export const invoicesRouter = router({
 
       const partialPayments = invoice.partialPayments
         ?.sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((pp) => {
-          const amount = pp.isPercentage
-            ? ((pp.amount.toNumber() / 100) * invoice.total.toNumber()).toFixed(2)
-            : pp.amount.toNumber().toFixed(2);
-          return {
-            amount,
-            dueDate: pp.dueDate?.toLocaleDateString() ?? null,
-            isPaid: pp.isPaid,
-          };
-        });
+        .map((pp) => ({
+          amount: resolvePartialPaymentAmount(pp, invoice.total).toFixed(2),
+          dueDate: pp.dueDate?.toLocaleDateString() ?? null,
+          isPaid: pp.isPaid,
+        }));
 
       const html = await render(
         InvoiceSentEmail({
@@ -1290,9 +1286,7 @@ export const invoicesRouter = router({
 
       // Send payment receipt email directly (with BCC to owner)
       try {
-        const installmentAmount = partial.isPercentage
-          ? (partial.amount.toNumber() / 100) * partial.invoice.total.toNumber()
-          : partial.amount.toNumber();
+        const installmentAmount = resolvePartialPaymentAmount(partial, partial.invoice.total);
         await sendPaymentReceiptEmail({
           invoiceId: partial.invoiceId,
           amountPaid: installmentAmount,
