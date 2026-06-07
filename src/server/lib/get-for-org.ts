@@ -53,3 +53,28 @@ export async function getForOrg<T>(
   }
   return row;
 }
+
+/**
+ * Assert that a foreign id supplied by the caller (a `clientId`, `projectId`,
+ * etc. in mutation input) belongs to the caller's organization, throwing
+ * NOT_FOUND otherwise.
+ *
+ * Use this before trusting an id you didn't just fetch — writing
+ * `{ clientId: input.clientId, organizationId: ctx.orgId }` on a new row only
+ * scopes the *new* row; it never checks that the referenced client is in the
+ * same tenant. Skipping this check lets a caller reference another org's
+ * record by id (cross-tenant read/write). Fetches a single column to keep the
+ * existence check cheap.
+ */
+export async function assertInOrg(
+  model: FindFirstDelegate<{ id: string }>,
+  id: string,
+  organizationId: string,
+  options: { idField?: string; entityName?: string } = {},
+): Promise<void> {
+  await getForOrg(model, id, organizationId, {
+    select: { id: true },
+    idField: options.idField,
+    entityName: options.entityName,
+  });
+}

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { TicketStatus, TicketPriority } from "@/generated/prisma";
+import { assertInOrg } from "../lib/get-for-org";
 
 export const ticketsRouter = router({
   list: protectedProcedure
@@ -40,6 +41,10 @@ export const ticketsRouter = router({
       clientId: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      if (input.clientId) {
+        await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
+      }
+
       const lastTicket = await ctx.db.ticket.findFirst({
         where: { organizationId: ctx.orgId },
         orderBy: { number: "desc" },

@@ -10,6 +10,7 @@ import {
 } from "../services/tax-calculator";
 import { buildTaxInputs, getOrgTaxMap, type TaxInput } from "@/server/lib/tax-helpers";
 import { resolveInvoiceTax, type ResolverLineInput } from "../services/invoice-tax-resolver";
+import { assertInOrg } from "../lib/get-for-org";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { logAudit } from "../services/audit";
 import { notifyOrgAdmins } from "../services/notifications";
@@ -394,6 +395,11 @@ export const invoicesRouter = router({
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 
+      // The new invoice carries organizationId: ctx.orgId, but that does not
+      // verify the referenced client is in this tenant. Check it before any
+      // client-scoped read/write (tax resolution, credit-balance application).
+      await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
+
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
 
       // Resolve tax outside the transaction: Stripe Tax path makes an external
@@ -559,6 +565,12 @@ export const invoicesRouter = router({
           code: "BAD_REQUEST",
           message: "Only DRAFT or SENT invoices can be edited.",
         });
+      }
+
+      // Re-pointing an invoice at a client from another tenant would leak that
+      // client into tax resolution and the persisted row; verify ownership.
+      if (input.clientId !== undefined) {
+        await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
       }
 
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);

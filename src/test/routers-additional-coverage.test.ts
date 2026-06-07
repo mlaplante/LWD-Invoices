@@ -1603,6 +1603,7 @@ describe("Tickets Router", () => {
 
   describe("create – additional cases", () => {
     it("creates ticket with priority and clientId", async () => {
+      ctx.db.client.findFirst.mockResolvedValue({ id: "cli_1" });
       ctx.db.ticket.findFirst.mockResolvedValueOnce({ number: 10 });
       ctx.db.ticket.create.mockResolvedValue({
         id: "ticket_2",

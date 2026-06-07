@@ -70,6 +70,7 @@ describe("Invoices Router Procedures", () => {
       };
 
       ctx.db.organization.findFirst.mockResolvedValue(mockOrg);
+      ctx.db.client.findFirst.mockResolvedValue({ id: "client_123", isTaxExempt: false });
       ctx.db.organization.update.mockResolvedValue({
         ...mockOrg,
         invoiceNextNumber: 101, // Incremented after update
@@ -170,6 +171,34 @@ describe("Invoices Router Procedures", () => {
       }
     });
 
+    it("rejects a clientId that belongs to another organization", async () => {
+      ctx.db.organization.findFirst.mockResolvedValue({
+        id: "test-org-123",
+        invoicePrefix: "INV",
+        invoiceNextNumber: 100,
+        name: "Test Org",
+        logoUrl: null,
+        slug: "test-org",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      // Client exists, but not in this org: the org-scoped lookup returns null.
+      ctx.db.client.findFirst.mockResolvedValue(null);
+
+      await expect(
+        caller.create({
+          type: InvoiceType.DETAILED,
+          date: new Date(),
+          currencyId: "usd",
+          clientId: "client_from_other_org",
+          lines: [],
+        })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+      // The cross-tenant invoice must never be written.
+      expect(ctx.db.invoice.create).not.toHaveBeenCalled();
+    });
+
     it("creates invoice with multiple line items and taxes", async () => {
       ctx.db.organization.findFirst.mockResolvedValue({
         id: "test-org-123",
@@ -192,6 +221,8 @@ describe("Invoices Router Procedures", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+
+      ctx.db.client.findFirst.mockResolvedValue({ id: "client_123", isTaxExempt: false });
 
       ctx.db.tax.findMany.mockResolvedValue([
         {
@@ -356,6 +387,8 @@ describe("Invoices Router Procedures", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+
+      ctx.db.client.findFirst.mockResolvedValue({ id: "client_updated", isTaxExempt: false });
 
       const result = await caller.update({
         id: "inv_123",

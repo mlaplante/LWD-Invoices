@@ -122,8 +122,11 @@ export async function resolveInvoiceTax(input: ResolverInput): Promise<ResolvedI
   // Tax-exempt clients (nonprofits, intercompany, etc.) skip both paths.
   // We still compute subtotals/discounts so totals reconcile, but every
   // tax breakdown comes back empty and taxTotal is forced to 0.
-  const client = await input.db.client.findUnique({
-    where: { id: input.clientId },
+  // Scope by organization as well as id: callers should validate clientId
+  // ownership, but keeping the tenant filter here means a missed check upstream
+  // can never read another org's tax-exempt status.
+  const client = await input.db.client.findFirst({
+    where: { id: input.clientId, organizationId: input.org.id },
     select: { isTaxExempt: true },
   });
   if (client?.isTaxExempt) {
@@ -244,8 +247,8 @@ async function resolveViaStripe(input: ResolverInput): Promise<ResolvedInvoice> 
     throw new TRPCError({ code: "NOT_FOUND", message: "Currency not found" });
   }
 
-  const client = await input.db.client.findUnique({
-    where: { id: input.clientId },
+  const client = await input.db.client.findFirst({
+    where: { id: input.clientId, organizationId: input.org.id },
     select: {
       address: true,
       city: true,

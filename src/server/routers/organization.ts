@@ -247,8 +247,8 @@ export const organizationRouter = router({
       }
 
       if (input.clientId) {
-        const client = await ctx.db.client.findUnique({
-          where: { id: input.clientId },
+        const client = await ctx.db.client.findFirst({
+          where: { id: input.clientId, organizationId: ctx.orgId },
           select: { address: true, city: true, state: true, zip: true, country: true },
         });
         if (client) {
