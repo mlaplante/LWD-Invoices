@@ -2577,4 +2577,20 @@ describe("Reports Router Procedures", () => {
       expect(Object.keys(result)).not.toContain("2026-9");
     });
   });
+
+  describe("utilization", () => {
+    it("returns billable vs non-billable split with utilization %", async () => {
+      ctx.db.timeEntry.findMany.mockResolvedValue([
+        { minutes: { toNumber: () => 120 }, date: new Date("2026-06-01Z"), retainerId: null, userId: "u1",
+          project: { id: "p1", name: "A", isFlatRate: false, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+        { minutes: { toNumber: () => 60 }, date: new Date("2026-06-02Z"), retainerId: null, userId: "u1",
+          project: { id: "p2", name: "B", isFlatRate: true, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+      ]);
+      const r = await caller.utilization({ groupBy: "month", dimension: "client" });
+      expect(r.summary.billableHours).toBeCloseTo(2, 5);
+      expect(r.summary.nonBillableHours).toBeCloseTo(1, 5);
+      expect(r.summary.utilizationPct).toBeCloseTo(2 / 3, 5);
+      expect(r.rows[0].label).toBe("Acme");
+    });
+  });
 });

@@ -4,6 +4,7 @@ import { router, protectedProcedure } from "../trpc";
 import { InvoiceStatus, InvoiceType, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 import { getArAgingAsOf, getDsoTrend } from "@/server/services/ar-reports";
+import { summarizeUtilization, type UtilizationEntry } from "../services/utilization";
 
 export function groupByMonth<T>(
   items: T[],
@@ -596,6 +597,45 @@ export const reportsRouter = router({
       }
 
       return Array.from(byProject.values()).sort((a, b) => b.totalMinutes - a.totalMinutes);
+    }),
+
+  utilization: protectedProcedure
+    .input(
+      dateRangeSchema.extend({
+        groupBy: z.enum(["week", "month"]).default("month"),
+        dimension: z.enum(["client", "project", "user"]).default("project"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const entries = await ctx.db.timeEntry.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          ...(input.from || input.to
+            ? { date: { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) } }
+            : {}),
+        },
+        select: {
+          minutes: true, date: true, retainerId: true, userId: true,
+          project: {
+            select: { id: true, name: true, isFlatRate: true, rate: true, client: { select: { id: true, name: true } } },
+          },
+        },
+      });
+
+      const mapped: UtilizationEntry[] = entries.map((e) => ({
+        date: e.date,
+        minutes: e.minutes.toNumber(),
+        retainerId: e.retainerId,
+        projectId: e.project?.id ?? null,
+        projectName: e.project?.name ?? null,
+        clientId: e.project?.client.id ?? null,
+        clientName: e.project?.client.name ?? null,
+        userId: e.userId,
+        userName: e.userId,
+        project: e.project ? { isFlatRate: e.project.isFlatRate, rate: e.project.rate.toNumber() } : null,
+      }));
+
+      return summarizeUtilization(mapped, { groupBy: input.groupBy, dimension: input.dimension });
     }),
 
   taxLiability: protectedProcedure
