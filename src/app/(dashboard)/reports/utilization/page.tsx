@@ -160,6 +160,7 @@ export default async function UtilizationReportPage({
             <table className="w-full text-sm">
               <thead className="border-b border-border/50">
                 <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  <th className="px-5 py-3 text-left">Period</th>
                   <th className="px-5 py-3 text-left">{dimensionLabel}</th>
                   <th className="px-5 py-3 text-right">Billable</th>
                   <th className="px-5 py-3 text-right">Non-billable</th>
@@ -173,6 +174,7 @@ export default async function UtilizationReportPage({
                     key={row.key}
                     className="border-b border-border/50 last:border-0 hover:bg-accent/30"
                   >
+                    <td className="px-5 py-3 text-muted-foreground">{row.periodLabel}</td>
                     <td className="px-5 py-3 font-medium">{row.label}</td>
                     <td className="px-5 py-3 text-right tabular-nums text-primary">
                       {row.billableHours.toFixed(1)}h

@@ -24,6 +24,8 @@ export interface UtilizationEntry {
 export interface UtilizationRow {
   key: string;
   label: string;
+  period: string;
+  periodLabel: string;
   billableHours: number;
   nonBillableHours: number;
   totalHours: number;
@@ -34,7 +36,7 @@ export interface UtilizationResult {
   groupBy: UtilizationGroupBy;
   dimension: UtilizationDimension;
   rows: UtilizationRow[];
-  summary: Omit<UtilizationRow, "key" | "label">;
+  summary: Omit<UtilizationRow, "key" | "label" | "period" | "periodLabel">;
 }
 
 export function classifyBillable(entry: {
@@ -44,6 +46,31 @@ export function classifyBillable(entry: {
   if (entry.retainerId) return true;
   if (entry.project && !entry.project.isFlatRate && entry.project.rate > 0) return true;
   return false;
+}
+
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] as const;
+
+export function monthBucket(date: Date): { key: string; label: string } {
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth();
+  const key = `${y}-${String(m + 1).padStart(2, "0")}`;
+  const label = `${MONTH_NAMES[m]} ${y}`;
+  return { key, label };
+}
+
+export function weekBucket(date: Date): { key: string; label: string } {
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth();
+  const day = date.getUTCDate();
+  const d = new Date(Date.UTC(y, m, day));
+  const dow = (d.getUTCDay() + 6) % 7; // 0=Mon, 6=Sun
+  d.setUTCDate(d.getUTCDate() - dow);
+  const wy = d.getUTCFullYear();
+  const wm = d.getUTCMonth();
+  const wd = d.getUTCDate();
+  const key = `${wy}-${String(wm + 1).padStart(2, "0")}-${String(wd).padStart(2, "0")}`;
+  const label = `Week of ${MONTH_NAMES[wm]} ${wd}`;
+  return { key, label };
 }
 
 function pct(billable: number, total: number): number {
@@ -60,6 +87,7 @@ export function summarizeUtilization(
   entries: UtilizationEntry[],
   opts: { groupBy: UtilizationGroupBy; dimension: UtilizationDimension },
 ): UtilizationResult {
+  const bucketFn = opts.groupBy === "week" ? weekBucket : monthBucket;
   const rows = new Map<string, UtilizationRow>();
   let sumBillable = 0;
   let sumNon = 0;
@@ -70,17 +98,34 @@ export function summarizeUtilization(
     if (billable) sumBillable += hrs;
     else sumNon += hrs;
 
-    const { key, label } = dimensionKey(e, opts.dimension);
-    const row = rows.get(key) ?? { key, label, billableHours: 0, nonBillableHours: 0, totalHours: 0, utilizationPct: 0 };
+    const bucket = bucketFn(e.date);
+    const { key: dimKey, label } = dimensionKey(e, opts.dimension);
+    const compoundKey = `${bucket.key}::${dimKey}`;
+
+    const row = rows.get(compoundKey) ?? {
+      key: compoundKey,
+      label,
+      period: bucket.key,
+      periodLabel: bucket.label,
+      billableHours: 0,
+      nonBillableHours: 0,
+      totalHours: 0,
+      utilizationPct: 0,
+    };
     if (billable) row.billableHours += hrs;
     else row.nonBillableHours += hrs;
     row.totalHours += hrs;
-    rows.set(key, row);
+    rows.set(compoundKey, row);
   }
 
   const rowList = Array.from(rows.values())
     .map((r) => ({ ...r, utilizationPct: pct(r.billableHours, r.totalHours) }))
-    .sort((a, b) => b.totalHours - a.totalHours || a.label.localeCompare(b.label));
+    .sort((a, b) => {
+      if (a.period < b.period) return -1;
+      if (a.period > b.period) return 1;
+      if (b.totalHours !== a.totalHours) return b.totalHours - a.totalHours;
+      return a.label.localeCompare(b.label);
+    });
 
   const total = sumBillable + sumNon;
   return {

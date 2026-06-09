@@ -622,6 +622,23 @@ export const reportsRouter = router({
         },
       });
 
+      // Build user display name map
+      const userIds = [...new Set(entries.map((e) => e.userId).filter((id): id is string => id != null))];
+      const users = userIds.length > 0
+        ? await ctx.db.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, firstName: true, lastName: true, email: true },
+          })
+        : [];
+      const nameMap = new Map(
+        users.map((u) => [
+          u.id,
+          u.firstName
+            ? `${u.firstName}${u.lastName ? " " + u.lastName : ""}`
+            : (u.email ?? u.id),
+        ]),
+      );
+
       const mapped: UtilizationEntry[] = entries.map((e) => ({
         date: e.date,
         minutes: e.minutes.toNumber(),
@@ -631,7 +648,7 @@ export const reportsRouter = router({
         clientId: e.project?.client?.id ?? null,
         clientName: e.project?.client?.name ?? null,
         userId: e.userId,
-        userName: e.userId,
+        userName: e.userId ? (nameMap.get(e.userId) ?? e.userId) : null,
         project: e.project ? { isFlatRate: e.project.isFlatRate, rate: e.project.rate.toNumber() } : null,
       }));
 
