@@ -4,7 +4,7 @@ import { deriveProposalStatus } from "@/server/routers/proposals-helpers";
 describe("deriveProposalStatus", () => {
   const base = { hasContent: true, invoiceStatus: "DRAFT", lastSent: null, signedAt: null, hasOpenEvent: false };
 
-  it("returns 'none' when there is no proposal content or file", () => {
+  it("returns 'none' when there is no proposal content", () => {
     expect(deriveProposalStatus({ ...base, hasContent: false })).toBe("none");
   });
 

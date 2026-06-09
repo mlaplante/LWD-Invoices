@@ -85,7 +85,7 @@ export const proposalsRouter = router({
         lastSent: true,
         signedAt: true,
         updatedAt: true,
-        currency: { select: { code: true, symbol: true } },
+        currency: { select: { code: true, symbol: true, symbolPosition: true } },
         client: { select: { name: true } },
         proposalContent: { select: { id: true } },
       },
@@ -110,6 +110,7 @@ export const proposalsRouter = router({
       value: e.total.toNumber(),
       currencyCode: e.currency?.code ?? null,
       currencySymbol: e.currency?.symbol ?? null,
+      currencySymbolPosition: e.currency?.symbolPosition ?? "before",
       lastActivity: e.updatedAt,
       status: deriveProposalStatus({
         hasContent: e.proposalContent != null,

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ProposalStatus } from "@/server/routers/proposals-helpers";
+import { formatCurrency } from "@/lib/format";
 
 const STATUS_BADGE: Record<ProposalStatus, { label: string; className: string }> = {
   none: { label: "No draft", className: "bg-muted text-muted-foreground" },
@@ -16,6 +17,7 @@ type Row = {
   clientName: string;
   value: number;
   currencySymbol: string | null;
+  currencySymbolPosition: string;
   lastActivity: Date | string;
   status: ProposalStatus;
 };
@@ -61,7 +63,7 @@ export function ProposalList({ rows }: { rows: Row[] }) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right tabular-nums">
-                  {r.currencySymbol ?? ""}{r.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatCurrency(r.value, r.currencySymbol ?? "", r.currencySymbolPosition)}
                 </td>
                 <td className="px-4 py-3 text-right text-muted-foreground">
                   {new Date(r.lastActivity).toLocaleDateString()}
