@@ -37,6 +37,22 @@ export function GenerateProposalButton({ invoiceId }: { invoiceId: string }) {
     onError: (err) => toast.error(err.message),
   });
 
+  const generate = trpc.proposals.generate.useMutation({
+    onSuccess: (res) => {
+      if (!res.draft) {
+        toast.error("AI draft unavailable — create from the template instead.");
+        return;
+      }
+      // TODO(plan-4-followup): surface suggestedItems
+      createMutation.mutate({
+        invoiceId,
+        templateId: templateId || undefined,
+        sections: res.draft.sections,
+      });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   if (existingProposal) return null;
 
   return (
@@ -67,17 +83,29 @@ export function GenerateProposalButton({ invoiceId }: { invoiceId: string }) {
               </SelectContent>
             </Select>
           </div>
-          <Button
-            onClick={() =>
-              createMutation.mutate({
-                invoiceId,
-                templateId: templateId || undefined,
-              })
-            }
-            disabled={createMutation.isPending}
-          >
-            {createMutation.isPending ? "Creating..." : "Create Proposal"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() =>
+                createMutation.mutate({
+                  invoiceId,
+                  templateId: templateId || undefined,
+                })
+              }
+              disabled={createMutation.isPending || generate.isPending}
+            >
+              {createMutation.isPending ? "Creating..." : "Create Proposal"}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={generate.isPending || createMutation.isPending}
+              onClick={() =>
+                generate.mutate({ invoiceId, templateId: templateId || undefined })
+              }
+            >
+              {generate.isPending ? "Drafting…" : "Draft with AI"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
