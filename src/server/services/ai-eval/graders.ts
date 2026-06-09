@@ -206,6 +206,54 @@ function fmt(value: unknown): string {
   return value === null ? "null" : typeof value === "string" ? `"${value}"` : String(value);
 }
 
+// ─── Expense categorization (history majority-vote + AI grounding guard) ───────
+
+import {
+  suggestFromHistory,
+  groundAiCategory,
+  type PastExpense,
+  type OrgCategory,
+} from "../expense-categorization";
+
+export interface ExpenseCategorizationInput {
+  supplierId: string | null;
+  history: PastExpense[];
+  /** Optional AI-returned id, graded through the grounding guard. */
+  aiCategoryId?: string | null;
+  categories?: OrgCategory[];
+}
+
+export interface ExpenseCategorizationExpected {
+  /** Expected deterministic category from history, or null to expect no history match. */
+  historyCategoryId?: string | null;
+  /** After grounding, the AI id must resolve to this (null = dropped). */
+  groundedAiCategoryId?: string | null;
+}
+
+export const gradeExpenseCategorization: Grader<
+  ExpenseCategorizationInput,
+  ExpenseCategorizationExpected
+> = (input, expected) => {
+  const checks: Array<{ ok: boolean; label: string }> = [];
+
+  if (expected.historyCategoryId !== undefined) {
+    const got = suggestFromHistory(input.supplierId, input.history)?.categoryId ?? null;
+    const ok = got === expected.historyCategoryId;
+    checks.push({ ok, label: ok ? "" : `history category got ${got} want ${expected.historyCategoryId}` });
+  }
+
+  if (expected.groundedAiCategoryId !== undefined) {
+    const got = groundAiCategory(input.aiCategoryId ?? null, input.categories ?? []);
+    const ok = got === expected.groundedAiCategoryId;
+    checks.push({ ok, label: ok ? "" : `grounded ai got ${got} want ${expected.groundedAiCategoryId}` });
+  }
+
+  const total = checks.length;
+  const correct = checks.filter((c) => c.ok).length;
+  const misses = checks.filter((c) => !c.ok).map((c) => c.label);
+  return { score: total === 0 ? 1 : correct / total, detail: misses.length ? misses.join("; ") : undefined };
+};
+
 // ─── Invoice review (deterministic checks + grounding guard) ──────────────────
 
 import {

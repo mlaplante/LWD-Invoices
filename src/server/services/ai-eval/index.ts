@@ -8,12 +8,13 @@
  */
 
 import { runSuite, suiteMeetsGate } from "./runner";
-import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview } from "./graders";
+import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview, gradeExpenseCategorization } from "./graders";
 import { ocrCases } from "./fixtures/ocr.fixtures";
 import { reminderGuardCases } from "./fixtures/reminder-guard.fixtures";
 import { groundingCases } from "./fixtures/assistant-grounding.fixtures";
 import { monthEndCloseCases } from "./fixtures/month-end-close.fixtures";
 import { invoiceReviewCases } from "./fixtures/invoice-review.fixtures";
+import { expenseCategorizationCases } from "./fixtures/expense-categorization.fixtures";
 import type { SuiteReport } from "./types";
 
 export interface SuiteGate {
@@ -62,6 +63,11 @@ export function runAllEvalSuites(): EvalSuiteResult[] {
       report: runSuite("invoice-review", invoiceReviewCases, gradeInvoiceReview),
       gate: { minScore: 1, minPassRate: 1 },
     },
+    {
+      // Majority-vote determinism + the AI-category grounding guard (critical).
+      report: runSuite("expense-categorization", expenseCategorizationCases, gradeExpenseCategorization),
+      gate: { minScore: 1, minPassRate: 1 },
+    },
   ];
 
   return suites.map(({ report, gate }) => ({
@@ -80,6 +86,7 @@ export {
   gradeGrounding,
   gradeMonthEndClose,
   gradeInvoiceReview,
+  gradeExpenseCategorization,
   type OcrEvalInput,
   type OcrEvalExpected,
   type ReminderGuardInput,
@@ -90,4 +97,6 @@ export {
   type MonthEndCloseExpected,
   type InvoiceReviewInput,
   type InvoiceReviewExpected,
+  type ExpenseCategorizationInput,
+  type ExpenseCategorizationExpected,
 } from "./graders";
