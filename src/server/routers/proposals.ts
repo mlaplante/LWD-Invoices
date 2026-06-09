@@ -69,6 +69,10 @@ async function buildProposalDraft(
 }
 
 export const proposalsRouter = router({
+  // Unpaginated: returns all non-archived estimates for the org, newest first.
+  // Acceptable for the proposals screen's scale; add pagination if an org's
+  // estimate count grows large. (Fast-follow: an EmailEvent (invoiceId, type)
+  // index would keep the grouped open-event lookup selective at scale.)
   list: protectedProcedure.query(async ({ ctx }) => {
     const estimates = await ctx.db.invoice.findMany({
       where: { organizationId: ctx.orgId, type: "ESTIMATE", isArchived: false },
@@ -103,7 +107,7 @@ export const proposalsRouter = router({
       number: e.number,
       title: e.notes ?? null,
       clientName: e.client.name,
-      value: Number(e.total),
+      value: e.total.toNumber(),
       currencyCode: e.currency?.code ?? null,
       currencySymbol: e.currency?.symbol ?? null,
       lastActivity: e.updatedAt,
