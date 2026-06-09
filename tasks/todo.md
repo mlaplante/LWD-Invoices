@@ -3,9 +3,9 @@
 Plan: `tasks/plan.md` · Spec: `docs/superpowers/specs/2026-06-09-cash-flow-money-intelligence-design.md`
 
 ## Phase 1 — Quick win + foundation
-- [ ] **T1** Invoice duplicate warning (#4) — `invoice-duplicate.ts` + test + `invoices.checkDuplicate` + `InvoiceForm` inline warning
-- [ ] **T2** Money Intelligence hub shell + `SidebarNav` entry + placeholder sections
-- [ ] **Checkpoint:** `npm run test:run` + `npm run build` pass; duplicate warning + hub reachable; human review
+- [x] **T1** Invoice duplicate warning (#4) — `invoice-duplicate.ts` + 10 tests + `invoices.checkDuplicate` + `InvoiceForm` inline warning ✅ committed `0c2aed7`
+- [x] **T2** Money Intelligence hub shell + `SidebarNav`/`MobileNav` entries + placeholder sections ✅ committed `d09e7e7`
+- [x] **Checkpoint:** unit tests pass (10/10), `tsc --noEmit` clean, eslint clean. ⚠️ Full `npm run build` not runnable in sandbox (no DB; build script runs `prisma migrate deploy`); UI not runtime-verified. Awaiting human review before Phase 2.
 
 ## Phase 2 — Invoice intelligence (in-context)
 - [ ] **T3** Payment probability (#2) — extend `collection-risk.ts` (amount-vs-norm + disputes) + tests + `analytics.paymentProbability` + row badge + detail breakdown
