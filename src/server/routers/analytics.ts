@@ -251,6 +251,11 @@ export const analyticsRouter = router({
   bestSendWindow: protectedProcedure
     .input(z.object({ clientId: z.string() }))
     .query(async ({ ctx, input }) => {
+      // NOTE: there is no org-level IANA timezone in the schema, so send times
+      // are bucketed in UTC. buildSendObservations accepts a timeZone (defaults
+      // to UTC) so this becomes correct as soon as an org timezone is added —
+      // until then the recommended weekday/window is UTC-based and may be off
+      // for users far from UTC. Surfaced as a known limitation.
       const observations = await buildSendObservations(ctx.db, ctx.orgId, input.clientId);
       return recommendSendWindow(observations);
     }),

@@ -222,7 +222,11 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
 
   // Payment-probability badges: fetched once for the org and looked up per row.
   // Open invoices only appear in the map, so paid/draft rows simply show no badge.
-  const { data: probabilityData } = trpc.analytics.paymentProbability.useQuery();
+  // staleTime keeps this org-wide scan from refetching on every list interaction;
+  // a future optimization could fold the score into the list query itself.
+  const { data: probabilityData } = trpc.analytics.paymentProbability.useQuery(undefined, {
+    staleTime: 60_000,
+  });
 
   const allIds = invoices.map((i) => i.id);
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));

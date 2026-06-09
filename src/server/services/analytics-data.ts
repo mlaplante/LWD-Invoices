@@ -565,15 +565,43 @@ export async function buildCollectionRiskInputs(
     .filter((i) => i.balance > 0);
 }
 
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+
+/**
+ * Weekday (0–6) and hour (0–23) of a Date in a given IANA time zone. Uses Intl
+ * (no extra dependency). "Best day to send" is meaningless in UTC for a user in
+ * another zone — a 9pm PST send is the next day in UTC — so we bucket in the
+ * org's own time zone.
+ */
+function partsInTimeZone(date: Date, timeZone: string): { weekday: number; hour: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  let weekday = 0;
+  let hour = 0;
+  for (const p of parts) {
+    if (p.type === "weekday") weekday = WEEKDAY_INDEX[p.value] ?? 0;
+    else if (p.type === "hour") hour = parseInt(p.value, 10) % 24;
+  }
+  return { weekday, hour };
+}
+
 /**
  * Build send-timing observations for a client from EmailEvent history: for each
- * of the client's invoices that was emailed, derive when it was sent and how
- * quickly it was first opened. Feeds recommendSendWindow.
+ * of the client's invoices that was emailed, derive when it was sent (bucketed
+ * in the org's time zone) and how quickly it was first opened. Feeds
+ * recommendSendWindow.
  */
 export async function buildSendObservations(
   db: typeof Db,
   orgId: string,
   clientId: string,
+  timeZone: string = "UTC",
 ): Promise<SendObservation[]> {
   const events = await db.emailEvent.findMany({
     where: {
@@ -604,11 +632,8 @@ export async function buildSendObservations(
       openedAt && openedAt >= sentAt
         ? (openedAt.getTime() - sentAt.getTime()) / 3_600_000
         : null;
-    observations.push({
-      weekday: sentAt.getUTCDay(),
-      hour: sentAt.getUTCHours(),
-      hoursToOpen,
-    });
+    const { weekday, hour } = partsInTimeZone(sentAt, timeZone);
+    observations.push({ weekday, hour, hoursToOpen });
   }
   return observations;
 }
