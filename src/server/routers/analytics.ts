@@ -8,6 +8,7 @@ import {
   applyScenarioPlan,
   type ScenarioPlan,
 } from "@/server/services/cash-flow-forecast";
+import { deriveRunway } from "@/server/services/runway";
 import { calculateSubscriptionMetrics } from "@/server/services/subscription-metrics";
 import { detectExpenseAnomalies } from "@/server/services/expense-anomaly";
 import { prioritizeCollections, scoreCollectionRisk } from "@/server/services/collection-risk";
@@ -94,6 +95,16 @@ export const analyticsRouter = router({
       const scenario = hasScenario ? applyScenarioPlan(forecastInput, plan, { now }) : null;
       return { base, scenario, appliedPlan: plan };
     }),
+
+  // Runway / burn summary: monthly burn + net-position trajectory over the
+  // forecast horizon. No stored bank balance, so days-of-cash stays null unless
+  // a starting balance is supplied.
+  runway: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const forecastInput = await buildCashFlowForecastInput(ctx.db, ctx.orgId);
+    const forecast = projectCashFlow(forecastInput, { now });
+    return deriveRunway(forecastInput, forecast);
+  }),
 
   // MRR / ARR / ARPA and revenue/logo churn over the recurring-revenue book.
   subscriptionMetrics: protectedProcedure
