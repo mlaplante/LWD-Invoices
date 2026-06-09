@@ -78,6 +78,11 @@ export const env = createEnv({
     // reviewer (same 429 fallback behavior as GEMINI_OCR_MODELS). Leave unset for
     // the built-in default chain.
     GEMINI_INVOICE_REVIEW_MODELS: z.string().min(1).optional(),
+    // Provider for the expense-categorization LLM fallback (new/ambiguous
+    // suppliers only). Defaults to Gemini when GEMINI_API_KEY is set.
+    EXPENSE_CATEGORY_AI_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
+    // Ordered Gemini model fallback chain for expense categorization.
+    GEMINI_EXPENSE_CATEGORY_MODELS: z.string().min(1).optional(),
     // Dedicated HMAC secret for signing public-portal session cookies.
     // Optional for back-compat: when unset, the portal-session helpers fall
     // back to SUPABASE_SERVICE_ROLE_KEY. Set this in production so the
@@ -120,6 +125,8 @@ export const env = createEnv({
     GEMINI_INVOICE_PARSER_MODELS: process.env.GEMINI_INVOICE_PARSER_MODELS,
     INVOICE_REVIEW_AI_PROVIDER: process.env.INVOICE_REVIEW_AI_PROVIDER,
     GEMINI_INVOICE_REVIEW_MODELS: process.env.GEMINI_INVOICE_REVIEW_MODELS,
+    EXPENSE_CATEGORY_AI_PROVIDER: process.env.EXPENSE_CATEGORY_AI_PROVIDER,
+    GEMINI_EXPENSE_CATEGORY_MODELS: process.env.GEMINI_EXPENSE_CATEGORY_MODELS,
     PORTAL_SESSION_SECRET: process.env.PORTAL_SESSION_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
