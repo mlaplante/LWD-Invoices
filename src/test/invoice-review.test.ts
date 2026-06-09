@@ -47,7 +47,7 @@ describe("checkMissingInfo", () => {
 describe("checkSuspiciousDiscount", () => {
   it("flags an invoice-level discount above 25% of total", () => {
     const snap = baseSnapshot();
-    snap.total = 1000;
+    snap.total = 700;
     snap.discountTotal = 300;
     expect(checkSuspiciousDiscount(snap).map((f) => f.code)).toContain("suspicious_invoice_discount");
   });

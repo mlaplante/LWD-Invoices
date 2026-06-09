@@ -62,7 +62,7 @@ export function checkMissingInfo(snap: InvoiceReviewSnapshot): ReviewFinding[] {
       code: "missing_client_address",
       severity: "warning",
       message: `${snap.client.name} is missing a complete billing address (street, city, and country).`,
-      fields: ["client.address"],
+      fields: ["client.address", "client.city", "client.country"],
     });
   }
   if (snap.orgHasTaxConfigured && !snap.client.isTaxExempt && !snap.client.taxId) {
@@ -78,8 +78,9 @@ export function checkMissingInfo(snap: InvoiceReviewSnapshot): ReviewFinding[] {
 
 export function checkSuspiciousDiscount(snap: InvoiceReviewSnapshot): ReviewFinding[] {
   const findings: ReviewFinding[] = [];
-  if (snap.total > 0 && snap.discountTotal / snap.total > INVOICE_DISCOUNT_PCT_LIMIT) {
-    const pct = Math.round((snap.discountTotal / snap.total) * 100);
+  const grossTotal = snap.total + snap.discountTotal;
+  if (grossTotal > 0 && snap.discountTotal / grossTotal > INVOICE_DISCOUNT_PCT_LIMIT) {
+    const pct = Math.round((snap.discountTotal / grossTotal) * 100);
     findings.push({
       code: "suspicious_invoice_discount",
       severity: "warning",
