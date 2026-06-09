@@ -647,6 +647,30 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
+        accessibility={{
+          announcements: {
+            onDragStart: ({ active }) => {
+              const pos = lines.findIndex((l) => l.sort === active.id) + 1;
+              return `Picked up line item ${pos}.`;
+            },
+            onDragOver: ({ active, over }) => {
+              if (!over) return "";
+              const activePos = lines.findIndex((l) => l.sort === active.id) + 1;
+              const overPos = lines.findIndex((l) => l.sort === over.id) + 1;
+              return `Line item ${activePos} moved to position ${overPos}.`;
+            },
+            onDragEnd: ({ active, over }) => {
+              const activePos = lines.findIndex((l) => l.sort === active.id) + 1;
+              if (!over) return `Line item ${activePos} dropped.`;
+              const overPos = lines.findIndex((l) => l.sort === over.id) + 1;
+              return `Line item ${activePos} dropped at position ${overPos}.`;
+            },
+            onDragCancel: ({ active }) => {
+              const pos = lines.findIndex((l) => l.sort === active.id) + 1;
+              return `Reordering cancelled for line item ${pos}.`;
+            },
+          },
+        }}
       >
         <SortableContext
           items={lines.map((l) => l.sort)}
