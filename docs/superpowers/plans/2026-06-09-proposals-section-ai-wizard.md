@@ -355,7 +355,6 @@ Add the procedure after `generateDraft`. NOTE: this deliberately mirrors the EST
       z.object({
         clientId: z.string().min(1),
         projectId: z.string().nullable().optional(),
-        title: z.string().optional(),
         templateId: z.string().optional(),
         sections: proposalSectionsSchema,
         lineItems: z.array(wizardLineSchema).default([]),
@@ -415,7 +414,10 @@ Add the procedure after `generateDraft`. NOTE: this deliberately mirrors the EST
             date: new Date(),
             currencyId: currency.id,
             exchangeRate: 1,
-            notes: input.title ?? null,
+            // Intentionally NOT setting `notes` from a user-entered title: invoice.notes
+            // renders on the client-facing estimate PDF (see pdf-templates/*.tsx), so a
+            // free-text proposal title would leak. The proposal is identified by its
+            // estimate number + client name in the list/detail views instead.
             clientId: input.clientId,
             projectId: input.projectId ?? null,
             organizationId: ctx.orgId,
@@ -952,7 +954,7 @@ import { toast } from "sonner";
 
 type Client = { id: string; name: string };
 type Project = { id: string; name: string; clientId: string };
-type Template = { id: string; name: string; isDefault: boolean };
+type Template = { id: string; name: string; isDefault: boolean; sections: ProposalSection[] };
 type SuggestedItem = { itemId: string; name: string; quantity: number; rate: number };
 
 export function ProposalWizard({
@@ -967,20 +969,30 @@ export function ProposalWizard({
   const [clientId, setClientId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [templateId, setTemplateId] = useState(templates.find((t) => t.isDefault)?.id ?? "");
-  const [title, setTitle] = useState("");
   const [sections, setSections] = useState<ProposalSection[]>([]);
   const [items, setItems] = useState<(SuggestedItem & { accepted: boolean })[]>([]);
 
   const clientProjects = projects.filter((p) => p.clientId === clientId);
 
+  // The chosen template (explicit, else org default) — the scaffold both the AI
+  // path conforms to and the AI-unavailable path falls back to.
+  function resolveTemplate(): Template | undefined {
+    return templates.find((t) => t.id === templateId) ?? templates.find((t) => t.isDefault);
+  }
+
   const generate = trpc.proposals.generateDraft.useMutation({
     onSuccess: (res) => {
       if (!res.draft) {
+        // AI off/invalid: proceed with the template's own sections (matches the
+        // spec's "plain template" fallback), not an empty editor.
+        const tmpl = resolveTemplate();
+        if (!tmpl) {
+          toast.error("No template available — create one in Settings → Proposals.");
+          return; // stay on step 1; nothing to edit
+        }
         toast.message("AI is unavailable — starting from the template.");
-        const tmpl = templates.find((t) => t.id === templateId);
-        setSections([]); // template sections loaded server-side on save fallback; start blank
+        setSections(tmpl.sections.map((s) => ({ ...s })));
         setItems([]);
-        if (!tmpl) toast.error("No template available — create one in Settings → Proposals.");
       } else {
         setSections(res.draft.sections as ProposalSection[]);
         setItems(res.draft.suggestedItems.map((i) => ({ ...i, accepted: true })));
@@ -1010,7 +1022,6 @@ export function ProposalWizard({
     create.mutate({
       clientId,
       projectId: projectId || null,
-      title: title || undefined,
       templateId: templateId || undefined,
       sections: sections.map((s) => ({ key: s.key, title: s.title, content: s.content ?? "" })),
       lineItems: items.filter((i) => i.accepted).map((i) => ({
@@ -1064,11 +1075,6 @@ export function ProposalWizard({
 
   return (
     <div className="max-w-2xl space-y-5">
-      <div className="space-y-1.5">
-        <Label>Proposal title</Label>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Website redesign" />
-      </div>
-
       <div className="space-y-4 rounded-lg border p-4">
         <ProposalSectionsEditor sections={sections} onChange={setSections} />
       </div>
@@ -1111,7 +1117,7 @@ export function ProposalWizard({
 }
 ```
 
-> Note on the AI-unavailable branch: when `draft` is null we start with empty sections (the server still attaches the template on save via `createFromWizard`'s `sections` input — but here we pass whatever the editor holds). To keep the empty-state useful, the server-side route in Step 2 passes the resolved default template's sections into the wizard as a fallback prop if you want pre-filled blank sections. For v1, empty sections + the toast pointing to Settings → Proposals is acceptable; do not over-build.
+> Note on the AI-unavailable branch: when `draft` is null the wizard loads the chosen/default template's `sections` (passed in via the `templates` prop) into the editor — matching the spec's "proceeds with plain template sections" fallback. If no template exists at all, it shows an error toast and stays on step 1 (nothing to edit). This keeps the `{ draft: null }` contract of `generateDraft` unchanged.
 
 - [ ] **Step 2: Create the route**
 
@@ -1137,7 +1143,12 @@ export default async function NewProposalPage() {
       <ProposalWizard
         clients={clientsResult.items.map((c) => ({ id: c.id, name: c.name }))}
         projects={projectsResult.items.map((p) => ({ id: p.id, name: p.name, clientId: p.clientId }))}
-        templates={templates.map((t) => ({ id: t.id, name: t.name, isDefault: t.isDefault }))}
+        templates={templates.map((t) => ({
+          id: t.id,
+          name: t.name,
+          isDefault: t.isDefault,
+          sections: t.sections as { key: string; title: string; content: string }[],
+        }))}
       />
     </div>
   );
@@ -1175,6 +1186,7 @@ import { notFound } from "next/navigation";
 import { api } from "@/trpc/server";
 import { ProposalSection } from "@/components/invoices/ProposalSection";
 import { ProposalEngagementPanel } from "@/components/invoices/ProposalEngagementPanel";
+import { SendInvoiceButton } from "@/components/invoices/SendInvoiceButton";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink } from "lucide-react";
 
@@ -1191,12 +1203,14 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-muted-foreground">{invoice.client.name}</p>
-          <h1 className="text-2xl font-semibold">{invoice.notes || invoice.number}</h1>
+          <h1 className="text-2xl font-semibold">Proposal {invoice.number}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {invoice.currency?.symbol ?? ""}{value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </p>
         </div>
         <div className="flex gap-2">
+          {/* Same send action the invoice page uses for estimates (see invoices/[id]/page.tsx:140). */}
+          <SendInvoiceButton invoiceId={invoice.id} clientId={invoice.client.id} />
           <Button variant="outline" size="sm" asChild>
             <a href={`/api/invoices/${invoice.id}/proposal-pdf`} target="_blank" rel="noreferrer">
               <Download className="mr-2 h-4 w-4" />PDF
@@ -1222,7 +1236,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
 }
 ```
 
-> Before running: open `src/app/(dashboard)/invoices/[id]/page.tsx` lines ~556–562 and copy the EXACT prop names/shape it passes to `ProposalEngagementPanel` (`hasSent`, `signedAt`) and how it reads `invoice.currency`, `invoice.total`, `invoice.notes`, `invoice.client.name`. Match `api.invoices.get`'s actual return shape (it uses `detailInvoiceInclude`); adjust field accessors if names differ. The "Open as estimate" link and PDF href are the only net-new bits.
+> Before running: open `src/app/(dashboard)/invoices/[id]/page.tsx` and copy the EXACT props it passes to `ProposalEngagementPanel` (line ~558–562: `hasSent`, `signedAt`) and `SendInvoiceButton` (line ~140: `invoiceId`, `clientId`, optional `autoSend`), plus how it reads `invoice.currency`, `invoice.total`, `invoice.client.id`, `invoice.client.name`. Match `api.invoices.get`'s actual return shape (it uses `detailInvoiceInclude`); adjust field accessors if names differ. The "Open as estimate" link and PDF href are the only net-new bits.
 
 - [ ] **Step 2: Typecheck**
 
@@ -1255,7 +1269,8 @@ git commit -m "feat(proposals): thin proposal detail wrapper"
 
 ## Self-Review Notes
 
-- **Spec coverage:** nav (Task 5), proposals-centric list (Tasks 3, 6), wizard with AI + suggested items + create-on-save (Tasks 1, 2, 7), thin detail wrapper (Task 8), shared editor extraction (Task 4), error/edge cases (template-missing → BAD_REQUEST in Task 1; currency-missing → BAD_REQUEST in Task 2; AI-unconfigured null-fallback in Tasks 1 & 7; non-estimate id → notFound in Task 8). Tests for all three new procedures + the status helper.
+- **Spec coverage:** nav (Task 5), proposals-centric list (Tasks 3, 6), wizard with AI + suggested items + create-on-save (Tasks 1, 2, 7), thin detail wrapper with PDF + **Send** + Open-as-estimate (Task 8), shared editor extraction (Task 4), error/edge cases (template-missing → BAD_REQUEST in Task 1; currency-missing → BAD_REQUEST in Task 2; AI-unconfigured → template-section fallback in Tasks 1 & 7; non-estimate id → notFound in Task 8). Tests for all three new procedures + the status helper.
+- **Deviation from spec (title field):** the spec's `createFromWizard` input had an optional `title` stored in `invoice.notes`. Dropped for v1 — `invoice.notes` renders on the client-facing estimate PDF (`pdf-templates/*.tsx`), so a free-text title would leak to the client. Proposals are identified by estimate number + client name in the list/detail. Revisit only if a dedicated, non-client-facing title column is added to `ProposalContent` (a schema change, out of scope here).
 - **Permissions:** `generateDraft` and `createFromWizard` both `OWNER/ADMIN` (matches `invoices.create`; no accountant dead-end).
 - **Deliberate duplication:** `createFromWizard` re-implements the ESTIMATE subset of `invoices.create` (flagged with a sync comment) rather than refactoring the money path — lower risk per design.
 - **Type consistency:** `ProposalSection` type is shared from `ProposalSectionsEditor`; `ProposalStatus` shared from `proposals-helpers`; suggested-item shape `{ itemId, name, quantity, rate }` (from `GroundedLineItem`) is mapped to wizard line `{ name, qty, rate, sourceId }` in Task 7's `handleSave`.
