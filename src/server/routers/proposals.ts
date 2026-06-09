@@ -4,6 +4,55 @@ import { TRPCError } from "@trpc/server";
 import { proposalSectionsSchema } from "./proposal-templates-helpers";
 import { deleteProposalFile } from "@/lib/supabase/storage";
 import { generateProposal } from "@/server/services/proposal-generator";
+import type { PrismaClient } from "@/generated/prisma";
+
+async function buildProposalDraft(
+  ctx: { db: PrismaClient; orgId: string },
+  args: {
+    clientName: string;
+    projectName: string | null;
+    projectDescription: string | null;
+    templateId?: string;
+    excludeInvoiceId?: string;
+  },
+) {
+  const template = await ctx.db.proposalTemplate.findFirst({
+    where: args.templateId
+      ? { id: args.templateId, organizationId: ctx.orgId }
+      : { organizationId: ctx.orgId, isDefault: true },
+  });
+  if (!template)
+    throw new TRPCError({ code: "BAD_REQUEST", message: "No template available to generate from" });
+
+  const [pastProposals, items] = await Promise.all([
+    ctx.db.proposalContent.findMany({
+      where: {
+        organizationId: ctx.orgId,
+        ...(args.excludeInvoiceId ? { invoiceId: { not: args.excludeInvoiceId } } : {}),
+      },
+      select: { sections: true },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+    }),
+    ctx.db.item.findMany({
+      where: { organizationId: ctx.orgId },
+      select: { id: true, name: true, rate: true },
+    }),
+  ]);
+
+  const draft = await generateProposal({
+    clientName: args.clientName,
+    projectName: args.projectName,
+    projectDescription: args.projectDescription,
+    templateSections: template.sections as unknown as { key: string; title: string; content: string }[],
+    pastProposals: pastProposals.map(
+      (p) => p.sections as unknown as { key: string; title: string; content: string }[],
+    ),
+    items: items.map((i) => ({ id: i.id, name: i.name, rate: i.rate === null ? null : Number(i.rate) })),
+  });
+
+  return { draft };
+}
 
 export const proposalsRouter = router({
   get: protectedProcedure
@@ -163,49 +212,44 @@ export const proposalsRouter = router({
         select: {
           id: true,
           client: {
-            select: {
-              name: true,
-              projects: { select: { name: true, description: true }, take: 1 },
-            },
+            select: { name: true, projects: { select: { name: true, description: true }, take: 1 } },
           },
         },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Estimate not found" });
-
-      // Template sections: explicit templateId → org default. The template owns the section structure.
-      const template = await ctx.db.proposalTemplate.findFirst({
-        where: input.templateId
-          ? { id: input.templateId, organizationId: ctx.orgId }
-          : { organizationId: ctx.orgId, isDefault: true },
-      });
-      if (!template)
-        throw new TRPCError({ code: "BAD_REQUEST", message: "No template available to generate from" });
-
-      const [pastProposals, items] = await Promise.all([
-        ctx.db.proposalContent.findMany({
-          where: { organizationId: ctx.orgId, invoiceId: { not: input.invoiceId } },
-          select: { sections: true },
-          orderBy: { createdAt: "desc" },
-          take: 3,
-        }),
-        ctx.db.item.findMany({
-          where: { organizationId: ctx.orgId },
-          select: { id: true, name: true, rate: true },
-        }),
-      ]);
-
       const project = invoice.client.projects[0];
-      const draft = await generateProposal({
+      return buildProposalDraft(ctx, {
         clientName: invoice.client.name,
         projectName: project?.name ?? null,
         projectDescription: project?.description ?? null,
-        templateSections: template.sections as unknown as { key: string; title: string; content: string }[],
-        pastProposals: pastProposals.map(
-          (p) => p.sections as unknown as { key: string; title: string; content: string }[],
-        ),
-        items: items.map((i) => ({ id: i.id, name: i.name, rate: i.rate === null ? null : Number(i.rate) })),
+        templateId: input.templateId,
+        excludeInvoiceId: input.invoiceId,
       });
+    }),
 
-      return { draft };
+  generateDraft: requireRole("OWNER", "ADMIN")
+    .input(z.object({ clientId: z.string(), projectId: z.string().optional(), templateId: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const client = await ctx.db.client.findFirst({
+        where: { id: input.clientId, organizationId: ctx.orgId },
+        select: { id: true, name: true },
+      });
+      if (!client) throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+
+      let project: { name: string; description: string | null } | null = null;
+      if (input.projectId) {
+        project = await ctx.db.project.findFirst({
+          where: { id: input.projectId, organizationId: ctx.orgId, clientId: input.clientId },
+          select: { name: true, description: true },
+        });
+        if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      }
+
+      return buildProposalDraft(ctx, {
+        clientName: client.name,
+        projectName: project?.name ?? null,
+        projectDescription: project?.description ?? null,
+        templateId: input.templateId,
+      });
     }),
 });
