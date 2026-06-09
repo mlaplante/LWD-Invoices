@@ -7,7 +7,7 @@
  * .toNumber() on Decimals, InvoiceStatus enum over string literals.
  */
 
-import { InvoiceStatus } from "@/generated/prisma";
+import { InvoiceStatus, ProjectStatus } from "@/generated/prisma";
 import type { db as Db } from "../db";
 import type { ProjectHealthInput } from "./project-health-score";
 
@@ -173,7 +173,6 @@ export async function buildProjectHealthInputs(
   orgId: string,
   now: Date,
 ): Promise<ProjectHealthInput[]> {
-  const { ProjectStatus } = await import("@/generated/prisma");
   const projects = await db.project.findMany({
     where: { organizationId: orgId, status: { not: ProjectStatus.ARCHIVED } },
     select: { id: true },
