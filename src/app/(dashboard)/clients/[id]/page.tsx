@@ -14,7 +14,8 @@ import { ClientHealthBadge } from "@/components/clients/ClientHealthBadge";
 import { ClientRemindersPanel } from "@/components/clients/ClientRemindersPanel";
 import { ClientLastRemindedBadge } from "@/components/clients/ClientLastRemindedBadge";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { ArrowLeft, ExternalLink, FileText, Receipt } from "lucide-react";
+import { ArrowLeft, FileText, Receipt } from "lucide-react";
+import { PortalPreviewButton } from "@/components/portal/PortalPreviewButton";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { getClientOnTimePercent } from "@/server/services/client-payment-score";
@@ -162,12 +163,7 @@ export default async function ClientDetailPage({
             </Link>
           </Button>
           <ClientStatementButton clientId={client.id} />
-          <Button asChild variant="outline" size="sm">
-            <a href={portalLink} target="_blank" rel="noreferrer">
-              Portal
-              <ExternalLink className="w-3 h-3 ml-1.5" />
-            </a>
-          </Button>
+          <PortalPreviewButton target="client" id={client.id} fallbackUrl={portalLink} />
           <ArchiveClientButton clientId={client.id} isArchived={client.isArchived} />
         </div>
       </div>

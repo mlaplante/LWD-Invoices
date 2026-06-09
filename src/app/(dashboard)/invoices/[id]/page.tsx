@@ -32,7 +32,8 @@ import { InvoiceRefundsPanel } from "@/components/invoices/InvoiceRefundsPanel";
 import { ClientCreditHoldBanner } from "@/components/clients/ClientCreditHoldBanner";
 import { CopyPaymentLinkButton } from "@/components/invoices/CopyPaymentLinkButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
+import { ArrowLeft, Download, Pencil } from "lucide-react";
+import { PortalPreviewButton } from "@/components/portal/PortalPreviewButton";
 import { cn } from "@/lib/utils";
 import { formatDate, formatCurrency } from "@/lib/format";
 
@@ -150,12 +151,7 @@ export default async function InvoiceDetailPage({
             </a>
           </Button>
           <RecurringInvoiceDialog invoiceId={invoice.id} />
-          <Button asChild variant="outline" size="sm">
-            <a href={portalLink} target="_blank" rel="noreferrer">
-              Portal
-              <ExternalLink className="w-3 h-3 ml-1.5" />
-            </a>
-          </Button>
+          <PortalPreviewButton target="invoice" id={invoice.id} fallbackUrl={portalLink} />
           {isPayable && <CopyPaymentLinkButton payLink={payLink} />}
           {invoice.type === "CREDIT_NOTE" ? null : (
             <ApplyCreditNoteDialog

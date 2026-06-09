@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cookies } from "next/headers";
 import { Prisma } from "@/generated/prisma";
 import bcrypt from "bcryptjs";
 import { router, protectedProcedure, requireRole } from "../trpc";
@@ -6,6 +7,11 @@ import { logAudit } from "../services/audit";
 import { getForOrg } from "../lib/get-for-org";
 import { idInput, paginationInput } from "../lib/schemas";
 import { generatePortalToken } from "@/lib/portal-session";
+import { generateSessionToken } from "../services/portal-dashboard";
+
+// Admin portal previews use a short-lived session — long enough to look
+// around, short enough that a forgotten tab doesn't stay signed in.
+const PORTAL_PREVIEW_SESSION_MS = 60 * 60_000;
 import { getClientCreditStatus } from "../services/credit-hold";
 import { buildClientHealthInputForClient } from "../services/analytics-data";
 import { calculateClientHealthScore } from "../services/client-health-score";
@@ -329,5 +335,49 @@ export const clientsRouter = router({
         organizationId: ctx.orgId,
       }).catch(() => {});
       return result;
+    }),
+
+  // "View as client": issues the admin a real (short-lived) portal dashboard
+  // session for this client, so staff can see exactly what the client sees
+  // without knowing the client's passphrase — including after the client has
+  // changed it via the self-service reset. Audited per use.
+  previewPortal: requireRole("OWNER", "ADMIN")
+    .input(idInput)
+    .mutation(async ({ ctx, input }) => {
+      const client = await getForOrg(ctx.db.client, input.id, ctx.orgId, {
+        select: { id: true, name: true, portalToken: true },
+        entityName: "Client",
+      });
+
+      const sessionToken = generateSessionToken();
+      await ctx.db.clientPortalSession.create({
+        data: {
+          token: sessionToken,
+          expiresAt: new Date(Date.now() + PORTAL_PREVIEW_SESSION_MS),
+          clientId: client.id,
+          userAgent: "admin-preview",
+        },
+      });
+
+      const cookieStore = await cookies();
+      cookieStore.set(`portal_dashboard_${client.portalToken}`, sessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: Math.floor(PORTAL_PREVIEW_SESSION_MS / 1000),
+        path: `/portal/dashboard/${client.portalToken}`,
+      });
+
+      await logAudit({
+        action: "VIEWED",
+        entityType: "Client.Portal",
+        entityId: client.id,
+        entityLabel: client.name,
+        diff: { event: "portal_admin_preview" },
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+
+      return { url: `/portal/dashboard/${client.portalToken}` };
     }),
 });
