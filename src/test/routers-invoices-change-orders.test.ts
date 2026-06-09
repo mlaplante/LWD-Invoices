@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { invoicesRouter } from "@/server/routers/invoices";
 import { createMockContext } from "./mocks/trpc-context";
 import { InvoiceType } from "@/generated/prisma";
@@ -51,5 +51,22 @@ describe("invoices.createChangeOrder", () => {
     expect(created.clientId).toBe("client_1");
     expect(created.currencyId).toBe("cur_1");
     expect(result.id).toBe("inv_co");
+    expect(result.type).toBe(InvoiceType.ESTIMATE);
+    expect(result.isChangeOrder).toBe(true);
+    expect(result.projectId).toBe("proj_1");
+  });
+
+  it("create rejects a projectId from another tenant", async () => {
+    ctx.db.client.findFirst.mockResolvedValue({ id: "client_1", organizationId: "test-org-123" });
+    ctx.db.project.findFirst.mockResolvedValue(null); // project not in this org → assertInOrg throws
+    ctx.db.organization.findFirst.mockResolvedValue({ id: "test-org-123", stripeTaxEnabled: false });
+    await expect(
+      caller.create({
+        clientId: "client_1",
+        currencyId: "cur_1",
+        projectId: "proj_other",
+        lines: [{ sort: 0, name: "Work", qty: 1, rate: 100, taxIds: [] }],
+      }),
+    ).rejects.toThrow(/not found/i);
   });
 });

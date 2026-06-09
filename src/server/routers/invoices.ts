@@ -386,6 +386,9 @@ export const invoicesRouter = router({
       // verify the referenced client is in this tenant. Check it before any
       // client-scoped read/write (tax resolution, credit-balance application).
       await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
+      if (input.projectId) {
+        await assertInOrg(ctx.db.project, input.projectId, ctx.orgId, { entityName: "Project" });
+      }
 
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
 
@@ -533,6 +536,8 @@ export const invoicesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Cross-tenant guard (parity with create's client check, commit f7f22b1).
+      // Hand-rolled (not assertInOrg) so we fetch clientId/currencyId in the same
+      // org-scoped query instead of a second round-trip.
       const project = await ctx.db.project.findFirst({
         where: { id: input.projectId, organizationId: ctx.orgId },
         select: { id: true, clientId: true, currencyId: true },
