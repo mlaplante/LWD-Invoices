@@ -10,6 +10,7 @@ import { detailExpenseInclude } from "@/server/lib/expense-includes";
 import { getOrgTaxList } from "@/server/lib/tax-helpers";
 import { logAudit } from "../services/audit";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { suggestCategorization } from "@/server/services/expense-categorization";
 
 // Per-org throttle on the paid-LLM receipt scan. In-process (per serverless
 // instance), so the effective limit is this × replicas — enough to stop a
@@ -271,6 +272,40 @@ export const expensesRouter = router({
         },
         data: { categoryId: input.categoryId },
       });
+    }),
+
+  suggestCategorization: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(
+      z.object({
+        supplierId: z.string().nullable(),
+        supplierName: z.string(),
+        expenseName: z.string(),
+        description: z.string().nullable().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [history, categories] = await Promise.all([
+        ctx.db.expense.findMany({
+          where: { organizationId: ctx.orgId, categoryId: { not: null } },
+          select: { supplierId: true, categoryId: true, taxId: true, reimbursable: true, projectId: true },
+          orderBy: { createdAt: "desc" },
+          take: 500,
+        }),
+        ctx.db.expenseCategory.findMany({
+          where: { organizationId: ctx.orgId },
+          select: { id: true, name: true },
+        }),
+      ]);
+
+      const suggestion = await suggestCategorization({
+        supplierId: input.supplierId,
+        supplierName: input.supplierName,
+        expenseName: input.expenseName,
+        description: input.description ?? null,
+        history,
+        categories,
+      });
+      return { suggestion };
     }),
 
   billToInvoice: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
