@@ -358,6 +358,25 @@ export function createMockPrismaClient() {
       findUnique: vi.fn(),
       upsert: vi.fn(),
     },
+    emailEvent: {
+      findMany: vi.fn(),
+    },
+    proposalTemplate: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    proposalContent: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
   };
 
   // Mock $queryRaw for raw SQL queries

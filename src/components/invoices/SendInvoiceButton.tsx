@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
+import { InvoiceReviewPanel } from "./InvoiceReviewPanel";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
@@ -98,6 +99,7 @@ export function SendInvoiceButton({
 
   return (
     <>
+      <InvoiceReviewPanel invoiceId={invoiceId} />
       <Button
         size="sm"
         disabled={send.isPending}

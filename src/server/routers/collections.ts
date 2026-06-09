@@ -4,6 +4,8 @@ import { router, requireRole } from "../trpc";
 import { generateSmartReminderDraft } from "@/server/services/smart-reminder-drafts";
 import { getClientPaymentBehaviorSummary } from "@/server/services/client-payment-score";
 import { sendEmail } from "@/server/services/email-sender";
+import { InvoiceStatus } from "@/generated/prisma";
+import { scoreCollectionRisk, rankCollectionsQueue } from "@/server/services/collection-risk";
 
 // Built-in fallback reminder template. The smart drafter (Gemini-first) rephrases
 // it per the selected tone and runs the fact guard; if AI is unavailable it
@@ -134,5 +136,107 @@ export const collectionsRouter = router({
       });
 
       return { sent: true, suppressed: false as const };
+    }),
+
+  /**
+   * Ranked daily collections queue for the org. Loads open/overdue invoices,
+   * assembles each CollectionRiskInput, scores them with the existing
+   * scoreCollectionRisk, and orders them with rankCollectionsQueue. Read-only;
+   * every query is scoped to ctx.orgId. Drafting/sending stay in draftReminder/
+   * sendReminder — the UI calls those per row.
+   *
+   * Balance is computed as total − sum(payments) to match the authoritative
+   * payment-amount source; partialPayments is an installment schedule, not
+   * actual receipts. Invoices fully paid (balance ≤ 0) are skipped.
+   *
+   * clientAvgDaysLate is passed as 0 because getClientPaymentBehaviorSummary
+   * does not yet return avgDaysLate; the score weights it only when > 0.
+   */
+  queue: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(z.object({ limit: z.number().int().min(1).max(200).default(50) }).optional())
+    .query(async ({ ctx, input }) => {
+      const limit = input?.limit ?? 50;
+      const now = Date.now();
+      const dayMs = 86400000;
+
+      const org = await ctx.db.organization.findUnique({
+        where: { id: ctx.orgId },
+        select: { smartRemindersThreshold: true },
+      });
+      const threshold = org?.smartRemindersThreshold ?? 80;
+
+      // Open, non-archived invoices with a due date and a potentially-owing balance.
+      const invoices = await ctx.db.invoice.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          isArchived: false,
+          dueDate: { not: null },
+          status: {
+            in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE],
+          },
+        },
+        select: {
+          id: true,
+          number: true,
+          total: true,
+          dueDate: true,
+          clientId: true,
+          client: { select: { id: true, name: true } },
+          // Actual payment receipts — used for balance calculation.
+          payments: { select: { amount: true } },
+          // Installment-schedule reminders and manual follow-ups.
+          manualReminders: { select: { sentAt: true } },
+          reminderLogs: { select: { sentAt: true } },
+          emailEvents: { select: { type: true } },
+        },
+        take: 200,
+      });
+
+      // Filter to invoices with a real outstanding balance.
+      const withBalance = invoices.flatMap((inv) => {
+        const paid = inv.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+        const balance = Number(inv.total) - paid;
+        if (balance <= 0) return [];
+        return [{ inv, balance }];
+      });
+
+      // Fetch each distinct client's payment-behavior summary exactly once
+      // to avoid one DB round-trip per invoice (many invoices share a client).
+      const clientIds = [...new Set(withBalance.map((x) => x.inv.clientId))];
+      const behaviorEntries = await Promise.all(
+        clientIds.map(async (id) => [id, await getClientPaymentBehaviorSummary(ctx.db, id)] as const),
+      );
+      const behaviorMap = new Map(behaviorEntries);
+
+      const scores = withBalance.map(({ inv, balance }) => {
+        const behavior = behaviorMap.get(inv.clientId)!;
+        const reminderDates = [
+          ...inv.manualReminders.map((r) => r.sentAt.getTime()),
+          ...inv.reminderLogs.map((r) => r.sentAt.getTime()),
+        ];
+        const lastReminder = reminderDates.length ? Math.max(...reminderDates) : null;
+        const dueMs = inv.dueDate!.getTime();
+        const eventTypes = inv.emailEvents.map((e) => e.type);
+
+        return scoreCollectionRisk({
+          invoiceId: inv.id,
+          invoiceNumber: inv.number,
+          clientId: inv.client.id,
+          clientName: inv.client.name,
+          balance,
+          daysUntilDue: Math.round((dueMs - now) / dayMs),
+          clientOnTimePercent: behavior.onTimePercent,
+          clientAvgDaysLate: 0, // avgDaysLate not in summary shape; score weights it only when > 0
+          isReliablePayer: behavior.onTimePercent !== null && behavior.onTimePercent >= threshold,
+          remindersSent: reminderDates.length,
+          daysSinceLastReminder:
+            lastReminder === null ? null : Math.round((now - lastReminder) / dayMs),
+          invoiceOpened: eventTypes.includes("email.opened"),
+          invoiceClicked: eventTypes.includes("email.clicked"),
+        });
+      });
+
+      const ranked = rankCollectionsQueue(scores);
+      return { queue: ranked.slice(0, limit) };
     }),
 });

@@ -1,8 +1,15 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Users, Landmark } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Wallet, Activity, Percent, Users, Landmark } from "lucide-react";
 
 const reports = [
+  {
+    href: "/reports/project-health",
+    label: "Project Health",
+    description: "Composite health per project from budget, tasks, unbilled time, and invoices.",
+    icon: <Activity className="w-4 h-4" />,
+    color: "bg-rose-50 text-rose-600",
+  },
   {
     href: "/reports/tax-dashboard",
     label: "Tax-Ready Dashboard",
@@ -109,10 +116,24 @@ const reports = [
     color: "bg-fuchsia-50 text-fuchsia-600",
   },
   {
+    href: "/reports/retainers",
+    label: "Retainer Burn-down",
+    description: "Hours and prepaid retainers with projected depletion dates and 80% warnings.",
+    icon: <Wallet className="w-4 h-4" />,
+    color: "bg-sky-50 text-sky-600",
+  },
+  {
     href: "/reports/time",
     label: "Time Tracking",
     description: "Hours logged and billable totals by project.",
     icon: <Timer className="w-4 h-4" />,
+    color: "bg-cyan-50 text-cyan-600",
+  },
+  {
+    href: "/reports/utilization",
+    label: "Utilization",
+    description: "Billable vs non-billable time by client, project, or user.",
+    icon: <Percent className="w-4 h-4" />,
     color: "bg-cyan-50 text-cyan-600",
   },
   {

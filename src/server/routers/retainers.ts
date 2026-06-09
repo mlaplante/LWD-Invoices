@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, requireRole } from "../trpc";
+import { router, requireRole, protectedProcedure } from "../trpc";
 import { validateDeposit, validateDrawdown } from "../services/retainers";
 import { Prisma } from "@/generated/prisma";
+import { computeMoneyBurndown } from "@/server/services/retainer-burndown";
 
 export const retainersRouter = router({
   /**
@@ -193,4 +194,38 @@ export const retainersRouter = router({
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
     }),
+
+  burndown: protectedProcedure.query(async ({ ctx }) => {
+    const retainers = await ctx.db.retainer.findMany({
+      where: { organizationId: ctx.orgId },
+      include: {
+        client: { select: { id: true, name: true } },
+        transactions: { select: { type: true, amount: true, createdAt: true } },
+      },
+    });
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    return retainers
+      .map((r) => {
+        let totalDeposits = 0, totalDrawdowns = 0, windowDrawdowns = 0;
+        for (const t of r.transactions) {
+          const amt = t.amount.toNumber();
+          if (t.type === "deposit") totalDeposits += amt;
+          if (t.type === "drawdown") {
+            totalDrawdowns += amt;
+            if (t.createdAt >= windowStart) windowDrawdowns += amt;
+          }
+        }
+        return computeMoneyBurndown(
+          {
+            retainerId: r.id, clientId: r.clientId, clientName: r.client.name,
+            balance: r.balance.toNumber(), totalDeposits, totalDrawdowns,
+            windowDrawdowns, windowDays: 90,
+          },
+          now,
+        );
+      })
+      .filter((r) => r.total > 0 || r.remaining > 0)
+      .sort((a, b) => b.pctUsed - a.pctUsed);
+  }),
 });

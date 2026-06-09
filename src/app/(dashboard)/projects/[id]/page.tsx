@@ -3,11 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TaskList } from "@/components/projects/TaskList";
+import { ProjectHealthBadge } from "@/components/projects/ProjectHealthBadge";
 import { TimeTab } from "@/components/projects/TimeTab";
 import { ExpensesTab } from "@/components/projects/ExpensesTab";
 import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
 import { DiscussionThread } from "@/components/projects/DiscussionThread";
 import { MilestoneList } from "@/components/projects/MilestoneList";
+import { ChangeOrdersTab } from "@/components/projects/ChangeOrdersTab";
 import type { ProjectStatus } from "@/generated/prisma";
 import {
   ArrowLeft,
@@ -36,8 +38,9 @@ interface Props {
 
 const TABS = [
   { key: "tasks",       label: "Tasks" },
-  { key: "milestones",  label: "Milestones" },
-  { key: "time",        label: "Time" },
+  { key: "milestones",     label: "Milestones" },
+  { key: "change-orders",  label: "Change Orders" },
+  { key: "time",           label: "Time" },
   { key: "expenses",    label: "Expenses" },
   { key: "files",       label: "Files" },
   { key: "discussions", label: "Discussions" },
@@ -87,6 +90,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
             >
               {badge.label}
             </span>
+            <ProjectHealthBadge projectId={id} />
           </div>
           {project.description && (
             <p className="mt-1.5 text-sm text-muted-foreground max-w-xl leading-relaxed">
@@ -155,6 +159,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       {/* ── Tab content ──────────────────────────────────────────── */}
       {tab === "tasks" && <TaskList project={project} />}
       {tab === "milestones" && <MilestoneList projectId={id} />}
+      {tab === "change-orders" && <ChangeOrdersTab projectId={id} />}
       {tab === "time" && <TimeTab projectId={id} />}
       {tab === "expenses" && <ExpensesTab projectId={id} />}
       {tab === "files" && (
