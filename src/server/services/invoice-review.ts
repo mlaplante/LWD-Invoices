@@ -100,3 +100,50 @@ export function checkSuspiciousDiscount(snap: InvoiceReviewSnapshot): ReviewFind
   }
   return findings;
 }
+
+export const UNBILLED_MINUTES_LIMIT = 30; // half an hour of untracked work is worth surfacing
+export const DUPLICATE_TOTAL_TOLERANCE = 0.01; // within 1% of an existing invoice total
+export const DUPLICATE_LINE_OVERLAP = 0.5; // at least half the line names match
+
+export function checkUnbilledTime(snap: InvoiceReviewSnapshot): ReviewFinding[] {
+  if (snap.unbilledMinutes <= UNBILLED_MINUTES_LIMIT) return [];
+  const hours = (snap.unbilledMinutes / 60).toFixed(1);
+  return [
+    {
+      code: "unbilled_time",
+      severity: "info",
+      message: `There are ${hours}h of unbilled time tracked for this client not attached to any invoice line.`,
+      fields: ["lines"],
+    },
+  ];
+}
+
+function normalizeName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+export function checkDuplicateRisk(snap: InvoiceReviewSnapshot): ReviewFinding[] {
+  if (snap.total <= 0) return [];
+  const thisLineNames = new Set(snap.lines.map((l) => normalizeName(l.name)));
+  for (const recent of snap.recentInvoices) {
+    const totalClose =
+      Math.abs(recent.total - snap.total) / snap.total <= DUPLICATE_TOTAL_TOLERANCE;
+    if (!totalClose) continue;
+    const recentNames = recent.lineNames.map(normalizeName);
+    const overlap =
+      recentNames.length === 0
+        ? 0
+        : recentNames.filter((n) => thisLineNames.has(n)).length / recentNames.length;
+    if (overlap >= DUPLICATE_LINE_OVERLAP) {
+      return [
+        {
+          code: "duplicate_invoice_risk",
+          severity: "warning",
+          message: `This looks similar to invoice ${recent.number} (same client, near-identical total and line items). Confirm it isn't a duplicate.`,
+          fields: ["total", "lines"],
+        },
+      ];
+    }
+  }
+  return [];
+}

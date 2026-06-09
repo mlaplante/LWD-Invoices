@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   checkMissingInfo,
   checkSuspiciousDiscount,
+  checkUnbilledTime,
+  checkDuplicateRisk,
   type InvoiceReviewSnapshot,
 } from "@/server/services/invoice-review";
 
@@ -62,5 +64,40 @@ describe("checkSuspiciousDiscount", () => {
     const snap = baseSnapshot();
     snap.discountTotal = 50;
     expect(checkSuspiciousDiscount(snap)).toEqual([]);
+  });
+});
+
+describe("checkUnbilledTime", () => {
+  it("flags when unbilled minutes exceed the threshold", () => {
+    const snap = baseSnapshot();
+    snap.unbilledMinutes = 90;
+    expect(checkUnbilledTime(snap).map((f) => f.code)).toContain("unbilled_time");
+  });
+
+  it("ignores a trivial amount of unbilled time", () => {
+    const snap = baseSnapshot();
+    snap.unbilledMinutes = 5;
+    expect(checkUnbilledTime(snap)).toEqual([]);
+  });
+});
+
+describe("checkDuplicateRisk", () => {
+  it("flags a same-client invoice with a near-identical total and overlapping lines", () => {
+    const snap = baseSnapshot();
+    snap.total = 1000;
+    snap.lines = [{ id: "l1", name: "Design work", description: null, total: 1000, discount: 0, discountIsPercentage: false }];
+    snap.recentInvoices = [
+      { id: "old", number: "INV-9", total: 1000, createdAt: new Date(), lineNames: ["Design work"] },
+    ];
+    expect(checkDuplicateRisk(snap).map((f) => f.code)).toContain("duplicate_invoice_risk");
+  });
+
+  it("does not flag when totals differ materially", () => {
+    const snap = baseSnapshot();
+    snap.total = 1000;
+    snap.recentInvoices = [
+      { id: "old", number: "INV-9", total: 250, createdAt: new Date(), lineNames: ["Design work"] },
+    ];
+    expect(checkDuplicateRisk(snap)).toEqual([]);
   });
 });
