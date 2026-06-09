@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Wallet, Activity } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Wallet, Activity, Percent } from "lucide-react";
 
 const reports = [
   {
@@ -113,6 +113,13 @@ const reports = [
     label: "Time Tracking",
     description: "Hours logged and billable totals by project.",
     icon: <Timer className="w-4 h-4" />,
+    color: "bg-cyan-50 text-cyan-600",
+  },
+  {
+    href: "/reports/utilization",
+    label: "Utilization",
+    description: "Billable vs non-billable time by client, project, or user.",
+    icon: <Percent className="w-4 h-4" />,
     color: "bg-cyan-50 text-cyan-600",
   },
   {
