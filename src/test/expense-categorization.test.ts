@@ -31,3 +31,20 @@ describe("suggestFromHistory", () => {
     expect(suggestFromHistory("unknown", history)).toBeNull();
   });
 });
+
+import { groundAiCategory, type OrgCategory } from "@/server/services/expense-categorization";
+
+const cats: OrgCategory[] = [
+  { id: "cat-software", name: "Software" },
+  { id: "cat-travel", name: "Travel" },
+];
+
+describe("groundAiCategory", () => {
+  it("keeps an AI category id that exists", () => {
+    expect(groundAiCategory("cat-travel", cats)).toBe("cat-travel");
+  });
+
+  it("drops a fabricated AI category id", () => {
+    expect(groundAiCategory("cat-made-up", cats)).toBeNull();
+  });
+});
