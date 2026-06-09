@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Wallet } from "lucide-react";
 
 const reports = [
   {
@@ -93,6 +93,13 @@ const reports = [
     description: "Receivables by balance due with a Days-Sales-Outstanding trend.",
     icon: <Gauge className="w-4 h-4" />,
     color: "bg-fuchsia-50 text-fuchsia-600",
+  },
+  {
+    href: "/reports/retainers",
+    label: "Retainer Burn-down",
+    description: "Hours and prepaid retainers with projected depletion dates and 80% warnings.",
+    icon: <Wallet className="w-4 h-4" />,
+    color: "bg-sky-50 text-sky-600",
   },
   {
     href: "/reports/time",
