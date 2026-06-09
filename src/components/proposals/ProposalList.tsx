@@ -37,11 +37,11 @@ export function ProposalList({ rows }: { rows: Row[] }) {
       <table className="w-full text-sm">
         <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th className="px-4 py-3 text-left">Client</th>
-            <th className="px-4 py-3 text-left">Proposal</th>
-            <th className="px-4 py-3 text-left">Status</th>
-            <th className="px-4 py-3 text-right">Value</th>
-            <th className="px-4 py-3 text-right">Last activity</th>
+            <th scope="col" className="px-4 py-3 text-left">Client</th>
+            <th scope="col" className="px-4 py-3 text-left">Proposal</th>
+            <th scope="col" className="px-4 py-3 text-left">Status</th>
+            <th scope="col" className="px-4 py-3 text-right">Value</th>
+            <th scope="col" className="px-4 py-3 text-right">Last activity</th>
           </tr>
         </thead>
         <tbody>
