@@ -8,11 +8,12 @@
  */
 
 import { runSuite, suiteMeetsGate } from "./runner";
-import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard } from "./graders";
+import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview } from "./graders";
 import { ocrCases } from "./fixtures/ocr.fixtures";
 import { reminderGuardCases } from "./fixtures/reminder-guard.fixtures";
 import { groundingCases } from "./fixtures/assistant-grounding.fixtures";
 import { monthEndCloseCases } from "./fixtures/month-end-close.fixtures";
+import { invoiceReviewCases } from "./fixtures/invoice-review.fixtures";
 import type { SuiteReport } from "./types";
 
 export interface SuiteGate {
@@ -55,6 +56,12 @@ export function runAllEvalSuites(): EvalSuiteResult[] {
       report: runSuite("month-end-close", monthEndCloseCases, gradeMonthEndClose),
       gate: { minScore: 1, minPassRate: 1 },
     },
+    {
+      // Deterministic review checks + the unclear-description grounding guard
+      // (critical) must hold exactly — they gate the pre-send advisory.
+      report: runSuite("invoice-review", invoiceReviewCases, gradeInvoiceReview),
+      gate: { minScore: 1, minPassRate: 1 },
+    },
   ];
 
   return suites.map(({ report, gate }) => ({
@@ -72,6 +79,7 @@ export {
   gradeReminderGuard,
   gradeGrounding,
   gradeMonthEndClose,
+  gradeInvoiceReview,
   type OcrEvalInput,
   type OcrEvalExpected,
   type ReminderGuardInput,
@@ -80,4 +88,6 @@ export {
   type GroundingExpected,
   type MonthEndCloseInput,
   type MonthEndCloseExpected,
+  type InvoiceReviewInput,
+  type InvoiceReviewExpected,
 } from "./graders";
