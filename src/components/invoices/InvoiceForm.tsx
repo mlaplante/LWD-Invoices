@@ -15,14 +15,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { HelpCircle } from "lucide-react";
 import { LineItemEditor, type LineItemValue } from "./LineItemEditor";
+import { InvoiceMetadata } from "./InvoiceMetadata";
+import { PaymentScheduleSection } from "./PaymentScheduleSection";
 import { calculateInvoiceTotalsWithDiscount, type TaxInput } from "@/server/services/tax-calculator";
 import { trpc } from "@/trpc/client";
-import { PaymentScheduleDialog, type PartialPaymentEntry } from "./PaymentScheduleDialog";
-import { CalendarRange, X } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { type PartialPaymentEntry } from "./PaymentScheduleDialog";
 
-type InvoiceFormData = {
+export type InvoiceFormData = {
   id?: string;
   type: InvoiceType;
   date: string;
@@ -49,14 +55,6 @@ type Props = {
   taxes: { id: string; name: string; rate: number; isCompound: boolean }[];
 };
 
-const TYPE_LABELS: Record<InvoiceType, string> = {
-  [InvoiceType.DETAILED]: "Invoice (Detailed)",
-  [InvoiceType.SIMPLE]: "Invoice (Simple)",
-  [InvoiceType.ESTIMATE]: "Estimate",
-  [InvoiceType.CREDIT_NOTE]: "Credit Note",
-  [InvoiceType.DEPOSIT]: "Deposit",
-};
-
 const REMINDER_DAY_OPTIONS = [1, 2, 3, 5, 7, 14, 30];
 
 export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefaultDepositPercent, clients, currencies, taxes }: Props) {
@@ -68,7 +66,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
   const [form, setForm] = useState<InvoiceFormData>({
     type: InvoiceType.DETAILED,
-    date: new Date().toISOString().slice(0, 10),
+    date: initialData?.date ?? "",
     dueDate: "",
     currencyId: defaultCurrency?.id ?? "",
     clientId: "",
@@ -133,6 +131,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
   const createMutation = trpc.invoices.create.useMutation();
   const updateMutation = trpc.invoices.update.useMutation();
   const draftFromPromptMutation = trpc.invoices.draftFromPrompt.useMutation();
+  const utils = trpc.useUtils();
   const [naturalPrompt, setNaturalPrompt] = useState("");
   const [naturalDraftReview, setNaturalDraftReview] = useState<{
     ambiguities: { field: string; message: string }[];
@@ -248,6 +247,15 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
     }
   }
 
+  // Default the date to "today" on the client only, so SSR and first client
+  // render agree (avoids a hydration mismatch around the UTC date boundary).
+  useEffect(() => {
+    if (mode === "create" && !form.date) {
+      setForm((f) => ({ ...f, date: new Date().toISOString().slice(0, 10) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const didInitDeposit = useRef(false);
   useEffect(() => {
     if (mode === "create" && depositEnabled && schedule.length === 0 && !didInitDeposit.current) {
@@ -292,6 +300,20 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
         sourceId: l.sourceId,
       })),
     };
+  }
+
+  async function copyPrevious() {
+    if (!form.clientId) return;
+    const prev = await utils.invoices.lastForClient.fetch({ clientId: form.clientId });
+    if (!prev) { toast.error("No previous invoice for this client"); return; }
+    setForm((f) => ({
+      ...f,
+      type: prev.type,
+      currencyId: prev.currencyId,
+      notes: prev.notes ?? f.notes,
+      lines: prev.lines,
+    }));
+    toast.success("Copied from previous invoice");
   }
 
   function handleSave(andSend = false) {
@@ -370,105 +392,53 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
       )}
 
       {/* Header fields */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Client */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Client</label>
-          <Select
-            value={form.clientId}
-            onValueChange={(v: string) => handleClientChange(v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select client…" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Type */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Type</label>
-          <Select
-            value={form.type}
-            onValueChange={(v: string) =>
-              setForm((f) => ({ ...f, type: v as InvoiceType }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Date */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Date</label>
-          <Input
-            type="date"
-            value={form.date}
-            onChange={(e) => handleDateChange(e.target.value)}
-          />
-        </div>
-
-        {/* Due Date */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Due Date</label>
-          <Input
-            type="date"
-            value={form.dueDate ?? ""}
-            onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-          />
-        </div>
-
-        {/* Currency */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Currency</label>
-          <Select
-            value={form.currencyId}
-            onValueChange={(v: string) => setForm((f) => ({ ...f, currencyId: v }))}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {currencies.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.code} ({c.symbol})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Invoice number (edit only) */}
-        {form.number !== undefined && (
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Invoice Number</label>
-            <Input
-              value={form.number}
-              onChange={(e) => setForm((f) => ({ ...f, number: e.target.value }))}
-              placeholder="Auto-assigned"
-            />
-          </div>
-        )}
-      </div>
+      <InvoiceMetadata
+        form={form}
+        setForm={setForm}
+        clients={clients}
+        currencies={currencies}
+        onClientChange={handleClientChange}
+        onDateChange={handleDateChange}
+      />
 
       {/* Line Items */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Line Items</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold">Line Items</h3>
+          {mode === "create" && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={copyPrevious}
+              disabled={!form.clientId}
+              className="h-7 text-xs"
+            >
+              Copy from previous
+            </Button>
+          )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Keyboard shortcuts"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64">
+              <div className="space-y-2 text-sm">
+                <p className="font-medium">Keyboard shortcuts</p>
+                <ul className="space-y-1 text-muted-foreground">
+                  <li><kbd className="rounded border px-1 text-xs font-mono">Enter</kbd> — new row</li>
+                  <li><kbd className="rounded border px-1 text-xs font-mono">⌘/Ctrl+D</kbd> — duplicate row</li>
+                  <li>Drag handle or arrow keys — reorder</li>
+                </ul>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         <LineItemEditor
           lines={form.lines}
           taxes={taxOptions}
@@ -541,71 +511,21 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
       </div>
 
       {/* Payment Schedule */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold">Payment Schedule</h3>
-          {schedule.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {schedule.length} payment{schedule.length !== 1 ? "s" : ""} scheduled
-              <button
-                type="button"
-                onClick={() => { setSchedule([]); setDepositEnabled(false); }}
-                className="ml-0.5 hover:text-destructive transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-        </div>
-
-        {/* Deposit toggle — visible when no custom schedule or deposit is active */}
-        {(schedule.length === 0 || depositEnabled) && (
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={depositEnabled}
-              onCheckedChange={handleDepositToggle}
-            />
-            <span className="text-sm">Require deposit</span>
-            {depositEnabled && (
-              <div className="flex items-center gap-1.5">
-                <Input
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={depositPercent}
-                  onChange={(e) => handleDepositPercentChange(Number(e.target.value) || 50)}
-                  className="w-16 h-8 text-sm"
-                />
-                <span className="text-sm text-muted-foreground">%</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setScheduleOpen(true)}
-        >
-          <CalendarRange className="w-3.5 h-3.5 mr-1.5" />
-          {schedule.length > 0 ? "Edit Schedule" : "Set Up Payment Schedule"}
-        </Button>
-        <PaymentScheduleDialog
-          open={scheduleOpen}
-          onOpenChange={setScheduleOpen}
-          invoiceTotal={invoiceTotals.total}
-          invoiceDueDate={form.dueDate || null}
-          currencySymbol={sym}
-          currencySymbolPosition={symPos}
-          existingSchedule={schedule}
-          onSave={(s) => {
-            setSchedule(s);
-            setDepositEnabled(false);
-            setScheduleOpen(false);
-          }}
-        />
-      </div>
+      <PaymentScheduleSection
+        schedule={schedule}
+        setSchedule={setSchedule}
+        depositEnabled={depositEnabled}
+        setDepositEnabled={setDepositEnabled}
+        depositPercent={depositPercent}
+        onDepositToggle={handleDepositToggle}
+        onDepositPercentChange={handleDepositPercentChange}
+        scheduleOpen={scheduleOpen}
+        setScheduleOpen={setScheduleOpen}
+        invoiceTotal={invoiceTotals.total}
+        dueDate={form.dueDate}
+        currencySymbol={sym}
+        currencySymbolPosition={symPos}
+      />
 
       {/* Notes */}
       <div className="space-y-1">

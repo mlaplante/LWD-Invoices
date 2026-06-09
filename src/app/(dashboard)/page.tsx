@@ -10,7 +10,11 @@ import { AgingReceivables } from "@/components/dashboard/AgingReceivables";
 import { EstimateConversion } from "@/components/dashboard/EstimateConversion";
 import { DueThisWeek } from "@/components/dashboard/DueThisWeek";
 import { CashFlowInsights } from "@/components/dashboard/CashFlowInsights";
+import { OpenTasksCard } from "@/components/dashboard/OpenTasksCard";
+import { RetainerBurnCard } from "@/components/dashboard/RetainerBurnCard";
+import { DashboardLayoutEditor } from "@/components/dashboard/DashboardLayoutEditor";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { WidgetKey } from "@/lib/dashboard-layout";
 
 // Lazy-load chart components to defer the ~400KB Recharts bundle
 const RevenueChart = dynamic(
@@ -26,28 +30,21 @@ const ExpensesVsRevenueChart = dynamic(
   { loading: () => <Skeleton className="h-72 rounded-2xl" /> },
 );
 
-/* ── Async sections that stream in after the shell ── */
+/* ── Async sections (one per WIDGET_KEY) ── */
 
 async function SummarySection() {
   const summary = await api.dashboard.summary({});
   return <SummaryCards summary={summary} />;
 }
 
-async function ChartsSection() {
-  const [revenueChart, statusBreakdown] = await Promise.all([
-    api.dashboard.revenueChart(),
-    api.dashboard.invoiceStatusBreakdown(),
-  ]);
-  return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-      <div className="lg:col-span-2">
-        <RevenueChart data={revenueChart} />
-      </div>
-      <div>
-        <InvoiceStatusChart data={statusBreakdown} />
-      </div>
-    </div>
-  );
+async function RevenueSection() {
+  const revenueChart = await api.dashboard.revenueChart();
+  return <RevenueChart data={revenueChart} />;
+}
+
+async function InvoiceStatusSection() {
+  const statusBreakdown = await api.dashboard.invoiceStatusBreakdown();
+  return <InvoiceStatusChart data={statusBreakdown} />;
 }
 
 async function ExpensesSection() {
@@ -55,26 +52,39 @@ async function ExpensesSection() {
   return <ExpensesVsRevenueChart data={data} />;
 }
 
-async function InsightsSection() {
-  const [topClients, aging, conversion, dueThisWeek] = await Promise.all([
-    api.dashboard.topClients(),
-    api.dashboard.agingReceivables(),
-    api.dashboard.estimateConversion(),
-    api.dashboard.dueThisWeek(),
-  ]);
-  return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
-      <TopClients data={topClients} />
-      <AgingReceivables data={aging} />
-      <DueThisWeek data={dueThisWeek} />
-      <EstimateConversion data={conversion} />
-    </div>
-  );
-}
-
 async function CashFlowInsightSection() {
   const data = await api.dashboard.cashFlowInsights();
   return <CashFlowInsights data={data} />;
+}
+
+async function TopClientsSection() {
+  const data = await api.dashboard.topClients();
+  return <TopClients data={data} />;
+}
+
+async function AgingSection() {
+  const data = await api.dashboard.agingReceivables();
+  return <AgingReceivables data={data} />;
+}
+
+async function DueThisWeekSection() {
+  const data = await api.dashboard.dueThisWeek();
+  return <DueThisWeek data={data} />;
+}
+
+async function EstimateConversionSection() {
+  const data = await api.dashboard.estimateConversion();
+  return <EstimateConversion data={data} />;
+}
+
+async function TasksSection() {
+  const data = await api.dashboard.openTasks();
+  return <OpenTasksCard data={data} />;
+}
+
+async function RetainerBurnSection() {
+  const data = await api.dashboard.retainerBurn();
+  return <RetainerBurnCard data={data} />;
 }
 
 async function ActivitySection() {
@@ -92,8 +102,77 @@ async function ActivitySection() {
   );
 }
 
+/* ── Key → section map ── */
+
+type SectionEntry = {
+  fallback: React.ReactNode;
+  section: React.ReactNode;
+};
+
+function buildSectionMap(): Record<WidgetKey, SectionEntry> {
+  return {
+    summary: {
+      fallback: (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-28 rounded-2xl" />
+          ))}
+        </div>
+      ),
+      section: <SummarySection />,
+    },
+    revenue: {
+      fallback: <Skeleton className="h-72 rounded-2xl" />,
+      section: <RevenueSection />,
+    },
+    invoiceStatus: {
+      fallback: <Skeleton className="h-72 rounded-2xl" />,
+      section: <InvoiceStatusSection />,
+    },
+    expenses: {
+      fallback: <Skeleton className="h-72 rounded-2xl" />,
+      section: <ExpensesSection />,
+    },
+    cashFlow: {
+      fallback: <Skeleton className="h-64 rounded-2xl" />,
+      section: <CashFlowInsightSection />,
+    },
+    topClients: {
+      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      section: <TopClientsSection />,
+    },
+    aging: {
+      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      section: <AgingSection />,
+    },
+    dueThisWeek: {
+      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      section: <DueThisWeekSection />,
+    },
+    estimateConversion: {
+      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      section: <EstimateConversionSection />,
+    },
+    tasks: {
+      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      section: <TasksSection />,
+    },
+    retainerBurn: {
+      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      section: <RetainerBurnSection />,
+    },
+    activity: {
+      fallback: <Skeleton className="h-48 rounded-2xl" />,
+      section: <ActivitySection />,
+    },
+  };
+}
+
 export default async function DashboardPage() {
   const { data: { user } } = await getUser();
+
+  // Fetch saved layout server-side; falls back to default order if none saved
+  const layout = await api.dashboardLayout.get();
 
   const now = new Date();
   const greeting =
@@ -108,50 +187,39 @@ export default async function DashboardPage() {
     day: "numeric",
   });
 
+  const sectionMap = buildSectionMap();
+
   return (
     <div className="space-y-5">
       {/* Greeting — renders immediately */}
-      <div>
-        <h1 className="font-display text-3xl tracking-tight">
-          {greeting}
-          {user?.user_metadata?.firstName
-            ? `, ${user.user_metadata.firstName}`
-            : ""}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{dateLabel}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-3xl tracking-tight">
+            {greeting}
+            {user?.user_metadata?.firstName
+              ? `, ${user.user_metadata.firstName}`
+              : ""}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{dateLabel}</p>
+        </div>
+        {/* Edit layout button — client island */}
+        <DashboardLayoutEditor />
       </div>
 
       {/* Quick Actions — static, renders immediately */}
       <QuickActions />
 
-      {/* KPI Cards — streams in first (fast query) */}
-      <Suspense fallback={<div className="grid grid-cols-2 gap-4 lg:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}</div>}>
-        <SummarySection />
-      </Suspense>
-
-      {/* Charts — stream in parallel */}
-      <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
-        <ChartsSection />
-      </Suspense>
-
-      <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
-        <ExpensesSection />
-      </Suspense>
-
-      {/* AI cash-flow narrative — deterministic metrics with optional OpenAI summarization */}
-      <Suspense fallback={<Skeleton className="h-64 rounded-2xl" />}>
-        <CashFlowInsightSection />
-      </Suspense>
-
-      {/* Insights — Top Clients, Aging, Conversion */}
-      <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
-        <InsightsSection />
-      </Suspense>
-
-      {/* Activity Feed */}
-      <Suspense fallback={<Skeleton className="h-48 rounded-2xl" />}>
-        <ActivitySection />
-      </Suspense>
+      {/* Widget sections — in saved order, hidden ones skipped */}
+      {layout
+        .filter((entry) => entry.visible)
+        .map((entry) => {
+          const { fallback, section } = sectionMap[entry.key];
+          return (
+            <Suspense key={entry.key} fallback={fallback}>
+              {section}
+            </Suspense>
+          );
+        })}
     </div>
   );
 }

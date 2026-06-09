@@ -4,6 +4,7 @@ import { router, protectedProcedure, requireRole } from "../trpc";
 import { Prisma, ProjectStatus } from "@/generated/prisma";
 import { idInput, paginationInput } from "../lib/schemas";
 import { generateProjectCloseCheckIn } from "../services/check-in-generator";
+import { logAudit } from "../services/audit";
 import { calculateProjectHealthScore, calculateProjectHealthScores } from "../services/project-health-score";
 import { buildProjectHealthInput, buildProjectHealthInputs } from "../services/project-health-data";
 
@@ -138,8 +139,8 @@ export const projectsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { templateId, ...projectData } = input;
 
-      return ctx.db.$transaction(async (tx) => {
-        const project = await tx.project.create({
+      const project = await ctx.db.$transaction(async (tx) => {
+        const created = await tx.project.create({
           data: { ...projectData, organizationId: ctx.orgId },
           include: fullProjectInclude,
         });
@@ -159,7 +160,7 @@ export const projectsRouter = router({
                   ? (sortOrderToId.get(templateTask.parentSortOrder) ?? null)
                   : null;
 
-              const created = await tx.projectTask.create({
+              const task = await tx.projectTask.create({
                 data: {
                   name: templateTask.name,
                   notes: templateTask.notes,
@@ -167,18 +168,29 @@ export const projectsRouter = router({
                   projectedHours: templateTask.projectedHours,
                   rate: templateTask.rate,
                   parentId,
-                  projectId: project.id,
+                  projectId: created.id,
                   organizationId: ctx.orgId,
                 },
               });
 
-              sortOrderToId.set(templateTask.sortOrder, created.id);
+              sortOrderToId.set(templateTask.sortOrder, task.id);
             }
           }
         }
 
-        return project;
+        return created;
       });
+
+      await logAudit({
+        action: "CREATED",
+        entityType: "Project",
+        entityId: project.id,
+        entityLabel: project.name,
+        userId: ctx.userId ?? undefined,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+
+      return project;
     }),
 
   update: requireRole("OWNER", "ADMIN")
@@ -194,6 +206,14 @@ export const projectsRouter = router({
         data,
       });
       await maybeQueueProjectClose(ctx.db, ctx.orgId, existing, updated);
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Project",
+        entityId: updated.id,
+        entityLabel: updated.name,
+        userId: ctx.userId ?? undefined,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
       return updated;
     }),
 
@@ -209,6 +229,14 @@ export const projectsRouter = router({
         data: { status: input.status },
       });
       await maybeQueueProjectClose(ctx.db, ctx.orgId, existing, updated);
+      await logAudit({
+        action: "STATUS_CHANGED",
+        entityType: "Project",
+        entityId: updated.id,
+        entityLabel: updated.name,
+        userId: ctx.userId ?? undefined,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
       return updated;
     }),
 
@@ -235,7 +263,16 @@ export const projectsRouter = router({
         });
       }
 
-      return ctx.db.project.delete({ where: { id: input.id, organizationId: ctx.orgId } });
+      const deleted = await ctx.db.project.delete({ where: { id: input.id, organizationId: ctx.orgId } });
+      await logAudit({
+        action: "DELETED",
+        entityType: "Project",
+        entityId: input.id,
+        entityLabel: existing.name,
+        userId: ctx.userId ?? undefined,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return deleted;
     }),
 
   healthScore: protectedProcedure

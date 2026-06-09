@@ -54,9 +54,11 @@ import { invoiceReviewRouter } from "./invoiceReview";
 import { disputesRouter } from "./disputes";
 import { refundsRouter } from "./refunds";
 import { monthEndCloseRouter } from "./monthEndClose";
+import { dashboardLayoutRouter } from "./dashboardLayout";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
+  dashboardLayout: dashboardLayoutRouter,
   analytics: analyticsRouter,
   assistant: assistantRouter,
   contractorPortal: contractorPortalRouter,

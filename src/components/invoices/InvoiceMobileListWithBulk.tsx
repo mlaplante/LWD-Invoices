@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { trpc } from "@/trpc/client";
@@ -46,13 +47,14 @@ type Invoice = {
 
 
 export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const allIds = invoices.map((i) => i.id);
+  const { selected, selectedIds, someSelected, toggle, clear } = useBulkSelection(allIds);
   const [selectMode, setSelectMode] = useState(false);
   const router = useRouter();
   const utils = trpc.useUtils();
 
   function onBulkComplete() {
-    setSelected(new Set());
+    clear();
     setSelectMode(false);
     router.refresh();
     void utils.invoices.list.invalidate();
@@ -97,15 +99,10 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
   });
 
   const isLoading = archiveMany.isPending || deleteMany.isPending || sendMany.isPending || markPaidMany.isPending;
-  const someSelected = selected.size > 0;
-  const selectedIds = Array.from(selected);
 
-  function toggle(id: string) {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelected(next);
-    if (next.size === 0) setSelectMode(false);
+  function handleToggle(id: string) {
+    if (selected.has(id) && selected.size === 1) setSelectMode(false);
+    toggle(id);
   }
 
   return (
@@ -143,7 +140,7 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
               <Trash2 className="w-3 h-3" /> Delete
             </Button>
             <Button size="sm" variant="ghost" className="h-7 text-xs"
-              onClick={() => { setSelected(new Set()); setSelectMode(false); }}>
+              onClick={() => { clear(); setSelectMode(false); }}>
               Cancel
             </Button>
           </div>
@@ -170,7 +167,7 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
                 <input
                   type="checkbox"
                   checked={isSelected}
-                  onChange={() => toggle(inv.id)}
+                  onChange={() => handleToggle(inv.id)}
                   className="rounded border-border shrink-0"
                   aria-label={`Select invoice ${inv.number}`}
                 />
@@ -180,7 +177,7 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
                 onClick={(e) => {
                   if (selectMode) {
                     e.preventDefault();
-                    toggle(inv.id);
+                    handleToggle(inv.id);
                   }
                 }}
                 className="flex items-center gap-3 flex-1 min-w-0"

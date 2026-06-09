@@ -21,11 +21,18 @@ import {
   Sparkles,
   ShieldAlert,
   CalendarCheck,
+  Activity,
   Banknote,
   TrendingUp,
   Plus,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  QuickExpenseSheet,
+  SendReminderInvoicePicker,
+  StartTimerFlow,
+} from "@/components/actions";
 
 const tabs = [
   { href: "/", label: "Home", icon: LayoutDashboard },
@@ -40,18 +47,23 @@ const moreItems = [
   { href: "/items", label: "Items", icon: Package },
   { href: "/contractors", label: "Contractors", icon: Contact },
   { href: "/assistant", label: "Ask AI", icon: Sparkles },
+  { href: "/activity", label: "Activity", icon: Activity },
   { href: "/money-intelligence", label: "Money Intelligence", icon: TrendingUp },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
   { href: "/disputes", label: "Disputes", icon: ShieldAlert },
+  { href: "/invoices/unpaid", label: "Unpaid", icon: Receipt },
   { href: "/collections", label: "Collections", icon: Banknote },
   { href: "/tickets", label: "Tickets", icon: LifeBuoy },
   { href: "/settings/team", label: "Team", icon: UsersRound },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+type MobileAction = "expense" | "reminder" | "timer" | null;
+
 export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; activeOrgId?: string }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [action, setAction] = useState<MobileAction>(null);
   const pathname = usePathname();
 
   function isActive(href: string) {
@@ -94,6 +106,31 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
             <Plus className="w-4 h-4" />
             New Invoice
           </Link>
+        </div>
+
+        {/* Quick actions — shared action primitives */}
+        <div className="px-4 grid grid-cols-3 gap-2 pb-3">
+          <button
+            onClick={() => { setDrawerOpen(false); setAction("expense"); }}
+            className="flex flex-col items-center gap-2 py-4 rounded-2xl text-sidebar-foreground/70 active:bg-sidebar-accent/40"
+          >
+            <Wallet className="w-5 h-5" />
+            <span className="text-[11px] font-semibold">Log expense</span>
+          </button>
+          <button
+            onClick={() => { setDrawerOpen(false); setAction("timer"); }}
+            className="flex flex-col items-center gap-2 py-4 rounded-2xl text-sidebar-foreground/70 active:bg-sidebar-accent/40"
+          >
+            <Clock className="w-5 h-5" />
+            <span className="text-[11px] font-semibold">Start timer</span>
+          </button>
+          <button
+            onClick={() => { setDrawerOpen(false); setAction("reminder"); }}
+            className="flex flex-col items-center gap-2 py-4 rounded-2xl text-sidebar-foreground/70 active:bg-sidebar-accent/40"
+          >
+            <Send className="w-5 h-5" />
+            <span className="text-[11px] font-semibold">Send reminder</span>
+          </button>
         </div>
 
         {/* Secondary nav grid */}
@@ -167,6 +204,11 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
           </button>
         </nav>
       </div>
+
+      {/* Action primitives (shared with command palette) */}
+      <QuickExpenseSheet open={action === "expense"} onOpenChange={(o) => !o && setAction(null)} />
+      <StartTimerFlow open={action === "timer"} onOpenChange={(o) => !o && setAction(null)} />
+      <SendReminderInvoicePicker open={action === "reminder"} onOpenChange={(o) => !o && setAction(null)} />
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { LineType } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
 import { calculateLineTotals, type TaxInput } from "@/server/services/tax-calculator";
+import { nextFocusOnEnter, duplicateRowAt } from "./line-item-keyboard";
 import {
   DndContext,
   closestCenter,
@@ -128,6 +129,9 @@ type SortableLineItemProps = {
   onRemove: (index: number) => void;
   onToggleDescription: (index: number) => void;
   onToggleTax: (index: number, taxId: string) => void;
+  onEnter: (index: number) => void;
+  onDuplicate: (index: number) => void;
+  registerFirstInput: (index: number, el: HTMLInputElement | null) => void;
 };
 
 function SortableLineItemImpl({
@@ -140,6 +144,9 @@ function SortableLineItemImpl({
   onRemove,
   onToggleDescription,
   onToggleTax,
+  onEnter,
+  onDuplicate,
+  registerFirstInput,
 }: SortableLineItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: line.sort });
@@ -180,6 +187,16 @@ function SortableLineItemImpl({
               value={line.name}
               onChange={(e) => onUpdate(index, { name: e.target.value })}
               className="h-8 text-sm"
+              ref={(el) => registerFirstInput(index, el)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  onEnter(index);
+                } else if ((e.metaKey || e.ctrlKey) && e.key === "d") {
+                  e.preventDefault();
+                  onDuplicate(index);
+                }
+              }}
             />
             <Select
               value={line.lineType}
@@ -336,6 +353,15 @@ function SortableLineItemImpl({
             value={line.name}
             onChange={(e) => onUpdate(index, { name: e.target.value })}
             className="flex-1 h-10"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                onEnter(index);
+              } else if ((e.metaKey || e.ctrlKey) && e.key === "d") {
+                e.preventDefault();
+                onDuplicate(index);
+              }
+            }}
           />
           <button
             type="button"
@@ -507,6 +533,12 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
   // Monotonically increasing counter ensures unique sort keys even after deletes
   const sortCounter = useRef(lines.length);
 
+  // Ref map for focus management: maps array-index → first input element of that row
+  const firstInputRefs = useRef<Map<number, HTMLInputElement | null>>(new Map());
+  // Track which row index should receive focus after next render
+  const pendingFocusRow = useRef<number | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
+
   // Refs for stable callbacks: row callbacks capture latest props without
   // changing identity, so memoized rows skip re-render when neighbors update.
   const linesRef = useRef(lines);
@@ -553,6 +585,35 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
     );
   }, []);
 
+  const registerFirstInput = useCallback((index: number, el: HTMLInputElement | null) => {
+    firstInputRefs.current.set(index, el);
+  }, []);
+
+  const handleEnter = useCallback((index: number) => {
+    const decision = nextFocusOnEnter({ rowCount: linesRef.current.length, rowIndex: index });
+    if (decision.action === "append") {
+      // addLine uses the live `lines` and `onChange` — call it via refs
+      onChangeRef.current([...linesRef.current, newLine(sortCounter.current++)]);
+    }
+    pendingFocusRow.current = decision.focusRow;
+    setFocusTick((t) => t + 1);
+  }, []);
+
+  const handleDuplicate = useCallback((index: number) => {
+    onChangeRef.current(duplicateRowAt(linesRef.current, index));
+    pendingFocusRow.current = index + 1;
+    setFocusTick((t) => t + 1);
+  }, []);
+
+  // After each focusTick, move focus to the pending row's first input
+  useEffect(() => {
+    if (pendingFocusRow.current !== null) {
+      const el = firstInputRefs.current.get(pendingFocusRow.current);
+      el?.focus();
+      pendingFocusRow.current = null;
+    }
+  }, [focusTick]);
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -586,6 +647,30 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
+        accessibility={{
+          announcements: {
+            onDragStart: ({ active }) => {
+              const pos = lines.findIndex((l) => l.sort === active.id) + 1;
+              return `Picked up line item ${pos}.`;
+            },
+            onDragOver: ({ active, over }) => {
+              if (!over) return "";
+              const activePos = lines.findIndex((l) => l.sort === active.id) + 1;
+              const overPos = lines.findIndex((l) => l.sort === over.id) + 1;
+              return `Line item ${activePos} moved to position ${overPos}.`;
+            },
+            onDragEnd: ({ active, over }) => {
+              const activePos = lines.findIndex((l) => l.sort === active.id) + 1;
+              if (!over) return `Line item ${activePos} dropped.`;
+              const overPos = lines.findIndex((l) => l.sort === over.id) + 1;
+              return `Line item ${activePos} dropped at position ${overPos}.`;
+            },
+            onDragCancel: ({ active }) => {
+              const pos = lines.findIndex((l) => l.sort === active.id) + 1;
+              return `Reordering cancelled for line item ${pos}.`;
+            },
+          },
+        }}
       >
         <SortableContext
           items={lines.map((l) => l.sort)}
@@ -603,6 +688,9 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
               onRemove={removeLine}
               onToggleDescription={toggleDescription}
               onToggleTax={toggleTax}
+              onEnter={handleEnter}
+              onDuplicate={handleDuplicate}
+              registerFirstInput={registerFirstInput}
             />
           ))}
         </SortableContext>

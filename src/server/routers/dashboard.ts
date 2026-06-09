@@ -512,4 +512,25 @@ export const dashboardRouter = router({
 
     return { metrics, narrative };
   }),
+
+  openTasks: protectedProcedure.query(async ({ ctx }) => {
+    const openCount = await ctx.db.projectTask.count({
+      where: { organizationId: ctx.orgId, isCompleted: false },
+    });
+    return { openCount };
+  }),
+
+  retainerBurn: protectedProcedure.query(async ({ ctx }) => {
+    const periods = await ctx.db.hoursRetainerPeriod.findMany({
+      where: { status: "ACTIVE", retainer: { is: { organizationId: ctx.orgId } } },
+      select: { includedHoursSnapshot: true, timeEntries: { select: { minutes: true } } },
+    });
+    let includedHours = 0;
+    let usedHours = 0;
+    for (const p of periods) {
+      includedHours += Number(p.includedHoursSnapshot);
+      usedHours += p.timeEntries.reduce((sum: number, t: { minutes: unknown }) => sum + Number(t.minutes), 0) / 60;
+    }
+    return { includedHours, usedHours, periodCount: periods.length };
+  }),
 });

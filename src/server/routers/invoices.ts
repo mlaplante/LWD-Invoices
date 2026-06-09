@@ -1522,4 +1522,88 @@ export const invoicesRouter = router({
 
       return { portalToken: updated.portalToken };
     }),
+
+  lastForClient: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const last = await ctx.db.invoice.findFirst({
+        where: { organizationId: ctx.orgId, clientId: input.clientId },
+        orderBy: { date: "desc" },
+        select: {
+          type: true,
+          currencyId: true,
+          notes: true,
+          lines: {
+            select: {
+              sort: true,
+              lineType: true,
+              name: true,
+              description: true,
+              qty: true,
+              rate: true,
+              period: true,
+              discount: true,
+              discountIsPercentage: true,
+              taxes: { select: { taxId: true } },
+            },
+            orderBy: { sort: "asc" },
+          },
+        },
+      });
+      if (!last) return null;
+      return {
+        type: last.type,
+        currencyId: last.currencyId,
+        notes: last.notes,
+        lines: last.lines.map((l, idx) => ({
+          sort: idx,
+          lineType: l.lineType,
+          name: l.name,
+          description: l.description ?? undefined,
+          qty: Number(l.qty),
+          rate: Number(l.rate),
+          period: l.period != null ? Number(l.period) : undefined,
+          discount: Number(l.discount),
+          discountIsPercentage: l.discountIsPercentage,
+          taxIds: l.taxes.map((t) => t.taxId),
+        })),
+      };
+    }),
+
+  openForReminder: protectedProcedure
+    .input(z.object({ q: z.string().trim().max(100).optional() }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db.invoice.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          status: { in: ["SENT", "PARTIALLY_PAID", "OVERDUE"] },
+          ...(input.q
+            ? {
+                OR: [
+                  { number: { contains: input.q, mode: "insensitive" } },
+                  { client: { is: { name: { contains: input.q, mode: "insensitive" } } } },
+                ],
+              }
+            : {}),
+        },
+        select: {
+          id: true,
+          number: true,
+          status: true,
+          total: true,
+          dueDate: true,
+          client: { select: { id: true, name: true } },
+        },
+        orderBy: { dueDate: "asc" },
+        take: 20,
+      });
+      return rows.map((r) => ({
+        id: r.id,
+        number: r.number,
+        status: r.status,
+        total: Number(r.total),
+        dueDate: r.dueDate,
+        clientName: r.client?.name ?? "—",
+      }));
+    }),
 });

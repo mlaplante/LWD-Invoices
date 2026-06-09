@@ -5,11 +5,13 @@ import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import {
   BarChart3,
+  Clock,
   FileText,
   FolderKanban,
   Plus,
   Receipt,
   Search,
+  Send,
   Settings,
   Ticket,
   Users,
@@ -17,6 +19,12 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/trpc/client";
 import { VisuallyHidden } from "radix-ui";
+import {
+  QuickExpenseSheet,
+  SendReminderInvoicePicker,
+  StartTimerFlow,
+  GenerateReportMenu,
+} from "@/components/actions";
 
 const QUICK_ACTIONS = [
   { label: "New Invoice", href: "/invoices/new", icon: Plus },
@@ -28,10 +36,13 @@ const QUICK_ACTIONS = [
   { label: "Reports", href: "/reports", icon: BarChart3 },
 ] as const;
 
+type PaletteAction = "expense" | "reminder" | "timer" | "report" | null;
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [activeAction, setActiveAction] = useState<PaletteAction>(null);
   const router = useRouter();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -90,6 +101,7 @@ export function CommandPalette() {
   const showResults = debouncedQuery.length >= 2;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         showCloseButton={false}
@@ -139,6 +151,47 @@ export function CommandPalette() {
                     {action.label}
                   </Command.Item>
                 ))}
+              </Command.Group>
+            )}
+
+            {/* Actions — run in-place via the shared action primitives (when no query) */}
+            {!showResults && (
+              <Command.Group heading="Actions">
+                <Command.Item
+                  value="action-create-invoice"
+                  onSelect={() => navigate("/invoices/new")}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                >
+                  <Plus className="h-4 w-4 text-muted-foreground" /> Create invoice
+                </Command.Item>
+                <Command.Item
+                  value="action-send-reminder"
+                  onSelect={() => { setOpen(false); setActiveAction("reminder"); }}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                >
+                  <Send className="h-4 w-4 text-muted-foreground" /> Send reminder
+                </Command.Item>
+                <Command.Item
+                  value="action-log-expense"
+                  onSelect={() => { setOpen(false); setActiveAction("expense"); }}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                >
+                  <Receipt className="h-4 w-4 text-muted-foreground" /> Log expense
+                </Command.Item>
+                <Command.Item
+                  value="action-start-timer"
+                  onSelect={() => { setOpen(false); setActiveAction("timer"); }}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                >
+                  <Clock className="h-4 w-4 text-muted-foreground" /> Start timer
+                </Command.Item>
+                <Command.Item
+                  value="action-generate-report"
+                  onSelect={() => { setOpen(false); setActiveAction("report"); }}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                >
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" /> Generate report
+                </Command.Item>
               </Command.Group>
             )}
 
@@ -251,6 +304,13 @@ export function CommandPalette() {
         </Command>
       </DialogContent>
     </Dialog>
+
+    {/* In-place action primitives (shared with mobile) */}
+    <QuickExpenseSheet open={activeAction === "expense"} onOpenChange={(o) => !o && setActiveAction(null)} />
+    <SendReminderInvoicePicker open={activeAction === "reminder"} onOpenChange={(o) => !o && setActiveAction(null)} />
+    <StartTimerFlow open={activeAction === "timer"} onOpenChange={(o) => !o && setActiveAction(null)} />
+    <GenerateReportMenu open={activeAction === "report"} onOpenChange={(o) => !o && setActiveAction(null)} />
+    </>
   );
 }
 
