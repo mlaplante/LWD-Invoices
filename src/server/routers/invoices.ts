@@ -1498,11 +1498,7 @@ export const invoicesRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Prisma's @default(cuid()) only fires on create. crypto.randomUUID
-      // is sufficient for portal tokens — they're URL-safe, unguessable,
-      // and unique enough that the @unique constraint will never realistically
-      // conflict.
-      const newToken = crypto.randomUUID();
+      const newToken = generatePortalToken();
 
       const updated = await ctx.db.invoice.update({
         where: { id: input.id, organizationId: ctx.orgId },

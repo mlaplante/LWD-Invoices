@@ -7,13 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Pencil, Trash2, Plus, Pause, Play, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-
-const FREQUENCY_LABELS: Record<string, string> = {
-  DAILY: "Daily",
-  WEEKLY: "Weekly",
-  MONTHLY: "Monthly",
-  YEARLY: "Yearly",
-};
+import { formatFrequency } from "@/lib/format";
 
 export function RecurringExpenseList() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -39,11 +33,6 @@ export function RecurringExpenseList() {
     },
     onError: (err) => toast.error(err.message),
   });
-
-  function formatFrequency(freq: string, interval: number) {
-    if (interval === 1) return FREQUENCY_LABELS[freq] ?? freq;
-    return `Every ${interval} ${freq.toLowerCase().replace(/ly$/, "")}s`;
-  }
 
   return (
     <div className="space-y-5">

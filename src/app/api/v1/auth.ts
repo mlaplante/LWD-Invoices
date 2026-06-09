@@ -2,28 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { db } from "@/server/db";
 import { paginationFromRequest } from "@/lib/pagination";
+import { createRateLimiter } from "@/lib/rate-limit";
 
 export interface V1Context {
   orgId: string;
   userId: string;
 }
 
-// Simple in-memory sliding-window rate limiter: 60 requests per token per minute
-const rateLimitMap = new Map<string, number[]>();
-const RATE_LIMIT = 60;
-const WINDOW_MS = 60_000;
+// 60 requests per token per minute, per process instance. For cross-replica
+// enforcement this would need the Upstash limiter (src/lib/rate-limiter.ts).
+const limiter = createRateLimiter({ limit: 60, windowMs: 60_000 });
 
 export function clearRateLimits() {
-  rateLimitMap.clear();
+  limiter.clear();
 }
 
 export function isRateLimited(token: string): boolean {
-  const now = Date.now();
-  const timestamps = (rateLimitMap.get(token) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (timestamps.length >= RATE_LIMIT) return true;
-  timestamps.push(now);
-  rateLimitMap.set(token, timestamps);
-  return false;
+  return limiter.isLimited(token);
 }
 
 export async function withV1Auth(

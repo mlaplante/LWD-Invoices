@@ -41,6 +41,21 @@ export function formatDateTime(d: Date | string | null | undefined): string {
   });
 }
 
+const FREQUENCY_LABELS: Record<string, string> = {
+  DAILY: "Daily",
+  WEEKLY: "Weekly",
+  MONTHLY: "Monthly",
+  YEARLY: "Yearly",
+};
+
+/**
+ * Format a recurrence frequency + interval (e.g. "Monthly", "Every 2 weeks").
+ */
+export function formatFrequency(freq: string, interval: number): string {
+  if (interval === 1) return FREQUENCY_LABELS[freq] ?? freq;
+  return `Every ${interval} ${freq.toLowerCase().replace(/ly$/, "")}s`;
+}
+
 /**
  * Format a monetary amount with currency symbol respecting position.
  * Handles Prisma Decimal objects, numbers, and numeric strings.

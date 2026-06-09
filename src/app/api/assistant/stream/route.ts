@@ -1,11 +1,16 @@
 import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
+import { createRateLimiter } from "@/lib/rate-limit";
 import {
   streamBooksAssistant,
   type BooksAssistantMessage,
 } from "@/server/services/books-assistant";
 
 const MAX_HISTORY = 20;
+
+// LLM calls cost real money — cap per-org usage so a misbehaving client or
+// compromised session can't run up the bill.
+const streamLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
 /**
  * SSE streaming endpoint for the "Ask your books" assistant. Streams the
@@ -18,6 +23,10 @@ export async function POST(req: Request) {
   const auth = await getAuthenticatedOrg();
   if (isAuthError(auth)) return auth;
   const { orgId } = auth;
+
+  if (streamLimiter.isLimited(orgId)) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please slow down." }), { status: 429 });
+  }
 
   let body: unknown;
   try {

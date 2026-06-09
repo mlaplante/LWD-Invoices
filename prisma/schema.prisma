@@ -372,7 +372,8 @@ model Invitation {
   id        String           @id @default(cuid())
   email     String
   role      UserRole         @default(VIEWER)
-  token     String           @unique @default(cuid())
+  // Bearer secret: random uuid(4) default, overridden with generateSecureToken() in app code
+  token     String           @unique @default(uuid(4))
   expiresAt DateTime
   status    InvitationStatus @default(PENDING)
 
@@ -407,7 +408,7 @@ model Client {
   isTaxExempt      Boolean  @default(false)
   notes                   String?
   defaultPaymentTermsDays Int?
-  portalToken             String   @unique @default(cuid())
+  portalToken             String   @unique @default(uuid(4))
   portalPassphraseHash String?
   stripeCustomerId   String?
   autoChargeEnabled  Boolean @default(false)
@@ -581,7 +582,7 @@ model Invoice {
   project        Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   isChangeOrder  Boolean      @default(false)
 
-  portalToken String @unique @default(cuid())
+  portalToken String @unique @default(uuid(4))
 
   // E-signature fields (for proposals/estimates)
   signedAt       DateTime?
@@ -1123,7 +1124,7 @@ model Contractor {
   // shares the link so the contractor can view their payment history, submit a
   // W-9, and download their 1099-NEC without an account.
   portalEnabled     Boolean  @default(false)
-  portalToken       String   @unique @default(cuid())
+  portalToken       String   @unique @default(uuid(4))
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
