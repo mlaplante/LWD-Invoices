@@ -18,7 +18,9 @@ import {
   buildSubscriptionStreams,
   buildExpenseAnomalyInputs,
   buildCollectionRiskInputs,
+  buildSendObservations,
 } from "@/server/services/analytics-data";
+import { recommendSendWindow } from "@/server/services/send-timing";
 import { getBenchmarksForOrg } from "@/server/services/benchmarking-data";
 
 export const analyticsRouter = router({
@@ -137,6 +139,16 @@ export const analyticsRouter = router({
     for (const inv of invoices) byInvoiceId[inv.invoiceId] = inv;
     return { generatedAt: now.toISOString(), invoices, byInvoiceId };
   }),
+
+  // Recommended send window (weekday + time of day) for a client's invoice
+  // emails, learned from when their past sends got opened. Falls back to a
+  // global default when the client lacks enough history.
+  bestSendWindow: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const observations = await buildSendObservations(ctx.db, ctx.orgId, input.clientId);
+      return recommendSendWindow(observations);
+    }),
 
   // Live preview of the weekly business briefing (same payload the Monday cron
   // emails) — powers the settings preview + the in-app briefing surface.

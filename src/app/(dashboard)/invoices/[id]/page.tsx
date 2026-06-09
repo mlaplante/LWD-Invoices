@@ -137,7 +137,7 @@ export default async function InvoiceDetailPage({
             </Button>
           )}
           {invoice.status === "DRAFT" && (
-            <SendInvoiceButton invoiceId={invoice.id} autoSend={send === "1"} />
+            <SendInvoiceButton invoiceId={invoice.id} clientId={invoice.client.id} autoSend={send === "1"} />
           )}
           <Button asChild variant="outline" size="sm">
             <a

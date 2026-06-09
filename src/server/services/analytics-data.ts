@@ -14,6 +14,7 @@ import type { CashFlowForecastInput, ForecastFrequency } from "./cash-flow-forec
 import type { RecurringRevenueStream, RecurringStreamFrequency } from "./subscription-metrics";
 import type { AnomalyExpense } from "./expense-anomaly";
 import type { CollectionRiskInput } from "./collection-risk";
+import type { SendObservation } from "./send-timing";
 
 export const OPEN_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.SENT,
@@ -562,4 +563,52 @@ export async function buildCollectionRiskInputs(
       };
     })
     .filter((i) => i.balance > 0);
+}
+
+/**
+ * Build send-timing observations for a client from EmailEvent history: for each
+ * of the client's invoices that was emailed, derive when it was sent and how
+ * quickly it was first opened. Feeds recommendSendWindow.
+ */
+export async function buildSendObservations(
+  db: typeof Db,
+  orgId: string,
+  clientId: string,
+): Promise<SendObservation[]> {
+  const events = await db.emailEvent.findMany({
+    where: {
+      organizationId: orgId,
+      invoiceId: { not: null },
+      invoice: { clientId },
+    },
+    select: { invoiceId: true, type: true, occurredAt: true },
+    orderBy: { occurredAt: "asc" },
+  });
+
+  // Per invoice: earliest send time and earliest open time.
+  const byInvoice = new Map<string, { sentAt: Date | null; openedAt: Date | null }>();
+  for (const e of events) {
+    if (!e.invoiceId) continue;
+    const entry = byInvoice.get(e.invoiceId) ?? { sentAt: null, openedAt: null };
+    const isSend = e.type.includes("sent") || e.type.includes("delivered");
+    const isOpen = e.type.includes("opened");
+    if (isSend && (!entry.sentAt || e.occurredAt < entry.sentAt)) entry.sentAt = e.occurredAt;
+    if (isOpen && (!entry.openedAt || e.occurredAt < entry.openedAt)) entry.openedAt = e.occurredAt;
+    byInvoice.set(e.invoiceId, entry);
+  }
+
+  const observations: SendObservation[] = [];
+  for (const { sentAt, openedAt } of byInvoice.values()) {
+    if (!sentAt) continue;
+    const hoursToOpen =
+      openedAt && openedAt >= sentAt
+        ? (openedAt.getTime() - sentAt.getTime()) / 3_600_000
+        : null;
+    observations.push({
+      weekday: sentAt.getUTCDay(),
+      hour: sentAt.getUTCHours(),
+      hoursToOpen,
+    });
+  }
+  return observations;
 }
