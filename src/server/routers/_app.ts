@@ -50,6 +50,7 @@ import { analyticsRouter } from "./analytics";
 import { assistantRouter } from "./assistant";
 import { contractorPortalRouter } from "./contractor-portal";
 import { collectionsRouter } from "./collections";
+import { invoiceReviewRouter } from "./invoiceReview";
 import { disputesRouter } from "./disputes";
 import { refundsRouter } from "./refunds";
 import { monthEndCloseRouter } from "./monthEndClose";
@@ -60,6 +61,7 @@ export const appRouter = router({
   assistant: assistantRouter,
   contractorPortal: contractorPortalRouter,
   collections: collectionsRouter,
+  invoiceReview: invoiceReviewRouter,
   disputes: disputesRouter,
   refunds: refundsRouter,
   monthEndClose: monthEndCloseRouter,

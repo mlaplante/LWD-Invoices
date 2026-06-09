@@ -8,11 +8,15 @@
  */
 
 import { runSuite, suiteMeetsGate } from "./runner";
-import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard } from "./graders";
+import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview, gradeExpenseCategorization, gradeCollectionsQueue, gradeProposalGenerator } from "./graders";
 import { ocrCases } from "./fixtures/ocr.fixtures";
 import { reminderGuardCases } from "./fixtures/reminder-guard.fixtures";
 import { groundingCases } from "./fixtures/assistant-grounding.fixtures";
 import { monthEndCloseCases } from "./fixtures/month-end-close.fixtures";
+import { invoiceReviewCases } from "./fixtures/invoice-review.fixtures";
+import { expenseCategorizationCases } from "./fixtures/expense-categorization.fixtures";
+import { collectionsQueueCases } from "./fixtures/collections-queue.fixtures";
+import { proposalGeneratorCases } from "./fixtures/proposal-generator.fixtures";
 import type { SuiteReport } from "./types";
 
 export interface SuiteGate {
@@ -55,6 +59,27 @@ export function runAllEvalSuites(): EvalSuiteResult[] {
       report: runSuite("month-end-close", monthEndCloseCases, gradeMonthEndClose),
       gate: { minScore: 1, minPassRate: 1 },
     },
+    {
+      // Deterministic review checks + the unclear-description grounding guard
+      // (critical) must hold exactly — they gate the pre-send advisory.
+      report: runSuite("invoice-review", invoiceReviewCases, gradeInvoiceReview),
+      gate: { minScore: 1, minPassRate: 1 },
+    },
+    {
+      // Majority-vote determinism + the AI-category grounding guard (critical).
+      report: runSuite("expense-categorization", expenseCategorizationCases, gradeExpenseCategorization),
+      gate: { minScore: 1, minPassRate: 1 },
+    },
+    {
+      // Queue ordering must be deterministic and explainable — no LLM ranking.
+      report: runSuite("collections-queue", collectionsQueueCases, gradeCollectionsQueue),
+      gate: { minScore: 1, minPassRate: 1 },
+    },
+    {
+      // Section-key conformance + suggested-item grounding (critical) must hold.
+      report: runSuite("proposal-generator", proposalGeneratorCases, gradeProposalGenerator),
+      gate: { minScore: 1, minPassRate: 1 },
+    },
   ];
 
   return suites.map(({ report, gate }) => ({
@@ -72,6 +97,10 @@ export {
   gradeReminderGuard,
   gradeGrounding,
   gradeMonthEndClose,
+  gradeInvoiceReview,
+  gradeExpenseCategorization,
+  gradeCollectionsQueue,
+  gradeProposalGenerator,
   type OcrEvalInput,
   type OcrEvalExpected,
   type ReminderGuardInput,
@@ -80,4 +109,12 @@ export {
   type GroundingExpected,
   type MonthEndCloseInput,
   type MonthEndCloseExpected,
+  type InvoiceReviewInput,
+  type InvoiceReviewExpected,
+  type ExpenseCategorizationInput,
+  type ExpenseCategorizationExpected,
+  type CollectionsQueueInput,
+  type CollectionsQueueExpected,
+  type ProposalGeneratorInput,
+  type ProposalGeneratorExpected,
 } from "./graders";

@@ -269,6 +269,22 @@ function rawRecommendation(
 }
 
 /**
+ * Deterministic daily-queue ordering over already-computed risk scores.
+ * Action-due invoices first; within each group, by risk-weighted exposure
+ * (lateRiskPercent × balance) descending; ties broken by invoiceId so the
+ * order is stable and reproducible (the ranking is explainable, never an LLM).
+ */
+export function rankCollectionsQueue(scores: CollectionRiskScore[]): CollectionRiskScore[] {
+  const exposure = (s: CollectionRiskScore) => s.lateRiskPercent * s.balance;
+  return [...scores].sort((a, b) => {
+    if (a.actionDue !== b.actionDue) return a.actionDue ? -1 : 1;
+    const diff = exposure(b) - exposure(a);
+    if (diff !== 0) return diff;
+    return a.invoiceId.localeCompare(b.invoiceId);
+  });
+}
+
+/**
  * Rank open invoices by collection risk so the dunning queue surfaces the
  * invoices most likely to go (or stay) unpaid first. Monitor-only invoices
  * sort to the bottom.
