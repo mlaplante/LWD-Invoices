@@ -70,6 +70,14 @@ export const env = createEnv({
     // mirroring GEMINI_OCR_MODELS: on a 429 the next model is tried. Leave unset
     // for the built-in default chain.
     GEMINI_INVOICE_PARSER_MODELS: z.string().min(1).optional(),
+    // Which provider powers the AI invoice reviewer's "unclear line description"
+    // check. Defaults to Gemini (its 429 model-fallback chain) when GEMINI_API_KEY
+    // is set, otherwise Anthropic/OpenAI. Set explicitly to pin a provider.
+    INVOICE_REVIEW_AI_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
+    // Comma-separated, ordered Gemini model fallback chain for the invoice
+    // reviewer (same 429 fallback behavior as GEMINI_OCR_MODELS). Leave unset for
+    // the built-in default chain.
+    GEMINI_INVOICE_REVIEW_MODELS: z.string().min(1).optional(),
     // Dedicated HMAC secret for signing public-portal session cookies.
     // Optional for back-compat: when unset, the portal-session helpers fall
     // back to SUPABASE_SERVICE_ROLE_KEY. Set this in production so the
@@ -110,6 +118,8 @@ export const env = createEnv({
     INVOICE_PARSER_PROVIDER: process.env.INVOICE_PARSER_PROVIDER,
     OPENAI_INVOICE_PARSER_MODEL: process.env.OPENAI_INVOICE_PARSER_MODEL,
     GEMINI_INVOICE_PARSER_MODELS: process.env.GEMINI_INVOICE_PARSER_MODELS,
+    INVOICE_REVIEW_AI_PROVIDER: process.env.INVOICE_REVIEW_AI_PROVIDER,
+    GEMINI_INVOICE_REVIEW_MODELS: process.env.GEMINI_INVOICE_REVIEW_MODELS,
     PORTAL_SESSION_SECRET: process.env.PORTAL_SESSION_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
