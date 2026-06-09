@@ -4,6 +4,8 @@ import {
   checkSuspiciousDiscount,
   checkUnbilledTime,
   checkDuplicateRisk,
+  guardUnclearDescriptionFlags,
+  runDeterministicChecks,
   type InvoiceReviewSnapshot,
 } from "@/server/services/invoice-review";
 
@@ -99,5 +101,28 @@ describe("checkDuplicateRisk", () => {
       { id: "old", number: "INV-9", total: 250, createdAt: new Date(), lineNames: ["Design work"] },
     ];
     expect(checkDuplicateRisk(snap)).toEqual([]);
+  });
+});
+
+describe("guardUnclearDescriptionFlags", () => {
+  it("keeps only flags whose lineId exists on the invoice", () => {
+    const snap = baseSnapshot(); // has line "l1"
+    const guarded = guardUnclearDescriptionFlags(snap, [
+      { lineId: "l1", reason: "vague" },
+      { lineId: "ghost", reason: "fabricated line" },
+    ]);
+    expect(guarded.map((f) => f.fields[0])).toEqual(["line:l1"]);
+  });
+});
+
+describe("runDeterministicChecks", () => {
+  it("aggregates all deterministic findings", () => {
+    const snap = baseSnapshot();
+    snap.client.address = null;
+    snap.discountTotal = 400;
+    snap.total = 600;
+    const codes = runDeterministicChecks(snap).map((f) => f.code);
+    expect(codes).toContain("missing_client_address");
+    expect(codes).toContain("suspicious_invoice_discount");
   });
 });

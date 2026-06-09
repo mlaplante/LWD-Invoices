@@ -147,3 +147,95 @@ export function checkDuplicateRisk(snap: InvoiceReviewSnapshot): ReviewFinding[]
   }
   return [];
 }
+
+// ─── Task 5: LLM unclear-description pass + grounding guard + aggregator ─────
+
+import { z } from "zod";
+import { env } from "@/lib/env";
+import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
+import { extractGeminiText } from "./natural-language-invoice";
+import { parseValidatedJson, AiOutputError } from "./ai-structured-output";
+
+export function runDeterministicChecks(snap: InvoiceReviewSnapshot): ReviewFinding[] {
+  return [
+    ...checkMissingInfo(snap),
+    ...checkSuspiciousDiscount(snap),
+    ...checkUnbilledTime(snap),
+    ...checkDuplicateRisk(snap),
+  ];
+}
+
+export interface UnclearDescriptionFlag {
+  lineId: string;
+  reason: string;
+}
+
+/**
+ * Grounding guard: the model may only flag lines that actually exist on the
+ * invoice. Anything pointing at a fabricated lineId is dropped — the invoice
+ * reviewer's analog of containsHallucinatedInvoiceFacts.
+ */
+export function guardUnclearDescriptionFlags(
+  snap: InvoiceReviewSnapshot,
+  flags: UnclearDescriptionFlag[],
+): ReviewFinding[] {
+  const realIds = new Set(snap.lines.map((l) => l.id));
+  return flags
+    .filter((f) => realIds.has(f.lineId))
+    .map((f) => {
+      const line = snap.lines.find((l) => l.id === f.lineId)!;
+      return {
+        code: "unclear_line_description",
+        severity: "info" as const,
+        message: `Line "${line.name}" may be unclear to the client: ${f.reason}`,
+        fields: [`line:${f.lineId}`],
+      };
+    });
+}
+
+const UNCLEAR_SCHEMA = z.object({
+  flags: z.array(z.object({ lineId: z.string(), reason: z.string() })),
+});
+
+const GEMINI_REVIEW_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+
+const UNCLEAR_SYSTEM_PROMPT =
+  "You review invoice line items for clarity to a paying client. Given a JSON array of lines " +
+  "(each with id, name, description), return ONLY JSON: {\"flags\":[{\"lineId\":string,\"reason\":string}]}. " +
+  "Flag a line only when its name+description are too vague for a client to know what they're paying for " +
+  "(e.g. \"work\", \"services\", \"misc\"). Use only lineIds from the input. Never invent lines. Empty flags array if all are clear.";
+
+/** LLM unclear-description pass. Returns [] when AI is unconfigured or output is invalid. */
+export async function checkUnclearDescriptions(snap: InvoiceReviewSnapshot): Promise<ReviewFinding[]> {
+  if (!env.GEMINI_API_KEY) return [];
+  const linePayload = JSON.stringify(
+    snap.lines.map((l) => ({ id: l.id, name: l.name, description: l.description ?? "" })),
+  );
+  try {
+    const flags = await callGeminiWithModelFallback({
+      apiKey: env.GEMINI_API_KEY,
+      models: resolveGeminiModels(env.GEMINI_INVOICE_REVIEW_MODELS, GEMINI_REVIEW_MODELS),
+      body: {
+        systemInstruction: { parts: [{ text: UNCLEAR_SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: linePayload }] }],
+        generationConfig: { temperature: 0, responseMimeType: "application/json" },
+      },
+      label: "invoice review",
+      onOk: (json) => {
+        const raw = extractGeminiText(json);
+        return parseValidatedJson(raw, UNCLEAR_SCHEMA).flags;
+      },
+    });
+    return guardUnclearDescriptionFlags(snap, flags);
+  } catch (err) {
+    if (err instanceof AiOutputError) return [];
+    // A provider/network failure should never block sending — degrade to no AI findings.
+    return [];
+  }
+}
+
+/** Full review: deterministic checks always, LLM unclear-description best-effort. */
+export async function reviewInvoice(snap: InvoiceReviewSnapshot): Promise<ReviewFinding[]> {
+  const [unclear] = await Promise.all([checkUnclearDescriptions(snap)]);
+  return [...runDeterministicChecks(snap), ...unclear];
+}
