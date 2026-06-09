@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
 import { resolvePeriodLabel, defaultPeriodBounds } from "@/server/services/hours-retainers";
+import { computeHoursBurndown } from "@/server/services/retainer-burndown";
 
 export const hoursRetainersRouter = router({
   list: protectedProcedure
@@ -438,4 +439,36 @@ export const hoursRetainersRouter = router({
 
       return { ok: true };
     }),
+
+  burndown: protectedProcedure.query(async ({ ctx }) => {
+    const retainers = await ctx.db.hoursRetainer.findMany({
+      where: { organizationId: ctx.orgId, active: true },
+      include: {
+        client: { select: { id: true, name: true } },
+        periods: {
+          where: { status: "ACTIVE" },
+          orderBy: { periodStart: "desc" },
+          take: 1,
+          include: { timeEntries: { select: { minutes: true } } },
+        },
+      },
+    });
+    const now = new Date();
+    return retainers
+      .filter((r) => r.periods.length > 0)
+      .map((r) => {
+        const p = r.periods[0];
+        const usedHours = p.timeEntries.reduce((s, e) => s + e.minutes.toNumber() / 60, 0);
+        return computeHoursBurndown(
+          {
+            retainerId: r.id, retainerName: r.name, clientId: r.clientId,
+            clientName: r.client.name, periodId: p.id, periodLabel: p.label,
+            periodStart: p.periodStart, periodEnd: p.periodEnd,
+            includedHours: p.includedHoursSnapshot.toNumber(), usedHours,
+          },
+          now,
+        );
+      })
+      .sort((a, b) => b.pctUsed - a.pctUsed);
+  }),
 });
