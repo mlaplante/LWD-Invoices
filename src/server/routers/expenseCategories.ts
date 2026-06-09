@@ -10,7 +10,7 @@ export const expenseCategoriesRouter = router({
   }),
 
   create: requireRole("OWNER", "ADMIN")
-    .input(z.object({ name: z.string().min(1) }))
+    .input(z.object({ name: z.string().min(1), deductible: z.boolean().default(true) }))
     .mutation(async ({ ctx, input }) => {
       const created = await ctx.db.expenseCategory.create({
         data: { ...input, organizationId: ctx.orgId },
@@ -20,7 +20,7 @@ export const expenseCategoriesRouter = router({
     }),
 
   update: requireRole("OWNER", "ADMIN")
-    .input(z.object({ id: z.string(), name: z.string().min(1).optional() }))
+    .input(z.object({ id: z.string(), name: z.string().min(1).optional(), deductible: z.boolean().optional() }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       await getForOrg(ctx.db.expenseCategory, id, ctx.orgId, { entityName: "Expense category" });
