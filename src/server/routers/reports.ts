@@ -6,6 +6,9 @@ import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 import { getArAgingAsOf, getDsoTrend } from "@/server/services/ar-reports";
 import { getClientConcentration } from "@/server/services/client-concentration";
 import { getTaxLiability } from "@/server/services/tax-liability";
+import { getIncomeByCategory } from "@/server/services/income-by-category";
+import { getDeductibleExpenses } from "@/server/services/deductible-expenses";
+import { get1099Pack } from "@/server/services/contractor-1099";
 
 export function groupByMonth<T>(
   items: T[],
@@ -608,6 +611,44 @@ export const reportsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       return getTaxLiability(ctx.db, ctx.orgId, input);
+    }),
+
+  taxDashboard: protectedProcedure
+    .input(
+      dateRangeSchema.extend({
+        basis: z.enum(["cash", "accrual"]).default("cash"),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // 1099 figures are annual; derive the tax year from the range end (or
+      // start), defaulting to the current calendar year.
+      const year = (input.to ?? input.from ?? new Date()).getUTCFullYear();
+
+      const [tax, income, deductible, pack] = await Promise.all([
+        getTaxLiability(ctx.db, ctx.orgId, { from: input.from, to: input.to, basis: input.basis }),
+        getIncomeByCategory(ctx.db, ctx.orgId, { from: input.from, to: input.to }),
+        getDeductibleExpenses(ctx.db, ctx.orgId, { from: input.from, to: input.to }),
+        get1099Pack(ctx.db, ctx.orgId, year),
+      ]);
+
+      const eligibleRows = pack.rows.filter((r) => r.eligible);
+      const contractorExposure = {
+        year,
+        threshold: pack.threshold,
+        eligibleCount: eligibleRows.length,
+        totalReportable: eligibleRows.reduce((s, r) => s + r.total, 0),
+        missingW9Count: pack.rows.filter((r) => r.missingW9).length,
+      };
+
+      return {
+        salesTaxDue: tax.grandTotal,
+        salesTaxByType: tax.summary,
+        grossIncome: income.total,
+        incomeByCategory: income.rows,
+        deductible,
+        estimatedNetIncome: income.total - deductible.deductibleTotal,
+        contractorExposure,
+      };
     }),
 
   expenseCategories: protectedProcedure.query(async ({ ctx }) => {
