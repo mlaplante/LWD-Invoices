@@ -18,6 +18,7 @@ import { LateFeeSection } from "@/components/invoices/LateFeeSection";
 import { ReminderOverrideSelect } from "@/components/invoices/ReminderOverrideSelect";
 import { ReminderHistory } from "@/components/invoices/ReminderHistory";
 import { EmailEngagementPanel } from "@/components/invoices/EmailEngagementPanel";
+import { PaymentProbabilityPanel } from "@/components/invoices/PaymentProbabilityPanel";
 import { InboundRepliesPanel } from "@/components/invoices/InboundRepliesPanel";
 import { InvoiceRemindersPanel } from "@/components/invoices/InvoiceRemindersPanel";
 import { ProposalEngagementPanel } from "@/components/invoices/ProposalEngagementPanel";
@@ -540,6 +541,9 @@ export default async function InvoiceDetailPage({
 
       {/* ── Late Fees ─────────────────────────────────────────────── */}
       <LateFeeSection invoiceId={invoice.id} />
+
+      {/* ── Payment probability ──────────────────────────────────── */}
+      {invoice.type !== "ESTIMATE" && <PaymentProbabilityPanel invoiceId={invoice.id} />}
 
       {/* ── Reminders sent (manual + sequence) ───────────────────── */}
       {invoice.type !== "ESTIMATE" && <InvoiceRemindersPanel invoiceId={invoice.id} />}

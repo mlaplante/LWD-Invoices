@@ -10,7 +10,7 @@ import {
 } from "@/server/services/cash-flow-forecast";
 import { calculateSubscriptionMetrics } from "@/server/services/subscription-metrics";
 import { detectExpenseAnomalies } from "@/server/services/expense-anomaly";
-import { prioritizeCollections } from "@/server/services/collection-risk";
+import { prioritizeCollections, scoreCollectionRisk } from "@/server/services/collection-risk";
 import {
   buildClientHealthInputs,
   buildClientHealthInputForClient,
@@ -108,6 +108,34 @@ export const analyticsRouter = router({
       reliablePayerThreshold: threshold,
       invoices: prioritizeCollections(inputs),
     };
+  }),
+
+  // Per-open-invoice payment probability (the positive framing of collection
+  // risk) for the invoice badge + detail breakdown. Returns a map keyed by
+  // invoiceId so the UI can look up a single invoice without re-scoring.
+  paymentProbability: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const org = await ctx.db.organization.findUnique({
+      where: { id: ctx.orgId },
+      select: { smartRemindersThreshold: true },
+    });
+    const threshold = org?.smartRemindersThreshold ?? 80;
+    const inputs = await buildCollectionRiskInputs(ctx.db, ctx.orgId, now, threshold);
+    const invoices = inputs.map((input) => {
+      const score = scoreCollectionRisk(input);
+      return {
+        invoiceId: score.invoiceId,
+        invoiceNumber: score.invoiceNumber,
+        clientName: score.clientName,
+        balance: score.balance,
+        paymentProbabilityPercent: score.paymentProbabilityPercent,
+        paymentProbabilityBand: score.paymentProbabilityBand,
+        reasons: score.reasons,
+      };
+    });
+    const byInvoiceId: Record<string, (typeof invoices)[number]> = {};
+    for (const inv of invoices) byInvoiceId[inv.invoiceId] = inv;
+    return { generatedAt: now.toISOString(), invoices, byInvoiceId };
   }),
 
   // Live preview of the weekly business briefing (same payload the Monday cron

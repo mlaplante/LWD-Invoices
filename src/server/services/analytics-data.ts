@@ -442,39 +442,70 @@ export async function buildCollectionRiskInputs(
   now: Date,
   reliablePayerThreshold: number,
 ): Promise<CollectionRiskInput[]> {
-  const [allInvoices, engagement, reminderCounts, manualReminders] = await Promise.all([
-    db.invoice.findMany({
-      where: { organizationId: orgId, isArchived: false },
-      select: {
-        id: true,
-        number: true,
-        clientId: true,
-        status: true,
-        total: true,
-        dueDate: true,
-        date: true,
-        client: { select: { id: true, name: true } },
-        payments: { select: { amount: true, paidAt: true } },
-      },
-    }),
-    loadInvoiceEngagement(db, orgId),
-    // Sequence reminders (ReminderLog) + ad-hoc reminders (InvoiceReminder):
-    // count both toward remindersSent and take the most recent send for recency.
-    db.reminderLog.groupBy({
-      by: ["invoiceId"],
-      where: { invoice: { organizationId: orgId } },
-      _count: { _all: true },
-      _max: { sentAt: true },
-    }),
-    db.invoiceReminder.groupBy({
-      by: ["invoiceId"],
-      where: { organizationId: orgId },
-      _count: { _all: true },
-      _max: { sentAt: true },
-    }),
-  ]);
+  const [allInvoices, engagement, reminderCounts, manualReminders, disputeCounts] =
+    await Promise.all([
+      db.invoice.findMany({
+        where: { organizationId: orgId, isArchived: false },
+        select: {
+          id: true,
+          number: true,
+          clientId: true,
+          status: true,
+          total: true,
+          dueDate: true,
+          date: true,
+          client: { select: { id: true, name: true } },
+          payments: { select: { amount: true, paidAt: true } },
+        },
+      }),
+      loadInvoiceEngagement(db, orgId),
+      // Sequence reminders (ReminderLog) + ad-hoc reminders (InvoiceReminder):
+      // count both toward remindersSent and take the most recent send for recency.
+      db.reminderLog.groupBy({
+        by: ["invoiceId"],
+        where: { invoice: { organizationId: orgId } },
+        _count: { _all: true },
+        _max: { sentAt: true },
+      }),
+      db.invoiceReminder.groupBy({
+        by: ["invoiceId"],
+        where: { organizationId: orgId },
+        _count: { _all: true },
+        _max: { sentAt: true },
+      }),
+      // Prior disputes per client, for the payment-probability signal.
+      db.dispute.groupBy({
+        by: ["clientId"],
+        where: { organizationId: orgId, clientId: { not: null } },
+        _count: { _all: true },
+      }),
+    ]);
 
   const stats = aggregateClientStats(allInvoices, now);
+
+  // Prior-dispute count per client.
+  const disputesByClient = new Map<string, number>();
+  for (const d of disputeCounts) {
+    if (d.clientId) disputesByClient.set(d.clientId, d._count._all);
+  }
+
+  // A client's typical invoice amount (median of their invoice totals), used to
+  // flag unusually large invoices. Needs at least 3 invoices to be meaningful.
+  const amountsByClient = new Map<string, number[]>();
+  for (const inv of allInvoices) {
+    const bucket = amountsByClient.get(inv.clientId) ?? [];
+    bucket.push(toNum(inv.total));
+    amountsByClient.set(inv.clientId, bucket);
+  }
+  const typicalAmountByClient = new Map<string, number>();
+  for (const [clientId, amounts] of amountsByClient) {
+    if (amounts.length < 3) continue;
+    const sorted = [...amounts].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const med =
+      sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    if (med > 0) typicalAmountByClient.set(clientId, med);
+  }
 
   // Merge sequence + manual reminders per invoice: total count and latest sentAt.
   const reminderByInvoice = new Map<string, { count: number; lastSentAt: Date | null }>();
@@ -509,6 +540,9 @@ export async function buildCollectionRiskInputs(
         reminders?.lastSentAt != null
           ? Math.max(0, Math.round((utcDay(now) - utcDay(reminders.lastSentAt)) / DAY_MS))
           : null;
+      const typicalAmount = typicalAmountByClient.get(inv.clientId);
+      const amountVsClientNorm =
+        typicalAmount && typicalAmount > 0 ? toNum(inv.total) / typicalAmount : null;
       return {
         invoiceId: inv.id,
         invoiceNumber: inv.number,
@@ -523,6 +557,8 @@ export async function buildCollectionRiskInputs(
         daysSinceLastReminder,
         invoiceOpened: eng?.opened ?? false,
         invoiceClicked: eng?.clicked ?? false,
+        amountVsClientNorm,
+        priorDisputes: disputesByClient.get(inv.clientId) ?? 0,
       };
     })
     .filter((i) => i.balance > 0);
