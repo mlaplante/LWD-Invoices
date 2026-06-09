@@ -1,8 +1,15 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Users } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Users, Landmark } from "lucide-react";
 
 const reports = [
+  {
+    href: "/reports/tax-dashboard",
+    label: "Tax-Ready Dashboard",
+    description: "Sales tax due, income by service, deductible expenses, and 1099 exposure in one view.",
+    icon: <Landmark className="w-4 h-4" />,
+    color: "bg-orange-50 text-orange-600",
+  },
   {
     href: "/reports/client-health",
     label: "Client Health",
