@@ -4,6 +4,8 @@ import { router, protectedProcedure, requireRole } from "../trpc";
 import { Prisma, ProjectStatus } from "@/generated/prisma";
 import { idInput, paginationInput } from "../lib/schemas";
 import { generateProjectCloseCheckIn } from "../services/check-in-generator";
+import { calculateProjectHealthScore, calculateProjectHealthScores } from "../services/project-health-score";
+import { buildProjectHealthInput, buildProjectHealthInputs } from "../services/project-health-data";
 
 const projectWriteSchema = z.object({
   name: z.string().min(1),
@@ -235,6 +237,20 @@ export const projectsRouter = router({
 
       return ctx.db.project.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
+
+  healthScore: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const built = await buildProjectHealthInput(ctx.db, ctx.orgId, input.projectId, new Date());
+      if (!built) return { score: null };
+      return { score: calculateProjectHealthScore(built) };
+    }),
+
+  healthScores: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const inputs = await buildProjectHealthInputs(ctx.db, ctx.orgId, now);
+    return { generatedAt: now.toISOString(), scores: calculateProjectHealthScores(inputs) };
+  }),
 });
 
 type ProjectLike = { id: string; clientId: string; status: ProjectStatus };
