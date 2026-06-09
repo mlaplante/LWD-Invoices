@@ -39,7 +39,7 @@ describe("weekBucket", () => {
     const d = new Date("2026-06-03T12:00:00Z");
     const b = weekBucket(d);
     expect(b.key).toBe("2026-06-01");
-    expect(b.label).toBe("Week of Jun 1");
+    expect(b.label).toBe("Week of Jun 1, 2026");
   });
 
   it("a Monday maps to itself", () => {

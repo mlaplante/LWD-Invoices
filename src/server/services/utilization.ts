@@ -69,7 +69,7 @@ export function weekBucket(date: Date): { key: string; label: string } {
   const wm = d.getUTCMonth();
   const wd = d.getUTCDate();
   const key = `${wy}-${String(wm + 1).padStart(2, "0")}-${String(wd).padStart(2, "0")}`;
-  const label = `Week of ${MONTH_NAMES[wm]} ${wd}`;
+  const label = `Week of ${MONTH_NAMES[wm]} ${wd}, ${wy}`;
   return { key, label };
 }
 
