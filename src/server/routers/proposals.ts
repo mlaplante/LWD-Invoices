@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { proposalSectionsSchema } from "./proposal-templates-helpers";
+import { deriveProposalStatus } from "./proposals-helpers";
 import { deleteProposalFile } from "@/lib/supabase/storage";
 import { generateProposal } from "@/server/services/proposal-generator";
 import { Prisma, InvoiceStatus, InvoiceType, LineType } from "@/generated/prisma";
@@ -68,6 +69,54 @@ async function buildProposalDraft(
 }
 
 export const proposalsRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const estimates = await ctx.db.invoice.findMany({
+      where: { organizationId: ctx.orgId, type: "ESTIMATE", isArchived: false },
+      select: {
+        id: true,
+        number: true,
+        notes: true,
+        status: true,
+        total: true,
+        lastSent: true,
+        signedAt: true,
+        updatedAt: true,
+        currency: { select: { code: true, symbol: true } },
+        client: { select: { name: true } },
+        proposalContent: { select: { id: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    // One grouped lookup for "opened" events across all estimates (avoids N+1).
+    const ids = estimates.map((e) => e.id);
+    const openEvents = ids.length
+      ? await ctx.db.emailEvent.findMany({
+          where: { organizationId: ctx.orgId, type: "email.opened", invoiceId: { in: ids } },
+          select: { invoiceId: true },
+        })
+      : [];
+    const openedIds = new Set(openEvents.map((e) => e.invoiceId));
+
+    return estimates.map((e) => ({
+      id: e.id,
+      number: e.number,
+      title: e.notes ?? null,
+      clientName: e.client.name,
+      value: Number(e.total),
+      currencyCode: e.currency?.code ?? null,
+      currencySymbol: e.currency?.symbol ?? null,
+      lastActivity: e.updatedAt,
+      status: deriveProposalStatus({
+        hasContent: e.proposalContent != null,
+        invoiceStatus: e.status,
+        lastSent: e.lastSent,
+        signedAt: e.signedAt,
+        hasOpenEvent: openedIds.has(e.id),
+      }),
+    }));
+  }),
+
   get: protectedProcedure
     .input(z.object({ invoiceId: z.string() }))
     .query(async ({ ctx, input }) => {
