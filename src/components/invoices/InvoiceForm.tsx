@@ -67,7 +67,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
   const [form, setForm] = useState<InvoiceFormData>({
     type: InvoiceType.DETAILED,
-    date: new Date().toISOString().slice(0, 10),
+    date: initialData?.date ?? "",
     dueDate: "",
     currencyId: defaultCurrency?.id ?? "",
     clientId: "",
@@ -236,6 +236,15 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
       applyDepositSchedule(percent, form.dueDate);
     }
   }
+
+  // Default the date to "today" on the client only, so SSR and first client
+  // render agree (avoids a hydration mismatch around the UTC date boundary).
+  useEffect(() => {
+    if (mode === "create" && !form.date) {
+      setForm((f) => ({ ...f, date: new Date().toISOString().slice(0, 10) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const didInitDeposit = useRef(false);
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
   const [mode, setMode] = useState<"project" | "retainer">("project");
   const [retainerId, setRetainerId] = useState("");
   const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: "",
     minutes: "",
     startTime: "",
     endTime: "",
@@ -37,6 +37,15 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
   });
   const [useTimeRange, setUseTimeRange] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Default the date to "today" on the client only, so SSR and first client
+  // render agree (avoids a hydration mismatch around the UTC date boundary).
+  useEffect(() => {
+    if (!form.date) {
+      setForm((f) => ({ ...f, date: new Date().toISOString().slice(0, 10) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Only query retainers when clientId is known and mode is retainer
   const { data: retainers = [], isLoading: retainersLoading } =
