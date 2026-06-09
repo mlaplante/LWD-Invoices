@@ -5,8 +5,8 @@ import { getAppUrl } from "@/lib/app-url";
 import { calculateClientHealthScores, calculateClientHealthScore } from "@/server/services/client-health-score";
 import {
   projectCashFlow,
-  applyLatePaymentScenario,
-  type LatePaymentScenario,
+  applyScenarioPlan,
+  type ScenarioPlan,
 } from "@/server/services/cash-flow-forecast";
 import { calculateSubscriptionMetrics } from "@/server/services/subscription-metrics";
 import { detectExpenseAnomalies } from "@/server/services/expense-anomaly";
@@ -50,7 +50,8 @@ export const analyticsRouter = router({
       return { score: calculateClientHealthScore(built) };
     }),
 
-  // Forward 30/60/90-day cash position with optional late-payment scenarios.
+  // Forward 30/60/90-day cash position with optional what-if scenarios:
+  // late-paying clients, a contractor hire, and recurring-revenue churn.
   cashFlowForecast: protectedProcedure
     .input(
       z
@@ -65,17 +66,33 @@ export const analyticsRouter = router({
               }),
             )
             .optional(),
+          contractorHire: z
+            .object({
+              hourlyRate: z.number().positive().max(100_000),
+              hoursPerPeriod: z.number().positive().max(1_000),
+              frequency: z.enum(["DAILY", "WEEKLY", "MONTHLY", "YEARLY"]),
+              interval: z.number().int().min(1).max(52).optional(),
+            })
+            .nullish(),
+          churn: z
+            .object({ churnPercent: z.number().min(0).max(100) })
+            .nullish(),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
       const now = new Date();
       const forecastInput = await buildCashFlowForecastInput(ctx.db, ctx.orgId, input?.startingCash);
-      const scenarios = (input?.scenarios ?? []) as LatePaymentScenario[];
+      const plan: ScenarioPlan = {
+        latePayments: input?.scenarios ?? [],
+        contractorHire: input?.contractorHire ?? null,
+        churn: input?.churn ?? null,
+      };
+      const hasScenario =
+        (plan.latePayments?.length ?? 0) > 0 || Boolean(plan.contractorHire) || Boolean(plan.churn);
       const base = projectCashFlow(forecastInput, { now });
-      const scenario =
-        scenarios.length > 0 ? applyLatePaymentScenario(forecastInput, scenarios, { now }) : null;
-      return { base, scenario, appliedScenarios: scenarios };
+      const scenario = hasScenario ? applyScenarioPlan(forecastInput, plan, { now }) : null;
+      return { base, scenario, appliedPlan: plan };
     }),
 
   // MRR / ARR / ARPA and revenue/logo churn over the recurring-revenue book.
