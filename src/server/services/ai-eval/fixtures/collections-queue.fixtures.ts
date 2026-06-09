@@ -11,6 +11,8 @@ function score(o: Partial<CollectionRiskScore>): CollectionRiskScore {
     balance: 100,
     daysOverdue: 0,
     lateRiskPercent: 0,
+    paymentProbabilityPercent: 100,
+    paymentProbabilityBand: "high",
     band: "low",
     recommendedAction: "monitor",
     recommendedTone: "helpful",

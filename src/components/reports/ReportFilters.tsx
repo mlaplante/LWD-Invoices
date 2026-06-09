@@ -41,6 +41,18 @@ const PRESETS = [
     },
   },
   {
+    label: "This Quarter",
+    getValue: () => {
+      const now = new Date();
+      const q = Math.floor(now.getMonth() / 3); // 0..3
+      const startMonth = q * 3;
+      return {
+        from: toLocalDateStr(new Date(now.getFullYear(), startMonth, 1)),
+        to: toLocalDateStr(new Date(now.getFullYear(), startMonth + 3, 0)),
+      };
+    },
+  },
+  {
     label: "This Year",
     getValue: () => {
       const y = new Date().getFullYear();

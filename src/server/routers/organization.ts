@@ -4,6 +4,18 @@ import { TRPCError } from "@trpc/server";
 import { logAudit } from "../services/audit";
 import { invalidateOrg } from "../cached";
 
+const timeZoneSchema = z.string().refine(
+  (timeZone) => {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: "Must be a valid IANA time zone" }
+);
+
 export const organizationRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
     const org = await ctx.db.organization.findUnique({
@@ -14,6 +26,7 @@ export const organizationRouter = router({
         slug: true,
         logoUrl: true,
         brandColor: true,
+        timeZone: true,
         invoicePrefix: true,
         invoiceNextNumber: true,
         taskTimeInterval: true,
@@ -117,6 +130,7 @@ export const organizationRouter = router({
         name: z.string().min(1).optional(),
         logoUrl: z.string().url().nullable().optional(),
         brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        timeZone: timeZoneSchema.optional(),
         invoicePrefix: z.string().min(1).max(10).optional(),
         invoiceNextNumber: z.number().int().positive().optional(),
         taskTimeInterval: z.number().min(0).optional(),

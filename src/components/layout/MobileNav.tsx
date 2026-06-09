@@ -22,6 +22,7 @@ import {
   ShieldAlert,
   CalendarCheck,
   Banknote,
+  TrendingUp,
   Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const moreItems = [
   { href: "/items", label: "Items", icon: Package },
   { href: "/contractors", label: "Contractors", icon: Contact },
   { href: "/assistant", label: "Ask AI", icon: Sparkles },
+  { href: "/money-intelligence", label: "Money Intelligence", icon: TrendingUp },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
   { href: "/disputes", label: "Disputes", icon: ShieldAlert },

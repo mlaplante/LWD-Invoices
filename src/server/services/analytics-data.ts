@@ -14,6 +14,7 @@ import type { CashFlowForecastInput, ForecastFrequency } from "./cash-flow-forec
 import type { RecurringRevenueStream, RecurringStreamFrequency } from "./subscription-metrics";
 import type { AnomalyExpense } from "./expense-anomaly";
 import type { CollectionRiskInput } from "./collection-risk";
+import type { SendObservation } from "./send-timing";
 
 export const OPEN_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.SENT,
@@ -442,39 +443,70 @@ export async function buildCollectionRiskInputs(
   now: Date,
   reliablePayerThreshold: number,
 ): Promise<CollectionRiskInput[]> {
-  const [allInvoices, engagement, reminderCounts, manualReminders] = await Promise.all([
-    db.invoice.findMany({
-      where: { organizationId: orgId, isArchived: false },
-      select: {
-        id: true,
-        number: true,
-        clientId: true,
-        status: true,
-        total: true,
-        dueDate: true,
-        date: true,
-        client: { select: { id: true, name: true } },
-        payments: { select: { amount: true, paidAt: true } },
-      },
-    }),
-    loadInvoiceEngagement(db, orgId),
-    // Sequence reminders (ReminderLog) + ad-hoc reminders (InvoiceReminder):
-    // count both toward remindersSent and take the most recent send for recency.
-    db.reminderLog.groupBy({
-      by: ["invoiceId"],
-      where: { invoice: { organizationId: orgId } },
-      _count: { _all: true },
-      _max: { sentAt: true },
-    }),
-    db.invoiceReminder.groupBy({
-      by: ["invoiceId"],
-      where: { organizationId: orgId },
-      _count: { _all: true },
-      _max: { sentAt: true },
-    }),
-  ]);
+  const [allInvoices, engagement, reminderCounts, manualReminders, disputeCounts] =
+    await Promise.all([
+      db.invoice.findMany({
+        where: { organizationId: orgId, isArchived: false },
+        select: {
+          id: true,
+          number: true,
+          clientId: true,
+          status: true,
+          total: true,
+          dueDate: true,
+          date: true,
+          client: { select: { id: true, name: true } },
+          payments: { select: { amount: true, paidAt: true } },
+        },
+      }),
+      loadInvoiceEngagement(db, orgId),
+      // Sequence reminders (ReminderLog) + ad-hoc reminders (InvoiceReminder):
+      // count both toward remindersSent and take the most recent send for recency.
+      db.reminderLog.groupBy({
+        by: ["invoiceId"],
+        where: { invoice: { organizationId: orgId } },
+        _count: { _all: true },
+        _max: { sentAt: true },
+      }),
+      db.invoiceReminder.groupBy({
+        by: ["invoiceId"],
+        where: { organizationId: orgId },
+        _count: { _all: true },
+        _max: { sentAt: true },
+      }),
+      // Prior disputes per client, for the payment-probability signal.
+      db.dispute.groupBy({
+        by: ["clientId"],
+        where: { organizationId: orgId, clientId: { not: null } },
+        _count: { _all: true },
+      }),
+    ]);
 
   const stats = aggregateClientStats(allInvoices, now);
+
+  // Prior-dispute count per client.
+  const disputesByClient = new Map<string, number>();
+  for (const d of disputeCounts) {
+    if (d.clientId) disputesByClient.set(d.clientId, d._count._all);
+  }
+
+  // A client's typical invoice amount (median of their invoice totals), used to
+  // flag unusually large invoices. Needs at least 3 invoices to be meaningful.
+  const amountsByClient = new Map<string, number[]>();
+  for (const inv of allInvoices) {
+    const bucket = amountsByClient.get(inv.clientId) ?? [];
+    bucket.push(toNum(inv.total));
+    amountsByClient.set(inv.clientId, bucket);
+  }
+  const typicalAmountByClient = new Map<string, number>();
+  for (const [clientId, amounts] of amountsByClient) {
+    if (amounts.length < 3) continue;
+    const sorted = [...amounts].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const med =
+      sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    if (med > 0) typicalAmountByClient.set(clientId, med);
+  }
 
   // Merge sequence + manual reminders per invoice: total count and latest sentAt.
   const reminderByInvoice = new Map<string, { count: number; lastSentAt: Date | null }>();
@@ -509,6 +541,9 @@ export async function buildCollectionRiskInputs(
         reminders?.lastSentAt != null
           ? Math.max(0, Math.round((utcDay(now) - utcDay(reminders.lastSentAt)) / DAY_MS))
           : null;
+      const typicalAmount = typicalAmountByClient.get(inv.clientId);
+      const amountVsClientNorm =
+        typicalAmount && typicalAmount > 0 ? toNum(inv.total) / typicalAmount : null;
       return {
         invoiceId: inv.id,
         invoiceNumber: inv.number,
@@ -523,7 +558,82 @@ export async function buildCollectionRiskInputs(
         daysSinceLastReminder,
         invoiceOpened: eng?.opened ?? false,
         invoiceClicked: eng?.clicked ?? false,
+        amountVsClientNorm,
+        priorDisputes: disputesByClient.get(inv.clientId) ?? 0,
       };
     })
     .filter((i) => i.balance > 0);
+}
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+
+/**
+ * Weekday (0–6) and hour (0–23) of a Date in a given IANA time zone. Uses Intl
+ * (no extra dependency). "Best day to send" is meaningless in UTC for a user in
+ * another zone — a 9pm PST send is the next day in UTC — so we bucket in the
+ * org's own time zone.
+ */
+function partsInTimeZone(date: Date, timeZone: string): { weekday: number; hour: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  let weekday = 0;
+  let hour = 0;
+  for (const p of parts) {
+    if (p.type === "weekday") weekday = WEEKDAY_INDEX[p.value] ?? 0;
+    else if (p.type === "hour") hour = parseInt(p.value, 10) % 24;
+  }
+  return { weekday, hour };
+}
+
+/**
+ * Build send-timing observations for a client from EmailEvent history: for each
+ * of the client's invoices that was emailed, derive when it was sent (bucketed
+ * in the org's time zone) and how quickly it was first opened. Feeds
+ * recommendSendWindow.
+ */
+export async function buildSendObservations(
+  db: typeof Db,
+  orgId: string,
+  clientId: string,
+  timeZone: string = "UTC",
+): Promise<SendObservation[]> {
+  const events = await db.emailEvent.findMany({
+    where: {
+      organizationId: orgId,
+      invoiceId: { not: null },
+      invoice: { clientId },
+    },
+    select: { invoiceId: true, type: true, occurredAt: true },
+    orderBy: { occurredAt: "asc" },
+  });
+
+  // Per invoice: earliest send time and earliest open time.
+  const byInvoice = new Map<string, { sentAt: Date | null; openedAt: Date | null }>();
+  for (const e of events) {
+    if (!e.invoiceId) continue;
+    const entry = byInvoice.get(e.invoiceId) ?? { sentAt: null, openedAt: null };
+    const isSend = e.type.includes("sent") || e.type.includes("delivered");
+    const isOpen = e.type.includes("opened");
+    if (isSend && (!entry.sentAt || e.occurredAt < entry.sentAt)) entry.sentAt = e.occurredAt;
+    if (isOpen && (!entry.openedAt || e.occurredAt < entry.openedAt)) entry.openedAt = e.occurredAt;
+    byInvoice.set(e.invoiceId, entry);
+  }
+
+  const observations: SendObservation[] = [];
+  for (const { sentAt, openedAt } of byInvoice.values()) {
+    if (!sentAt) continue;
+    const hoursToOpen =
+      openedAt && openedAt >= sentAt
+        ? (openedAt.getTime() - sentAt.getTime()) / 3_600_000
+        : null;
+    const { weekday, hour } = partsInTimeZone(sentAt, timeZone);
+    observations.push({ weekday, hour, hoursToOpen });
+  }
+  return observations;
 }

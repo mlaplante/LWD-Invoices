@@ -47,7 +47,17 @@ export interface CollectionRiskInput {
   invoiceOpened: boolean;
   /** Whether a payment link in the invoice email was clicked. */
   invoiceClicked: boolean;
+  /**
+   * This invoice's amount relative to the client's typical invoice amount
+   * (1 = typical, 2 = double). Null/undefined when the client lacks enough
+   * history to establish a norm — treated as neutral.
+   */
+  amountVsClientNorm?: number | null;
+  /** Number of prior disputes involving this client. Defaults to 0. */
+  priorDisputes?: number;
 }
+
+export type PaymentProbabilityBand = "high" | "medium" | "low";
 
 export interface CollectionRiskScore {
   invoiceId: string;
@@ -58,6 +68,10 @@ export interface CollectionRiskScore {
   daysOverdue: number;
   /** 0-100 probability the invoice will be (or already is) paid late. */
   lateRiskPercent: number;
+  /** 0-100 likelihood the invoice gets paid — the presentation inverse of lateRiskPercent. */
+  paymentProbabilityPercent: number;
+  /** Banding for the payment-probability badge. */
+  paymentProbabilityBand: PaymentProbabilityBand;
   band: CollectionRiskBand;
   recommendedAction: CollectionAction;
   recommendedTone: ReminderTone;
@@ -80,6 +94,12 @@ function bandFor(risk: number): CollectionRiskBand {
   if (risk >= 75) return "severe";
   if (risk >= 50) return "high";
   if (risk >= 30) return "moderate";
+  return "low";
+}
+
+function paymentBandFor(probability: number): PaymentProbabilityBand {
+  if (probability >= 70) return "high";
+  if (probability >= 40) return "medium";
   return "low";
 }
 
@@ -135,6 +155,26 @@ export function scoreCollectionRisk(input: CollectionRiskInput): CollectionRiskS
     reasons.push(`${input.remindersSent} reminders already sent.`);
   }
 
+  // Invoice size vs. the client's norm: an unusually large ask slips more
+  // often than a routine one. Only nudges risk once the invoice is clearly
+  // above typical (>= 1.5x); a normal-sized invoice is left untouched.
+  if (input.amountVsClientNorm != null && input.amountVsClientNorm >= 1.5) {
+    risk += clamp((input.amountVsClientNorm - 1) * 10, 0, 15);
+    reasons.push(
+      `Invoice is ${round(input.amountVsClientNorm)}× this client's typical amount.`,
+    );
+  }
+
+  // Prior disputes signal friction in the relationship — a history of disputes
+  // correlates with slower, contested payment.
+  const priorDisputes = input.priorDisputes ?? 0;
+  if (priorDisputes > 0) {
+    risk += clamp(priorDisputes * 8, 0, 20);
+    reasons.push(
+      `${priorDisputes} prior dispute${priorDisputes === 1 ? "" : "s"} with this client.`,
+    );
+  }
+
   const daysSinceLastReminder = input.daysSinceLastReminder ?? null;
   if (input.remindersSent > 0 && daysSinceLastReminder !== null) {
     reasons.push(
@@ -143,6 +183,8 @@ export function scoreCollectionRisk(input: CollectionRiskInput): CollectionRiskS
   }
 
   const lateRiskPercent = round(clamp(risk));
+  const paymentProbabilityPercent = round(clamp(100 - lateRiskPercent));
+  const paymentProbabilityBand = paymentBandFor(paymentProbabilityPercent);
   const band = bandFor(lateRiskPercent);
   const { action, tone, reason } = recommendAction(input, daysOverdue, band, daysSinceLastReminder);
   if (reason) reasons.push(reason);
@@ -155,6 +197,8 @@ export function scoreCollectionRisk(input: CollectionRiskInput): CollectionRiskS
     balance: round(input.balance),
     daysOverdue,
     lateRiskPercent,
+    paymentProbabilityPercent,
+    paymentProbabilityBand,
     band,
     recommendedAction: action,
     recommendedTone: tone,

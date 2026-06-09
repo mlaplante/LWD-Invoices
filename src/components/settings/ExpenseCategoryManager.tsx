@@ -5,7 +5,7 @@ import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type Category = { id: string; name: string };
+type Category = { id: string; name: string; deductible: boolean };
 type Props = { initialCategories: Category[] };
 
 export function ExpenseCategoryManager({ initialCategories }: Props) {
@@ -39,6 +39,7 @@ export function ExpenseCategoryManager({ initialCategories }: Props) {
           <thead className="border-b bg-muted/50">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Category Name</th>
+              <th className="px-3 py-2 text-left font-medium">Deductible</th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
@@ -53,6 +54,7 @@ export function ExpenseCategoryManager({ initialCategories }: Props) {
                       className="h-7 w-56"
                     />
                   </td>
+                  <td className="px-3 py-2" />
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
                       <Button
@@ -72,6 +74,20 @@ export function ExpenseCategoryManager({ initialCategories }: Props) {
               ) : (
                 <tr key={c.id} className="hover:bg-muted/30">
                   <td className="px-3 py-2 font-medium">{c.name}</td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => updateMutation.mutate({ id: c.id, deductible: !c.deductible })}
+                      disabled={updateMutation.isPending}
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        c.deductible
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {c.deductible ? "Deductible" : "Non-deductible"}
+                    </button>
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-2">
                       <button onClick={() => startEdit(c)} className="text-xs text-blue-600 hover:underline">
@@ -90,7 +106,7 @@ export function ExpenseCategoryManager({ initialCategories }: Props) {
             )}
             {categories.length === 0 && (
               <tr>
-                <td colSpan={2} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                <td colSpan={3} className="px-3 py-6 text-center text-sm text-muted-foreground">
                   No categories yet.
                 </td>
               </tr>

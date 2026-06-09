@@ -216,6 +216,9 @@ model Organization {
   brandColor        String?  @default("#2563eb")
   invoicePrefix     String   @default("INV")
   invoiceNextNumber Int      @default(1)
+  // IANA time zone used to bucket local send/open analytics and other
+  // org-local scheduled features. Defaults to UTC for existing organizations.
+  timeZone          String   @default("UTC")
   creditNotePrefix     String   @default("CN")
   creditNoteNextNumber Int      @default(1)
   taskTimeInterval        Float    @default(0)
@@ -979,6 +982,7 @@ model Timer {
 model ExpenseCategory {
   id             String  @id @default(cuid())
   name           String
+  deductible     Boolean @default(true)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   expenses             Expense[]
