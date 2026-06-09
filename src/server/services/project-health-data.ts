@@ -11,6 +11,13 @@ import { InvoiceStatus, ProjectStatus } from "@/generated/prisma";
 import type { db as Db } from "../db";
 import type { ProjectHealthInput } from "./project-health-score";
 
+/** Statuses that make an invoice count as overdue for client-health purposes. */
+const OVERDUE_STATUSES: InvoiceStatus[] = [
+  InvoiceStatus.SENT,
+  InvoiceStatus.PARTIALLY_PAID,
+  InvoiceStatus.OVERDUE,
+];
+
 /**
  * Build the health-score input for a single project scoped to an org.
  * Returns null when no project is found (or the project belongs to a
@@ -38,7 +45,6 @@ export async function buildProjectHealthInput(
           minutes: true,
           invoiceLineId: true,
           retainerId: true,
-          project: { select: { isFlatRate: true, rate: true } },
         },
       },
     },
@@ -48,34 +54,53 @@ export async function buildProjectHealthInput(
 
   const rate = project.rate.toNumber();
 
-  // ── Budget ─────────────────────────────────────────────────────────────────
-  // Change orders: approved proposals attached to this project
-  const changeOrders = await db.invoice.findMany({
-    where: {
-      organizationId: orgId,
-      projectId,
-      isChangeOrder: true,
-      status: InvoiceStatus.ACCEPTED,
-    },
-    select: { total: true },
-  });
+  // ── Budget & client invoices — run in parallel ─────────────────────────────
+  // Change orders: approved proposals attached to this project.
+  // Client invoices: fetched once for both overdue calculation and engagement;
+  // merges the previous two separate invoice queries into one round-trip.
+  const [changeOrders, clientInvoices] = await Promise.all([
+    db.invoice.findMany({
+      where: {
+        organizationId: orgId,
+        projectId,
+        isChangeOrder: true,
+        status: InvoiceStatus.ACCEPTED,
+      },
+      select: { total: true },
+    }),
+    db.invoice.findMany({
+      where: { organizationId: orgId, clientId: project.clientId, isArchived: false },
+      select: { id: true, total: true, status: true, dueDate: true },
+    }),
+  ]);
+
   const changeOrderTotal = changeOrders.reduce((sum, co) => sum + co.total.toNumber(), 0);
   const effectiveBudget = project.projectedHours * rate + changeOrderTotal;
+
+  // ── Overdue invoices — derived in-memory from the merged query ─────────────
+  const overdueInvoices = clientInvoices.filter(
+    (inv) =>
+      OVERDUE_STATUSES.includes(inv.status) &&
+      inv.dueDate != null &&
+      inv.dueDate < now,
+  );
+  const overdueInvoiceCount = overdueInvoices.length;
+  const overdueInvoiceAmount = overdueInvoices.reduce((sum, inv) => sum + inv.total.toNumber(), 0);
 
   // ── Time entries ───────────────────────────────────────────────────────────
   let loggedHours = 0;
   let billableHours = 0;
   let unbilledBillableHours = 0;
 
+  // Billable rule: retainer entry, or this project is hourly with a positive rate
+  const isBillableProject = !project.isFlatRate && project.rate.toNumber() > 0;
+
   for (const entry of project.timeEntries) {
     const mins = entry.minutes.toNumber();
     const hours = mins / 60;
     loggedHours += hours;
 
-    // Billable rule: retainer entry, or project-linked hourly entry with a rate
-    const isBillable =
-      entry.retainerId != null ||
-      (entry.project != null && !entry.project.isFlatRate && entry.project.rate.toNumber() > 0);
+    const isBillable = entry.retainerId != null || isBillableProject;
 
     if (isBillable) {
       billableHours += hours;
@@ -93,27 +118,9 @@ export async function buildProjectHealthInput(
     (t) => !t.isCompleted && t.dueDate != null && t.dueDate < now,
   ).length;
 
-  // ── Overdue invoices (client-level) ────────────────────────────────────────
-  const overdueInvoices = await db.invoice.findMany({
-    where: {
-      organizationId: orgId,
-      clientId: project.clientId,
-      isArchived: false,
-      status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
-      dueDate: { lt: now },
-    },
-    select: { total: true },
-  });
-  const overdueInvoiceCount = overdueInvoices.length;
-  const overdueInvoiceAmount = overdueInvoices.reduce((sum, inv) => sum + inv.total.toNumber(), 0);
-
   // ── Email engagement (client-level, via invoice ids) ───────────────────────
-  // Mirror buildClientHealthInputForClient: find the client's invoices,
-  // then aggregate email events per invoice, counting sent/opened.
-  const clientInvoices = await db.invoice.findMany({
-    where: { organizationId: orgId, clientId: project.clientId, isArchived: false },
-    select: { id: true },
-  });
+  // Mirror buildClientHealthInputForClient: aggregate email events per invoice,
+  // counting sent (any event) / opened.
   const invoiceIds = clientInvoices.map((inv) => inv.id);
 
   let emailsSent = 0;
@@ -163,10 +170,10 @@ export async function buildProjectHealthInput(
 /**
  * Build health-score inputs for all non-archived projects in an org.
  *
- * NOTE: This loops per project calling the single builder each time, which
- * produces N+1 round-trips. Acceptable for now given typical project counts;
- * a future optimization would bulk-load invoices and time entries once and
- * fan out without per-project queries.
+ * Per-project builds run in parallel via Promise.all, so the wall-clock cost
+ * is bounded by the slowest single project rather than sum-of-all. For very
+ * large orgs a batched/p-limit approach is a future improvement to avoid
+ * overwhelming the connection pool.
  */
 export async function buildProjectHealthInputs(
   db: typeof Db,
@@ -178,10 +185,8 @@ export async function buildProjectHealthInputs(
     select: { id: true },
   });
 
-  const results: ProjectHealthInput[] = [];
-  for (const p of projects) {
-    const input = await buildProjectHealthInput(db, orgId, p.id, now);
-    if (input) results.push(input);
-  }
-  return results;
+  const results = await Promise.all(
+    projects.map((p) => buildProjectHealthInput(db, orgId, p.id, now)),
+  );
+  return results.filter((r): r is ProjectHealthInput => r !== null);
 }
