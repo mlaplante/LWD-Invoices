@@ -52,7 +52,7 @@ export function ProjectHealthBadge({ projectId }: { projectId: string }) {
       <span className="opacity-70">· {BAND_LABELS[score.band]}</span>
 
       {/* Hover popover */}
-      <span className="pointer-events-none absolute left-0 top-full mt-1.5 z-50 hidden group-hover:flex flex-col w-64 rounded-xl border border-border/50 bg-popover p-3 shadow-lg text-foreground text-left">
+      <span className="pointer-events-none absolute right-0 top-full mt-1.5 z-50 hidden group-hover:flex flex-col w-64 rounded-xl border border-border/50 bg-popover p-3 shadow-lg text-foreground text-left">
         <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
           Component Scores
         </span>
