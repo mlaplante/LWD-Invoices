@@ -2,7 +2,7 @@
 
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
+import { Eye } from "lucide-react";
 import { toast } from "sonner";
 
 type Props = {
@@ -52,9 +52,16 @@ export function PortalPreviewButton({ target, id, fallbackUrl }: Props) {
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={handleClick} disabled={isPending}>
-      Portal
-      <ExternalLink className="w-3 h-3 ml-1.5" />
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleClick}
+      disabled={isPending}
+      title="Open the client portal as this client (no passphrase needed)"
+      className="shrink-0"
+    >
+      <Eye className="w-3.5 h-3.5 mr-1.5" />
+      View as client
     </Button>
   );
 }
