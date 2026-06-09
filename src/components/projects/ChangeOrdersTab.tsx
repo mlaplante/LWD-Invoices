@@ -26,7 +26,7 @@ export function ChangeOrdersTab({ projectId }: Props) {
   const [showForm, setShowForm] = useState(false);
   const utils = trpc.useUtils();
 
-  const { data, isLoading } = trpc.invoices.list.useQuery({
+  const { data, isLoading, isError } = trpc.invoices.list.useQuery({
     projectId,
     isChangeOrder: true,
     page: 1,
@@ -42,6 +42,8 @@ export function ChangeOrdersTab({ projectId }: Props) {
       </div>
     );
   }
+
+  if (isError) return <div className="text-sm text-destructive px-1 py-6">Failed to load change orders.</div>;
 
   return (
     <div className="space-y-4">
@@ -111,7 +113,7 @@ export function ChangeOrdersTab({ projectId }: Props) {
         <ChangeOrderForm
           projectId={projectId}
           onDone={() => {
-            utils.invoices.list.invalidate({ projectId, isChangeOrder: true, page: 1, pageSize: 100 });
+            utils.invoices.list.invalidate({ projectId, isChangeOrder: true });
             setShowForm(false);
           }}
           onCancel={() => setShowForm(false)}

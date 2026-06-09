@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Plus } from "lucide-react";
+import { toast } from "sonner";
 
-type Row = { name: string; qty: string; rate: string };
+type Row = { id: string; name: string; qty: string; rate: string };
 
 type Props = {
   projectId: string;
@@ -16,7 +17,7 @@ type Props = {
 };
 
 function emptyRow(): Row {
-  return { name: "", qty: "1", rate: "" };
+  return { id: crypto.randomUUID(), name: "", qty: "1", rate: "" };
 }
 
 export function ChangeOrderForm({ projectId, onDone, onCancel }: Props) {
@@ -25,6 +26,7 @@ export function ChangeOrderForm({ projectId, onDone, onCancel }: Props) {
 
   const mutation = trpc.invoices.createChangeOrder.useMutation({
     onSuccess: () => onDone(),
+    onError: (err) => toast.error(err.message),
   });
 
   function updateRow(index: number, patch: Partial<Row>) {
@@ -43,7 +45,11 @@ export function ChangeOrderForm({ projectId, onDone, onCancel }: Props) {
     (r) => r.name.trim().length > 0 && r.qty !== "" && r.rate !== ""
   );
 
-  const canSubmit = validRows.length > 0 && !mutation.isPending;
+  const hasIncompleteRows = rows.some(
+    (r) => (r.name.trim() || r.qty || r.rate) && !(r.name.trim() && r.qty && r.rate),
+  );
+
+  const canSubmit = validRows.length > 0 && !mutation.isPending && !hasIncompleteRows;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -78,7 +84,7 @@ export function ChangeOrderForm({ projectId, onDone, onCancel }: Props) {
         </div>
 
         {rows.map((row, i) => (
-          <div key={i} className="grid grid-cols-[2fr_80px_120px_32px] gap-2 items-start">
+          <div key={row.id} className="grid grid-cols-[2fr_80px_120px_32px] gap-2 items-start">
             <Input
               placeholder="Item name"
               value={row.name}
@@ -105,6 +111,7 @@ export function ChangeOrderForm({ projectId, onDone, onCancel }: Props) {
             />
             <button
               type="button"
+              aria-label={`Remove row ${i + 1}`}
               onClick={() => removeRow(i)}
               className="mt-1.5 text-muted-foreground hover:text-destructive disabled:opacity-40"
               disabled={rows.length === 1}
@@ -128,10 +135,11 @@ export function ChangeOrderForm({ projectId, onDone, onCancel }: Props) {
 
       {/* Notes */}
       <div>
-        <label className="text-xs text-muted-foreground mb-1 block">
+        <label htmlFor="co-notes" className="text-xs text-muted-foreground mb-1 block">
           Notes (optional)
         </label>
         <Textarea
+          id="co-notes"
           placeholder="Any notes for this change order…"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -143,6 +151,11 @@ export function ChangeOrderForm({ projectId, onDone, onCancel }: Props) {
       {/* Mutation error */}
       {mutation.error && (
         <p className="text-sm text-destructive">{mutation.error.message}</p>
+      )}
+
+      {/* Incomplete row hint */}
+      {hasIncompleteRows && (
+        <p className="text-xs text-muted-foreground">Fill in every started row (item, qty, and rate) before saving.</p>
       )}
 
       {/* Actions */}
