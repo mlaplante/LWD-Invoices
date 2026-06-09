@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Users } from "lucide-react";
 
 const reports = [
   {
@@ -9,6 +9,13 @@ const reports = [
     description: "Composite health score, churn risk, and upsell signals per client.",
     icon: <HeartPulse className="w-4 h-4" />,
     color: "bg-rose-50 text-rose-600",
+  },
+  {
+    href: "/reports/client-concentration",
+    label: "Client Concentration",
+    description: "Revenue share per client with over-dependence risk indicators.",
+    icon: <Users className="w-4 h-4" />,
+    color: "bg-sky-50 text-sky-600",
   },
   {
     href: "/reports/cash-flow-forecast",
