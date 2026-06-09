@@ -83,6 +83,10 @@ export const env = createEnv({
     EXPENSE_CATEGORY_AI_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
     // Ordered Gemini model fallback chain for expense categorization.
     GEMINI_EXPENSE_CATEGORY_MODELS: z.string().min(1).optional(),
+    // Provider for AI proposal generation. Defaults to Gemini when GEMINI_API_KEY is set.
+    PROPOSAL_AI_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
+    // Ordered Gemini model fallback chain for proposal generation.
+    GEMINI_PROPOSAL_MODELS: z.string().min(1).optional(),
     // Dedicated HMAC secret for signing public-portal session cookies.
     // Optional for back-compat: when unset, the portal-session helpers fall
     // back to SUPABASE_SERVICE_ROLE_KEY. Set this in production so the
@@ -127,6 +131,8 @@ export const env = createEnv({
     GEMINI_INVOICE_REVIEW_MODELS: process.env.GEMINI_INVOICE_REVIEW_MODELS,
     EXPENSE_CATEGORY_AI_PROVIDER: process.env.EXPENSE_CATEGORY_AI_PROVIDER,
     GEMINI_EXPENSE_CATEGORY_MODELS: process.env.GEMINI_EXPENSE_CATEGORY_MODELS,
+    PROPOSAL_AI_PROVIDER: process.env.PROPOSAL_AI_PROVIDER,
+    GEMINI_PROPOSAL_MODELS: process.env.GEMINI_PROPOSAL_MODELS,
     PORTAL_SESSION_SECRET: process.env.PORTAL_SESSION_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
