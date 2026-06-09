@@ -322,7 +322,7 @@ export const proposalsRouter = router({
         taxMap,
       });
 
-      const invoiceId = await ctx.db.$transaction(async (tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$use" | "$extends">) => {
+      const invoiceId = await ctx.db.$transaction(async (tx: Prisma.TransactionClient) => {
         const txClient = tx as unknown as PrismaClient;
         const number = await generateInvoiceNumber(txClient, ctx.orgId);
         const created = await tx.invoice.create({
