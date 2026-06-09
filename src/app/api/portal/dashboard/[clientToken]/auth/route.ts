@@ -4,31 +4,15 @@ import {
   generateSessionToken,
   SESSION_DURATION_MS,
 } from "@/server/services/portal-dashboard";
+import {
+  createPortalAuthGuard,
+  burnBcryptCompare,
+  GENERIC_PORTAL_AUTH_ERROR,
+} from "@/lib/portal-auth";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
-import { createRateLimiter } from "@/lib/rate-limit";
 
-// 10 attempts per clientToken per 15 minutes
-const authLimiter = createRateLimiter({ limit: 10, windowMs: 15 * 60_000 });
-
-// Lockout: 5 failed attempts → locked for 15 minutes
-type Attempt = { count: number; lockedUntil: number };
-const failedAttempts = new Map<string, Attempt>();
-const MAX_FAILURES = 5;
-const LOCKOUT_MS = 15 * 60_000;
-const MAX_TRACKED_TOKENS = 10_000;
-
-// Bcrypt-format dummy hash used to keep request latency constant when the
-// client/passphrase isn't found, preventing user enumeration via timing.
-const DUMMY_HASH = "$2a$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012";
-
-function pruneFailedAttempts() {
-  if (failedAttempts.size < MAX_TRACKED_TOKENS) return;
-  const now = Date.now();
-  for (const [k, v] of failedAttempts) {
-    if (v.lockedUntil < now && v.count < MAX_FAILURES) failedAttempts.delete(k);
-  }
-}
+const { limiter, lockout } = createPortalAuthGuard();
 
 export async function POST(
   req: NextRequest,
@@ -36,16 +20,15 @@ export async function POST(
 ) {
   const { clientToken } = await params;
 
-  if (authLimiter.isLimited(clientToken)) {
+  if (limiter.isLimited(clientToken)) {
     return NextResponse.json(
       { error: "Too many attempts. Please try again later." },
       { status: 429 },
     );
   }
 
-  const lockout = failedAttempts.get(clientToken);
-  if (lockout && lockout.count >= MAX_FAILURES && Date.now() < lockout.lockedUntil) {
-    const retryAfter = Math.ceil((lockout.lockedUntil - Date.now()) / 1000);
+  const retryAfter = lockout.retryAfterSeconds(clientToken);
+  if (retryAfter !== null) {
     return NextResponse.json(
       { error: "Too many failed attempts. Please try again later." },
       { status: 429, headers: { "Retry-After": String(retryAfter) } },
@@ -60,15 +43,10 @@ export async function POST(
     select: { id: true, portalPassphraseHash: true },
   });
 
-  // Always run a bcrypt compare so response time doesn't reveal client existence.
-  // Return identical 401 + generic message for both "client not found" and
-  // "wrong passphrase" so an attacker can't enumerate valid tokens by status
-  // code or response body shape.
-  const GENERIC_AUTH_ERROR = { error: "Invalid token or passphrase" };
-
   if (!client) {
-    await bcrypt.compare(passphrase, DUMMY_HASH);
-    return NextResponse.json(GENERIC_AUTH_ERROR, { status: 401 });
+    // Burn a bcrypt compare so timing doesn't reveal client existence.
+    await burnBcryptCompare(passphrase);
+    return NextResponse.json(GENERIC_PORTAL_AUTH_ERROR, { status: 401 });
   }
 
   const storedHash = client.portalPassphraseHash;
@@ -76,21 +54,15 @@ export async function POST(
   if (storedHash) {
     const match = await bcrypt.compare(passphrase, storedHash);
     if (!match) {
-      const current = failedAttempts.get(clientToken) ?? { count: 0, lockedUntil: 0 };
-      current.count += 1;
-      if (current.count >= MAX_FAILURES) {
-        current.lockedUntil = Date.now() + LOCKOUT_MS;
-      }
-      failedAttempts.set(clientToken, current);
-      pruneFailedAttempts();
-      return NextResponse.json(GENERIC_AUTH_ERROR, { status: 401 });
+      lockout.recordFailure(clientToken);
+      return NextResponse.json(GENERIC_PORTAL_AUTH_ERROR, { status: 401 });
     }
   } else {
     // No passphrase configured — still pay the bcrypt cost to keep timing flat.
-    await bcrypt.compare(passphrase, DUMMY_HASH);
+    await burnBcryptCompare(passphrase);
   }
 
-  failedAttempts.delete(clientToken);
+  lockout.reset(clientToken);
 
   const sessionToken = generateSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);

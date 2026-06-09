@@ -1,7 +1,12 @@
 import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { parseReceiptWithOCR } from "@/server/services/receipt-ocr";
+import { createRateLimiter } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
+
+// OCR runs an LLM per receipt — cap per-org usage so a misbehaving client or
+// compromised session can't run up the bill.
+const ocrLimiter = createRateLimiter({ limit: 30, windowMs: 10 * 60_000 });
 
 const ALLOWED_MIME_TYPES = [
   "image/png",
@@ -17,6 +22,13 @@ export async function POST(req: Request) {
     const auth = await getAuthenticatedOrg();
     if (isAuthError(auth)) return auth;
     const { orgId } = auth;
+
+    if (ocrLimiter.isLimited(orgId)) {
+      return NextResponse.json(
+        { error: "Too many OCR requests. Please try again in a few minutes." },
+        { status: 429 },
+      );
+    }
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

@@ -11,27 +11,10 @@ import { formatDate, formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ResendInvoiceButton } from "@/components/invoices/ResendInvoiceButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
+import { INVOICE_STATUS_BADGE as STATUS_BADGE, INVOICE_TYPE_LABELS as TYPE_LABELS } from "@/lib/invoice-ui";
 import { FileText, Archive, Trash2, RefreshCw, Send, CheckCircle } from "lucide-react";
 
 const RESENDABLE_STATUSES: InvoiceStatus[] = ["SENT", "OVERDUE", "PARTIALLY_PAID"];
-
-const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
-  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",       dot: "bg-gray-400" },
-  SENT:           { label: "Unpaid",   className: "bg-amber-50 text-amber-600",      dot: "bg-amber-500" },
-  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600",        dot: "bg-blue-500" },
-  PAID:           { label: "Paid",     className: "bg-emerald-50 text-emerald-600",  dot: "bg-emerald-500" },
-  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600",          dot: "bg-red-500" },
-  ACCEPTED:       { label: "Accepted", className: "bg-primary/10 text-primary",      dot: "bg-primary" },
-  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-400",       dot: "bg-gray-300" },
-};
-
-const TYPE_LABELS: Record<InvoiceType, string> = {
-  DETAILED: "Invoice",
-  SIMPLE:   "Invoice",
-  ESTIMATE: "Estimate",
-  CREDIT_NOTE: "Credit Note",
-  DEPOSIT: "Deposit",
-};
 
 type Invoice = {
   id: string;

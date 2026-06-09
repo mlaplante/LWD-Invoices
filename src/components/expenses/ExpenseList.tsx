@@ -8,18 +8,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Pencil, Trash2, Plus, Paperclip, Repeat, Pause, Play, Archive, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-const FREQUENCY_LABELS: Record<string, string> = {
-  DAILY: "Daily",
-  WEEKLY: "Weekly",
-  MONTHLY: "Monthly",
-  YEARLY: "Yearly",
-};
-
-function formatFrequency(freq: string, interval: number) {
-  if (interval === 1) return FREQUENCY_LABELS[freq] ?? freq;
-  return `Every ${interval} ${freq.toLowerCase().replace(/ly$/, "")}s`;
-}
+import { formatFrequency } from "@/lib/format";
 
 export function ExpenseList() {
   const [deleteId, setDeleteId] = useState<string | null>(null);

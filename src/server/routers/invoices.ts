@@ -19,7 +19,8 @@ import {
 } from "@/server/lib/invoice-includes";
 import { paginationFromInput } from "@/lib/pagination";
 import { createRateLimiter } from "@/lib/rate-limit";
-import { generatePortalToken } from "@/lib/portal-session";
+import { generatePortalToken, signPortalSession, getPortalSessionSecret } from "@/lib/portal-session";
+import { cookies } from "next/headers";
 import {
   buildNaturalLanguageInvoiceDraft,
   extractNaturalLanguageInvoice,
@@ -1498,11 +1499,7 @@ export const invoicesRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Prisma's @default(cuid()) only fires on create. crypto.randomUUID
-      // is sufficient for portal tokens — they're URL-safe, unguessable,
-      // and unique enough that the @unique constraint will never realistically
-      // conflict.
-      const newToken = crypto.randomUUID();
+      const newToken = generatePortalToken();
 
       const updated = await ctx.db.invoice.update({
         where: { id: input.id, organizationId: ctx.orgId },
@@ -1521,6 +1518,42 @@ export const invoicesRouter = router({
       }).catch(() => {});
 
       return { portalToken: updated.portalToken };
+    }),
+
+  // "View as client" for a single invoice portal: sets the same signed
+  // session cookie the passphrase gate would, so staff can preview the
+  // portal without knowing the client's passphrase — including after the
+  // client has changed it via the self-service reset. Audited per use.
+  previewPortal: requireRole("OWNER", "ADMIN")
+    .input(idInput)
+    .mutation(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findFirst({
+        where: { id: input.id, organizationId: ctx.orgId },
+        select: { id: true, number: true, portalToken: true },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const sessionVal = signPortalSession(invoice.portalToken, getPortalSessionSecret());
+      const cookieStore = await cookies();
+      cookieStore.set(`portal_auth_${invoice.portalToken}`, sessionVal, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60, // 1 hour — long enough to look around
+        path: `/portal/${invoice.portalToken}`,
+      });
+
+      await logAudit({
+        action: "VIEWED",
+        entityType: "Invoice.Portal",
+        entityId: invoice.id,
+        entityLabel: `Invoice #${invoice.number}`,
+        diff: { event: "portal_admin_preview" },
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+
+      return { url: `/portal/${invoice.portalToken}` };
     }),
 
   lastForClient: protectedProcedure

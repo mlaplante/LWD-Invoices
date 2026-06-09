@@ -5,6 +5,7 @@ import { idInput } from "../lib/schemas";
 import { getForOrg } from "../lib/get-for-org";
 import { logAudit } from "../services/audit";
 import { encryptString, decryptString } from "../services/encryption";
+import { generatePortalToken } from "@/lib/portal-session";
 import { ContractorPaymentMethod } from "@/generated/prisma";
 
 // Federal tax classification (Form W-9, Line 3). Corporations are generally
@@ -153,6 +154,7 @@ export const contractorsRouter = router({
           ...rest,
           email: email || undefined,
           organizationId: ctx.orgId,
+          portalToken: generatePortalToken(),
           tinEncrypted: digits ? encryptString(digits) : undefined,
           tinLast4: digits ? digits.slice(-4) : undefined,
         },
@@ -215,6 +217,31 @@ export const contractorsRouter = router({
         data: { portalEnabled: input.enabled },
         select: { id: true, portalEnabled: true, portalToken: true },
       });
+      return updated;
+    }),
+
+  // Issues a fresh portalToken, invalidating every existing contractor portal
+  // link. Use when a link has been shared beyond the intended audience.
+  rotatePortalToken: requireRole("OWNER", "ADMIN")
+    .input(idInput)
+    .mutation(async ({ ctx, input }) => {
+      const existing = await getForOrg(ctx.db.contractor, input.id, ctx.orgId, {
+        entityName: "Contractor",
+      });
+      const updated = await ctx.db.contractor.update({
+        where: { id: input.id, organizationId: ctx.orgId },
+        data: { portalToken: generatePortalToken() },
+        select: { portalToken: true },
+      });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Contractor",
+        entityId: input.id,
+        entityLabel: (existing as { legalName: string }).legalName,
+        diff: { event: "portal_token_rotated" },
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
       return updated;
     }),
 

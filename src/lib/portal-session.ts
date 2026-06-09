@@ -1,4 +1,5 @@
-import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
+import { generateSecureToken } from "./secure-token";
 
 /**
  * Signs a portal token with the app secret to create a session cookie value.
@@ -35,7 +36,7 @@ export function verifyPortalSession(
  * when a leak is suspected.
  */
 export function generatePortalToken(): string {
-  return randomBytes(32).toString("hex");
+  return generateSecureToken();
 }
 
 /**

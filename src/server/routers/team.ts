@@ -6,6 +6,80 @@ import { render } from "@react-email/render";
 import TeamInviteEmail from "@/emails/TeamInviteEmail";
 import PasswordResetEmail from "@/emails/PasswordResetEmail";
 import { sendEmail } from "@/server/services/email-sender";
+import { getUser } from "@/lib/supabase/server";
+import { generateSecureToken } from "@/lib/secure-token";
+import { createRateLimiter } from "@/lib/rate-limit";
+import type { UserRole } from "@/generated/prisma";
+import type { db as dbClient } from "../db";
+
+// Caps invite emails per org so a compromised admin session can't spam
+// arbitrary inboxes through our sender.
+const inviteLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
+
+/**
+ * Creates a fresh invitation (cryptographically random token, 7-day expiry)
+ * and emails the accept link. Shared by `invite` and `resendInvite`.
+ */
+async function createAndEmailInvitation(opts: {
+  db: typeof dbClient;
+  userId: string;
+  orgId: string;
+  email: string;
+  role: UserRole;
+}) {
+  const { db, userId, orgId, email, role } = opts;
+
+  if (inviteLimiter.isLimited(orgId)) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Too many invitations sent. Please wait a minute and try again.",
+    });
+  }
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+
+  const invitation = await db.invitation.create({
+    data: {
+      email,
+      role,
+      token: generateSecureToken(),
+      expiresAt,
+      invitedById: userId,
+      organizationId: orgId,
+    },
+  });
+
+  const [inviter, org] = await Promise.all([
+    db.user.findFirst({ where: { supabaseId: userId }, select: { firstName: true, lastName: true, email: true } }),
+    db.organization.findFirst({ where: { id: orgId }, select: { name: true, logoUrl: true } }),
+  ]);
+
+  const inviterName = inviter?.firstName
+    ? `${inviter.firstName}${inviter.lastName ? ` ${inviter.lastName}` : ""}`
+    : inviter?.email ?? "Someone";
+
+  const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invitation.token}`;
+
+  const html = await render(
+    TeamInviteEmail({
+      inviterName,
+      orgName: org?.name ?? "your organization",
+      role,
+      acceptUrl,
+      logoUrl: org?.logoUrl,
+    })
+  );
+
+  await sendEmail({
+    organizationId: orgId,
+    to: email,
+    subject: `${inviterName} invited you to join ${org?.name ?? "their organization"} on Pancake`,
+    html,
+  });
+
+  return { invitation, acceptUrl };
+}
 
 export const teamRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -62,45 +136,12 @@ export const teamRouter = router({
       data: { status: "REVOKED" },
     });
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    const invitation = await ctx.db.invitation.create({
-      data: {
-        email: input.email,
-        role: input.role,
-        expiresAt,
-        invitedById: ctx.userId,
-        organizationId: ctx.orgId,
-      },
-    });
-
-    const [inviter, org] = await Promise.all([
-      ctx.db.user.findFirst({ where: { supabaseId: ctx.userId }, select: { firstName: true, lastName: true, email: true } }),
-      ctx.db.organization.findFirst({ where: { id: ctx.orgId }, select: { name: true, logoUrl: true } }),
-    ]);
-
-    const inviterName = inviter?.firstName
-      ? `${inviter.firstName}${inviter.lastName ? ` ${inviter.lastName}` : ""}`
-      : inviter?.email ?? "Someone";
-
-    const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invitation.token}`;
-
-    const html = await render(
-      TeamInviteEmail({
-        inviterName,
-        orgName: org?.name ?? "your organization",
-        role: input.role,
-        acceptUrl,
-        logoUrl: org?.logoUrl,
-      })
-    );
-
-    await sendEmail({
-      organizationId: ctx.orgId,
-      to: input.email,
-      subject: `${inviterName} invited you to join ${org?.name ?? "their organization"} on Pancake`,
-      html,
+    const { invitation, acceptUrl } = await createAndEmailInvitation({
+      db: ctx.db,
+      userId: ctx.userId,
+      orgId: ctx.orgId,
+      email: input.email,
+      role: input.role,
     });
 
     await logAudit({
@@ -140,45 +181,12 @@ export const teamRouter = router({
       data: { status: "REVOKED" },
     });
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    const invitation = await ctx.db.invitation.create({
-      data: {
-        email: existing.email,
-        role: existing.role,
-        expiresAt,
-        invitedById: ctx.userId,
-        organizationId: ctx.orgId,
-      },
-    });
-
-    const [inviter, org] = await Promise.all([
-      ctx.db.user.findFirst({ where: { supabaseId: ctx.userId }, select: { firstName: true, lastName: true, email: true } }),
-      ctx.db.organization.findFirst({ where: { id: ctx.orgId }, select: { name: true, logoUrl: true } }),
-    ]);
-
-    const inviterName = inviter?.firstName
-      ? `${inviter.firstName}${inviter.lastName ? ` ${inviter.lastName}` : ""}`
-      : inviter?.email ?? "Someone";
-
-    const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invitation.token}`;
-
-    const html = await render(
-      TeamInviteEmail({
-        inviterName,
-        orgName: org?.name ?? "your organization",
-        role: existing.role,
-        acceptUrl,
-        logoUrl: org?.logoUrl,
-      })
-    );
-
-    await sendEmail({
-      organizationId: ctx.orgId,
-      to: existing.email,
-      subject: `${inviterName} invited you to join ${org?.name ?? "their organization"} on Pancake`,
-      html,
+    const { acceptUrl } = await createAndEmailInvitation({
+      db: ctx.db,
+      userId: ctx.userId,
+      orgId: ctx.orgId,
+      email: existing.email,
+      role: existing.role,
     });
 
     return { inviteUrl: acceptUrl };
@@ -401,6 +409,17 @@ export const teamRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: "This invitation has expired" });
     }
 
+    // Bind acceptance to the invited inbox: holding the token isn't enough,
+    // the signed-in account must own the email the invite was sent to.
+    const { data: { user: authUser } } = await getUser();
+    const authEmail = authUser?.email?.toLowerCase();
+    if (!authEmail || authEmail !== invitation.email.toLowerCase()) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "This invitation was sent to a different email address. Sign in with the invited email to accept it.",
+      });
+    }
+
     const existingUser = await ctx.db.user.findFirst({
       where: { supabaseId: ctx.userId },
     });
@@ -422,16 +441,12 @@ export const teamRouter = router({
         },
       });
     } else {
-      const { createClient } = await import("@/lib/supabase/server");
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
       const newUser = await ctx.db.user.create({
         data: {
           supabaseId: ctx.userId,
           email: invitation.email,
-          firstName: user?.user_metadata?.firstName ?? null,
-          lastName: user?.user_metadata?.lastName ?? null,
+          firstName: authUser?.user_metadata?.firstName ?? null,
+          lastName: authUser?.user_metadata?.lastName ?? null,
         },
       });
 

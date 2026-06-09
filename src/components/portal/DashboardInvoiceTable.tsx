@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
+import { invoiceStatusBadge } from "@/lib/invoice-ui";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 
@@ -20,16 +21,6 @@ type InvoiceRow = {
 
 type Props = {
   invoices: InvoiceRow[];
-};
-
-const STATUS_BADGE: Record<string, { label: string; className: string; dot: string }> = {
-  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",      dot: "bg-gray-400" },
-  SENT:           { label: "Unpaid",   className: "bg-amber-50 text-amber-600",     dot: "bg-amber-500" },
-  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600",       dot: "bg-blue-500" },
-  PAID:           { label: "Paid",     className: "bg-emerald-50 text-emerald-600", dot: "bg-emerald-500" },
-  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600",         dot: "bg-red-500" },
-  ACCEPTED:       { label: "Accepted", className: "bg-primary/10 text-primary",     dot: "bg-primary" },
-  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-400",      dot: "bg-gray-300" },
 };
 
 type FilterKey = "all" | "unpaid" | "paid" | "overdue";
@@ -109,7 +100,7 @@ export function DashboardInvoiceTable({ invoices }: Props) {
               </tr>
             ) : (
               filtered.map((inv) => {
-                const badge = STATUS_BADGE[inv.status] ?? STATUS_BADGE.DRAFT;
+                const badge = invoiceStatusBadge(inv.status);
                 const balance = computeBalance(inv.total, inv.amountPaid);
                 const sym = inv.currency.symbol;
                 const pos = inv.currency.symbolPosition;
@@ -182,7 +173,7 @@ export function DashboardInvoiceTable({ invoices }: Props) {
           </p>
         ) : (
           filtered.map((inv) => {
-            const badge = STATUS_BADGE[inv.status] ?? STATUS_BADGE.DRAFT;
+            const badge = invoiceStatusBadge(inv.status);
             const balance = computeBalance(inv.total, inv.amountPaid);
             const sym = inv.currency.symbol;
             const pos = inv.currency.symbolPosition;
