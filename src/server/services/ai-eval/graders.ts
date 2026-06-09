@@ -206,6 +206,30 @@ function fmt(value: unknown): string {
   return value === null ? "null" : typeof value === "string" ? `"${value}"` : String(value);
 }
 
+// ─── Collections queue ranking determinism ─────────────────────────────────────
+
+import { rankCollectionsQueue, type CollectionRiskScore } from "../collection-risk";
+
+export interface CollectionsQueueInput {
+  scores: CollectionRiskScore[];
+}
+
+export interface CollectionsQueueExpected {
+  /** The invoiceIds in the exact order the queue must produce. */
+  order: string[];
+}
+
+export const gradeCollectionsQueue: Grader<CollectionsQueueInput, CollectionsQueueExpected> = (
+  input,
+  expected,
+) => {
+  const got = rankCollectionsQueue(input.scores).map((s) => s.invoiceId);
+  const ok = got.length === expected.order.length && got.every((id, i) => id === expected.order[i]);
+  return ok
+    ? { score: 1 }
+    : { score: 0, detail: `order got [${got.join(",")}] want [${expected.order.join(",")}]` };
+};
+
 // ─── Expense categorization (history majority-vote + AI grounding guard) ───────
 
 import {

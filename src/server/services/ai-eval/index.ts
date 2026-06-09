@@ -8,13 +8,14 @@
  */
 
 import { runSuite, suiteMeetsGate } from "./runner";
-import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview, gradeExpenseCategorization } from "./graders";
+import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview, gradeExpenseCategorization, gradeCollectionsQueue } from "./graders";
 import { ocrCases } from "./fixtures/ocr.fixtures";
 import { reminderGuardCases } from "./fixtures/reminder-guard.fixtures";
 import { groundingCases } from "./fixtures/assistant-grounding.fixtures";
 import { monthEndCloseCases } from "./fixtures/month-end-close.fixtures";
 import { invoiceReviewCases } from "./fixtures/invoice-review.fixtures";
 import { expenseCategorizationCases } from "./fixtures/expense-categorization.fixtures";
+import { collectionsQueueCases } from "./fixtures/collections-queue.fixtures";
 import type { SuiteReport } from "./types";
 
 export interface SuiteGate {
@@ -68,6 +69,11 @@ export function runAllEvalSuites(): EvalSuiteResult[] {
       report: runSuite("expense-categorization", expenseCategorizationCases, gradeExpenseCategorization),
       gate: { minScore: 1, minPassRate: 1 },
     },
+    {
+      // Queue ordering must be deterministic and explainable — no LLM ranking.
+      report: runSuite("collections-queue", collectionsQueueCases, gradeCollectionsQueue),
+      gate: { minScore: 1, minPassRate: 1 },
+    },
   ];
 
   return suites.map(({ report, gate }) => ({
@@ -87,6 +93,7 @@ export {
   gradeMonthEndClose,
   gradeInvoiceReview,
   gradeExpenseCategorization,
+  gradeCollectionsQueue,
   type OcrEvalInput,
   type OcrEvalExpected,
   type ReminderGuardInput,
@@ -99,4 +106,6 @@ export {
   type InvoiceReviewExpected,
   type ExpenseCategorizationInput,
   type ExpenseCategorizationExpected,
+  type CollectionsQueueInput,
+  type CollectionsQueueExpected,
 } from "./graders";
