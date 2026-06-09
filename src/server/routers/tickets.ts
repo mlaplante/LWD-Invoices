@@ -4,6 +4,7 @@ import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
 import { TicketStatus, TicketPriority } from "@/generated/prisma";
 import { assertInOrg } from "../lib/get-for-org";
+import { logAudit } from "../services/audit";
 
 export const ticketsRouter = router({
   list: protectedProcedure
@@ -53,8 +54,9 @@ export const ticketsRouter = router({
       });
       const number = (lastTicket?.number ?? 0) + 1;
 
+      let created: { id: string; number: number; subject: string };
       try {
-        return await ctx.db.ticket.create({
+        created = await ctx.db.ticket.create({
           data: {
             number,
             subject: input.subject,
@@ -78,6 +80,17 @@ export const ticketsRouter = router({
         }
         throw e;
       }
+
+      await logAudit({
+        action: "CREATED",
+        entityType: "Ticket",
+        entityId: created.id,
+        entityLabel: `#${created.number} ${created.subject}`,
+        userId: ctx.userId ?? undefined,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+
+      return created;
     }),
 
   reply: requireRole("OWNER", "ADMIN")
@@ -105,6 +118,14 @@ export const ticketsRouter = router({
         data: { status: input.status },
       });
       if (result.count === 0) throw new TRPCError({ code: "NOT_FOUND" });
+      await logAudit({
+        action: "STATUS_CHANGED",
+        entityType: "Ticket",
+        entityId: input.id,
+        entityLabel: input.status,
+        userId: ctx.userId ?? undefined,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
       return { success: true };
     }),
 });
