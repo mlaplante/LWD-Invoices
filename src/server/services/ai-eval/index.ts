@@ -8,7 +8,7 @@
  */
 
 import { runSuite, suiteMeetsGate } from "./runner";
-import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview, gradeExpenseCategorization, gradeCollectionsQueue } from "./graders";
+import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview, gradeExpenseCategorization, gradeCollectionsQueue, gradeProposalGenerator } from "./graders";
 import { ocrCases } from "./fixtures/ocr.fixtures";
 import { reminderGuardCases } from "./fixtures/reminder-guard.fixtures";
 import { groundingCases } from "./fixtures/assistant-grounding.fixtures";
@@ -16,6 +16,7 @@ import { monthEndCloseCases } from "./fixtures/month-end-close.fixtures";
 import { invoiceReviewCases } from "./fixtures/invoice-review.fixtures";
 import { expenseCategorizationCases } from "./fixtures/expense-categorization.fixtures";
 import { collectionsQueueCases } from "./fixtures/collections-queue.fixtures";
+import { proposalGeneratorCases } from "./fixtures/proposal-generator.fixtures";
 import type { SuiteReport } from "./types";
 
 export interface SuiteGate {
@@ -74,6 +75,11 @@ export function runAllEvalSuites(): EvalSuiteResult[] {
       report: runSuite("collections-queue", collectionsQueueCases, gradeCollectionsQueue),
       gate: { minScore: 1, minPassRate: 1 },
     },
+    {
+      // Section-key conformance + suggested-item grounding (critical) must hold.
+      report: runSuite("proposal-generator", proposalGeneratorCases, gradeProposalGenerator),
+      gate: { minScore: 1, minPassRate: 1 },
+    },
   ];
 
   return suites.map(({ report, gate }) => ({
@@ -94,6 +100,7 @@ export {
   gradeInvoiceReview,
   gradeExpenseCategorization,
   gradeCollectionsQueue,
+  gradeProposalGenerator,
   type OcrEvalInput,
   type OcrEvalExpected,
   type ReminderGuardInput,
@@ -108,4 +115,6 @@ export {
   type ExpenseCategorizationExpected,
   type CollectionsQueueInput,
   type CollectionsQueueExpected,
+  type ProposalGeneratorInput,
+  type ProposalGeneratorExpected,
 } from "./graders";

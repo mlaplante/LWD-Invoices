@@ -206,6 +206,63 @@ function fmt(value: unknown): string {
   return value === null ? "null" : typeof value === "string" ? `"${value}"` : String(value);
 }
 
+// ─── Proposal generator (section-key conformance + grounding guard) ────────────
+
+import {
+  groundSuggestedItems,
+  conformSectionKeys,
+  type OrgItem,
+  type SuggestedLineItem,
+  type ProposalSection,
+} from "../proposal-generator";
+
+export interface ProposalGeneratorInput {
+  /** Raw model sections, graded through conformSectionKeys. */
+  modelSections: ProposalSection[];
+  templateSections: ProposalSection[];
+  /** Raw model line-item suggestions, graded through the grounding guard. */
+  modelItems: SuggestedLineItem[];
+  items: OrgItem[];
+}
+
+export interface ProposalGeneratorExpected {
+  /** Section keys the conformed output must have, in this exact order. */
+  expectSectionKeys: string[];
+  /** itemIds that must survive grounding (real ones); fabricated ones must be gone. */
+  expectGroundedItemIds: string[];
+}
+
+export const gradeProposalGenerator: Grader<ProposalGeneratorInput, ProposalGeneratorExpected> = (
+  input,
+  expected,
+) => {
+  const sections = conformSectionKeys(input.modelSections, input.templateSections);
+  const grounded = groundSuggestedItems(input.modelItems, input.items);
+  const checks: Array<{ ok: boolean; label: string }> = [];
+
+  const gotKeys = sections.map((s) => s.key);
+  const keysOk =
+    gotKeys.length === expected.expectSectionKeys.length &&
+    gotKeys.every((k, i) => k === expected.expectSectionKeys[i]);
+  checks.push({
+    ok: keysOk,
+    label: keysOk ? "" : `keys got [${gotKeys.join(",")}] want [${expected.expectSectionKeys.join(",")}]`,
+  });
+
+  const gotIds = grounded.map((g) => g.itemId);
+  const idsOk =
+    gotIds.length === expected.expectGroundedItemIds.length &&
+    expected.expectGroundedItemIds.every((id) => gotIds.includes(id));
+  checks.push({
+    ok: idsOk,
+    label: idsOk ? "" : `grounded ids got [${gotIds.join(",")}] want [${expected.expectGroundedItemIds.join(",")}]`,
+  });
+
+  const correct = checks.filter((c) => c.ok).length;
+  const misses = checks.filter((c) => !c.ok).map((c) => c.label);
+  return { score: correct / checks.length, detail: misses.length ? misses.join("; ") : undefined };
+};
+
 // ─── Collections queue ranking determinism ─────────────────────────────────────
 
 import { rankCollectionsQueue, type CollectionRiskScore } from "../collection-risk";
