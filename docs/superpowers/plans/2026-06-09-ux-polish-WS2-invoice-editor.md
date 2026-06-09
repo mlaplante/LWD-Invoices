@@ -272,11 +272,16 @@ Move the schedule/deposit JSX + handlers into `PaymentScheduleSection.tsx` recei
 - [ ] **Step 4: Typecheck + full suite**
 
 Run: `npx tsc --noEmit && npm test`
-Expected: clean; all tests pass (no behavior change).
+Expected: clean; all tests pass.
 
-- [ ] **Step 5: Manual verify + commit**
+> **CRITICAL — no test covers this.** The codebase has **0 `.tsx` tests**, so a green suite + clean `tsc` does NOT prove the extraction preserved behavior. Threading state/setters into the extracted children can silently drop a binding and still compile. The verification below is mandatory, not optional.
 
-Load `/invoices/new` and `/invoices/[id]/edit` (use `run` skill): metadata + schedule render and submit identically.
+- [ ] **Step 5: Mandatory before/after behavioral verification + commit**
+
+Use the `verify` skill. Do an explicit functional exercise of BOTH flows — do not eyeball "renders identically":
+- **Create:** `/invoices/new` → fill client, dates, type, currency, notes, add 2 line items, set a payment schedule/deposit → submit → confirm the saved invoice's payload (all fields + lines + schedule) is correct in the detail view.
+- **Edit:** open an existing invoice's edit page → change a metadata field and a schedule value → save → confirm the change persisted and nothing else regressed.
+Only commit once both round-trips are confirmed correct.
 
 ```bash
 git add src/components/invoices/InvoiceMetadata.tsx src/components/invoices/PaymentScheduleSection.tsx src/components/invoices/InvoiceForm.tsx
@@ -340,9 +345,7 @@ git commit -m "feat(invoices): keyboard line-item entry (Enter=new row, Cmd+D=du
 When a `clientId` is selected and `mode === "create"`, show a button that calls `invoices.lastForClient`:
 
 ```tsx
-const lastForClient = trpc.invoices.lastForClient.useMutation
-  ? undefined
-  : undefined; // lastForClient is a query — use useUtils().invoices.lastForClient.fetch
+// lastForClient is a query — fetch it imperatively on demand via useUtils.
 const utils = trpc.useUtils();
 async function copyPrevious() {
   if (!form.clientId) return;

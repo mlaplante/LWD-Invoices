@@ -6,6 +6,23 @@
 
 **Architecture:** New `UserDashboardPreference` Prisma model stores an ordered `{ key, visible }[]` as JSON. A pure `layout` module (default order + validation/normalization against the widget registry) is TDD'd. Two tRPC procedures (`dashboardLayout.get` / `dashboardLayout.save`) are TDD'd. A client "edit layout" island toggles visibility + reorders (DnD-Kit, keyboard-accessible). Show/hide + reorder only — **no resize, no custom grids** (YAGNI per spec).
 
+**Widget set (decided):** The customizable widgets are the dashboard's **real sections** PLUS **two new cards** the user explicitly asked for that don't exist yet (`tasks`, `retainerBurn`). Both new cards get their own TDD'd query (Task 3b). The full key set and their data sources:
+
+| key | label | source / component |
+|---|---|---|
+| `summary` | KPIs | `dashboard.summary` → `SummaryCards` (includes overdue KPI) |
+| `revenue` | Revenue | `dashboard.revenueChart` → `RevenueChart` |
+| `invoiceStatus` | Invoice status | `dashboard.invoiceStatusBreakdown` → `InvoiceStatusChart` |
+| `expenses` | Expenses vs revenue | `dashboard.expensesVsRevenue` → `ExpensesVsRevenueChart` |
+| `cashFlow` | Cash flow | `dashboard.cashFlowInsights` → `CashFlowInsights` |
+| `topClients` | Top clients | `dashboard.topClients` → `TopClients` |
+| `aging` | Overdue / AR aging | `dashboard.agingReceivables` → `AgingReceivables` |
+| `dueThisWeek` | Due this week | `dashboard.dueThisWeek` → `DueThisWeek` |
+| `estimateConversion` | Estimate conversion | `dashboard.estimateConversion` → `EstimateConversion` |
+| `activity` | Recent activity | `dashboard.activityFeed` → `ActivityFeed` |
+| `tasks` | Open tasks | **NEW** `dashboard.openTasks` → **new** `OpenTasksCard` |
+| `retainerBurn` | Retainer burn | **NEW** `dashboard.retainerBurn` → **new** `RetainerBurnCard` |
+
 **Tech Stack:** Prisma 7, tRPC v11, Zod 4, `@dnd-kit/*`, React.
 
 **Prereq:** none (independent workstream).
@@ -43,14 +60,21 @@ Add the back-relation field inside `model Organization { … }`:
 
 > Note: match the existing relation style in `model Organization` (other relations there show the exact convention). `User` is a Supabase auth user referenced by id string elsewhere in this schema (no FK to a local `User` table for auth users in most rows) — follow how other per-user rows (e.g. `Timer.userId`, `TimeEntry.userId`) are modeled; they use a bare `userId String` without a relation, so do the same here (only the `organizationId` relation is added).
 
-- [ ] **Step 2: Generate the migration**
+- [ ] **Step 2: Pre-check the database is reachable**
+
+`prisma migrate dev` needs a reachable dev DB via `DATABASE_URL`. Confirm before running it:
+
+Run: `npx prisma migrate status`
+Expected: it connects and reports migration state. If it errors with a connection failure (no `DATABASE_URL` / unreachable DB), STOP and either provision a dev DB or use the `--create-only` path in Step 3.
+
+- [ ] **Step 3: Generate the migration**
 
 Run: `npx prisma migrate dev --name add_user_dashboard_preference`
 Expected: migration created + applied to the dev DB; `prisma generate` runs.
 
-> Note: if no local DB is available, run `npx prisma migrate dev --create-only --name add_user_dashboard_preference` to generate SQL without applying, and apply later. Do NOT hand-edit `schema.prisma` without a corresponding migration — `npm run build` runs `prisma migrate deploy`.
+> Note: if no local DB is available (Step 2 failed to connect), run `npx prisma migrate dev --create-only --name add_user_dashboard_preference` to generate SQL without applying, and apply later via `prisma migrate deploy`. Do NOT hand-edit `schema.prisma` without a corresponding migration — `npm run build` runs `prisma migrate deploy`.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add prisma/schema.prisma prisma/migrations
@@ -104,12 +128,18 @@ Expected: FAIL — module not found.
 
 ```ts
 export const WIDGET_KEYS = [
-  "cashFlow",
-  "overdue",
+  "summary",
   "revenue",
+  "invoiceStatus",
+  "expenses",
+  "cashFlow",
+  "topClients",
+  "aging",
+  "dueThisWeek",
+  "estimateConversion",
   "tasks",
   "retainerBurn",
-  "expenses",
+  "activity",
 ] as const;
 
 export type WidgetKey = (typeof WIDGET_KEYS)[number];
@@ -149,12 +179,18 @@ Expected: PASS (3 tests).
 import type { WidgetKey } from "@/lib/dashboard-layout";
 
 export const WIDGET_META: Record<WidgetKey, { label: string }> = {
-  cashFlow: { label: "Cash flow" },
-  overdue: { label: "Overdue invoices" },
+  summary: { label: "KPIs" },
   revenue: { label: "Revenue" },
-  tasks: { label: "Tasks" },
+  invoiceStatus: { label: "Invoice status" },
+  expenses: { label: "Expenses vs revenue" },
+  cashFlow: { label: "Cash flow" },
+  topClients: { label: "Top clients" },
+  aging: { label: "Overdue / AR aging" },
+  dueThisWeek: { label: "Due this week" },
+  estimateConversion: { label: "Estimate conversion" },
+  tasks: { label: "Open tasks" },
   retainerBurn: { label: "Retainer burn" },
-  expenses: { label: "Expenses" },
+  activity: { label: "Recent activity" },
 };
 ```
 
@@ -289,6 +325,107 @@ git commit -m "feat(dashboard): dashboardLayout get/save procedures"
 
 ---
 
+### Task 3b: New dashboard cards — open tasks + retainer burn
+
+The user asked for `tasks` and `retainerBurn` cards that don't exist yet. Build a TDD'd query for each, then a thin card component. Both data sources are confirmed: `ProjectTask` is org-scoped with `isCompleted`/`dueDate`; `HoursRetainerPeriod` has `includedHoursSnapshot` + a `timeEntries` relation with `minutes` (the hoursRetainers router already aggregates `_sum: { minutes }`).
+
+**Files:**
+- Modify: `src/server/routers/dashboard.ts` (add `openTasks` + `retainerBurn`)
+- Create: `src/components/dashboard/OpenTasksCard.tsx`, `src/components/dashboard/RetainerBurnCard.tsx`
+- Test: `src/test/routers-dashboard-cards.test.ts` (create)
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+import { describe, it, expect, beforeEach } from "vitest";
+import { dashboardRouter } from "@/server/routers/dashboard";
+import { createMockContext } from "./mocks/trpc-context";
+
+describe("dashboard new cards", () => {
+  let ctx: ReturnType<typeof createMockContext>;
+  let caller: ReturnType<typeof dashboardRouter.createCaller>;
+  beforeEach(() => {
+    ctx = createMockContext();
+    caller = dashboardRouter.createCaller(ctx);
+  });
+
+  it("openTasks counts incomplete tasks scoped to the org", async () => {
+    ctx.db.projectTask.count.mockResolvedValue(7);
+    const result = await caller.openTasks();
+    expect(ctx.db.projectTask.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { organizationId: "test-org-123", isCompleted: false } }),
+    );
+    expect(result).toMatchObject({ openCount: 7 });
+  });
+
+  it("retainerBurn sums included vs used hours across active periods", async () => {
+    ctx.db.hoursRetainerPeriod.findMany.mockResolvedValue([
+      { includedHoursSnapshot: 10, timeEntries: [{ minutes: 300 }, { minutes: 60 }] }, // 6h used
+    ]);
+    const result = await caller.retainerBurn();
+    expect(ctx.db.hoursRetainerPeriod.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: "ACTIVE", retainer: { is: { organizationId: "test-org-123" } } }),
+      }),
+    );
+    expect(result).toMatchObject({ includedHours: 10, usedHours: 6 });
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run src/test/routers-dashboard-cards.test.ts`
+Expected: FAIL — procedures don't exist.
+
+- [ ] **Step 3: Implement the two queries**
+
+Add to `dashboardRouter` in `src/server/routers/dashboard.ts`:
+
+```ts
+  openTasks: protectedProcedure.query(async ({ ctx }) => {
+    const openCount = await ctx.db.projectTask.count({
+      where: { organizationId: ctx.orgId, isCompleted: false },
+    });
+    return { openCount };
+  }),
+
+  retainerBurn: protectedProcedure.query(async ({ ctx }) => {
+    const periods = await ctx.db.hoursRetainerPeriod.findMany({
+      where: { status: "ACTIVE", retainer: { is: { organizationId: ctx.orgId } } },
+      select: { includedHoursSnapshot: true, timeEntries: { select: { minutes: true } } },
+    });
+    let includedHours = 0;
+    let usedHours = 0;
+    for (const p of periods) {
+      includedHours += Number(p.includedHoursSnapshot);
+      usedHours += p.timeEntries.reduce((sum, t) => sum + t.minutes, 0) / 60;
+    }
+    return { includedHours, usedHours, periodCount: periods.length };
+  }),
+```
+
+> Note: verify `HoursRetainerPeriod.retainer` exposes `organizationId` on the related `HoursRetainer` (it does — `HoursRetainerPeriod` belongs to a `HoursRetainer` which is org-scoped). If the relation filter shape differs in Prisma 7, use `retainer: { organizationId: ctx.orgId }` (without `is`). Adjust the test's `toHaveBeenCalledWith` to match whichever shape compiles.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run src/test/routers-dashboard-cards.test.ts`
+Expected: PASS (2 tests).
+
+- [ ] **Step 5: Build the two card components**
+
+`OpenTasksCard.tsx` — renders `{ openCount }` in the same card shell as the other dashboard cards (match `DueThisWeek.tsx`'s rounded-2xl/border styling). `RetainerBurnCard.tsx` — renders a usage bar (`usedHours / includedHours`) with a percentage; cap the bar at 100% but show over-burn (e.g. red) when `usedHours > includedHours`. Empty state when `periodCount === 0`.
+
+- [ ] **Step 6: Typecheck + commit**
+
+```bash
+npx tsc --noEmit && npx vitest run src/test/routers-dashboard-cards.test.ts
+git add src/server/routers/dashboard.ts src/components/dashboard/OpenTasksCard.tsx src/components/dashboard/RetainerBurnCard.tsx src/test/routers-dashboard-cards.test.ts
+git commit -m "feat(dashboard): open-tasks + retainer-burn cards"
+```
+
+---
+
 ### Task 4: Apply saved layout on the dashboard + edit island
 
 **Files:**
@@ -303,9 +440,11 @@ git commit -m "feat(dashboard): dashboardLayout get/save procedures"
 
 - [ ] **Step 2: Honor the layout in the dashboard page**
 
-In `src/app/(dashboard)/page.tsx`, fetch the layout server-side (`await api.dashboardLayout.get()`), build a `key → <Suspense section>` map for the six widget keys, then render the sections in the saved order, skipping `visible: false`. Keep the existing Suspense/streaming structure per section.
+In `src/app/(dashboard)/page.tsx`, fetch the layout server-side (`await api.dashboardLayout.get()`), build a `key → <Suspense section>` map covering **all twelve** `WIDGET_KEYS`, then render the sections in the saved order, skipping `visible: false`. Keep the existing Suspense/streaming structure per section.
 
-> Note: the current page mixes several KPI cards into single sections (e.g. `SummarySection` renders four cards). Map the six customizable widget keys onto the appropriate existing sections; where a key (e.g. `tasks`, `retainerBurn`) has no dedicated section yet, add a thin one over an existing query (`dashboard.dueThisWeek` for tasks; a retainer-burn query if present, else defer that card behind a `> Note:` and ship the other five). Do not silently drop a key — if `retainerBurn` has no data source, log it in the PR description.
+The mapping is fully specified in the **Widget set** table at the top of this plan — every key has a named query + component, including the two cards built in Task 3b (`tasks` → `OpenTasksCard` over `dashboard.openTasks`; `retainerBurn` → `RetainerBurnCard` over `dashboard.retainerBurn`). There are no unmapped keys — do not invent components or drop a key.
+
+> Note: the existing page groups some sections (e.g. `InsightsSection` renders `topClients`/`aging`/`dueThisWeek`/`estimateConversion` in one grid; `SummarySection` renders the KPI cards). When making them individually toggleable, split these grouped sections into per-key sections so each key's visibility/order is independent. Preserve each section's existing query + Suspense fallback.
 
 - [ ] **Step 3: Add the "Edit layout" toggle**
 
@@ -331,6 +470,6 @@ git commit -m "feat(dashboard): per-user widget customization (show/hide + reord
 ---
 
 ## Self-review notes
-- **Spec coverage (WS5):** model + migration ✅, registry ✅, get/save ✅, edit island (show/hide + reorder) ✅, all six card keys ✅.
-- **Verify-during-wiring:** Organization relation style; local DB availability for `migrate dev`; Zod readonly-tuple enum; mapping widget keys → existing sections (esp. `tasks`/`retainerBurn` data sources).
+- **Spec coverage (WS5):** model + migration ✅, registry ✅, get/save ✅, the two new cards (`tasks`/`retainerBurn`) with TDD'd queries ✅, edit island (show/hide + reorder) ✅, all twelve widget keys mapped to real queries/components ✅. (User chose the complete option: customize existing sections AND build the two missing cards.)
+- **Verify-during-wiring:** Organization relation style; local DB availability for `migrate dev` (see DB pre-check note in Task 1); Zod readonly-tuple enum; `HoursRetainerPeriod.retainer` org-scope filter shape; splitting the grouped `InsightsSection`/`SummarySection` into per-key sections.
 - **Type consistency:** `WIDGET_KEYS`/`WidgetKey`/`LayoutEntry` defined once in `dashboard-layout.ts`; the router enum, registry `WIDGET_META`, and island all import them. `normalizeLayout` is the single source of layout truth (used by both `get` and `save`).
