@@ -216,6 +216,9 @@ model Organization {
   brandColor        String?  @default("#2563eb")
   invoicePrefix     String   @default("INV")
   invoiceNextNumber Int      @default(1)
+  // IANA time zone used to bucket local send/open analytics and other
+  // org-local scheduled features. Defaults to UTC for existing organizations.
+  timeZone          String   @default("UTC")
   creditNotePrefix     String   @default("CN")
   creditNoteNextNumber Int      @default(1)
   taskTimeInterval        Float    @default(0)
