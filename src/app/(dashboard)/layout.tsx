@@ -64,6 +64,13 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-background">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       {/* ── Desktop sidebar (static shell, pre-rendered) ──── */}
       <aside className="hidden lg:flex w-56 shrink-0 flex-col p-4 gap-0 bg-sidebar print:hidden">
         <div className="flex items-center px-2 mb-6">
@@ -113,7 +120,7 @@ export default async function DashboardLayout({
         </header>
 
         {/* Content area */}
-        <main className="flex-1 lg:bg-card lg:rounded-2xl lg:shadow-sm lg:ring-1 lg:ring-border/40 lg:overflow-auto">
+        <main id="main" className="flex-1 lg:bg-card lg:rounded-2xl lg:shadow-sm lg:ring-1 lg:ring-border/40 lg:overflow-auto">
           <div className="pt-16 pb-28 px-4 lg:p-6 lg:pt-6 lg:pb-6">
             {children}
           </div>
