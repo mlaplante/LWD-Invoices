@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 
 /**
  * Cryptographically strong bearer token (32 bytes / 64 hex chars, URL-safe).
@@ -9,4 +9,14 @@ import { randomBytes } from "crypto";
  */
 export function generateSecureToken(): string {
   return randomBytes(32).toString("hex");
+}
+
+/**
+ * SHA-256 digest (hex) of a token, for at-rest storage of single-use secrets
+ * like passphrase-reset tokens. The plaintext lives only in the emailed link;
+ * lookups hash the presented token and match on the digest, so a database
+ * leak doesn't expose usable tokens.
+ */
+export function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }

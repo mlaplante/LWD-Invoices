@@ -410,6 +410,11 @@ model Client {
   defaultPaymentTermsDays Int?
   portalToken             String   @unique @default(uuid(4))
   portalPassphraseHash String?
+  // ── Self-service "forgot passphrase" reset ──
+  // SHA-256 of the emailed reset token (plaintext is never stored) and its
+  // expiry. Cleared on successful reset; a new request overwrites both.
+  portalPassphraseResetTokenHash String?   @unique
+  portalPassphraseResetExpiresAt DateTime?
   stripeCustomerId   String?
   autoChargeEnabled  Boolean @default(false)
   creditBalance    Decimal @default(0)
