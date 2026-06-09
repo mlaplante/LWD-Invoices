@@ -127,6 +127,7 @@ export function createMockPrismaClient() {
       update: vi.fn(),
       updateMany: vi.fn(),
       delete: vi.fn(),
+      count: vi.fn(),
     },
     creditNoteApplication: {
       create: vi.fn(),
@@ -352,6 +353,10 @@ export function createMockPrismaClient() {
       update: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
+    },
+    userDashboardPreference: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
     },
   };
 
