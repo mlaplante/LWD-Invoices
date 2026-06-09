@@ -14,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { HelpCircle } from "lucide-react";
 import { LineItemEditor, type LineItemValue } from "./LineItemEditor";
 import { InvoiceMetadata } from "./InvoiceMetadata";
 import { PaymentScheduleSection } from "./PaymentScheduleSection";
@@ -124,6 +130,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
   const createMutation = trpc.invoices.create.useMutation();
   const updateMutation = trpc.invoices.update.useMutation();
   const draftFromPromptMutation = trpc.invoices.draftFromPrompt.useMutation();
+  const utils = trpc.useUtils();
   const [naturalPrompt, setNaturalPrompt] = useState("");
   const [naturalDraftReview, setNaturalDraftReview] = useState<{
     ambiguities: { field: string; message: string }[];
@@ -284,6 +291,20 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
     };
   }
 
+  async function copyPrevious() {
+    if (!form.clientId) return;
+    const prev = await utils.invoices.lastForClient.fetch({ clientId: form.clientId });
+    if (!prev) { toast.error("No previous invoice for this client"); return; }
+    setForm((f) => ({
+      ...f,
+      type: prev.type,
+      currencyId: prev.currencyId,
+      notes: prev.notes ?? f.notes,
+      lines: prev.lines,
+    }));
+    toast.success("Copied from previous invoice");
+  }
+
   function handleSave(andSend = false) {
     if (savingRef.current) return;
     savingRef.current = true;
@@ -371,7 +392,42 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
       {/* Line Items */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Line Items</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold">Line Items</h3>
+          {mode === "create" && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={copyPrevious}
+              disabled={!form.clientId}
+              className="h-7 text-xs"
+            >
+              Copy from previous
+            </Button>
+          )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Keyboard shortcuts"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64">
+              <div className="space-y-2 text-sm">
+                <p className="font-medium">Keyboard shortcuts</p>
+                <ul className="space-y-1 text-muted-foreground">
+                  <li><kbd className="rounded border px-1 text-xs font-mono">Enter</kbd> — new row</li>
+                  <li><kbd className="rounded border px-1 text-xs font-mono">⌘/Ctrl+D</kbd> — duplicate row</li>
+                  <li>Drag handle or arrow keys — reorder</li>
+                </ul>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         <LineItemEditor
           lines={form.lines}
           taxes={taxOptions}
