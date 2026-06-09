@@ -17,10 +17,8 @@ export default async function TaxDashboardPage({
   const from = fromRaw && !isNaN(fromRaw.getTime()) ? fromRaw : undefined;
   const to = toRaw && !isNaN(toRaw.getTime()) ? toRaw : undefined;
   if (to) to.setHours(23, 59, 59, 999);
-  const basis = params.basis === "accrual" ? ("accrual" as const) : ("cash" as const);
-
   const [data, org] = await Promise.all([
-    api.reports.taxDashboard({ from, to, basis }),
+    api.reports.taxDashboard({ from, to }),
     api.organization.get(),
   ]);
 
@@ -33,22 +31,13 @@ export default async function TaxDashboardPage({
     (c) => c.category === UNCATEGORIZED_LABEL,
   );
 
-  // Build basis toggle links preserving existing from/to params
-  const basisParams = (newBasis: string) => {
-    const p = new URLSearchParams();
-    if (params.from) p.set("from", params.from);
-    if (params.to) p.set("to", params.to);
-    p.set("basis", newBasis);
-    return `/reports/tax-dashboard?${p.toString()}`;
-  };
-
   return (
     <div className="space-y-5">
       <ReportHeader
         title="Tax-Ready Dashboard"
         orgName={org.name}
         logoUrl={org.logoUrl}
-        dateRange={`${dateRange} (${basis === "cash" ? "Cash Basis" : "Accrual Basis"})`}
+        dateRange={`${dateRange} (Cash Basis)`}
       />
 
       <div className="flex items-center justify-between gap-3">
@@ -66,31 +55,7 @@ export default async function TaxDashboardPage({
         <PrintReportButton />
       </div>
 
-      <ReportFilters basePath="/reports/tax-dashboard" from={params.from} to={params.to}>
-        {/* Basis toggle: plain links instead of TaxBasisToggle (which hard-codes /reports/tax-liability) */}
-        <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-card p-0.5 print:hidden">
-          <Link
-            href={basisParams("accrual")}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              basis === "accrual"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Accrual
-          </Link>
-          <Link
-            href={basisParams("cash")}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              basis === "cash"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Cash
-          </Link>
-        </div>
-      </ReportFilters>
+      <ReportFilters basePath="/reports/tax-dashboard" from={params.from} to={params.to} />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
