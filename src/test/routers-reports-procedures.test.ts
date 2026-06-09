@@ -2577,4 +2577,55 @@ describe("Reports Router Procedures", () => {
       expect(Object.keys(result)).not.toContain("2026-9");
     });
   });
+
+  describe("utilization", () => {
+    it("returns billable vs non-billable split with utilization %", async () => {
+      ctx.db.timeEntry.findMany.mockResolvedValue([
+        { minutes: { toNumber: () => 120 }, date: new Date("2026-06-01Z"), retainerId: null, userId: "u1",
+          project: { id: "p1", name: "A", isFlatRate: false, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+        { minutes: { toNumber: () => 60 }, date: new Date("2026-06-02Z"), retainerId: null, userId: "u1",
+          project: { id: "p2", name: "B", isFlatRate: true, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+      ]);
+      ctx.db.user.findMany.mockResolvedValue([]);
+      const r = await caller.utilization({ groupBy: "month", dimension: "client" });
+      expect(r.summary.billableHours).toBeCloseTo(2, 5);
+      expect(r.summary.nonBillableHours).toBeCloseTo(1, 5);
+      expect(r.summary.utilizationPct).toBeCloseTo(2 / 3, 5);
+      expect(r.rows[0].label).toBe("Acme");
+    });
+
+    it("resolves user display names from firstName + lastName", async () => {
+      ctx.db.timeEntry.findMany.mockResolvedValue([
+        { minutes: { toNumber: () => 60 }, date: new Date("2026-06-01T12:00:00Z"), retainerId: null, userId: "u1",
+          project: { id: "p1", name: "A", isFlatRate: false, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+      ]);
+      ctx.db.user.findMany.mockResolvedValue([
+        { id: "u1", firstName: "Sam", lastName: "Lee", email: "s@x.com" },
+      ]);
+      const r = await caller.utilization({ groupBy: "month", dimension: "user" });
+      expect(r.rows[0].label).toBe("Sam Lee");
+    });
+
+    it("falls back to email when no firstName", async () => {
+      ctx.db.timeEntry.findMany.mockResolvedValue([
+        { minutes: { toNumber: () => 60 }, date: new Date("2026-06-01T12:00:00Z"), retainerId: null, userId: "u2",
+          project: { id: "p1", name: "A", isFlatRate: false, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+      ]);
+      ctx.db.user.findMany.mockResolvedValue([
+        { id: "u2", firstName: null, lastName: null, email: "noname@x.com" },
+      ]);
+      const r = await caller.utilization({ groupBy: "month", dimension: "user" });
+      expect(r.rows[0].label).toBe("noname@x.com");
+    });
+
+    it("skips user lookup when no entries have a userId", async () => {
+      ctx.db.timeEntry.findMany.mockResolvedValue([
+        { minutes: { toNumber: () => 60 }, date: new Date("2026-06-01T12:00:00Z"), retainerId: null, userId: null,
+          project: { id: "p1", name: "A", isFlatRate: false, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+      ]);
+      const r = await caller.utilization({ groupBy: "month", dimension: "project" });
+      expect(ctx.db.user.findMany).not.toHaveBeenCalled();
+      expect(r.rows).toHaveLength(1);
+    });
+  });
 });

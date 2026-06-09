@@ -353,6 +353,9 @@ export function createMockPrismaClient() {
       delete: vi.fn(),
       count: vi.fn(),
     },
+    emailEvent: {
+      findMany: vi.fn(),
+    },
     proposalTemplate: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
