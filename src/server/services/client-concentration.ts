@@ -1,3 +1,5 @@
+import type { PrismaClient } from "@/generated/prisma";
+
 export type ClientRevenue = { clientId: string; name: string; revenue: number };
 
 export type ConcentrationRow = ClientRevenue & {
@@ -82,4 +84,54 @@ export function computeConcentration(clients: ClientRevenue[]): ConcentrationRes
       topClientName: rows[0]?.name ?? null,
     },
   };
+}
+
+type DateRange = { from?: Date; to?: Date };
+
+/**
+ * Cash-basis client concentration over a date range: each client's share is the
+ * payments collected from their invoices divided by total payments collected.
+ */
+export async function getClientConcentration(
+  db: PrismaClient,
+  orgId: string,
+  range: DateRange,
+): Promise<ConcentrationResult> {
+  const dateFilter =
+    range.from || range.to
+      ? {
+          ...(range.from ? { gte: range.from } : {}),
+          ...(range.to ? { lte: range.to } : {}),
+        }
+      : undefined;
+
+  const payments = await db.payment.findMany({
+    where: {
+      organizationId: orgId,
+      ...(dateFilter ? { paidAt: dateFilter } : {}),
+    },
+    select: {
+      amount: true,
+      invoice: {
+        select: { clientId: true, client: { select: { name: true } } },
+      },
+    },
+  });
+
+  const byClient = new Map<string, ClientRevenue>();
+  for (const p of payments) {
+    const clientId = p.invoice.clientId;
+    const existing = byClient.get(clientId);
+    if (existing) {
+      existing.revenue += Number(p.amount);
+    } else {
+      byClient.set(clientId, {
+        clientId,
+        name: p.invoice.client.name,
+        revenue: Number(p.amount),
+      });
+    }
+  }
+
+  return computeConcentration(Array.from(byClient.values()));
 }

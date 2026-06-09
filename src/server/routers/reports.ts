@@ -4,6 +4,7 @@ import { router, protectedProcedure } from "../trpc";
 import { InvoiceStatus, InvoiceType, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 import { getArAgingAsOf, getDsoTrend } from "@/server/services/ar-reports";
+import { getClientConcentration } from "@/server/services/client-concentration";
 
 export function groupByMonth<T>(
   items: T[],
@@ -931,5 +932,11 @@ export const reportsRouter = router({
     .input(z.object({ months: z.number().int().min(3).max(24).default(12) }).optional())
     .query(async ({ ctx, input }) => {
       return getDsoTrend(ctx.db, ctx.orgId, input?.months ?? 12);
+    }),
+
+  clientConcentration: protectedProcedure
+    .input(dateRangeSchema)
+    .query(async ({ ctx, input }) => {
+      return getClientConcentration(ctx.db, ctx.orgId, input);
     }),
 });
