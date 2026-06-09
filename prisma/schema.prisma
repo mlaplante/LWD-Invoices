@@ -334,6 +334,7 @@ model Organization {
   disputes          Dispute[]
   refunds           Refund[]
   periodCloses      PeriodClose[]
+  dashboardPreferences UserDashboardPreference[]
 }
 
 model User {
@@ -1968,4 +1969,21 @@ model PeriodClose {
 
   @@unique([organizationId, periodYear, periodMonth])
   @@index([organizationId, periodYear, periodMonth])
+}
+
+// ─── Dashboard Customization ───────────────────────────────────────────────────
+// Per-user, per-org widget layout preference. Stores an ordered JSON array of
+// { key, visible } entries. Bare `userId String` (no local User FK) matches the
+// Timer/TimeEntry pattern for Supabase auth users.
+
+model UserDashboardPreference {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  layoutJson     String       // JSON: ordered array of { key: string, visible: boolean }
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
 }
