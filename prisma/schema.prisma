@@ -979,6 +979,7 @@ model Timer {
 model ExpenseCategory {
   id             String  @id @default(cuid())
   name           String
+  deductible     Boolean @default(true)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   expenses             Expense[]
