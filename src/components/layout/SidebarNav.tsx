@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Receipt,
+  FileText,
   Users,
   FolderOpen,
   Clock,
@@ -34,6 +35,7 @@ type NavItem = {
 const primaryNav: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/invoices", label: "Invoices", icon: Receipt },
+  { href: "/proposals", label: "Proposals", icon: FileText },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/timesheets", label: "Timesheets", icon: Clock },

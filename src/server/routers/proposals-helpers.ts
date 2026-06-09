@@ -1,3 +1,24 @@
+export type ProposalStatus = "none" | "draft" | "sent" | "viewed" | "signed";
+
+/**
+ * Derive a proposal's lifecycle status from its backing estimate. Mirrors the
+ * signals ProposalEngagementPanel already uses: signedAt / ACCEPTED status win,
+ * then an "email.opened" event marks "viewed", then a send marks "sent".
+ */
+export function deriveProposalStatus(input: {
+  hasContent: boolean;
+  invoiceStatus: string;
+  lastSent: Date | null;
+  signedAt: Date | null;
+  hasOpenEvent: boolean;
+}): ProposalStatus {
+  if (input.signedAt || input.invoiceStatus === "ACCEPTED") return "signed";
+  if (!input.hasContent) return "none";
+  if (input.hasOpenEvent) return "viewed";
+  if (input.lastSent || input.invoiceStatus === "SENT") return "sent";
+  return "draft";
+}
+
 export const SUPPORTED_VARIABLES = [
   "client_name",
   "client_url",

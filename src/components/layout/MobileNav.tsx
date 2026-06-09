@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Receipt,
+  FileText,
   Users,
   UsersRound,
   Wallet,
@@ -53,6 +54,7 @@ const moreItems = [
   { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
   { href: "/disputes", label: "Disputes", icon: ShieldAlert },
   { href: "/invoices/unpaid", label: "Unpaid", icon: Receipt },
+  { href: "/proposals", label: "Proposals", icon: FileText },
   { href: "/collections", label: "Collections", icon: Banknote },
   { href: "/tickets", label: "Tickets", icon: LifeBuoy },
   { href: "/settings/team", label: "Team", icon: UsersRound },
