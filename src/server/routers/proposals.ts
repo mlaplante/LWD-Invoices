@@ -4,7 +4,20 @@ import { TRPCError } from "@trpc/server";
 import { proposalSectionsSchema } from "./proposal-templates-helpers";
 import { deleteProposalFile } from "@/lib/supabase/storage";
 import { generateProposal } from "@/server/services/proposal-generator";
+import { Prisma, InvoiceStatus, InvoiceType, LineType } from "@/generated/prisma";
 import type { PrismaClient } from "@/generated/prisma";
+import { getOrgTaxMap } from "@/server/lib/tax-helpers";
+import { resolveInvoiceTax } from "@/server/services/invoice-tax-resolver";
+import { generateInvoiceNumber } from "@/server/services/invoice-numbering";
+import { generatePortalToken } from "@/lib/portal-session";
+import { assertInOrg } from "@/server/lib/get-for-org";
+
+const wizardLineSchema = z.object({
+  name: z.string().min(1),
+  qty: z.number().default(1),
+  rate: z.number().default(0),
+  sourceId: z.string().optional(), // org Item id, for traceability
+});
 
 async function buildProposalDraft(
   ctx: { db: PrismaClient; orgId: string },
@@ -251,5 +264,125 @@ export const proposalsRouter = router({
         projectDescription: project?.description ?? null,
         templateId: input.templateId,
       });
+    }),
+
+  // Wizard entry point: create the backing ESTIMATE + its ProposalContent in one
+  // transaction. Scoped duplicate of invoices.create's estimate path (no partial
+  // payments / credit balance / recurring) — keep money math in sync with invoices.create.
+  createFromWizard: requireRole("OWNER", "ADMIN")
+    .input(
+      z.object({
+        clientId: z.string().min(1),
+        projectId: z.string().nullable().optional(),
+        templateId: z.string().optional(),
+        sections: proposalSectionsSchema,
+        lineItems: z.array(wizardLineSchema).default([]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const org = await ctx.db.organization.findFirst({
+        where: { id: ctx.orgId },
+        select: {
+          id: true, stripeTaxEnabled: true, addressLine1: true, addressLine2: true,
+          city: true, state: true, postalCode: true, country: true,
+        },
+      });
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
+      if (input.projectId) {
+        await assertInOrg(ctx.db.project, input.projectId, ctx.orgId, { entityName: "Project" });
+      }
+
+      // Org default currency, mirroring InvoiceForm's currencies[0] fallback.
+      const currency =
+        (await ctx.db.currency.findFirst({ where: { organizationId: ctx.orgId, isDefault: true } })) ??
+        (await ctx.db.currency.findFirst({ where: { organizationId: ctx.orgId } }));
+      if (!currency)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No currency configured for this organization" });
+
+      const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
+      const resolved = await resolveInvoiceTax({
+        db: ctx.db as unknown as PrismaClient,
+        org,
+        clientId: input.clientId,
+        currencyId: currency.id,
+        lines: input.lineItems.map((l, i) => ({
+          reference: String(i),
+          qty: l.qty,
+          rate: l.rate,
+          period: undefined,
+          lineType: LineType.STANDARD,
+          discount: 0,
+          discountIsPercentage: false,
+          taxIds: [],
+        })),
+        discountType: null,
+        discountAmount: 0,
+        taxMap,
+      });
+
+      const invoiceId = await ctx.db.$transaction(async (tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$use" | "$extends">) => {
+        const txClient = tx as unknown as PrismaClient;
+        const number = await generateInvoiceNumber(txClient, ctx.orgId);
+        const created = await tx.invoice.create({
+          data: {
+            number,
+            type: InvoiceType.ESTIMATE,
+            status: InvoiceStatus.DRAFT,
+            date: new Date(),
+            currencyId: currency.id,
+            exchangeRate: 1,
+            // Intentionally NOT setting `notes` from a user-entered title: invoice.notes
+            // renders on the client-facing estimate PDF (see pdf-templates/*.tsx), so a
+            // free-text proposal title would leak. The proposal is identified by its
+            // estimate number + client name in the list/detail views instead.
+            clientId: input.clientId,
+            projectId: input.projectId ?? null,
+            organizationId: ctx.orgId,
+            portalToken: generatePortalToken(),
+            subtotal: resolved.invoice.subtotal,
+            discountTotal: resolved.invoice.discountTotal,
+            taxTotal: resolved.invoice.taxTotal,
+            total: resolved.invoice.total,
+            stripeTaxCalculationId: resolved.invoice.stripeTaxCalculationId,
+            lines: {
+              create: input.lineItems.map((line, i) => {
+                const r = resolved.lines[i];
+                return {
+                  sort: i,
+                  lineType: LineType.STANDARD,
+                  name: line.name,
+                  qty: line.qty,
+                  rate: line.rate,
+                  discount: 0,
+                  discountIsPercentage: false,
+                  sourceTable: line.sourceId ? "Item" : undefined,
+                  sourceId: line.sourceId,
+                  subtotal: r.subtotal,
+                  taxTotal: r.taxTotal,
+                  total: r.total,
+                  taxes: { create: r.legacyTaxBreakdown },
+                  stripeTaxBreakdown: { create: r.stripeTaxBreakdown },
+                };
+              }),
+            },
+          },
+        });
+
+        await tx.proposalContent.create({
+          data: {
+            invoiceId: created.id,
+            organizationId: ctx.orgId,
+            templateId: input.templateId ?? null,
+            sections: input.sections as Prisma.InputJsonValue,
+            version: "1.0",
+          },
+        });
+
+        return created.id;
+      });
+
+      return { invoiceId };
     }),
 });
