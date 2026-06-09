@@ -21,6 +21,7 @@ import {
   Sparkles,
   ShieldAlert,
   CalendarCheck,
+  Activity,
   Plus,
   Send,
 } from "lucide-react";
@@ -44,6 +45,7 @@ const moreItems = [
   { href: "/items", label: "Items", icon: Package },
   { href: "/contractors", label: "Contractors", icon: Contact },
   { href: "/assistant", label: "Ask AI", icon: Sparkles },
+  { href: "/activity", label: "Activity", icon: Activity },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
   { href: "/disputes", label: "Disputes", icon: ShieldAlert },

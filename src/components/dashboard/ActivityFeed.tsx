@@ -1,12 +1,15 @@
+import Link from "next/link";
+
 type ActivityItem = {
   id: string;
   createdAt: Date;
   action: string;
   entityType: string;
   entityLabel: string | null;
+  entityId?: string | null;
 };
 
-type Props = { items: ActivityItem[] };
+type Props = { items: ActivityItem[]; linkItems?: boolean };
 
 function relativeTime(date: Date): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -29,7 +32,24 @@ const ACTION_CONFIG: Record<string, { label: string; dotColor: string }> = {
   DELETED:          { label: "deleted",           dotColor: "bg-red-400" },
 };
 
-export function ActivityFeed({ items }: Props) {
+function entityHref(entityType: string, entityId: string): string {
+  const typeToPath: Record<string, string> = {
+    Invoice: "invoices",
+    Client: "clients",
+    Project: "projects",
+    Ticket: "tickets",
+    Payment: "invoices",
+    PartialPayment: "invoices",
+    Expense: "expenses",
+    CreditNote: "invoices",
+    Contractor: "contractors",
+    Dispute: "disputes",
+  };
+  const path = typeToPath[entityType] ?? entityType.toLowerCase() + "s";
+  return `/${path}/${entityId}`;
+}
+
+export function ActivityFeed({ items, linkItems = false }: Props) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center px-5">
@@ -42,8 +62,8 @@ export function ActivityFeed({ items }: Props) {
     <div className="divide-y divide-border/40">
       {items.map((item) => {
         const cfg = ACTION_CONFIG[item.action] ?? { label: item.action.toLowerCase(), dotColor: "bg-gray-400" };
-        return (
-          <div key={item.id} className="flex items-start gap-3 px-5 py-3">
+        const inner = (
+          <>
             <div className="pt-1.5">
               <span className={`block w-2 h-2 rounded-full shrink-0 ${cfg.dotColor}`} />
             </div>
@@ -57,6 +77,24 @@ export function ActivityFeed({ items }: Props) {
                 {relativeTime(item.createdAt)}
               </p>
             </div>
+          </>
+        );
+
+        if (linkItems && item.entityId) {
+          return (
+            <Link
+              key={item.id}
+              href={entityHref(item.entityType, item.entityId)}
+              className="flex items-start gap-3 px-5 py-3 hover:bg-muted/40 transition-colors"
+            >
+              {inner}
+            </Link>
+          );
+        }
+
+        return (
+          <div key={item.id} className="flex items-start gap-3 px-5 py-3">
+            {inner}
           </div>
         );
       })}
