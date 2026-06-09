@@ -1376,4 +1376,41 @@ export const invoicesRouter = router({
 
       return { portalToken: updated.portalToken };
     }),
+
+  openForReminder: protectedProcedure
+    .input(z.object({ q: z.string().trim().max(100).optional() }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db.invoice.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          status: { in: ["SENT", "PARTIALLY_PAID", "OVERDUE"] },
+          ...(input.q
+            ? {
+                OR: [
+                  { number: { contains: input.q, mode: "insensitive" } },
+                  { client: { is: { name: { contains: input.q, mode: "insensitive" } } } },
+                ],
+              }
+            : {}),
+        },
+        select: {
+          id: true,
+          number: true,
+          status: true,
+          total: true,
+          dueDate: true,
+          client: { select: { id: true, name: true } },
+        },
+        orderBy: { dueDate: "asc" },
+        take: 20,
+      });
+      return rows.map((r) => ({
+        id: r.id,
+        number: r.number,
+        status: r.status,
+        total: Number(r.total),
+        dueDate: r.dueDate,
+        clientName: r.client?.name ?? "—",
+      }));
+    }),
 });
