@@ -17,6 +17,9 @@ type Client = { id: string; name: string };
 type Project = { id: string; name: string; clientId: string };
 type Template = { id: string; name: string; isDefault: boolean; sections: ProposalSection[] };
 type SuggestedItem = { itemId: string; name: string; quantity: number; rate: number };
+// Quantity is held as a string while editing so clearing the field shows an
+// empty input (not a snapped-back 0); it's coerced to a number on save.
+type WizardItem = { itemId: string; name: string; quantity: string; rate: number; accepted: boolean };
 
 export function ProposalWizard({
   clients, projects, templates,
@@ -31,7 +34,7 @@ export function ProposalWizard({
   const [projectId, setProjectId] = useState("");
   const [templateId, setTemplateId] = useState(templates.find((t) => t.isDefault)?.id ?? "");
   const [sections, setSections] = useState<ProposalSection[]>([]);
-  const [items, setItems] = useState<(SuggestedItem & { accepted: boolean })[]>([]);
+  const [items, setItems] = useState<WizardItem[]>([]);
 
   const clientProjects = projects.filter((p) => p.clientId === clientId);
 
@@ -56,7 +59,15 @@ export function ProposalWizard({
         setItems([]);
       } else {
         setSections(res.draft.sections as ProposalSection[]);
-        setItems(res.draft.suggestedItems.map((i) => ({ ...i, accepted: true })));
+        setItems(
+          res.draft.suggestedItems.map((i: SuggestedItem) => ({
+            itemId: i.itemId,
+            name: i.name,
+            rate: i.rate,
+            quantity: String(i.quantity),
+            accepted: true,
+          })),
+        );
       }
       setStep(2);
     },
@@ -86,7 +97,7 @@ export function ProposalWizard({
       templateId: templateId || undefined,
       sections: sections.map((s) => ({ key: s.key, title: s.title, content: s.content ?? "" })),
       lineItems: items.filter((i) => i.accepted).map((i) => ({
-        name: i.name, qty: i.quantity, rate: i.rate, sourceId: i.itemId,
+        name: i.name, qty: Number(i.quantity) || 1, rate: i.rate, sourceId: i.itemId,
       })),
     });
   }
@@ -144,25 +155,29 @@ export function ProposalWizard({
         <div className="space-y-2 rounded-lg border p-4">
           <h3 className="text-sm font-semibold">Suggested line items</h3>
           {items.map((it, i) => (
-            <label key={it.itemId} className="flex items-center justify-between gap-3 text-sm">
-              <span className="flex items-center gap-2">
+            <div key={it.itemId} className="flex items-center justify-between gap-3 text-sm">
+              <label htmlFor={`item-accept-${it.itemId}`} className="flex items-center gap-2">
                 <input
+                  id={`item-accept-${it.itemId}`}
                   type="checkbox"
                   checked={it.accepted}
                   onChange={(e) => setItems((prev) => prev.map((p, j) => j === i ? { ...p, accepted: e.target.checked } : p))}
                 />
                 {it.name}
-              </span>
+              </label>
               <span className="flex items-center gap-2 text-muted-foreground">
                 <Input
                   type="number"
+                  min="0"
+                  step="1"
+                  aria-label={`Quantity for ${it.name}`}
                   className="h-8 w-20"
                   value={it.quantity}
-                  onChange={(e) => setItems((prev) => prev.map((p, j) => j === i ? { ...p, quantity: Number(e.target.value) } : p))}
+                  onChange={(e) => setItems((prev) => prev.map((p, j) => j === i ? { ...p, quantity: e.target.value } : p))}
                 />
                 × {it.rate.toFixed(2)}
               </span>
-            </label>
+            </div>
           ))}
         </div>
       )}
