@@ -65,6 +65,7 @@ const invoiceWriteSchema = z.object({
   simpleAmount: z.number().optional(),
   notes: z.string().optional(),
   clientId: z.string().min(1),
+  projectId: z.string().nullable().optional(),
   lines: z.array(lineSchema).default([]),
   reminderDaysOverride: z.array(z.number().int().min(1)).optional(),
   reminderSequenceId: z.string().nullable().optional(),
@@ -125,6 +126,8 @@ export const invoicesRouter = router({
         status: z.array(z.nativeEnum(InvoiceStatus)).optional(),
         type: z.nativeEnum(InvoiceType).optional(),
         clientId: z.string().optional(),
+        projectId: z.string().optional(),
+        isChangeOrder: z.boolean().optional(),
         includeArchived: z.boolean().default(false),
         recurring: z.boolean().optional(),
         dateFrom: z.coerce.date().optional(),
@@ -138,6 +141,8 @@ export const invoicesRouter = router({
         ...(input.status?.length ? { status: { in: input.status } } : {}),
         ...(input.type ? { type: input.type } : {}),
         ...(input.clientId ? { clientId: input.clientId } : {}),
+        ...(input.projectId ? { projectId: input.projectId } : {}),
+        ...(input.isChangeOrder !== undefined ? { isChangeOrder: input.isChangeOrder } : {}),
         ...(input.includeArchived ? {} : { isArchived: false }),
         ...(input.recurring ? { recurringInvoice: { isActive: true } } : {}),
         ...(input.dateFrom || input.dateTo
@@ -413,6 +418,7 @@ export const invoicesRouter = router({
             simpleAmount: input.simpleAmount,
             notes: input.notes,
             clientId: input.clientId,
+            projectId: input.projectId ?? null,
             organizationId: ctx.orgId,
             portalToken: generatePortalToken(),
             reminderDaysOverride: input.reminderDaysOverride ?? [],
@@ -512,6 +518,93 @@ export const invoicesRouter = router({
         organizationId: org.id,
         userId: ctx.userId,
       }).catch(() => {}); // non-critical, don't fail the mutation
+
+      return invoice;
+    }),
+
+  createChangeOrder: requireRole("OWNER", "ADMIN")
+    .input(
+      z.object({
+        projectId: z.string().min(1),
+        date: z.coerce.date().default(() => new Date()),
+        notes: z.string().optional(),
+        lines: z.array(lineSchema).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Cross-tenant guard (parity with create's client check, commit f7f22b1).
+      const project = await ctx.db.project.findFirst({
+        where: { id: input.projectId, organizationId: ctx.orgId },
+        select: { id: true, clientId: true, currencyId: true },
+      });
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+
+      const org = await ctx.db.organization.findFirst({
+        where: { id: ctx.orgId },
+        select: {
+          id: true, stripeTaxEnabled: true, addressLine1: true, addressLine2: true,
+          city: true, state: true, postalCode: true, country: true,
+        },
+      });
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
+      const resolved = await resolveInvoiceTax({
+        db: ctx.db as unknown as PrismaClient,
+        org,
+        clientId: project.clientId,
+        currencyId: project.currencyId,
+        lines: input.lines.map(toResolverLine),
+        discountType: null,
+        discountAmount: 0,
+        taxMap,
+      });
+
+      const invoice = await ctx.db.$transaction(async (tx) => {
+        const txClient = tx as unknown as PrismaClient;
+        const number = await generateInvoiceNumber(txClient, ctx.orgId);
+        return tx.invoice.create({
+          data: {
+            number,
+            type: InvoiceType.ESTIMATE,
+            status: InvoiceStatus.DRAFT,
+            isChangeOrder: true,
+            date: input.date,
+            notes: input.notes,
+            clientId: project.clientId,
+            projectId: project.id,
+            currencyId: project.currencyId,
+            organizationId: ctx.orgId,
+            portalToken: generatePortalToken(),
+            subtotal: resolved.invoice.subtotal,
+            discountTotal: resolved.invoice.discountTotal,
+            taxTotal: resolved.invoice.taxTotal,
+            total: resolved.invoice.total,
+            stripeTaxCalculationId: resolved.invoice.stripeTaxCalculationId,
+            lines: {
+              create: input.lines.map((line, i) => {
+                const r = resolved.lines[i];
+                return {
+                  sort: line.sort, lineType: line.lineType, name: line.name,
+                  description: line.description, qty: line.qty, rate: line.rate,
+                  period: line.period, discount: line.discount,
+                  discountIsPercentage: line.discountIsPercentage,
+                  sourceTable: line.sourceTable, sourceId: line.sourceId,
+                  subtotal: r.subtotal, taxTotal: r.taxTotal, total: r.total,
+                  taxes: { create: r.legacyTaxBreakdown },
+                  stripeTaxBreakdown: { create: r.stripeTaxBreakdown },
+                };
+              }),
+            },
+          },
+          include: detailInvoiceInclude,
+        });
+      });
+
+      await logAudit({
+        action: "CREATED", entityType: "Invoice", entityId: invoice.id,
+        entityLabel: invoice.number, organizationId: ctx.orgId, userId: ctx.userId,
+      }).catch(() => {});
 
       return invoice;
     }),
@@ -695,6 +788,8 @@ export const invoicesRouter = router({
             simpleAmount: source.simpleAmount,
             notes: source.notes,
             clientId: source.clientId,
+            projectId: source.projectId,
+            isChangeOrder: false,
             organizationId: ctx.orgId,
             portalToken: generatePortalToken(),
             subtotal: source.subtotal,
