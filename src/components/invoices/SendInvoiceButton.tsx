@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,9 +27,11 @@ function parseCc(raw: string): string[] {
 
 export function SendInvoiceButton({
   invoiceId,
+  clientId,
   autoSend = false,
 }: {
   invoiceId: string;
+  clientId?: string;
   autoSend?: boolean;
 }) {
   const router = useRouter();
@@ -50,6 +52,13 @@ export function SendInvoiceButton({
   const preview = trpc.invoices.previewEmail.useQuery(
     { id: invoiceId },
     { enabled: previewOpen },
+  );
+
+  // Recommended send window for this client, shown as a non-blocking hint in the
+  // preview dialog. Only fetched when we know the client and the dialog is open.
+  const sendWindow = trpc.analytics.bestSendWindow.useQuery(
+    { clientId: clientId ?? "" },
+    { enabled: previewOpen && Boolean(clientId), staleTime: 60_000 },
   );
 
   // Pre-fill the CC input from the client's saved list the first time the
@@ -107,6 +116,15 @@ export function SendInvoiceButton({
                 <div className="space-y-2 text-sm">
                   <div><span className="font-medium">To:</span> {preview.data.to}</div>
                   <div><span className="font-medium">Subject:</span> {preview.data.subject}</div>
+                  {sendWindow.data && (
+                    <div className="flex items-start gap-1.5 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>
+                        <span className="font-medium text-foreground">Best time to send:</span>{" "}
+                        {sendWindow.data.message}
+                      </span>
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <label className="font-medium" htmlFor="cc-input">CC:</label>
                     <Input

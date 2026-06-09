@@ -25,6 +25,7 @@ import {
   extractNaturalLanguageInvoice,
   type NaturalLanguageInvoiceContext,
 } from "../services/natural-language-invoice";
+import { detectInvoiceDuplicate } from "../services/invoice-duplicate";
 
 // Bulk-payment limiter: a single org/user shouldn't fire markPaidMany more
 // than 5x per minute under any legitimate workflow. Anything higher means
@@ -304,6 +305,51 @@ export const invoicesRouter = router({
         orderBy: { lastViewed: "desc" },
         take: input.limit,
       });
+    }),
+
+  // Duplicate guard for the invoice-create flow: given the client + amount the
+  // user is about to bill, surface recent same-client invoices with a
+  // near-identical total so a double-bill can be caught before sending. The
+  // window is queried wide enough to cover the detector's date tolerance in
+  // both directions; the pure detector applies the precise window/amount rules.
+  checkDuplicate: protectedProcedure
+    .input(
+      z.object({
+        clientId: z.string(),
+        amount: z.number().nonnegative(),
+        excludeInvoiceId: z.string().optional(),
+        windowDays: z.number().int().min(1).max(180).default(30),
+        amountTolerancePercent: z.number().min(0).max(100).default(5),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const now = new Date();
+      const since = new Date(now.getTime() - input.windowDays * 86_400_000);
+      const candidates = await ctx.db.invoice.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          clientId: input.clientId,
+          isArchived: false,
+          type: { not: "ESTIMATE" },
+          date: { gte: since },
+          ...(input.excludeInvoiceId ? { id: { not: input.excludeInvoiceId } } : {}),
+        },
+        select: { id: true, number: true, clientId: true, total: true, date: true },
+        orderBy: { date: "desc" },
+        take: 100,
+      });
+
+      return detectInvoiceDuplicate(
+        { clientId: input.clientId, amount: input.amount, issueDate: now },
+        candidates.map((c) => ({
+          id: c.id,
+          invoiceNumber: c.number,
+          clientId: c.clientId,
+          amount: Number(c.total),
+          issueDate: c.date,
+        })),
+        { windowDays: input.windowDays, amountTolerancePercent: input.amountTolerancePercent },
+      );
     }),
 
   draftFromPrompt: requireRole("OWNER", "ADMIN")

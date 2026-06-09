@@ -1,10 +1,15 @@
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma";
 import { router, protectedProcedure } from "../trpc";
-import { InvoiceStatus, InvoiceType, RecurringFrequency } from "@/generated/prisma";
+import { InvoiceStatus, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 import { getArAgingAsOf, getDsoTrend } from "@/server/services/ar-reports";
 import { summarizeUtilization, type UtilizationEntry } from "../services/utilization";
+import { getClientConcentration } from "@/server/services/client-concentration";
+import { getTaxLiability } from "@/server/services/tax-liability";
+import { getIncomeByCategory } from "@/server/services/income-by-category";
+import { getDeductibleExpenses } from "@/server/services/deductible-expenses";
+import { get1099Pack } from "@/server/services/contractor-1099";
 
 export function groupByMonth<T>(
   items: T[],
@@ -662,175 +667,45 @@ export const reportsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
+      return getTaxLiability(ctx.db, ctx.orgId, input);
+    }),
 
-      if (input.basis === "accrual") {
-        // Accrual: filter by invoice date, exclude credit notes
-        const lineTaxes = await ctx.db.invoiceLineTax.findMany({
-          where: {
-            invoiceLine: {
-              invoice: {
-                organizationId: ctx.orgId,
-                isArchived: false,
-                status: { notIn: [InvoiceStatus.DRAFT] },
-                type: { not: InvoiceType.CREDIT_NOTE },
-                ...(input.from || input.to
-                  ? {
-                      date: {
-                        ...(input.from ? { gte: input.from } : {}),
-                        ...(input.to ? { lte: input.to } : {}),
-                      },
-                    }
-                  : {}),
-              },
-            },
-          },
-          include: {
-            tax: true,
-            invoiceLine: {
-              include: {
-                invoice: {
-                  include: {
-                    client: { select: { name: true } },
-                    payments: { select: { amount: true, paidAt: true } },
-                  },
-                },
-              },
-            },
-          },
-        });
+  taxDashboard: protectedProcedure
+    .input(
+      dateRangeSchema.extend({
+        basis: z.enum(["cash", "accrual"]).default("cash"),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // 1099 figures are annual; derive the tax year from the range end (or
+      // start), defaulting to the current calendar year.
+      const year = (input.to ?? input.from ?? new Date()).getUTCFullYear();
 
-        const summaryMap = new Map<string, { taxName: string; taxRate: number; totalCollected: number; invoiceIds: Set<string> }>();
-        const details: Array<{
-          invoiceNumber: string;
-          clientName: string;
-          invoiceDate: Date;
-          invoiceTotal: number;
-          taxName: string;
-          taxRate: number;
-          taxAmount: number;
-          paymentStatus: string;
-          paymentDate: Date | null;
-        }> = [];
+      const [tax, income, deductible, pack] = await Promise.all([
+        getTaxLiability(ctx.db, ctx.orgId, { from: input.from, to: input.to, basis: input.basis }),
+        getIncomeByCategory(ctx.db, ctx.orgId, { from: input.from, to: input.to }),
+        getDeductibleExpenses(ctx.db, ctx.orgId, { from: input.from, to: input.to }),
+        get1099Pack(ctx.db, ctx.orgId, year),
+      ]);
 
-        for (const lt of lineTaxes) {
-          const inv = lt.invoiceLine.invoice;
-          const taxKey = lt.taxId;
-          const taxAmount = Number(lt.taxAmount);
+      const eligibleRows = pack.rows.filter((r) => r.eligible);
+      const contractorExposure = {
+        year,
+        threshold: pack.threshold,
+        eligibleCount: eligibleRows.length,
+        totalReportable: eligibleRows.reduce((s, r) => s + r.total, 0),
+        missingW9Count: pack.rows.filter((r) => r.missingW9).length,
+      };
 
-          if (!summaryMap.has(taxKey)) {
-            summaryMap.set(taxKey, { taxName: lt.tax.name, taxRate: Number(lt.tax.rate), totalCollected: 0, invoiceIds: new Set() });
-          }
-          const entry = summaryMap.get(taxKey)!;
-          entry.totalCollected += taxAmount;
-          entry.invoiceIds.add(inv.id);
-
-          const lastPayment = inv.payments.length > 0
-            ? inv.payments.sort((a, b) => b.paidAt.getTime() - a.paidAt.getTime())[0].paidAt
-            : null;
-
-          details.push({
-            invoiceNumber: inv.number,
-            clientName: inv.client.name,
-            invoiceDate: inv.date,
-            invoiceTotal: Number(inv.total),
-            taxName: lt.tax.name,
-            taxRate: Number(lt.tax.rate),
-            taxAmount,
-            paymentStatus: inv.status,
-            paymentDate: lastPayment,
-          });
-        }
-
-        const summary = Array.from(summaryMap.values()).map((s) => ({
-          taxName: s.taxName,
-          taxRate: s.taxRate,
-          totalCollected: s.totalCollected,
-          invoiceCount: s.invoiceIds.size,
-        })).sort((a, b) => b.totalCollected - a.totalCollected);
-
-        const grandTotal = summary.reduce((s, r) => s + r.totalCollected, 0);
-        return { summary, details, grandTotal };
-      }
-
-      // Cash basis: filter by payment date, prorate tax, exclude credit notes
-      const payments = await ctx.db.payment.findMany({
-        where: {
-          organizationId: ctx.orgId,
-          invoice: { type: { not: InvoiceType.CREDIT_NOTE } },
-          ...(input.from || input.to
-            ? {
-                paidAt: {
-                  ...(input.from ? { gte: input.from } : {}),
-                  ...(input.to ? { lte: input.to } : {}),
-                },
-              }
-            : {}),
-        },
-        include: {
-          invoice: {
-            include: {
-              client: { select: { name: true } },
-              lines: { include: { taxes: { include: { tax: true } } } },
-            },
-          },
-        },
-      });
-
-      const summaryMap = new Map<string, { taxName: string; taxRate: number; totalCollected: number; invoiceIds: Set<string> }>();
-      const details: Array<{
-        invoiceNumber: string;
-        clientName: string;
-        invoiceDate: Date;
-        invoiceTotal: number;
-        taxName: string;
-        taxRate: number;
-        taxAmount: number;
-        paymentStatus: string;
-        paymentDate: Date | null;
-      }> = [];
-
-      for (const payment of payments) {
-        const inv = payment.invoice;
-        const invoiceTotal = Number(inv.total);
-        if (invoiceTotal === 0) continue;
-        const paymentRatio = Number(payment.amount) / invoiceTotal;
-
-        for (const line of inv.lines) {
-          for (const lt of line.taxes) {
-            const proratedTax = Number(lt.taxAmount) * paymentRatio;
-            const taxKey = lt.taxId;
-
-            if (!summaryMap.has(taxKey)) {
-              summaryMap.set(taxKey, { taxName: lt.tax.name, taxRate: Number(lt.tax.rate), totalCollected: 0, invoiceIds: new Set() });
-            }
-            const entry = summaryMap.get(taxKey)!;
-            entry.totalCollected += proratedTax;
-            entry.invoiceIds.add(inv.id);
-
-            details.push({
-              invoiceNumber: inv.number,
-              clientName: inv.client.name,
-              invoiceDate: inv.date,
-              invoiceTotal,
-              taxName: lt.tax.name,
-              taxRate: Number(lt.tax.rate),
-              taxAmount: proratedTax,
-              paymentStatus: inv.status,
-              paymentDate: payment.paidAt,
-            });
-          }
-        }
-      }
-
-      const summary = Array.from(summaryMap.values()).map((s) => ({
-        taxName: s.taxName,
-        taxRate: s.taxRate,
-        totalCollected: s.totalCollected,
-        invoiceCount: s.invoiceIds.size,
-      })).sort((a, b) => b.totalCollected - a.totalCollected);
-
-      const grandTotal = summary.reduce((s, r) => s + r.totalCollected, 0);
-      return { summary, details, grandTotal };
+      return {
+        salesTaxDue: tax.grandTotal,
+        salesTaxByType: tax.summary,
+        grossIncome: income.total,
+        incomeByCategory: income.rows,
+        deductible,
+        estimatedNetIncome: income.total - deductible.deductibleTotal,
+        contractorExposure,
+      };
     }),
 
   expenseCategories: protectedProcedure.query(async ({ ctx }) => {
@@ -988,5 +863,11 @@ export const reportsRouter = router({
     .input(z.object({ months: z.number().int().min(3).max(24).default(12) }).optional())
     .query(async ({ ctx, input }) => {
       return getDsoTrend(ctx.db, ctx.orgId, input?.months ?? 12);
+    }),
+
+  clientConcentration: protectedProcedure
+    .input(dateRangeSchema)
+    .query(async ({ ctx, input }) => {
+      return getClientConcentration(ctx.db, ctx.orgId, input);
     }),
 });

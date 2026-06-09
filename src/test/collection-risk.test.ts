@@ -155,6 +155,67 @@ describe("scoreCollectionRisk", () => {
   });
 });
 
+describe("scoreCollectionRisk — payment probability", () => {
+  it("derives paymentProbabilityPercent as the inverse of late risk", () => {
+    const result = scoreCollectionRisk(input());
+    expect(result.paymentProbabilityPercent).toBe(100 - result.lateRiskPercent);
+  });
+
+  it("bands a reliable, not-yet-due invoice as high probability", () => {
+    const result = scoreCollectionRisk(input());
+    expect(result.paymentProbabilityBand).toBe("high");
+  });
+
+  it("bands a far-overdue, poor-history invoice as low probability", () => {
+    const result = scoreCollectionRisk(
+      input({
+        daysUntilDue: -45,
+        clientOnTimePercent: 15,
+        clientAvgDaysLate: 20,
+        isReliablePayer: false,
+        invoiceOpened: false,
+      }),
+    );
+    expect(result.paymentProbabilityBand).toBe("low");
+  });
+});
+
+describe("scoreCollectionRisk — new signals", () => {
+  it("raises risk and explains when the invoice is well above the client norm", () => {
+    const baseline = scoreCollectionRisk(input({ daysUntilDue: -5, isReliablePayer: false }));
+    const large = scoreCollectionRisk(
+      input({ daysUntilDue: -5, isReliablePayer: false, amountVsClientNorm: 3 }),
+    );
+    expect(large.lateRiskPercent).toBeGreaterThan(baseline.lateRiskPercent);
+    expect(large.reasons.some((r) => r.includes("typical amount"))).toBe(true);
+  });
+
+  it("does not adjust risk for a normal-sized invoice (ratio near 1)", () => {
+    const baseline = scoreCollectionRisk(input({ daysUntilDue: -5, isReliablePayer: false }));
+    const normal = scoreCollectionRisk(
+      input({ daysUntilDue: -5, isReliablePayer: false, amountVsClientNorm: 1 }),
+    );
+    expect(normal.lateRiskPercent).toBe(baseline.lateRiskPercent);
+  });
+
+  it("raises risk and explains when the client has prior disputes", () => {
+    const baseline = scoreCollectionRisk(input({ daysUntilDue: -5, isReliablePayer: false }));
+    const disputed = scoreCollectionRisk(
+      input({ daysUntilDue: -5, isReliablePayer: false, priorDisputes: 2 }),
+    );
+    expect(disputed.lateRiskPercent).toBeGreaterThan(baseline.lateRiskPercent);
+    expect(disputed.reasons.some((r) => r.includes("prior dispute"))).toBe(true);
+  });
+
+  it("is unchanged when the new optional signals are omitted (backward compatible)", () => {
+    const without = scoreCollectionRisk(input({ daysUntilDue: -5, isReliablePayer: false }));
+    const withNeutral = scoreCollectionRisk(
+      input({ daysUntilDue: -5, isReliablePayer: false, amountVsClientNorm: null, priorDisputes: 0 }),
+    );
+    expect(withNeutral.lateRiskPercent).toBe(without.lateRiskPercent);
+  });
+});
+
 describe("prioritizeCollections", () => {
   it("surfaces action-due, highest-risk invoices first and monitors last", () => {
     const results = prioritizeCollections([

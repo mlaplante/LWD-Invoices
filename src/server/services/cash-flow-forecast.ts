@@ -107,6 +107,31 @@ export interface LatePaymentScenario {
   delayDays: number;
 }
 
+export interface ContractorHireScenario {
+  label?: string;
+  /** Contractor rate per hour. */
+  hourlyRate: number;
+  /** Hours billed per recurrence period. */
+  hoursPerPeriod: number;
+  /** How often the contractor is paid. */
+  frequency: ForecastFrequency;
+  /** Period interval (default 1). */
+  interval?: number;
+  /** First payment date; defaults to now. */
+  startDate?: Date | null;
+}
+
+export interface ChurnScenario {
+  /** Percent reduction applied to recurring revenue (0–100). */
+  churnPercent: number;
+}
+
+export interface ScenarioPlan {
+  latePayments?: LatePaymentScenario[];
+  contractorHire?: ContractorHireScenario | null;
+  churn?: ChurnScenario | null;
+}
+
 const DEFAULT_HORIZONS = [30, 60, 90];
 const DEFAULT_PAYMENT_TERMS_DAYS = 14;
 const AUTOPAY_SETTLE_DAYS = 3;
@@ -292,6 +317,57 @@ export function projectCashFlow(
   };
 }
 
+// ── Scenario input transforms ────────────────────────────────────────────────
+// Each returns a modified CashFlowForecastInput so scenarios compose; the
+// public apply* helpers project the transformed input.
+
+function withLatePayments(
+  input: CashFlowForecastInput,
+  scenarios: LatePaymentScenario[],
+  now: Date,
+): CashFlowForecastInput {
+  const delayByClient = new Map(scenarios.map((s) => [s.clientId, s.delayDays]));
+  const adjustedOpen = input.openInvoices.map((inv) => {
+    const delay = delayByClient.get(inv.clientId);
+    if (!delay) return inv;
+    const due = inv.dueDate ?? now;
+    return { ...inv, dueDate: addDays(due, delay) };
+  });
+  return { ...input, openInvoices: adjustedOpen };
+}
+
+function withContractorHire(
+  input: CashFlowForecastInput,
+  scenario: ContractorHireScenario,
+  now: Date,
+): CashFlowForecastInput {
+  const interval = scenario.interval ?? 1;
+  // Contractors are paid in arrears: the first payment lands one period after
+  // the hire date, not immediately. This also avoids a boundary artifact where
+  // a payment at day 0 and another at the horizon edge would both count.
+  const nextRunAt = scenario.startDate ?? advanceRecurring(now, scenario.frequency, interval);
+  const hire: ForecastRecurringExpense = {
+    amount: scenario.hourlyRate * scenario.hoursPerPeriod,
+    nextRunAt,
+    frequency: scenario.frequency,
+    interval,
+    endDate: null,
+  };
+  return { ...input, recurringExpenses: [...input.recurringExpenses, hire] };
+}
+
+function withChurn(
+  input: CashFlowForecastInput,
+  scenario: ChurnScenario,
+): CashFlowForecastInput {
+  const factor = Math.max(0, 1 - scenario.churnPercent / 100);
+  const churned = input.recurringInvoices.map((rec) => ({
+    ...rec,
+    amount: rec.amount * factor,
+  }));
+  return { ...input, recurringInvoices: churned };
+}
+
 /**
  * Re-project after delaying one or more clients' expected open-invoice
  * collections by a number of days. Recurring inflows/outflows are unaffected;
@@ -303,14 +379,52 @@ export function applyLatePaymentScenario(
   options: ProjectCashFlowOptions = {},
 ): CashFlowForecast {
   const now = options.now ?? new Date();
-  const delayByClient = new Map(scenarios.map((s) => [s.clientId, s.delayDays]));
+  return projectCashFlow(withLatePayments(input, scenarios, now), options);
+}
 
-  const adjustedOpen = input.openInvoices.map((inv) => {
-    const delay = delayByClient.get(inv.clientId);
-    if (!delay) return inv;
-    const due = inv.dueDate ?? now;
-    return { ...inv, dueDate: addDays(due, delay) };
-  });
+/**
+ * Re-project after hiring a contractor: adds a recurring outflow of
+ * `hourlyRate × hoursPerPeriod` on the chosen schedule. Answers
+ * "what if I hire a contractor at $85/hr?".
+ */
+export function applyContractorHireScenario(
+  input: CashFlowForecastInput,
+  scenario: ContractorHireScenario,
+  options: ProjectCashFlowOptions = {},
+): CashFlowForecast {
+  const now = options.now ?? new Date();
+  return projectCashFlow(withContractorHire(input, scenario, now), options);
+}
 
-  return projectCashFlow({ ...input, openInvoices: adjustedOpen }, options);
+/**
+ * Re-project after recurring revenue churns: scales every recurring invoice's
+ * amount down by the churn percentage. Answers
+ * "what if recurring revenue churns by 10%?".
+ */
+export function applyChurnScenario(
+  input: CashFlowForecastInput,
+  scenario: ChurnScenario,
+  options: ProjectCashFlowOptions = {},
+): CashFlowForecast {
+  return projectCashFlow(withChurn(input, scenario), options);
+}
+
+/**
+ * Apply any combination of scenarios in a single projection so the UI can model
+ * compound what-ifs (e.g. a key client pays late *and* a contractor is hired
+ * *and* recurring revenue churns). An empty plan reproduces the baseline.
+ */
+export function applyScenarioPlan(
+  input: CashFlowForecastInput,
+  plan: ScenarioPlan,
+  options: ProjectCashFlowOptions = {},
+): CashFlowForecast {
+  const now = options.now ?? new Date();
+  let next = input;
+  if (plan.latePayments && plan.latePayments.length > 0) {
+    next = withLatePayments(next, plan.latePayments, now);
+  }
+  if (plan.contractorHire) next = withContractorHire(next, plan.contractorHire, now);
+  if (plan.churn) next = withChurn(next, plan.churn);
+  return projectCashFlow(next, options);
 }
