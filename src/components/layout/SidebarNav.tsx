@@ -19,6 +19,7 @@ import {
   Sparkles,
   ShieldAlert,
   CalendarCheck,
+  Banknote,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const secondaryNav: NavItem[] = [
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
   { href: "/disputes", label: "Disputes", icon: ShieldAlert },
+  { href: "/collections", label: "Collections", icon: Banknote },
   { href: "/tickets", label: "Tickets", icon: LifeBuoy },
   { href: "/settings/team", label: "Team", icon: UsersRound },
   { href: "/settings", label: "Settings", icon: Settings },

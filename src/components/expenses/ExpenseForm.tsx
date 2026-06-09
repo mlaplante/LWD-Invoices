@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Paperclip, X, ExternalLink } from "lucide-react";
+import { Paperclip, X, ExternalLink, Sparkles } from "lucide-react";
 import { ReceiptOCRDropzone } from "./ReceiptOCRDropzone";
 import type { OCRResult } from "@/server/services/receipt-ocr";
 
@@ -117,6 +117,20 @@ export function ExpenseForm({
     },
     onError: (err) => setError(err.message),
   });
+
+  const suggestMutation = trpc.expenses.suggestCategorization.useMutation();
+
+  function applySuggestion() {
+    const s = suggestMutation.data?.suggestion;
+    if (!s) return;
+    setForm((prev) => ({
+      ...prev,
+      categoryId: s.categoryId ?? prev.categoryId,
+      taxId: s.taxId ?? prev.taxId,
+      reimbursable: s.reimbursable,
+      projectId: s.projectId ?? prev.projectId,
+    }));
+  }
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
@@ -282,6 +296,55 @@ export function ExpenseForm({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      {/* Suggest category */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={suggestMutation.isPending}
+            onClick={() =>
+              suggestMutation.mutate({
+                supplierId: form.supplierId || null,
+                supplierName:
+                  suppliers.find((s) => s.id === form.supplierId)?.name ?? "",
+                expenseName: form.name,
+                description: form.description || null,
+              })
+            }
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+            {suggestMutation.isPending ? "Suggesting…" : "Suggest category"}
+          </Button>
+        </div>
+        {suggestMutation.data !== undefined && (
+          <>
+            {suggestMutation.data.suggestion ? (
+              <div className="flex items-center gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">
+                <span className="text-muted-foreground">
+                  {Math.round(suggestMutation.data.suggestion.confidence * 100)}% confidence
+                  {" · "}
+                  <span className="capitalize">{suggestMutation.data.suggestion.source}</span>
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={applySuggestion}
+                >
+                  Apply
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                No confident suggestion found for this expense.
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       {/* Project (optional) */}
