@@ -628,6 +628,77 @@ git commit -m "feat(ai-proposal): Draft-with-AI action in the generate proposal 
 
 ---
 
+## Task 7: Cross-tenant isolation router test (named invariant)
+
+The spec names cross-tenant isolation a first-class invariant. The pure eval suite (Task 5) cannot cover it. This mock-based router test proves `proposals.generate` only ever queries the caller's org and returns `NOT_FOUND` for another org's estimate. Pattern mirrors `src/test/routers-hours-retainers.test.ts`.
+
+**Files:**
+- Create: `src/test/proposals-generate.router.test.ts`
+
+- [ ] **Step 1: Confirm the mocked models**
+
+Run: `grep -nE "invoice:|proposalTemplate:|proposalContent:|item:" src/test/mocks/prisma.ts`
+Expected: `db.invoice.findFirst`, `db.item.findMany` exist. If `db.proposalTemplate.findFirst` or `db.proposalContent.findMany` are NOT mocked, add them (`{ findFirst: vi.fn() }` / `{ findMany: vi.fn() }`) to `src/test/mocks/prisma.ts` in this step.
+
+- [ ] **Step 2: Write the test**
+
+```ts
+import { describe, it, expect, beforeEach } from "vitest";
+import { proposalsRouter } from "@/server/routers/proposals";
+import { createMockContext } from "./mocks/trpc-context";
+import { TRPCError } from "@trpc/server";
+
+describe("proposals.generate — multi-tenant isolation", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext(); // orgId: "test-org-123", role OWNER
+    caller = proposalsRouter.createCaller(ctx);
+  });
+
+  it("scopes the estimate lookup to the caller's org and 404s another org's estimate", async () => {
+    ctx.db.invoice.findFirst.mockResolvedValue(null);
+    await expect(caller.generate({ invoiceId: "other-org-estimate" })).rejects.toThrow(TRPCError);
+    const where = ctx.db.invoice.findFirst.mock.calls[0][0].where;
+    expect(where.organizationId).toBe("test-org-123");
+    expect(where.type).toBe("ESTIMATE");
+  });
+
+  it("scopes template, past-proposal, and item context to the caller's org", async () => {
+    ctx.db.invoice.findFirst.mockResolvedValue({
+      id: "est1",
+      client: { name: "Acme", projects: [] },
+    });
+    ctx.db.proposalTemplate.findFirst.mockResolvedValue({ sections: [] });
+    ctx.db.proposalContent.findMany.mockResolvedValue([]);
+    ctx.db.item.findMany.mockResolvedValue([]);
+
+    await caller.generate({ invoiceId: "est1" });
+
+    expect(ctx.db.proposalTemplate.findFirst.mock.calls[0][0].where.organizationId).toBe("test-org-123");
+    expect(ctx.db.proposalContent.findMany.mock.calls[0][0].where.organizationId).toBe("test-org-123");
+    expect(ctx.db.item.findMany.mock.calls[0][0].where.organizationId).toBe("test-org-123");
+  });
+});
+```
+
+> **Implementer note:** with `GEMINI_API_KEY` unset in the test env, `generateProposal` returns `null` and `generate` returns `{ draft: null }` — the second test still exercises every org-scoped query, which is the point. If the test env sets a Gemini key, stub the network call or assert on the query `where` clauses before the AI call.
+
+- [ ] **Step 3: Run the test**
+
+Run: `npx vitest run src/test/proposals-generate.router.test.ts`
+Expected: PASS (2 tests).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/test/proposals-generate.router.test.ts src/test/mocks/prisma.ts
+git commit -m "test(ai-proposal): cross-tenant isolation router test for proposals.generate"
+```
+
+---
+
 ## Final verification
 
 - [ ] **Run the full test suite**

@@ -40,8 +40,12 @@ verifiable end-to-end.
   and explainable. The LLM is used only for natural-language judgment/generation.
 - **🔒 Cross-tenant isolation (named invariant).** Every history/context query is
   scoped to `ctx.orgId`. No cross-org row ever enters a prompt. Each feature gets
-  a dedicated eval/test case asserting this. (Directly guards the bug class fixed
-  in commit `f7f22b1`.)
+  a dedicated **router integration test** asserting this (mock-based, mirroring
+  `src/test/routers-hours-retainers.test.ts`). Note: the pure golden-set eval
+  harness *cannot* test org-scoping — its graders make no DB calls and operate on
+  an already-scoped snapshot — so this invariant lives in router tests, while the
+  eval suites' grounding cases cover the separate LLM-output boundary. (Directly
+  guards the bug class fixed in commit `f7f22b1`.)
 - **No new database tables.** All four read existing data and write existing
   fields. If persistence is ever wanted (dismissed-warning memory, queue
   snapshots), that is a deliberate future addition, not part of this release.

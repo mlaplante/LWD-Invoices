@@ -651,6 +651,63 @@ git commit -m "feat(ai-expense): inline category suggestion in expense form"
 
 ---
 
+## Task 7: Cross-tenant isolation router test (named invariant)
+
+The spec names cross-tenant isolation a first-class invariant. The pure eval suite (Task 5) cannot cover it — graders make no DB calls. This mock-based router test proves `suggestCategorization` loads history and categories scoped to the caller's org only. Pattern mirrors `src/test/routers-hours-retainers.test.ts`.
+
+**Files:**
+- Create: `src/test/expenses-suggest.router.test.ts`
+
+- [ ] **Step 1: Confirm the mock has the models this query uses**
+
+Run: `grep -nE "expense:|expenseCategory:" src/test/mocks/prisma.ts`
+Expected: `db.expense.findMany` exists. If `db.expenseCategory.findMany` is NOT mocked, add `expenseCategory: { findMany: vi.fn() }` to `src/test/mocks/prisma.ts` in this step.
+
+- [ ] **Step 2: Write the test**
+
+```ts
+import { describe, it, expect, beforeEach } from "vitest";
+import { expensesRouter } from "@/server/routers/expenses";
+import { createMockContext } from "./mocks/trpc-context";
+
+describe("expenses.suggestCategorization — multi-tenant isolation", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext(); // orgId: "test-org-123", role OWNER
+    caller = expensesRouter.createCaller(ctx);
+    ctx.db.expense.findMany.mockResolvedValue([]);
+    ctx.db.expenseCategory.findMany.mockResolvedValue([]);
+  });
+
+  it("loads history and categories scoped to the caller's org", async () => {
+    await caller.suggestCategorization({
+      supplierId: "s1",
+      supplierName: "AWS",
+      expenseName: "Hosting",
+      description: null,
+    });
+    expect(ctx.db.expense.findMany.mock.calls[0][0].where.organizationId).toBe("test-org-123");
+    expect(ctx.db.expenseCategory.findMany.mock.calls[0][0].where.organizationId).toBe("test-org-123");
+  });
+});
+```
+
+- [ ] **Step 3: Run the test**
+
+Run: `npx vitest run src/test/expenses-suggest.router.test.ts`
+Expected: PASS.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/test/expenses-suggest.router.test.ts src/test/mocks/prisma.ts
+git commit -m "test(ai-expense): cross-tenant isolation router test for suggestCategorization"
+```
+
+---
+
 ## Final verification
 
 - [ ] **Run the full test suite**

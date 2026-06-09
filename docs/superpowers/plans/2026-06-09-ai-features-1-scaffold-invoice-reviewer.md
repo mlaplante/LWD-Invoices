@@ -893,7 +893,7 @@ export const invoiceReviewCases: EvalCase<InvoiceReviewInput, InvoiceReviewExpec
 ];
 ```
 
-> **Cross-tenant note:** the snapshot loader in Task 6 is the org-isolation boundary (every query filtered by `ctx.orgId`); this grader operates on an already-scoped snapshot. The cross-tenant invariant is enforced and tested at the router layer — add a router integration test asserting `review` on another org's invoiceId returns `NOT_FOUND` when Plan 1's router tests are added (see Task 6 Step 3 follow-up). The `grounding-drops-fabricated-line` critical case guards the LLM-output boundary.
+> **Cross-tenant note:** the snapshot loader in Task 6 is the org-isolation boundary (every query filtered by `ctx.orgId`); this grader operates on an already-scoped snapshot. The pure eval harness CANNOT test org-scoping (graders make no DB calls) — that invariant is proven by the router test in **Task 8** below. The `grounding-drops-fabricated-line` critical case here guards only the LLM-output boundary, which is a different invariant.
 
 - [ ] **Step 3: Register the suite in `index.ts`**
 
@@ -952,7 +952,82 @@ git commit -m "test(ai-review): golden-set eval suite for invoice review checks"
 
 ---
 
-## Task 8: Pre-send review panel UI
+## Task 8: Cross-tenant isolation router test (named invariant)
+
+The spec names cross-tenant isolation a first-class invariant with a per-feature test. The pure eval suite (Task 7) cannot cover it — graders make no DB calls. This mock-based router test proves `review` only ever queries the caller's org and returns `NOT_FOUND` for another org's invoice. Pattern mirrors `src/test/routers-hours-retainers.test.ts`.
+
+**Files:**
+- Create: `src/test/invoiceReview.router.test.ts`
+
+- [ ] **Step 1: Confirm the mock context + which models it mocks**
+
+Run: `grep -nE "orgId|userRole|invoice:|timeEntry:|organization:" src/test/mocks/prisma.ts | head`
+Expected: `createMockContext()` returns `orgId: "test-org-123"`, `userRole: "OWNER"` (so `requireRole` passes), and `db.invoice.findFirst/findMany`, `db.timeEntry.aggregate`, `db.organization` are mocked. If `db.timeEntry.aggregate` or any model used by the router is missing from the mock, add the `vi.fn()` to `src/test/mocks/prisma.ts` in this step.
+
+- [ ] **Step 2: Write the test**
+
+```ts
+import { describe, it, expect, beforeEach } from "vitest";
+import { invoiceReviewRouter } from "@/server/routers/invoiceReview";
+import { createMockContext } from "./mocks/trpc-context";
+import { TRPCError } from "@trpc/server";
+
+describe("invoiceReview.review — multi-tenant isolation", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext(); // orgId: "test-org-123", role OWNER
+    caller = invoiceReviewRouter.createCaller(ctx);
+  });
+
+  it("scopes the invoice lookup to the caller's org", async () => {
+    ctx.db.invoice.findFirst.mockResolvedValue(null); // another org's invoice is invisible
+    await expect(caller.review({ invoiceId: "other-org-invoice" })).rejects.toThrow(TRPCError);
+    const where = ctx.db.invoice.findFirst.mock.calls[0][0].where;
+    expect(where.organizationId).toBe("test-org-123");
+    expect(where.id).toBe("other-org-invoice");
+  });
+
+  it("scopes the duplicate-detection and unbilled-time queries to the caller's org", async () => {
+    ctx.db.invoice.findFirst.mockResolvedValue({
+      id: "inv1",
+      organizationId: "test-org-123",
+      total: 100,
+      discountTotal: 0,
+      clientId: "c1",
+      client: { id: "c1", name: "Acme", address: "1 St", city: "Town", country: "US", taxId: "T1", isTaxExempt: false },
+      lines: [],
+      organization: { stripeTaxEnabled: false },
+    });
+    ctx.db.invoice.findMany.mockResolvedValue([]);
+    ctx.db.timeEntry.aggregate.mockResolvedValue({ _sum: { minutes: null } });
+
+    await caller.review({ invoiceId: "inv1" });
+
+    expect(ctx.db.invoice.findMany.mock.calls[0][0].where.organizationId).toBe("test-org-123");
+    expect(ctx.db.timeEntry.aggregate.mock.calls[0][0].where.organizationId).toBe("test-org-123");
+  });
+});
+```
+
+> **Implementer note:** match the mocked invoice shape to the actual `include`/`select` in the Task 6 router (client fields, `organization.stripeTaxEnabled` or the real field name). If you changed `orgHasTaxConfigured`'s source field in Task 6, update the mock here to match.
+
+- [ ] **Step 3: Run the test**
+
+Run: `npx vitest run src/test/invoiceReview.router.test.ts`
+Expected: PASS (2 tests).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/test/invoiceReview.router.test.ts src/test/mocks/prisma.ts
+git commit -m "test(ai-review): cross-tenant isolation router test for invoiceReview.review"
+```
+
+---
+
+## Task 9: Pre-send review panel UI
 
 **Files:**
 - Create: `src/components/invoices/InvoiceReviewPanel.tsx`
@@ -1050,7 +1125,7 @@ Expected: `invoice-review` suite reports score 100% / pass 4/4, no critical fail
 
 ## Self-Review (completed by plan author)
 
-- **Spec coverage:** All five reviewer checks from the spec are implemented (missing tax/address → `checkMissingInfo`; suspicious discounts → `checkSuspiciousDiscount`; unbilled time → `checkUnbilledTime`; duplicate risk → `checkDuplicateRisk`; unclear descriptions → `checkUnclearDescriptions`). Gemini-first provider, shared structured-output validation, cross-tenant scoping, and full eval coverage are all present.
+- **Spec coverage:** All five reviewer checks from the spec are implemented (missing tax/address → `checkMissingInfo`; suspicious discounts → `checkSuspiciousDiscount`; unbilled time → `checkUnbilledTime`; duplicate risk → `checkDuplicateRisk`; unclear descriptions → `checkUnclearDescriptions`). Gemini-first provider, shared structured-output validation, and full eval coverage are all present. The named **cross-tenant invariant** is tested at the router layer in **Task 8** (the pure eval harness structurally cannot test org-scoping — it makes no DB calls).
 - **Type consistency:** `ReviewFinding`, `InvoiceReviewSnapshot`, `UnclearDescriptionFlag` names are used identically across service, router, grader, and fixtures. `fields: ["line:<id>"]` encoding is consistent between `guardUnclearDescriptionFlags` and the grader's `replace("line:", "")`.
 - **Open items deliberately left to the implementer (with grep instructions, not placeholders):** the exact `Organization` tax-config field name, the tRPC client import path, and the send-action component location — each has an explicit `grep` to resolve before writing.
 

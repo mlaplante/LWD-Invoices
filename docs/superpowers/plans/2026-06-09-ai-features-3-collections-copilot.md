@@ -223,6 +223,7 @@ import { InvoiceStatus } from "@/generated/prisma";
 import { scoreCollectionRisk, rankCollectionsQueue } from "@/server/services/collection-risk";
 ```
 
+> **Performance note (address before shipping):** the `Promise.all(invoices.map(... getClientPaymentBehaviorSummary ...))` fans out up to 500 concurrent multi-query calls per page load — a realistic connection-pool-exhaustion risk given the recent pool work (#53). Before executing, do ONE of: (a) batch the payment-behavior lookup — collect the distinct `clientId`s and fetch their summaries in a single grouped query/loop, then index by client, since many invoices share a client; or (b) cap concurrency (e.g. process in chunks of ~10). Prefer (a). Also lower the initial `take: 500` to a sane page size (e.g. 200) — the queue is a daily worklist, not an export.
 > **Implementer notes (resolve with grep, do not guess):**
 > - `clientAvgDaysLate`: the summary in `client-payment-score.ts` returns `{ paidInvoiceCount, onTimePercent, lateInvoiceCount }` — it does NOT include average days late. Either (a) pass `0` (acceptable: the score weights it only when > 0) or (b) extend `getClientPaymentBehaviorSummary` to also return `avgDaysLate`. Prefer (a) for this plan to avoid scope creep; note it in the PR. Run `grep -n "avgDaysLate\|clientAvgDaysLate" src/server/services` to confirm before deciding.
 > - `emailEvents` `type` values: confirm the exact string values (`"opened"`, `"clicked"`) via `grep -n "opened\|clicked\|EmailEvent" prisma/schema.prisma src/server/services/*.ts`. Match them exactly.
@@ -554,6 +555,59 @@ Expected: clean.
 ```bash
 git add "src/app/(dashboard)/collections" src/components/collections src/components/layout/SidebarNav.tsx src/components/layout/MobileNav.tsx
 git commit -m "feat(collections): ranked daily-queue page with one-click chase"
+```
+
+---
+
+## Task 5: Cross-tenant isolation router test (named invariant)
+
+The spec names cross-tenant isolation a first-class invariant. The pure ranking eval (Task 3) cannot cover it. This mock-based router test proves `collections.queue` only ever queries the caller's org. Pattern mirrors `src/test/routers-hours-retainers.test.ts`.
+
+**Files:**
+- Create: `src/test/collections-queue.router.test.ts`
+
+- [ ] **Step 1: Confirm the mocked models**
+
+Run: `grep -nE "invoice:|organization:" src/test/mocks/prisma.ts`
+Expected: `db.invoice.findMany` and `db.organization.findUnique` are mocked. Add any missing `vi.fn()` to `src/test/mocks/prisma.ts` in this step. The query also calls `getClientPaymentBehaviorSummary(ctx.db, clientId)` — with `invoice.findMany` returning `[]`, that path isn't exercised, so no extra mock is needed for this isolation test.
+
+- [ ] **Step 2: Write the test**
+
+```ts
+import { describe, it, expect, beforeEach } from "vitest";
+import { collectionsRouter } from "@/server/routers/collections";
+import { createMockContext } from "./mocks/trpc-context";
+
+describe("collections.queue — multi-tenant isolation", () => {
+  let ctx: any;
+  let caller: any;
+
+  beforeEach(() => {
+    ctx = createMockContext(); // orgId: "test-org-123", role OWNER
+    caller = collectionsRouter.createCaller(ctx);
+    ctx.db.organization.findUnique.mockResolvedValue({ smartRemindersThreshold: 80 });
+    ctx.db.invoice.findMany.mockResolvedValue([]);
+  });
+
+  it("loads open invoices and org settings scoped to the caller's org", async () => {
+    const out = await caller.queue({ limit: 50 });
+    expect(out.queue).toEqual([]);
+    expect(ctx.db.invoice.findMany.mock.calls[0][0].where.organizationId).toBe("test-org-123");
+    expect(ctx.db.organization.findUnique.mock.calls[0][0].where.id).toBe("test-org-123");
+  });
+});
+```
+
+- [ ] **Step 3: Run the test**
+
+Run: `npx vitest run src/test/collections-queue.router.test.ts`
+Expected: PASS.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/test/collections-queue.router.test.ts src/test/mocks/prisma.ts
+git commit -m "test(collections): cross-tenant isolation router test for collections.queue"
 ```
 
 ---
