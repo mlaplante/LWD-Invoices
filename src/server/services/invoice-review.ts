@@ -236,6 +236,6 @@ export async function checkUnclearDescriptions(snap: InvoiceReviewSnapshot): Pro
 
 /** Full review: deterministic checks always, LLM unclear-description best-effort. */
 export async function reviewInvoice(snap: InvoiceReviewSnapshot): Promise<ReviewFinding[]> {
-  const [unclear] = await Promise.all([checkUnclearDescriptions(snap)]);
+  const unclear = await checkUnclearDescriptions(snap);
   return [...runDeterministicChecks(snap), ...unclear];
 }

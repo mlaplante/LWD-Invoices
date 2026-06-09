@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { proposalSectionsSchema } from "./proposal-templates-helpers";
 import { deleteProposalFile } from "@/lib/supabase/storage";
@@ -155,7 +155,7 @@ export const proposalsRouter = router({
       return { success: true };
     }),
 
-  generate: protectedProcedure
+  generate: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ invoiceId: z.string(), templateId: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findFirst({
