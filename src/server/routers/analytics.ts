@@ -9,6 +9,10 @@ import {
   type ScenarioPlan,
 } from "@/server/services/cash-flow-forecast";
 import { deriveRunway } from "@/server/services/runway";
+import {
+  buildProfitabilityInsights,
+  type ProfitabilityRow,
+} from "@/server/services/profitability-insights";
 import { calculateSubscriptionMetrics } from "@/server/services/subscription-metrics";
 import { detectExpenseAnomalies } from "@/server/services/expense-anomaly";
 import { prioritizeCollections, scoreCollectionRisk } from "@/server/services/collection-risk";
@@ -95,6 +99,79 @@ export const analyticsRouter = router({
       const scenario = hasScenario ? applyScenarioPlan(forecastInput, plan, { now }) : null;
       return { base, scenario, appliedPlan: plan };
     }),
+
+  // Cash-margin profitability insights: per-client margin = revenue − (expenses
+  // + attributable contractor pay), with the owner's own time counted as free.
+  // This is a SEPARATE basis from /reports/profitability (which counts tracked
+  // time at the billing rate); that report is intentionally left untouched.
+  profitabilityInsights: protectedProcedure.query(async ({ ctx }) => {
+    const [payments, expenses, contractorPayments, clients] = await Promise.all([
+      ctx.db.payment.findMany({
+        where: { organizationId: ctx.orgId },
+        select: { amount: true, invoice: { select: { clientId: true } } },
+      }),
+      ctx.db.expense.findMany({
+        where: { organizationId: ctx.orgId, project: { isNot: null } },
+        select: { id: true, rate: true, qty: true, project: { select: { clientId: true } } },
+      }),
+      // ContractorPayment has no `expense` relation (only an expenseId), so pay
+      // is attributed to a client by mapping its expenseId → the expense's
+      // project client below; unlinked payments are counted org-wide.
+      ctx.db.contractorPayment.findMany({
+        where: { organizationId: ctx.orgId },
+        select: { amount: true, expenseId: true },
+      }),
+      ctx.db.client.findMany({
+        where: { organizationId: ctx.orgId },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    const clientName = new Map(clients.map((c) => [c.id, c.name]));
+    const revenueByClient = new Map<string, number>();
+    const costByClient = new Map<string, number>();
+    const add = (map: Map<string, number>, key: string, amount: number) =>
+      map.set(key, (map.get(key) ?? 0) + amount);
+
+    for (const p of payments) {
+      if (p.invoice.clientId) add(revenueByClient, p.invoice.clientId, Number(p.amount));
+    }
+    const expenseToClient = new Map<string, string>();
+    for (const e of expenses) {
+      if (e.project?.clientId) {
+        add(costByClient, e.project.clientId, Number(e.rate) * e.qty);
+        expenseToClient.set(e.id, e.project.clientId);
+      }
+    }
+    let unattributedContractorCost = 0;
+    for (const cp of contractorPayments) {
+      const clientId = cp.expenseId ? expenseToClient.get(cp.expenseId) : undefined;
+      if (clientId) add(costByClient, clientId, Number(cp.amount));
+      else unattributedContractorCost += Number(cp.amount);
+    }
+
+    const ids = new Set([...revenueByClient.keys(), ...costByClient.keys()]);
+    const rows: ProfitabilityRow[] = Array.from(ids).map((id) => {
+      const revenue = Math.round((revenueByClient.get(id) ?? 0) * 100) / 100;
+      const cost = Math.round((costByClient.get(id) ?? 0) * 100) / 100;
+      const margin = Math.round((revenue - cost) * 100) / 100;
+      return {
+        id,
+        name: clientName.get(id) ?? "Unknown",
+        revenue,
+        cost,
+        margin,
+        marginPercent: revenue > 0 ? Math.round((margin / revenue) * 10000) / 100 : 0,
+      };
+    });
+    rows.sort((a, b) => a.marginPercent - b.marginPercent);
+
+    return {
+      rows,
+      insights: buildProfitabilityInsights(rows),
+      unattributedContractorCost: Math.round(unattributedContractorCost * 100) / 100,
+    };
+  }),
 
   // Runway / burn summary: monthly burn + net-position trajectory over the
   // forecast horizon. No stored bank balance, so days-of-cash stays null unless
