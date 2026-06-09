@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   projectCashFlow,
   applyLatePaymentScenario,
+  applyContractorHireScenario,
+  applyChurnScenario,
+  applyScenarioPlan,
   collectionProbabilityForAging,
   type CashFlowForecastInput,
 } from "@/server/services/cash-flow-forecast";
@@ -163,6 +166,105 @@ describe("applyLatePaymentScenario", () => {
     const h30 = scenario.horizons.find((h) => h.horizonDays === 30)!;
     // Only Globex (2000 * 0.95 = 1900) remains in the 30-day window.
     expect(h30.projectedInflow).toBe(1900);
+  });
+});
+
+describe("applyContractorHireScenario", () => {
+  it("adds a recurring outflow that lowers the projected position", () => {
+    const input: CashFlowForecastInput = {
+      openInvoices: [],
+      recurringInvoices: [],
+      recurringExpenses: [],
+    };
+    const base = projectCashFlow(input, { now: NOW });
+    const scenario = applyContractorHireScenario(
+      input,
+      { hourlyRate: 85, hoursPerPeriod: 40, frequency: "MONTHLY", interval: 1 },
+      { now: NOW },
+    );
+    const baseH30 = base.horizons.find((h) => h.horizonDays === 30)!;
+    const scH30 = scenario.horizons.find((h) => h.horizonDays === 30)!;
+    expect(baseH30.projectedOutflow).toBe(0);
+    // One monthly occurrence of 85 * 40 = 3400 within 30 days.
+    expect(scH30.projectedOutflow).toBe(3400);
+    expect(scH30.projectedPosition).toBeLessThan(baseH30.projectedPosition);
+  });
+});
+
+describe("applyChurnScenario", () => {
+  it("reduces recurring revenue by the churn percentage", () => {
+    const input: CashFlowForecastInput = {
+      openInvoices: [],
+      recurringInvoices: [
+        {
+          amount: 2000,
+          autoCharge: true,
+          nextRunAt: daysFromNow(5),
+          frequency: "MONTHLY",
+          interval: 1,
+          endDate: null,
+          maxOccurrences: null,
+          occurrenceCount: 0,
+        },
+      ],
+      recurringExpenses: [],
+    };
+    const base = projectCashFlow(input, { now: NOW });
+    const scenario = applyChurnScenario(input, { churnPercent: 10 }, { now: NOW });
+    const baseH30 = base.horizons.find((h) => h.horizonDays === 30)!;
+    const scH30 = scenario.horizons.find((h) => h.horizonDays === 30)!;
+    // Baseline 2000 * 0.97 = 1940; after 10% churn, 1800 * 0.97 = 1746.
+    expect(baseH30.projectedInflow).toBe(1940);
+    expect(scH30.projectedInflow).toBe(1746);
+  });
+});
+
+describe("applyScenarioPlan", () => {
+  it("combines late payment, contractor hire, and churn in one projection", () => {
+    const input: CashFlowForecastInput = {
+      openInvoices: [
+        { id: "i1", clientId: "acme", clientName: "Acme", balance: 1000, dueDate: daysFromNow(10) },
+      ],
+      recurringInvoices: [
+        {
+          amount: 2000,
+          autoCharge: true,
+          nextRunAt: daysFromNow(5),
+          frequency: "MONTHLY",
+          interval: 1,
+          endDate: null,
+          maxOccurrences: null,
+          occurrenceCount: 0,
+        },
+      ],
+      recurringExpenses: [],
+    };
+    const scenario = applyScenarioPlan(
+      input,
+      {
+        latePayments: [{ clientId: "acme", clientName: "Acme", delayDays: 30 }],
+        contractorHire: { hourlyRate: 85, hoursPerPeriod: 40, frequency: "MONTHLY", interval: 1 },
+        churn: { churnPercent: 10 },
+      },
+      { now: NOW },
+    );
+    const h30 = scenario.horizons.find((h) => h.horizonDays === 30)!;
+    // Acme delayed out of window → only churned recurring inflow remains.
+    expect(h30.projectedInflow).toBe(1746);
+    expect(h30.projectedOutflow).toBe(3400);
+  });
+
+  it("equals the baseline when the plan is empty", () => {
+    const input: CashFlowForecastInput = {
+      openInvoices: [
+        { id: "i1", clientId: "acme", clientName: "Acme", balance: 1000, dueDate: daysFromNow(10) },
+      ],
+      recurringInvoices: [],
+      recurringExpenses: [],
+    };
+    const base = projectCashFlow(input, { now: NOW });
+    const scenario = applyScenarioPlan(input, {}, { now: NOW });
+    expect(scenario.horizons).toEqual(base.horizons);
   });
 });
 

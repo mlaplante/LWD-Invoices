@@ -22,6 +22,7 @@ import {
   ShieldAlert,
   CalendarCheck,
   Activity,
+  TrendingUp,
   Plus,
   Send,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const moreItems = [
   { href: "/contractors", label: "Contractors", icon: Contact },
   { href: "/assistant", label: "Ask AI", icon: Sparkles },
   { href: "/activity", label: "Activity", icon: Activity },
+  { href: "/money-intelligence", label: "Money Intelligence", icon: TrendingUp },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
   { href: "/disputes", label: "Disputes", icon: ShieldAlert },

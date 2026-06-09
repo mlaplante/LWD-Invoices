@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   CalendarCheck,
   Activity,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,6 +44,7 @@ const primaryNav: NavItem[] = [
 const secondaryNav: NavItem[] = [
   { href: "/assistant", label: "Ask AI", icon: Sparkles },
   { href: "/activity", label: "Activity", icon: Activity },
+  { href: "/money-intelligence", label: "Money Intelligence", icon: TrendingUp },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
   { href: "/disputes", label: "Disputes", icon: ShieldAlert },

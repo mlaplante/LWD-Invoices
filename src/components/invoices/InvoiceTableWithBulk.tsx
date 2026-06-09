@@ -64,14 +64,22 @@ function formatBulkResult(
   return { message: parts.join(", "), isError: result.failed > 0 };
 }
 
+const PROBABILITY_BAND: Record<string, { className: string; title: string }> = {
+  high: { className: "bg-emerald-50 text-emerald-600", title: "Likely to pay" },
+  medium: { className: "bg-amber-50 text-amber-600", title: "Payment uncertain" },
+  low: { className: "bg-red-50 text-red-600", title: "At risk of late/non-payment" },
+};
+
 type RowProps = {
   inv: Invoice;
   isSelected: boolean;
   onToggle: (id: string) => void;
+  probability?: { percent: number; band: string };
 };
 
-const InvoiceRow = React.memo(function InvoiceRow({ inv, isSelected, onToggle }: RowProps) {
+const InvoiceRow = React.memo(function InvoiceRow({ inv, isSelected, onToggle, probability }: RowProps) {
   const badge = STATUS_BADGE[inv.status];
+  const probBand = probability ? PROBABILITY_BAND[probability.band] : undefined;
   return (
     <tr
       className={cn(
@@ -123,10 +131,20 @@ const InvoiceRow = React.memo(function InvoiceRow({ inv, isSelected, onToggle }:
         {formatCurrency(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
       </td>
       <td className="py-3.5 pl-4">
-        <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium", badge.className)}>
-          <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", badge.dot)} />
-          {badge.label}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium", badge.className)}>
+            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", badge.dot)} />
+            {badge.label}
+          </span>
+          {probability && probBand && (
+            <span
+              className={cn("inline-flex items-center rounded-lg px-2 py-1 text-xs font-medium tabular-nums", probBand.className)}
+              title={`Payment probability: ${probability.percent}% — ${probBand.title}`}
+            >
+              {probability.percent}%
+            </span>
+          )}
+        </div>
       </td>
       <td className="py-3.5 pr-2 print:hidden">
         <InvoiceRowActions
@@ -202,6 +220,14 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
       onBulkComplete();
     },
     onError: (err) => toast.error(err.message),
+  });
+
+  // Payment-probability badges: fetched once for the org and looked up per row.
+  // Open invoices only appear in the map, so paid/draft rows simply show no badge.
+  // staleTime keeps this org-wide scan from refetching on every list interaction;
+  // a future optimization could fold the score into the list query itself.
+  const { data: probabilityData } = trpc.analytics.paymentProbability.useQuery(undefined, {
+    staleTime: 60_000,
   });
 
   const isLoading = archiveMany.isPending || deleteMany.isPending || sendMany.isPending || markPaidMany.isPending;
@@ -309,14 +335,22 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
           </tr>
         </thead>
         <tbody className="divide-y divide-border/50">
-          {invoices.map((inv) => (
-            <InvoiceRow
-              key={inv.id}
-              inv={inv}
-              isSelected={selected.has(inv.id)}
-              onToggle={toggle}
-            />
-          ))}
+          {invoices.map((inv) => {
+            const prob = probabilityData?.byInvoiceId[inv.id];
+            return (
+              <InvoiceRow
+                key={inv.id}
+                inv={inv}
+                isSelected={selected.has(inv.id)}
+                onToggle={toggle}
+                probability={
+                  prob
+                    ? { percent: prob.paymentProbabilityPercent, band: prob.paymentProbabilityBand }
+                    : undefined
+                }
+              />
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { InvoiceType } from "@/generated/prisma";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -140,6 +141,16 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
     { clientId: form.clientId || undefined },
     { staleTime: 30_000 },
   );
+
+  // Non-blocking duplicate guard: once a client + a non-zero total are present,
+  // check for a recent same-client invoice with a near-identical amount so a
+  // double-bill is caught before sending. Never gates submission.
+  const duplicateTotal = Math.round(invoiceTotals.total * 100) / 100;
+  const { data: duplicateCheck } = trpc.invoices.checkDuplicate.useQuery(
+    { clientId: form.clientId, amount: duplicateTotal, excludeInvoiceId: form.id },
+    { enabled: Boolean(form.clientId) && duplicateTotal > 0, staleTime: 15_000 },
+  );
+  const duplicateMatch = duplicateCheck?.matches[0];
 
   function calcDueDate(invoiceDate: string, termsDays: number): string {
     if (termsDays === 0) return invoiceDate;
@@ -600,6 +611,25 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
           </a>{" "}
           before creating invoices.
         </p>
+      )}
+      {duplicateMatch && (
+        <div
+          className={`rounded-md border p-3 text-sm ${
+            duplicateMatch.severity === "danger"
+              ? "border-red-300 bg-red-50 text-red-900"
+              : "border-amber-300 bg-amber-50 text-amber-900"
+          }`}
+        >
+          <p className="font-semibold">Possible duplicate invoice</p>
+          <p className="mt-1">{duplicateMatch.message}</p>
+          <Link
+            href={`/invoices/${duplicateMatch.invoiceId}`}
+            target="_blank"
+            className="mt-1 inline-block font-medium underline underline-offset-2"
+          >
+            View {duplicateMatch.invoiceNumber}
+          </Link>
+        </div>
       )}
       {stripeTaxPreflight && !stripeTaxPreflight.ok && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">

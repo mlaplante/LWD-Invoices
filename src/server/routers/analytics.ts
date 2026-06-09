@@ -5,12 +5,17 @@ import { getAppUrl } from "@/lib/app-url";
 import { calculateClientHealthScores, calculateClientHealthScore } from "@/server/services/client-health-score";
 import {
   projectCashFlow,
-  applyLatePaymentScenario,
-  type LatePaymentScenario,
+  applyScenarioPlan,
+  type ScenarioPlan,
 } from "@/server/services/cash-flow-forecast";
+import { deriveRunway } from "@/server/services/runway";
+import {
+  buildProfitabilityInsights,
+  type ProfitabilityRow,
+} from "@/server/services/profitability-insights";
 import { calculateSubscriptionMetrics } from "@/server/services/subscription-metrics";
 import { detectExpenseAnomalies } from "@/server/services/expense-anomaly";
-import { prioritizeCollections } from "@/server/services/collection-risk";
+import { prioritizeCollections, scoreCollectionRisk } from "@/server/services/collection-risk";
 import {
   buildClientHealthInputs,
   buildClientHealthInputForClient,
@@ -18,7 +23,9 @@ import {
   buildSubscriptionStreams,
   buildExpenseAnomalyInputs,
   buildCollectionRiskInputs,
+  buildSendObservations,
 } from "@/server/services/analytics-data";
+import { recommendSendWindow } from "@/server/services/send-timing";
 import { getBenchmarksForOrg } from "@/server/services/benchmarking-data";
 
 export const analyticsRouter = router({
@@ -48,7 +55,8 @@ export const analyticsRouter = router({
       return { score: calculateClientHealthScore(built) };
     }),
 
-  // Forward 30/60/90-day cash position with optional late-payment scenarios.
+  // Forward 30/60/90-day cash position with optional what-if scenarios:
+  // late-paying clients, a contractor hire, and recurring-revenue churn.
   cashFlowForecast: protectedProcedure
     .input(
       z
@@ -63,18 +71,117 @@ export const analyticsRouter = router({
               }),
             )
             .optional(),
+          contractorHire: z
+            .object({
+              hourlyRate: z.number().positive().max(100_000),
+              hoursPerPeriod: z.number().positive().max(1_000),
+              frequency: z.enum(["DAILY", "WEEKLY", "MONTHLY", "YEARLY"]),
+              interval: z.number().int().min(1).max(52).optional(),
+            })
+            .nullish(),
+          churn: z
+            .object({ churnPercent: z.number().min(0).max(100) })
+            .nullish(),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
       const now = new Date();
       const forecastInput = await buildCashFlowForecastInput(ctx.db, ctx.orgId, input?.startingCash);
-      const scenarios = (input?.scenarios ?? []) as LatePaymentScenario[];
+      const plan: ScenarioPlan = {
+        latePayments: input?.scenarios ?? [],
+        contractorHire: input?.contractorHire ?? null,
+        churn: input?.churn ?? null,
+      };
+      const hasScenario =
+        (plan.latePayments?.length ?? 0) > 0 || Boolean(plan.contractorHire) || Boolean(plan.churn);
       const base = projectCashFlow(forecastInput, { now });
-      const scenario =
-        scenarios.length > 0 ? applyLatePaymentScenario(forecastInput, scenarios, { now }) : null;
-      return { base, scenario, appliedScenarios: scenarios };
+      const scenario = hasScenario ? applyScenarioPlan(forecastInput, plan, { now }) : null;
+      return { base, scenario, appliedPlan: plan };
     }),
+
+  // Cash-margin profitability insights: per-client margin = revenue − (expenses
+  // + attributable contractor pay), with the owner's own time counted as free.
+  // This is a SEPARATE basis from /reports/profitability (which counts tracked
+  // time at the billing rate); that report is intentionally left untouched.
+  profitabilityInsights: protectedProcedure.query(async ({ ctx }) => {
+    const [payments, expenses, contractorPayments, clients] = await Promise.all([
+      ctx.db.payment.findMany({
+        where: { organizationId: ctx.orgId },
+        select: { amount: true, invoice: { select: { clientId: true } } },
+      }),
+      ctx.db.expense.findMany({
+        where: { organizationId: ctx.orgId, project: { isNot: null } },
+        select: { id: true, rate: true, qty: true, project: { select: { clientId: true } } },
+      }),
+      // ContractorPayment has no `expense` relation (only an expenseId), so pay
+      // is attributed to a client by mapping its expenseId → the expense's
+      // project client below; unlinked payments are counted org-wide.
+      ctx.db.contractorPayment.findMany({
+        where: { organizationId: ctx.orgId },
+        select: { amount: true, expenseId: true },
+      }),
+      ctx.db.client.findMany({
+        where: { organizationId: ctx.orgId },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    const clientName = new Map(clients.map((c) => [c.id, c.name]));
+    const revenueByClient = new Map<string, number>();
+    const costByClient = new Map<string, number>();
+    const add = (map: Map<string, number>, key: string, amount: number) =>
+      map.set(key, (map.get(key) ?? 0) + amount);
+
+    for (const p of payments) {
+      if (p.invoice.clientId) add(revenueByClient, p.invoice.clientId, Number(p.amount));
+    }
+    const expenseToClient = new Map<string, string>();
+    for (const e of expenses) {
+      if (e.project?.clientId) {
+        add(costByClient, e.project.clientId, Number(e.rate) * e.qty);
+        expenseToClient.set(e.id, e.project.clientId);
+      }
+    }
+    let unattributedContractorCost = 0;
+    for (const cp of contractorPayments) {
+      const clientId = cp.expenseId ? expenseToClient.get(cp.expenseId) : undefined;
+      if (clientId) add(costByClient, clientId, Number(cp.amount));
+      else unattributedContractorCost += Number(cp.amount);
+    }
+
+    const ids = new Set([...revenueByClient.keys(), ...costByClient.keys()]);
+    const rows: ProfitabilityRow[] = Array.from(ids).map((id) => {
+      const revenue = Math.round((revenueByClient.get(id) ?? 0) * 100) / 100;
+      const cost = Math.round((costByClient.get(id) ?? 0) * 100) / 100;
+      const margin = Math.round((revenue - cost) * 100) / 100;
+      return {
+        id,
+        name: clientName.get(id) ?? "Unknown",
+        revenue,
+        cost,
+        margin,
+        marginPercent: revenue > 0 ? Math.round((margin / revenue) * 10000) / 100 : 0,
+      };
+    });
+    rows.sort((a, b) => a.marginPercent - b.marginPercent);
+
+    return {
+      rows,
+      insights: buildProfitabilityInsights(rows),
+      unattributedContractorCost: Math.round(unattributedContractorCost * 100) / 100,
+    };
+  }),
+
+  // Runway / burn summary: monthly burn + net-position trajectory over the
+  // forecast horizon. No stored bank balance, so days-of-cash stays null unless
+  // a starting balance is supplied.
+  runway: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const forecastInput = await buildCashFlowForecastInput(ctx.db, ctx.orgId);
+    const forecast = projectCashFlow(forecastInput, { now });
+    return deriveRunway(forecastInput, forecast);
+  }),
 
   // MRR / ARR / ARPA and revenue/logo churn over the recurring-revenue book.
   subscriptionMetrics: protectedProcedure
@@ -109,6 +216,53 @@ export const analyticsRouter = router({
       invoices: prioritizeCollections(inputs),
     };
   }),
+
+  // Per-open-invoice payment probability (the positive framing of collection
+  // risk) for the invoice badge + detail breakdown. Returns a map keyed by
+  // invoiceId so the UI can look up a single invoice without re-scoring.
+  paymentProbability: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const org = await ctx.db.organization.findUnique({
+      where: { id: ctx.orgId },
+      select: { smartRemindersThreshold: true },
+    });
+    const threshold = org?.smartRemindersThreshold ?? 80;
+    const inputs = await buildCollectionRiskInputs(ctx.db, ctx.orgId, now, threshold);
+    const invoices = inputs.map((input) => {
+      const score = scoreCollectionRisk(input);
+      return {
+        invoiceId: score.invoiceId,
+        invoiceNumber: score.invoiceNumber,
+        clientName: score.clientName,
+        balance: score.balance,
+        paymentProbabilityPercent: score.paymentProbabilityPercent,
+        paymentProbabilityBand: score.paymentProbabilityBand,
+        reasons: score.reasons,
+      };
+    });
+    const byInvoiceId: Record<string, (typeof invoices)[number]> = {};
+    for (const inv of invoices) byInvoiceId[inv.invoiceId] = inv;
+    return { generatedAt: now.toISOString(), invoices, byInvoiceId };
+  }),
+
+  // Recommended send window (weekday + time of day) for a client's invoice
+  // emails, learned from when their past sends got opened. Falls back to a
+  // global default when the client lacks enough history.
+  bestSendWindow: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const org = await ctx.db.organization.findUnique({
+        where: { id: ctx.orgId },
+        select: { timeZone: true },
+      });
+      const observations = await buildSendObservations(
+        ctx.db,
+        ctx.orgId,
+        input.clientId,
+        org?.timeZone ?? "UTC",
+      );
+      return recommendSendWindow(observations);
+    }),
 
   // Live preview of the weekly business briefing (same payload the Monday cron
   // emails) — powers the settings preview + the in-app briefing surface.

@@ -36,6 +36,7 @@ describe("Organization Router Procedures", () => {
         slug: "test-org",
         logoUrl: "https://example.com/logo.png",
         brandColor: "#FF5733",
+        timeZone: "America/New_York",
         invoicePrefix: "INV",
         invoiceNextNumber: 100,
         taskTimeInterval: 15,
@@ -72,6 +73,7 @@ describe("Organization Router Procedures", () => {
       expect(result.name).toBe("Test Organization");
       expect(result.logoUrl).toBe("https://example.com/logo.png");
       expect(result.brandColor).toBe("#FF5733");
+      expect(result.timeZone).toBe("America/New_York");
       expect(result.invoicePrefix).toBe("INV");
       expect(result.invoiceNextNumber).toBe(100);
       expect(result.taskTimeInterval).toBe(15);
@@ -85,6 +87,7 @@ describe("Organization Router Procedures", () => {
           slug: true,
           logoUrl: true,
           brandColor: true,
+          timeZone: true,
           invoicePrefix: true,
           invoiceNextNumber: true,
           taskTimeInterval: true,
@@ -177,6 +180,46 @@ describe("Organization Router Procedures", () => {
       try {
         await caller.update({
           brandColor: "invalid-color",
+        });
+        expect.fail("Should have thrown a validation error");
+      } catch (err: any) {
+        expect(err.code).toMatch(/BAD_REQUEST|PARSE_ERROR/);
+      }
+    });
+
+    it("updates organization timeZone", async () => {
+      ctx.db.organization.update.mockResolvedValue({
+        id: "test-org-123",
+        name: "Test Organization",
+        slug: "test-org",
+        logoUrl: null,
+        brandColor: "#FF5733",
+        timeZone: "America/Los_Angeles",
+        invoicePrefix: "INV",
+        invoiceNextNumber: 100,
+        taskTimeInterval: 15,
+        defaultPaymentTermsDays: 30,
+        paymentReminderDays: [3, 7, 14],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      mockUpdateDeps();
+
+      const result = await caller.update({
+        timeZone: "America/Los_Angeles",
+      });
+
+      expect(result.timeZone).toBe("America/Los_Angeles");
+      expect(ctx.db.organization.update).toHaveBeenCalledWith({
+        where: { id: "test-org-123" },
+        data: { timeZone: "America/Los_Angeles" },
+      });
+    });
+
+    it("rejects invalid organization timeZone values", async () => {
+      try {
+        await caller.update({
+          timeZone: "Eastern",
         });
         expect.fail("Should have thrown a validation error");
       } catch (err: any) {
@@ -297,3 +340,4 @@ describe("Organization Router Procedures", () => {
     });
   });
 });
+
