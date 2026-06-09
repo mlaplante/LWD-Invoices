@@ -32,12 +32,42 @@ describe("suggestFromHistory", () => {
   });
 });
 
-import { groundAiCategory, type OrgCategory } from "@/server/services/expense-categorization";
+import { suggestCategorization, groundAiCategory, type OrgCategory } from "@/server/services/expense-categorization";
 
 const cats: OrgCategory[] = [
   { id: "cat-software", name: "Software" },
   { id: "cat-travel", name: "Travel" },
 ];
+
+describe("suggestCategorization", () => {
+  it("returns null when supplier history rows all have categoryId: null (falls through to AI which returns null without GEMINI_API_KEY)", async () => {
+    const result = await suggestCategorization({
+      supplierId: "s1",
+      supplierName: "X",
+      expenseName: "Y",
+      history: [{ supplierId: "s1", categoryId: null, taxId: "t1", reimbursable: true, projectId: null }],
+      categories: [],
+    });
+    expect(result).toBeNull();
+  });
+
+  it("returns a history suggestion with the correct categoryId and source='history' when a real majority category exists", async () => {
+    const result = await suggestCategorization({
+      supplierId: "s1",
+      supplierName: "X",
+      expenseName: "Y",
+      history: [
+        { supplierId: "s1", categoryId: "cat-software", taxId: "t1", reimbursable: false, projectId: null },
+        { supplierId: "s1", categoryId: "cat-software", taxId: "t1", reimbursable: false, projectId: null },
+        { supplierId: "s1", categoryId: "cat-travel", taxId: null, reimbursable: true, projectId: null },
+      ],
+      categories: [],
+    });
+    expect(result).not.toBeNull();
+    expect(result!.categoryId).toBe("cat-software");
+    expect(result!.source).toBe("history");
+  });
+});
 
 describe("groundAiCategory", () => {
   it("keeps an AI category id that exists", () => {

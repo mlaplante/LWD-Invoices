@@ -153,7 +153,7 @@ export async function suggestCategorization(
   input: SuggestCategorizationInput,
 ): Promise<CategorizationSuggestion | null> {
   const fromHistory = suggestFromHistory(input.supplierId, input.history);
-  if (fromHistory) return fromHistory;
+  if (fromHistory && fromHistory.categoryId !== null) return fromHistory;
   return classifyWithAi(
     { supplierName: input.supplierName, expenseName: input.expenseName, description: input.description },
     input.categories,
