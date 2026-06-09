@@ -93,7 +93,7 @@ export default async function UtilizationReportPage({
           {VALID_GROUP_BY.map((g) => (
             <Link
               key={g}
-              href={buildHref("/reports/utilization", params, { groupBy: g })}
+              href={buildHref("/reports/utilization", params, { groupBy: g, dimension })}
               className={`rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors ${
                 groupBy === g
                   ? "bg-primary text-primary-foreground"
@@ -110,7 +110,7 @@ export default async function UtilizationReportPage({
           {VALID_DIMENSION.map((d) => (
             <Link
               key={d}
-              href={buildHref("/reports/utilization", params, { dimension: d })}
+              href={buildHref("/reports/utilization", params, { dimension: d, groupBy })}
               className={`rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors ${
                 dimension === d
                   ? "bg-primary text-primary-foreground"
