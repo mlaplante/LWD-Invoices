@@ -161,8 +161,8 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
       )}
 
       {clientId && (
-        <div>
-          <label className="text-sm font-medium">Log against</label>
+        <fieldset>
+          <legend className="text-sm font-medium mb-1">Log against</legend>
           <div className="mt-1 flex gap-1 rounded-lg border border-border p-1 w-fit">
             <button
               type="button"
@@ -187,17 +187,17 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
               Retainer
             </button>
           </div>
-        </div>
+        </fieldset>
       )}
 
       {mode === "retainer" && clientId && (
         <div>
-          <label className="text-sm font-medium">Retainer</label>
+          <label htmlFor="te-retainer" className="text-sm font-medium">Retainer</label>
           <Select
             value={retainerId || "none"}
             onValueChange={(v) => setRetainerId(v === "none" ? "" : v)}
           >
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="te-retainer" className="mt-1">
               <SelectValue placeholder="Select a retainer" />
             </SelectTrigger>
             <SelectContent>
@@ -223,8 +223,9 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium">Date</label>
+          <label htmlFor="te-date" className="text-sm font-medium">Date</label>
           <Input
+            id="te-date"
             type="date"
             value={form.date}
             onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
@@ -234,12 +235,12 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
         </div>
 
         <div>
-          <label className="text-sm font-medium">Task (optional)</label>
+          <label htmlFor="te-task" className="text-sm font-medium">Task (optional)</label>
           <Select
             value={form.taskId || "none"}
             onValueChange={(v) => setForm((p) => ({ ...p, taskId: v === "none" ? "" : v }))}
           >
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="te-task" className="mt-1">
               <SelectValue placeholder="No task" />
             </SelectTrigger>
             <SelectContent>
@@ -256,7 +257,7 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
 
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <label className="text-sm font-medium">Time</label>
+          <label htmlFor="te-time" className="text-sm font-medium">Time</label>
           <label className="flex items-center gap-1 text-xs text-muted-foreground">
             <input
               type="checkbox"
@@ -270,8 +271,9 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
         {useTimeRange ? (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-muted-foreground">Start</label>
+              <label htmlFor="te-start" className="text-xs text-muted-foreground">Start</label>
               <Input
+                id="te-start"
                 type="time"
                 value={form.startTime}
                 onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
@@ -280,8 +282,9 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">End</label>
+              <label htmlFor="te-end" className="text-xs text-muted-foreground">End</label>
               <Input
+                id="te-end"
                 type="time"
                 value={form.endTime}
                 onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
@@ -292,6 +295,7 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
           </div>
         ) : (
           <Input
+            id="te-time"
             type="number"
             min="1"
             step="1"
@@ -304,8 +308,9 @@ export function TimeEntryForm({ projectId, tasks, clientId, onSuccess }: Props) 
       </div>
 
       <div>
-        <label className="text-sm font-medium">Note (optional)</label>
+        <label htmlFor="te-note" className="text-sm font-medium">Note (optional)</label>
         <Textarea
+          id="te-note"
           value={form.note}
           onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
           placeholder="What did you work on?"
