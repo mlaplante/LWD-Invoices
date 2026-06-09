@@ -6,7 +6,10 @@ import { ReportHeader } from "@/components/reports/ReportHeader";
 import type { RetainerBurndown } from "@/server/services/retainer-burndown";
 
 function fmtDate(d: string): string {
+  // projectedDepletionDate is a UTC calendar date ("YYYY-MM-DD"); pin to UTC so
+  // it doesn't render a day early in non-UTC runtimes.
   return new Date(d).toLocaleDateString("en-US", {
+    timeZone: "UTC",
     month: "short",
     day: "numeric",
     year: "numeric",
