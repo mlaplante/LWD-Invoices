@@ -1,8 +1,15 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
-import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Wallet } from "lucide-react";
+import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Wallet, Activity } from "lucide-react";
 
 const reports = [
+  {
+    href: "/reports/project-health",
+    label: "Project Health",
+    description: "Composite health per project from budget, tasks, unbilled time, and invoices.",
+    icon: <Activity className="w-4 h-4" />,
+    color: "bg-rose-50 text-rose-600",
+  },
   {
     href: "/reports/client-health",
     label: "Client Health",

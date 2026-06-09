@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TaskList } from "@/components/projects/TaskList";
+import { ProjectHealthBadge } from "@/components/projects/ProjectHealthBadge";
 import { TimeTab } from "@/components/projects/TimeTab";
 import { ExpensesTab } from "@/components/projects/ExpensesTab";
 import { AttachmentPanel } from "@/components/attachments/AttachmentPanel";
@@ -89,6 +90,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
             >
               {badge.label}
             </span>
+            <ProjectHealthBadge projectId={id} />
           </div>
           {project.description && (
             <p className="mt-1.5 text-sm text-muted-foreground max-w-xl leading-relaxed">
