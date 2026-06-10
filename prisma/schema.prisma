@@ -266,6 +266,11 @@ model Organization {
   // Payer's federal Tax ID (EIN/SSN), printed in the PAYER block of generated
   // 1099-NEC forms. Stored as entered; surfaced only to org admins.
   payerTin            String?
+  // ─── Mileage Tracking ───────────────────────────────────────────────────────
+  // Default deduction/reimbursement rate per mile. Snapshotted onto each
+  // MileageEntry at creation so changing the rate doesn't rewrite history.
+  // Default mirrors the 2025 IRS standard business rate ($0.70/mile).
+  mileageRatePerMile  Decimal  @default(0.70) @db.Decimal(10, 4)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
@@ -291,7 +296,9 @@ model Organization {
   expenses                Expense[]
   expenseCategories       ExpenseCategory[]
   expenseSuppliers        ExpenseSupplier[]
+  expenseBudgets          ExpenseBudget[]
   recurringExpenses       RecurringExpense[]
+  mileageEntries          MileageEntry[]
   contractors             Contractor[]
   contractorPayments      ContractorPayment[]
   recurringInvoices       RecurringInvoice[]
@@ -535,6 +542,15 @@ model Invoice {
   lastSent   DateTime?
   lastViewed DateTime?
 
+  // ─── Scheduled sending ───────────────────────────────────────────────────
+  // When set, the scheduled-invoice-sends cron emails this invoice at (or
+  // shortly after) this instant and clears the field. Typically derived from
+  // the client's best-send-window recommendation, but any future time works.
+  // scheduledSendCc snapshots the per-send CC override chosen at scheduling
+  // time (empty array = fall back to client.ccEmails at send time).
+  scheduledSendAt DateTime?
+  scheduledSendCc String[]  @default([])
+
   // Cached totals (recalculated on every save)
   subtotal      Decimal @default(0) @db.Decimal(20, 10)
   discountTotal Decimal @default(0) @db.Decimal(20, 10)
@@ -625,6 +641,7 @@ model Invoice {
   @@index([organizationId, isArchived])
   @@index([organizationId, dueDate])
   @@index([organizationId, projectId])
+  @@index([scheduledSendAt])
 }
 
 model InvoiceLine {
@@ -861,6 +878,7 @@ model Project {
   timeEntries         TimeEntry[]
   expenses            Expense[]
   recurringExpenses   RecurringExpense[] @relation("RecurringExpenseProject")
+  mileageEntries      MileageEntry[]
   invoices            Invoice[]
   discussions         Discussion[]
   checkIns            ClientCheckIn[]
@@ -999,8 +1017,31 @@ model ExpenseCategory {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   expenses             Expense[]
   recurringExpenses    RecurringExpense[] @relation("RecurringExpenseCategory")
+  budgets              ExpenseBudget[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ─── Expense Budgets ─────────────────────────────────────────────────────────
+
+// Monthly spending target, compared against actual expense totals on the
+// Money Intelligence hub. One row per category, plus at most one org-wide row
+// with categoryId = NULL (Postgres unique indexes treat NULLs as distinct, so
+// the org-wide row is deduplicated in application code, not by the index).
+model ExpenseBudget {
+  id            String  @id @default(cuid())
+  monthlyAmount Decimal @db.Decimal(20, 10)
+
+  categoryId String?
+  category   ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, categoryId])
 }
 
 model ExpenseSupplier {
@@ -1085,6 +1126,34 @@ model RecurringExpense {
 
   @@index([organizationId])
   @@index([isActive, nextRunAt])
+}
+
+// ─── Mileage Tracking ────────────────────────────────────────────────────────
+
+// A single business trip. ratePerMile is snapshotted from the org's
+// mileageRatePerMile at creation (overridable per entry) so the deduction
+// value of past trips is stable when the org updates its rate.
+model MileageEntry {
+  id           String   @id @default(cuid())
+  date         DateTime @default(now())
+  miles        Decimal  @db.Decimal(10, 2)
+  ratePerMile  Decimal  @db.Decimal(10, 4)
+  description  String?
+  fromLocation String?
+  toLocation   String?
+  roundTrip    Boolean  @default(false)
+  billable     Boolean  @default(false)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, date])
 }
 
 // ─── 1099 / Contractor Tax Pack ───────────────────────────────────────────────

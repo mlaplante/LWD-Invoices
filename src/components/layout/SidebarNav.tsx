@@ -23,6 +23,7 @@ import {
   Activity,
   Banknote,
   TrendingUp,
+  Car,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,6 +42,7 @@ const primaryNav: NavItem[] = [
   { href: "/timesheets", label: "Timesheets", icon: Clock },
   { href: "/items", label: "Items", icon: Package },
   { href: "/expenses", label: "Expenses", icon: Wallet },
+  { href: "/mileage", label: "Mileage", icon: Car },
   { href: "/contractors", label: "Contractors", icon: Contact },
 ];
 

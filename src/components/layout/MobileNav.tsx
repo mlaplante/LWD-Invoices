@@ -25,6 +25,7 @@ import {
   Activity,
   Banknote,
   TrendingUp,
+  Car,
   Plus,
   Send,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const moreItems = [
   { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/timesheets", label: "Timesheets", icon: Clock },
   { href: "/items", label: "Items", icon: Package },
+  { href: "/mileage", label: "Mileage", icon: Car },
   { href: "/contractors", label: "Contractors", icon: Contact },
   { href: "/assistant", label: "Ask AI", icon: Sparkles },
   { href: "/activity", label: "Activity", icon: Activity },

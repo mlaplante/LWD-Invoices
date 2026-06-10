@@ -25,7 +25,8 @@ import {
   buildCollectionRiskInputs,
   buildSendObservations,
 } from "@/server/services/analytics-data";
-import { recommendSendWindow } from "@/server/services/send-timing";
+import { recommendSendWindow, nextSendWindowOccurrence } from "@/server/services/send-timing";
+import { computeBudgetVsActual } from "@/server/services/expense-budgets";
 import { getBenchmarksForOrg } from "@/server/services/benchmarking-data";
 
 export const analyticsRouter = router({
@@ -255,14 +256,75 @@ export const analyticsRouter = router({
         where: { id: ctx.orgId },
         select: { timeZone: true },
       });
+      const timeZone = org?.timeZone ?? "UTC";
       const observations = await buildSendObservations(
         ctx.db,
         ctx.orgId,
         input.clientId,
-        org?.timeZone ?? "UTC",
+        timeZone,
       );
-      return recommendSendWindow(observations);
+      const recommendation = recommendSendWindow(observations);
+      // Concrete future instant for the recommendation so the send dialog can
+      // schedule it in one click instead of asking the user to come back.
+      return {
+        ...recommendation,
+        nextOccurrence: nextSendWindowOccurrence(recommendation, timeZone).toISOString(),
+        timeZone,
+      };
     }),
+
+  // Monthly expense budgets vs. month-to-date actuals (plus a straight-line
+  // month-end projection) for the Money Intelligence hub. "Actual" buckets
+  // each expense by paidAt ?? dueDate ?? createdAt.
+  expenseBudgetVsActual: protectedProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const priorMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const window = { gte: priorMonthStart, lt: nextMonthStart };
+
+    const [budgets, expenses] = await Promise.all([
+      ctx.db.expenseBudget.findMany({
+        where: { organizationId: ctx.orgId },
+        include: { category: { select: { name: true } } },
+      }),
+      ctx.db.expense.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          OR: [
+            { paidAt: window },
+            { paidAt: null, dueDate: window },
+            { paidAt: null, dueDate: null, createdAt: window },
+          ],
+        },
+        select: {
+          categoryId: true,
+          qty: true,
+          rate: true,
+          paidAt: true,
+          dueDate: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    const result = computeBudgetVsActual(
+      budgets.map((b) => ({
+        id: b.id,
+        categoryId: b.categoryId,
+        categoryName: b.category?.name ?? null,
+        monthlyAmount: Number(b.monthlyAmount),
+      })),
+      expenses.map((e) => ({
+        categoryId: e.categoryId,
+        amount: e.qty * Number(e.rate),
+        date: e.paidAt ?? e.dueDate ?? e.createdAt,
+      })),
+      now,
+    );
+
+    return { generatedAt: now.toISOString(), monthStart: monthStart.toISOString(), ...result };
+  }),
 
   // Live preview of the weekly business briefing (same payload the Monday cron
   // emails) — powers the settings preview + the in-app briefing surface.

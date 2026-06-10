@@ -109,6 +109,102 @@ function defaultRecommendation(sampleSize: number): SendWindowRecommendation {
   };
 }
 
+// Concrete local hour used when turning a coarse time-of-day recommendation
+// into a schedulable instant: mid-window, biased early so the email lands
+// before the recipient's inbox sweep rather than after it.
+export const TIME_OF_DAY_HOUR: Record<TimeOfDay, number> = {
+  morning: 9,
+  afternoon: 14,
+  evening: 18,
+};
+
+/** Minutes east of UTC for a zone at a given instant, via Intl (no dependency). */
+function timeZoneOffsetMinutes(ts: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(ts));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const asUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour") % 24,
+    get("minute"),
+    get("second"),
+  );
+  return (asUtc - ts) / 60_000;
+}
+
+/** UTC instant corresponding to a wall-clock date+hour in a zone. */
+function zonedDateTimeToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  timeZone: string,
+): Date {
+  const guess = Date.UTC(year, month - 1, day, hour);
+  // Two passes converge across DST transitions near the guess.
+  let ts = guess - timeZoneOffsetMinutes(guess, timeZone) * 60_000;
+  ts = guess - timeZoneOffsetMinutes(ts, timeZone) * 60_000;
+  return new Date(ts);
+}
+
+/**
+ * The next future instant matching a send-window recommendation, in the org's
+ * time zone — e.g. "Tuesday morning" → next Tuesday 9:00 AM org-local, as UTC.
+ * If today is the recommended weekday but the window hour has already passed,
+ * rolls to the following week. Pure (takes `from`) so it's unit-testable.
+ */
+export function nextSendWindowOccurrence(
+  recommendation: Pick<SendWindowRecommendation, "weekday" | "timeOfDay">,
+  timeZone: string,
+  from: Date = new Date(),
+): Date {
+  const hour = TIME_OF_DAY_HOUR[recommendation.timeOfDay];
+
+  // Today's date + weekday as seen in the org's zone.
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(from);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const weekdayIndex: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  const todayWeekday = weekdayIndex[get("weekday")] ?? 0;
+  const year = Number(get("year"));
+  const month = Number(get("month"));
+  const day = Number(get("day"));
+
+  for (let offset = 0; offset <= 7; offset++) {
+    if ((todayWeekday + offset) % 7 !== recommendation.weekday) continue;
+    // Normalize day-of-month arithmetic through Date.UTC so month/year roll over.
+    const candidateYmd = new Date(Date.UTC(year, month - 1, day + offset));
+    const candidate = zonedDateTimeToUtc(
+      candidateYmd.getUTCFullYear(),
+      candidateYmd.getUTCMonth() + 1,
+      candidateYmd.getUTCDate(),
+      hour,
+      timeZone,
+    );
+    // Skip a same-day window that already passed (or is < 1 min away).
+    if (candidate.getTime() > from.getTime() + 60_000) return candidate;
+  }
+  // Unreachable: an 8-day scan always contains a strictly-future occurrence.
+  return zonedDateTimeToUtc(year, month, day + 7, hour, timeZone);
+}
+
 export function recommendSendWindow(
   observations: SendObservation[],
   options: RecommendSendWindowOptions = {},

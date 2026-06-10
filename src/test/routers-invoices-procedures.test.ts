@@ -982,7 +982,13 @@ describe("Invoices Router Procedures", () => {
       expect(result.status).toBe(InvoiceStatus.SENT);
       expect(ctx.db.invoice.update).toHaveBeenCalledWith({
         where: { id: "inv_123", organizationId: "test-org-123" },
-        data: { status: InvoiceStatus.SENT, lastSent: expect.any(Date) },
+        data: {
+          status: InvoiceStatus.SENT,
+          lastSent: expect.any(Date),
+          // Sending consumes any pending scheduled send.
+          scheduledSendAt: null,
+          scheduledSendCc: [],
+        },
       });
     });
 
