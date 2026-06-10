@@ -1225,6 +1225,7 @@ export const invoicesRouter = router({
         cc: invoice.client.ccEmails ?? [],
         subject: `Invoice #${invoice.number} from ${invoice.organization.name}`,
         html,
+        scheduledSendAt: invoice.scheduledSendAt,
       };
     }),
 
@@ -1238,57 +1239,86 @@ export const invoicesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const { deliverInvoice } = await import("@/server/services/invoice-send");
+      const updated = await deliverInvoice(ctx.db, input.id, ctx.orgId, {
+        cc: input.cc,
+        userId: ctx.userId,
+      });
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      return updated;
+    }),
+
+  // Queue the invoice to be emailed at a future instant by the
+  // scheduled-invoice-sends cron — typically the client's best-send-window
+  // recommendation, but any future time works.
+  scheduleSend: requireRole("OWNER", "ADMIN")
+    .input(
+      z.object({
+        id: z.string(),
+        sendAt: z.coerce.date(),
+        cc: z.array(z.string().email()).max(10).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
-        include: emailInvoiceInclude,
+        select: { number: true, isArchived: true, client: { select: { email: true } } },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
-
-      const newStatus =
-        invoice.type === InvoiceType.ESTIMATE ? invoice.status : InvoiceStatus.SENT;
+      if (invoice.isArchived) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot schedule an archived invoice." });
+      }
+      if (!invoice.client.email) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This client has no email address, so the scheduled send would fail.",
+        });
+      }
+      const now = Date.now();
+      if (input.sendAt.getTime() <= now) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Scheduled time must be in the future." });
+      }
+      if (input.sendAt.getTime() > now + 90 * 24 * 60 * 60 * 1000) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Scheduled time must be within 90 days." });
+      }
 
       const updated = await ctx.db.invoice.update({
         where: { id: input.id, organizationId: ctx.orgId },
-        data: { status: newStatus, lastSent: new Date() },
+        data: { scheduledSendAt: input.sendAt, scheduledSendCc: input.cc ?? [] },
       });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Invoice",
+        entityId: input.id,
+        entityLabel: invoice.number,
+        diff: { scheduledSendAt: input.sendAt.toISOString() },
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return updated;
+    }),
 
-      const appUrl = await getAppUrl();
-
-      try {
-        const { sendInvoiceSentEmail } = await import("@/server/services/invoice-sent-email");
-        await sendInvoiceSentEmail(invoice, appUrl, input.cc);
-      } catch (err) {
-        console.error("[invoices.send] Failed to send invoice email:", err);
-      }
-
-      await Promise.all([
-        logAudit({
-          action: "SENT",
-          entityType: "Invoice",
-          entityId: invoice.id,
-          entityLabel: invoice.number,
-          organizationId: invoice.organization.id,
-          userId: ctx.userId,
-        }).catch(() => {}),
-        notifyOrgAdmins(invoice.organization.id, {
-          type: "INVOICE_SENT",
-          title: "Invoice sent",
-          body: `Invoice #${invoice.number} sent to ${invoice.client.name}`,
-          link: `/invoices/${invoice.id}`,
-        }).catch(() => {}),
-      ]);
-
-      // Fire automation event for invoice sent
-      try {
-        const { inngest: inngestClient } = await import("@/inngest/client");
-        await inngestClient.send({
-          name: "invoice/sent",
-          data: { invoiceId: invoice.id, trigger: "INVOICE_SENT" },
-        });
-      } catch {
-        // Non-fatal
-      }
-
+  cancelScheduledSend: requireRole("OWNER", "ADMIN")
+    .input(idInput)
+    .mutation(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findUnique({
+        where: { id: input.id, organizationId: ctx.orgId },
+        select: { number: true },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+      const updated = await ctx.db.invoice.update({
+        where: { id: input.id, organizationId: ctx.orgId },
+        data: { scheduledSendAt: null, scheduledSendCc: [] },
+      });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Invoice",
+        entityId: input.id,
+        entityLabel: invoice.number,
+        diff: { scheduledSendAt: null },
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
       return updated;
     }),
 

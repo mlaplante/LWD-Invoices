@@ -19,6 +19,8 @@ import { timersRouter } from "./timers";
 import { expensesRouter } from "./expenses";
 import { expenseCategoriesRouter } from "./expenseCategories";
 import { expenseSuppliersRouter } from "./expenseSuppliers";
+import { expenseBudgetsRouter } from "./expenseBudgets";
+import { mileageRouter } from "./mileage";
 import { timesheetsRouter } from "./timesheets";
 import { recurringInvoicesRouter } from "./recurringInvoices";
 import { reportsRouter } from "./reports";
@@ -88,6 +90,8 @@ export const appRouter = router({
   expenses: expensesRouter,
   expenseCategories: expenseCategoriesRouter,
   expenseSuppliers: expenseSuppliersRouter,
+  expenseBudgets: expenseBudgetsRouter,
+  mileage: mileageRouter,
   timesheets: timesheetsRouter,
   recurringInvoices: recurringInvoicesRouter,
   reports: reportsRouter,
