@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
-import { isSessionExpired } from "@/server/services/portal-dashboard";
+import {
+  dashboardSessionCookieName,
+  getDashboardSession,
+} from "@/server/services/portal-dashboard";
 import { cookies } from "next/headers";
 import {
   generateClientStatementPDF,
@@ -17,19 +20,16 @@ export async function GET(
   // Verify session cookie
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(
-    `portal_dashboard_${clientToken}`
+    dashboardSessionCookieName(clientToken)
   )?.value;
 
   if (!sessionToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const session = await db.clientPortalSession.findUnique({
-    where: { token: sessionToken },
-    select: { expiresAt: true, clientId: true },
-  });
+  const session = await getDashboardSession(db, sessionToken);
 
-  if (!session || isSessionExpired(session.expiresAt)) {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

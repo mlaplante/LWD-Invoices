@@ -80,7 +80,9 @@ export const projectTemplatesRouter = router({
 
       return ctx.db.$transaction(async (tx) => {
         if (tasks !== undefined) {
-          await tx.projectTemplateTask.deleteMany({ where: { templateId: id } });
+          await tx.projectTemplateTask.deleteMany({
+            where: { templateId: id, template: { organizationId: ctx.orgId } },
+          });
         }
 
         return tx.projectTemplate.update({

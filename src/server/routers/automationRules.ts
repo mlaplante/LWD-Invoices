@@ -133,8 +133,12 @@ export const automationRulesRouter = router({
       // Replace conditions/actions wholesale — simplest correct semantics for a
       // builder that submits the full rule on each save.
       return ctx.db.$transaction(async (tx) => {
-        await tx.automationCondition.deleteMany({ where: { ruleId: input.id } });
-        await tx.automationAction.deleteMany({ where: { ruleId: input.id } });
+        await tx.automationCondition.deleteMany({
+          where: { ruleId: input.id, rule: { organizationId: ctx.orgId } },
+        });
+        await tx.automationAction.deleteMany({
+          where: { ruleId: input.id, rule: { organizationId: ctx.orgId } },
+        });
         return tx.automationRule.update({
           where: { id: input.id, organizationId: ctx.orgId },
           data: {

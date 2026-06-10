@@ -31,6 +31,33 @@ export function interpolateTemplate(template: string, vars: TemplateVariables): 
   });
 }
 
+/** Minimal HTML entity escaping for text destined for an HTML email body. */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Render a user-authored plain-text template ({{ var }} placeholders, no HTML)
+ * as a safe HTML email body. The template text is fully escaped — admins type
+ * plain text in the builder UIs, so any markup in the stored body is treated
+ * as content, never as HTML — then URLs (e.g. the interpolated payment link)
+ * are made clickable and newlines become <br>.
+ */
+export function renderTemplateHtml(template: string, vars: TemplateVariables): string {
+  const escaped = escapeHtml(interpolateTemplate(template, vars));
+  const linked = escaped.replace(
+    /https?:\/\/[^\s<]+/g,
+    (url) => `<a href="${url}">${url}</a>`,
+  );
+  const withBreaks = linked.replace(/\r?\n/g, "<br>");
+  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;line-height:1.5">${withBreaks}</div>`;
+}
+
 export interface BuildTemplateVariablesParams {
   clientName: string;
   invoiceNumber: string;

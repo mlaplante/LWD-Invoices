@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { sendEmail } from "@/server/services/email-sender";
 import {
   interpolateTemplate,
+  renderTemplateHtml,
   buildTemplateVariables,
 } from "@/server/services/automation-template";
 import { isReliablePayer } from "@/server/services/client-payment-score";
@@ -215,14 +216,16 @@ export const processReminderSequences = inngest.createFunction(
         });
 
         const subject = interpolateTemplate(fullStep.subject, vars);
-        const body = interpolateTemplate(fullStep.body, vars);
+        // Escaped render: step bodies are admin-authored plain text and must
+        // never be interpreted as raw HTML in the outgoing email.
+        const html = renderTemplateHtml(fullStep.body, vars);
 
         await sendEmail({
           organizationId: invoice.organizationId,
           invoiceId: invoice.id,
           to: invoice.client.email,
           subject,
-          html: body,
+          html,
         });
 
         // Log the send to prevent double-sends

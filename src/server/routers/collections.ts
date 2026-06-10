@@ -6,6 +6,7 @@ import { getClientPaymentBehaviorSummary } from "@/server/services/client-paymen
 import { sendEmail } from "@/server/services/email-sender";
 import { InvoiceStatus } from "@/generated/prisma";
 import { scoreCollectionRisk, rankCollectionsQueue } from "@/server/services/collection-risk";
+import { escapeHtml } from "@/server/services/automation-template";
 
 // Built-in fallback reminder template. The smart drafter (Gemini-first) rephrases
 // it per the selected tone and runs the fact guard; if AI is unavailable it
@@ -22,13 +23,6 @@ const DEFAULT_TEMPLATE = {
     "{{orgName}}",
   ].join("\n"),
 };
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
 
 export const collectionsRouter = router({
   /**

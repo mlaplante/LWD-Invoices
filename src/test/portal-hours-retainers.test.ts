@@ -1,4 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+
+// Dashboard-scoped portal procedures require the session cookie issued by the
+// passphrase gate; simulate a browser presenting it.
+const cookieGet = vi.fn();
+vi.mock("next/headers", () => ({
+  cookies: vi.fn().mockImplementation(async () => ({ get: cookieGet, set: vi.fn() })),
+}));
+
 import { portalRouter } from "@/server/routers/portal";
 import { createMockContext } from "./mocks/trpc-context";
 import { Prisma } from "@/generated/prisma";
@@ -8,14 +16,50 @@ describe("portal.listHoursRetainers", () => {
   let caller: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     ctx = createMockContext();
     caller = portalRouter.createCaller(ctx);
+    cookieGet.mockReturnValue({ value: "session-token" });
+    ctx.db.clientPortalSession.findUnique.mockResolvedValue({
+      clientId: "client_1",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
   });
 
   it("throws NOT_FOUND for invalid token", async () => {
     ctx.db.client.findUnique.mockResolvedValue(null);
     await expect(caller.listHoursRetainers({ clientToken: "bad" })).rejects.toMatchObject({
       code: "NOT_FOUND",
+    });
+  });
+
+  it("throws UNAUTHORIZED without a valid dashboard session", async () => {
+    ctx.db.client.findUnique.mockResolvedValue({ id: "client_1" });
+    cookieGet.mockReturnValue(undefined);
+    await expect(caller.listHoursRetainers({ clientToken: "tok" })).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
+  it("throws UNAUTHORIZED when the session belongs to a different client", async () => {
+    ctx.db.client.findUnique.mockResolvedValue({ id: "client_1" });
+    ctx.db.clientPortalSession.findUnique.mockResolvedValue({
+      clientId: "someone_else",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    await expect(caller.listHoursRetainers({ clientToken: "tok" })).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
+  it("throws UNAUTHORIZED when the session has expired", async () => {
+    ctx.db.client.findUnique.mockResolvedValue({ id: "client_1" });
+    ctx.db.clientPortalSession.findUnique.mockResolvedValue({
+      clientId: "client_1",
+      expiresAt: new Date(Date.now() - 1),
+    });
+    await expect(caller.listHoursRetainers({ clientToken: "tok" })).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
     });
   });
 

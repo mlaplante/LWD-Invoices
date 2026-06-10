@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import {
-  generateSessionToken,
+  createDashboardSession,
+  dashboardSessionCookieName,
+  dashboardSessionCookieOptions,
   SESSION_DURATION_MS,
 } from "@/server/services/portal-dashboard";
 import {
@@ -64,28 +66,19 @@ export async function POST(
 
   lockout.reset(clientToken);
 
-  const sessionToken = generateSessionToken();
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-
-  await db.clientPortalSession.create({
-    data: {
-      token: sessionToken,
-      expiresAt,
-      clientId: client.id,
-      userAgent: req.headers.get("user-agent") ?? undefined,
-      ipAddress:
-        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined,
-    },
+  const { sessionToken } = await createDashboardSession(db, {
+    clientId: client.id,
+    userAgent: req.headers.get("user-agent") ?? undefined,
+    ipAddress:
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined,
   });
 
   const cookieStore = await cookies();
-  cookieStore.set(`portal_dashboard_${clientToken}`, sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: Math.floor(SESSION_DURATION_MS / 1000),
-    path: `/portal/dashboard/${clientToken}`,
-  });
+  cookieStore.set(
+    dashboardSessionCookieName(clientToken),
+    sessionToken,
+    dashboardSessionCookieOptions(Math.floor(SESSION_DURATION_MS / 1000)),
+  );
 
   return NextResponse.json({ ok: true });
 }

@@ -1,13 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as "email" | "magiclink" | null;
-  const rawNext = searchParams.get("next") ?? "/";
-  // Prevent open redirect: only allow relative paths, not protocol-relative URLs
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  // Prevent open redirect: only allow same-origin relative paths
+  const next = safeRedirectPath(searchParams.get("next"));
 
   if (!tokenHash || !type) {
     return NextResponse.redirect(`${origin}/sign-in?error=missing_token`);

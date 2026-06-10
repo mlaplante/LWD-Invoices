@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { sendEmail } from "@/server/services/email-sender";
 import {
   interpolateTemplate,
+  renderTemplateHtml,
   buildTemplateVariables,
 } from "@/server/services/automation-template";
 import type { EmailAutomationTrigger } from "@/generated/prisma";
@@ -163,14 +164,16 @@ export const processEmailAutomations = inngest.createFunction(
           automation.templateSubject,
           vars,
         );
-        const body = interpolateTemplate(automation.templateBody, vars);
+        // Escaped render: template bodies are admin-authored plain text and
+        // must never be interpreted as raw HTML in the outgoing email.
+        const html = renderTemplateHtml(automation.templateBody, vars);
 
         try {
           await sendEmail({
             organizationId: invoice.organizationId,
             to: invoice.client.email,
             subject,
-            html: body,
+            html,
           });
 
           await db.emailAutomationLog.create({
