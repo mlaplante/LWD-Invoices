@@ -731,7 +731,9 @@ export const invoicesRouter = router({
         let updated;
 
         if (lines !== undefined && resolved) {
-          await tx.invoiceLine.deleteMany({ where: { invoiceId: id } });
+          await tx.invoiceLine.deleteMany({
+            where: { invoiceId: id, invoice: { organizationId: ctx.orgId } },
+          });
 
           updated = await tx.invoice.update({
             where: { id, organizationId: ctx.orgId },
@@ -781,7 +783,7 @@ export const invoicesRouter = router({
 
         if (partialPayments !== undefined) {
           await tx.partialPayment.deleteMany({
-            where: { invoiceId: id, isPaid: false },
+            where: { invoiceId: id, isPaid: false, organizationId: ctx.orgId },
           });
           if (partialPayments.length > 0) {
             await tx.partialPayment.createMany({

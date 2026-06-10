@@ -2,23 +2,22 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../trpc";
 import { sendEmail } from "@/server/services/email-sender";
-import { GatewayType, InvoiceStatus, InvoiceType, ProjectStatus } from "@/generated/prisma";
+import { GatewayType, InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { decryptJson } from "../services/encryption";
 import { getStripeClient, createCheckoutSession } from "../services/stripe";
 import { resolvePartialPaymentAmount } from "../services/partial-payments";
 import type { StripeConfig } from "../services/gateway-config";
 import {
-  generateSessionToken,
-  SESSION_DURATION_MS,
-  isSessionExpired,
+  dashboardSessionCookieName,
+  getDashboardSession,
 } from "../services/portal-dashboard";
+import { cookies } from "next/headers";
 import {
   hashDocument,
   hashSignature,
   validateSignatureData,
   encryptSignature,
 } from "../services/signature";
-import bcrypt from "bcryptjs";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.SENT,
@@ -68,6 +67,31 @@ async function getInvoiceByToken(db: typeof import("../db").db, token: string) {
   });
   if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
   return invoice;
+}
+
+/**
+ * Guard for dashboard-scoped portal procedures: the caller must present a
+ * valid dashboard session cookie (issued by the passphrase gate at
+ * /api/portal/dashboard/[clientToken]/auth) — the portal link token alone
+ * must not expose saved cards or retainer data when a passphrase is set.
+ */
+async function requireDashboardSession(
+  db: typeof import("../db").db,
+  clientToken: string,
+) {
+  const client = await db.client.findUnique({
+    where: { portalToken: clientToken },
+    select: { id: true, organizationId: true, stripeCustomerId: true },
+  });
+  if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+
+  const cookieStore = await cookies();
+  const presented = cookieStore.get(dashboardSessionCookieName(clientToken))?.value;
+  const session = presented ? await getDashboardSession(db, presented) : null;
+  if (!session || session.clientId !== client.id) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return client;
 }
 
 export const portalRouter = router({
@@ -286,142 +310,10 @@ export const portalRouter = router({
       return comment;
     }),
 
-  createDashboardSession: publicProcedure
-    .input(
-      z.object({
-        clientToken: z.string(),
-        passphrase: z.string().optional(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const client = await ctx.db.client.findUnique({
-        where: { portalToken: input.clientToken },
-        select: { id: true, portalPassphraseHash: true },
-      });
-      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
-
-      if (client.portalPassphraseHash) {
-        const valid = await bcrypt.compare(
-          input.passphrase ?? "",
-          client.portalPassphraseHash,
-        );
-        if (!valid) throw new TRPCError({ code: "UNAUTHORIZED" });
-      }
-
-      const token = generateSessionToken();
-      await ctx.db.clientPortalSession.create({
-        data: {
-          token,
-          clientId: client.id,
-          expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
-        },
-      });
-
-      return { sessionToken: token };
-    }),
-
-  getDashboard: publicProcedure
-    .input(z.object({ sessionToken: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const session = await ctx.db.clientPortalSession.findUnique({
-        where: { token: input.sessionToken },
-      });
-      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
-      if (isSessionExpired(session.expiresAt)) {
-        throw new TRPCError({ code: "UNAUTHORIZED" });
-      }
-
-      const client = await ctx.db.client.findUnique({
-        where: { id: session.clientId },
-        include: {
-          organization: { select: { name: true, logoUrl: true } },
-        },
-      });
-      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
-
-      const invoices = await ctx.db.invoice.findMany({
-        where: {
-          clientId: client.id,
-          organizationId: client.organizationId,
-          isArchived: false,
-        },
-        include: {
-          currency: { select: { symbol: true, symbolPosition: true } },
-          payments: { select: { amount: true } },
-        },
-        orderBy: { date: "desc" },
-      });
-
-      const projects = await ctx.db.project.findMany({
-        where: {
-          clientId: client.id,
-          status: ProjectStatus.ACTIVE,
-          isViewable: true,
-        },
-        select: { id: true, name: true, status: true, dueDate: true },
-        orderBy: { name: "asc" },
-      });
-
-      const recentPayments = await ctx.db.payment.findMany({
-        where: {
-          invoice: { clientId: client.id },
-        },
-        include: {
-          invoice: {
-            select: {
-              number: true,
-              currency: { select: { symbol: true, symbolPosition: true } },
-            },
-          },
-        },
-        orderBy: { paidAt: "desc" },
-        take: 20,
-      });
-
-      // Compute summary
-      const OUTSTANDING_STATUSES: InvoiceStatus[] = [
-        InvoiceStatus.SENT,
-        InvoiceStatus.PARTIALLY_PAID,
-        InvoiceStatus.OVERDUE,
-      ];
-
-      let outstanding = 0;
-      let overdue = 0;
-      for (const inv of invoices) {
-        if (!OUTSTANDING_STATUSES.includes(inv.status)) continue;
-        const paid = inv.payments.reduce(
-          (sum, p) => sum + Number(p.amount),
-          0,
-        );
-        const remaining = Number(inv.total) - paid;
-        outstanding += remaining;
-        if (inv.status === InvoiceStatus.OVERDUE) {
-          overdue += remaining;
-        }
-      }
-
-      return {
-        client: {
-          name: client.name,
-          email: client.email,
-          organizationId: client.organizationId,
-          organization: client.organization,
-        },
-        summary: { outstanding, overdue },
-        invoices,
-        projects,
-        recentPayments,
-      };
-    }),
-
   listHoursRetainers: publicProcedure
     .input(z.object({ clientToken: z.string() }))
     .query(async ({ ctx, input }) => {
-      const client = await ctx.db.client.findUnique({
-        where: { portalToken: input.clientToken },
-        select: { id: true },
-      });
-      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+      const client = await requireDashboardSession(ctx.db, input.clientToken);
 
       const { listPortalRetainers } = await import(
         "@/server/services/portal-hours-retainers"
@@ -432,11 +324,7 @@ export const portalRouter = router({
   savedCards: publicProcedure
     .input(z.object({ clientToken: z.string() }))
     .query(async ({ ctx, input }) => {
-      const client = await ctx.db.client.findUnique({
-        where: { portalToken: input.clientToken },
-        select: { id: true, organizationId: true },
-      });
-      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+      const client = await requireDashboardSession(ctx.db, input.clientToken);
 
       return ctx.db.savedPaymentMethod.findMany({
         where: { clientId: client.id, organizationId: client.organizationId },
@@ -455,11 +343,7 @@ export const portalRouter = router({
   removeCard: publicProcedure
     .input(z.object({ clientToken: z.string(), cardId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const client = await ctx.db.client.findUnique({
-        where: { portalToken: input.clientToken },
-        select: { id: true, organizationId: true, stripeCustomerId: true },
-      });
-      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+      const client = await requireDashboardSession(ctx.db, input.clientToken);
 
       const card = await ctx.db.savedPaymentMethod.findFirst({
         where: { id: input.cardId, clientId: client.id, organizationId: client.organizationId },

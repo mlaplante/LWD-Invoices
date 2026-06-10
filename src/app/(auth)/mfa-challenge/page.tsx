@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShieldCheck } from "lucide-react";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export default function MfaChallengePage() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function MfaChallengePage() {
     // Successfully verified — redirect to dashboard or original destination
     const searchParams = new URLSearchParams(window.location.search);
     const redirectTo = searchParams.get("redirect");
-    router.push(redirectTo ?? "/");
+    router.push(safeRedirectPath(redirectTo));
     router.refresh();
   }
 

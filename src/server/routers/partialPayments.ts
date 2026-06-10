@@ -45,7 +45,7 @@ export const partialPaymentsRouter = router({
       return ctx.db.$transaction(async (tx) => {
         // Delete unpaid partial payments, replace with new schedule
         await tx.partialPayment.deleteMany({
-          where: { invoiceId: input.invoiceId, isPaid: false },
+          where: { invoiceId: input.invoiceId, isPaid: false, organizationId: ctx.orgId },
         });
 
         if (input.schedule.length > 0) {

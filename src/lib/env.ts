@@ -28,7 +28,16 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-    INNGEST_SIGNING_KEY: z.string().min(1).optional(),
+    // Required in production: without it the Inngest SDK accepts unsigned
+    // requests, letting anyone who finds /api/inngest trigger scheduled jobs.
+    INNGEST_SIGNING_KEY: z
+      .string()
+      .min(1)
+      .optional()
+      .refine(
+        (val) => process.env.NODE_ENV !== "production" || !!val,
+        "INNGEST_SIGNING_KEY is required in production",
+      ),
     INNGEST_EVENT_KEY: z.string().min(1).optional(),
     SUPABASE_URL: z.string().url(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),

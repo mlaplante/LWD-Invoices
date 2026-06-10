@@ -114,7 +114,9 @@ export const reminderSequencesRouter = router({
 
         if (steps) {
           // Delete old steps and create new ones
-          await tx.reminderStep.deleteMany({ where: { sequenceId: id } });
+          await tx.reminderStep.deleteMany({
+            where: { sequenceId: id, sequence: { organizationId: ctx.orgId } },
+          });
           await tx.reminderStep.createMany({
             data: steps.map((step, i) => ({
               sequenceId: id,
@@ -144,9 +146,10 @@ export const reminderSequencesRouter = router({
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Clear references from invoices
+      // Clear references from invoices (org-scoped so a sequence id can never
+      // null out another org's invoice references)
       await ctx.db.invoice.updateMany({
-        where: { reminderSequenceId: input.id },
+        where: { reminderSequenceId: input.id, organizationId: ctx.orgId },
         data: { reminderSequenceId: null },
       });
 

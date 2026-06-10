@@ -7,7 +7,11 @@ import { logAudit } from "../services/audit";
 import { getForOrg } from "../lib/get-for-org";
 import { idInput, paginationInput } from "../lib/schemas";
 import { generatePortalToken } from "@/lib/portal-session";
-import { generateSessionToken } from "../services/portal-dashboard";
+import {
+  createDashboardSession,
+  dashboardSessionCookieName,
+  dashboardSessionCookieOptions,
+} from "../services/portal-dashboard";
 
 // Admin portal previews use a short-lived session — long enough to look
 // around, short enough that a forgotten tab doesn't stay signed in.
@@ -349,24 +353,18 @@ export const clientsRouter = router({
         entityName: "Client",
       });
 
-      const sessionToken = generateSessionToken();
-      await ctx.db.clientPortalSession.create({
-        data: {
-          token: sessionToken,
-          expiresAt: new Date(Date.now() + PORTAL_PREVIEW_SESSION_MS),
-          clientId: client.id,
-          userAgent: "admin-preview",
-        },
+      const { sessionToken } = await createDashboardSession(ctx.db, {
+        clientId: client.id,
+        durationMs: PORTAL_PREVIEW_SESSION_MS,
+        userAgent: "admin-preview",
       });
 
       const cookieStore = await cookies();
-      cookieStore.set(`portal_dashboard_${client.portalToken}`, sessionToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: Math.floor(PORTAL_PREVIEW_SESSION_MS / 1000),
-        path: `/portal/dashboard/${client.portalToken}`,
-      });
+      cookieStore.set(
+        dashboardSessionCookieName(client.portalToken),
+        sessionToken,
+        dashboardSessionCookieOptions(Math.floor(PORTAL_PREVIEW_SESSION_MS / 1000)),
+      );
 
       await logAudit({
         action: "VIEWED",

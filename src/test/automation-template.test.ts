@@ -3,6 +3,8 @@ import {
   interpolateTemplate,
   AVAILABLE_VARIABLES,
   buildTemplateVariables,
+  escapeHtml,
+  renderTemplateHtml,
 } from "@/server/services/automation-template";
 
 describe("interpolateTemplate", () => {
@@ -110,5 +112,41 @@ describe("buildTemplateVariables", () => {
     });
     expect(vars.amountPaid).toBe("");
     expect(vars.paymentDate).toBe("");
+  });
+});
+
+describe("escapeHtml", () => {
+  it("escapes all HTML-significant characters", () => {
+    expect(escapeHtml(`<>&"'`)).toBe("&lt;&gt;&amp;&quot;&#39;");
+  });
+});
+
+describe("renderTemplateHtml", () => {
+  it("neutralizes HTML in the stored template body (email XSS)", () => {
+    const html = renderTemplateHtml(
+      `<img src=x onerror="fetch('//evil')">Hi {{clientName}}`,
+      { clientName: "Bob" },
+    );
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img");
+    expect(html).toContain("Hi Bob");
+  });
+
+  it("neutralizes HTML smuggled through interpolated variables", () => {
+    const html = renderTemplateHtml("Hi {{clientName}}", {
+      clientName: `<script>alert(1)</script>`,
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("linkifies the interpolated payment link and converts newlines", () => {
+    const html = renderTemplateHtml("Pay here:\n{{paymentLink}}", {
+      paymentLink: "https://app.example.com/portal/tok123",
+    });
+    expect(html).toContain(
+      `<a href="https://app.example.com/portal/tok123">https://app.example.com/portal/tok123</a>`,
+    );
+    expect(html).toContain("<br>");
   });
 });

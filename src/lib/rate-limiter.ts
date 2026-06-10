@@ -17,6 +17,7 @@ type Limiters = {
   portal: Ratelimit;
   pay: Ratelimit;
   webhook: Ratelimit;
+  apiV1: Ratelimit;
 };
 
 function createRateLimiter(): Limiters | null {
@@ -48,6 +49,15 @@ function createRateLimiter(): Limiters | null {
       limiter: Ratelimit.slidingWindow(100, "1 m"),
       prefix: "rl:webhook",
     }),
+    // Cross-replica backstop for /api/v1: the in-process limiter in
+    // src/app/api/v1/auth.ts is per instance, so its effective ceiling
+    // multiplies with replica count. This edge limit holds globally.
+    apiV1: new Ratelimit({
+      redis,
+      ephemeralCache: new Map(),
+      limiter: Ratelimit.slidingWindow(120, "1 m"),
+      prefix: "rl:api-v1",
+    }),
   };
 }
 
@@ -62,11 +72,12 @@ export function getRateLimiters(): Limiters | null {
   return rateLimiters;
 }
 
-export type RateLimitBucket = "portal" | "pay" | "webhook";
+export type RateLimitBucket = "portal" | "pay" | "webhook" | "apiV1";
 
 export function getBucketForPath(pathname: string): RateLimitBucket | null {
   if (pathname.startsWith("/portal")) return "portal";
   if (pathname.startsWith("/pay")) return "pay";
   if (pathname.startsWith("/api/webhooks")) return "webhook";
+  if (pathname.startsWith("/api/v1")) return "apiV1";
   return null;
 }

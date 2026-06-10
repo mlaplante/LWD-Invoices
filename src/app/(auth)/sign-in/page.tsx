@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 type Mode = "password" | "magic-link" | "magic-link-sent";
 
 function GithubIcon({ className }: { className?: string }) {
@@ -71,7 +72,7 @@ export default function SignInPage() {
 
     const searchParams = new URLSearchParams(window.location.search);
     const redirectTo = searchParams.get("redirect");
-    router.push(redirectTo ?? "/");
+    router.push(safeRedirectPath(redirectTo));
     setLoading(false);
   }
 

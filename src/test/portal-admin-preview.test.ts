@@ -15,6 +15,7 @@ import { invoicesRouter } from "@/server/routers/invoices";
 import { logAudit } from "@/server/services/audit";
 import { createMockContext } from "./mocks/trpc-context";
 import { verifyPortalSession } from "@/lib/portal-session";
+import { hashToken } from "@/lib/secure-token";
 
 process.env.PORTAL_SESSION_SECRET = "test-portal-session-secret-32chars!";
 
@@ -45,13 +46,14 @@ describe("clients.previewPortal (view as client)", () => {
     const ttlMs = session.expiresAt.getTime() - Date.now();
     expect(ttlMs).toBeLessThanOrEqual(60 * 60_000);
 
-    // The cookie matches what the passphrase gate would set.
+    // The cookie matches what the passphrase gate would set: the plaintext
+    // token goes in the cookie, only its SHA-256 digest is stored.
     const [name, value, opts] = cookieSet.mock.calls[0];
     expect(name).toBe("portal_dashboard_ptok-client");
-    expect(value).toBe(session.token);
+    expect(session.token).toBe(hashToken(value));
     expect(opts).toMatchObject({
       httpOnly: true,
-      path: "/portal/dashboard/ptok-client",
+      path: "/",
     });
 
     expect(logAudit).toHaveBeenCalledWith(

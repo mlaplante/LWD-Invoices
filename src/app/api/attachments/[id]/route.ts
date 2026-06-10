@@ -21,7 +21,7 @@ export async function DELETE(
   if (!attachment) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await deleteFile(attachment.storageUrl);
-  await db.attachment.delete({ where: { id } });
+  await db.attachment.delete({ where: { id, organizationId: org.id } });
 
   return NextResponse.json({ success: true });
 }

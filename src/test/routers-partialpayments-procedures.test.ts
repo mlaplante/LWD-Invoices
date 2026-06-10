@@ -202,7 +202,7 @@ describe("Partial Payments Router Procedures", () => {
       expect(result).toHaveLength(1);
       expect(result[0]?.amount).toBe(1000);
       expect(mockTx.partialPayment.deleteMany).toHaveBeenCalledWith({
-        where: { invoiceId: "inv_1", isPaid: false },
+        where: { invoiceId: "inv_1", isPaid: false, organizationId: "test-org-123" },
       });
     });
 
@@ -261,7 +261,7 @@ describe("Partial Payments Router Procedures", () => {
       expect(result).toHaveLength(1);
       expect(result[0]?.amount).toBe(1500);
       expect(mockTx.partialPayment.deleteMany).toHaveBeenCalledWith({
-        where: { invoiceId: "inv_1", isPaid: false },
+        where: { invoiceId: "inv_1", isPaid: false, organizationId: "test-org-123" },
       });
     });
 
@@ -313,7 +313,7 @@ describe("Partial Payments Router Procedures", () => {
 
       expect(result).toHaveLength(0);
       expect(mockTx.partialPayment.deleteMany).toHaveBeenCalledWith({
-        where: { invoiceId: "inv_1", isPaid: false },
+        where: { invoiceId: "inv_1", isPaid: false, organizationId: "test-org-123" },
       });
     });
 

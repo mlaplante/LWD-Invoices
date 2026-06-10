@@ -1,5 +1,8 @@
 import { db } from "@/server/db";
-import { isSessionExpired } from "@/server/services/portal-dashboard";
+import {
+  dashboardSessionCookieName,
+  getDashboardSession,
+} from "@/server/services/portal-dashboard";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPortalBranding } from "@/lib/portal-branding";
@@ -39,19 +42,16 @@ export default async function PortalDashboardLayout({
 
   // Verify session cookie
   const cookieStore = await cookies();
-  const sessionToken = cookieStore.get(`portal_dashboard_${clientToken}`)?.value;
+  const sessionToken = cookieStore.get(dashboardSessionCookieName(clientToken))?.value;
 
   if (!sessionToken) {
     redirect(`/portal/dashboard-login/${clientToken}`);
   }
 
-  // Validate session in DB
-  const session = await db.clientPortalSession.findUnique({
-    where: { token: sessionToken },
-    select: { expiresAt: true, clientId: true },
-  });
+  // Validate session in DB (stored hashed; lookup is by digest)
+  const session = await getDashboardSession(db, sessionToken);
 
-  if (!session || session.clientId !== client.id || isSessionExpired(session.expiresAt)) {
+  if (!session || session.clientId !== client.id) {
     redirect(`/portal/dashboard-login/${clientToken}`);
   }
 

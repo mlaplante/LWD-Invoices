@@ -1,4 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+
+// Dashboard-scoped portal procedures require the session cookie issued by the
+// passphrase gate; simulate a browser presenting it.
+vi.mock("next/headers", () => ({
+  cookies: vi.fn().mockImplementation(async () => ({
+    get: vi.fn().mockReturnValue({ value: "session-token" }),
+    set: vi.fn(),
+  })),
+}));
+
 import { hoursRetainersRouter } from "@/server/routers/hoursRetainers";
 import { portalRouter } from "@/server/routers/portal";
 import { timeEntriesRouter } from "@/server/routers/timeEntries";
@@ -96,6 +106,10 @@ describe("E2E: hours retainer full flow (mock-based)", () => {
 
     // Step 4: Client opens portal — sees the retainer correctly
     ctx.db.client.findUnique.mockResolvedValue({ id: CLIENT_ID });
+    ctx.db.clientPortalSession.findUnique.mockResolvedValue({
+      clientId: CLIENT_ID,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
     ctx.db.hoursRetainer.findMany.mockResolvedValue([
       {
         id: RETAINER_ID,
