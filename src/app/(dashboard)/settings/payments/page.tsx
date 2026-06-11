@@ -2,6 +2,7 @@ import Link from "next/link";
 import { GatewaySettingsForm } from "@/components/settings/GatewaySettingsForm";
 import { StripeTaxToggle } from "@/components/settings/StripeTaxToggle";
 import { DunningToggle } from "@/components/settings/DunningToggle";
+import { EarlyPayDiscountSettings } from "@/components/settings/EarlyPayDiscountSettings";
 import { ArrowLeft } from "lucide-react";
 
 export default function PaymentsSettingsPage() {
@@ -69,6 +70,23 @@ export default function PaymentsSettingsPage() {
         </div>
         <div className="px-6 py-6">
           <DunningToggle />
+        </div>
+      </div>
+
+      {/* Early-payment discount — incentive lever on the same pay flow */}
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border/50">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Payment Incentives
+          </p>
+          <p className="text-base font-semibold mt-1">Early-Payment Discount</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Reward clients who pay early — the portal offers the discounted
+            amount automatically inside the window.
+          </p>
+        </div>
+        <div className="px-6 py-6">
+          <EarlyPayDiscountSettings />
         </div>
       </div>
     </div>

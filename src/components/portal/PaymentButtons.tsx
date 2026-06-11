@@ -23,9 +23,12 @@ type Props = {
   partialPaymentId?: string;
   payFullBalance?: boolean;
   label?: string;
+  /** Formatted discounted amount when an early-pay offer is live (Stripe checkout charges this). */
+  earlyPayTotal?: string;
+  earlyPayPercent?: number;
 };
 
-export function PaymentButtons({ token, gateways, total, orgName, partialPaymentId, payFullBalance, label }: Props) {
+export function PaymentButtons({ token, gateways, total, orgName, partialPaymentId, payFullBalance, label, earlyPayTotal, earlyPayPercent }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -59,9 +62,17 @@ export function PaymentButtons({ token, gateways, total, orgName, partialPayment
   return (
     <div className="rounded-2xl border border-border/50 bg-card p-6">
       <h2 className="text-base font-semibold text-foreground mb-4">{label ?? "Pay Now"}</h2>
-      <p className="text-sm text-muted-foreground mb-4">
-        Amount due: <span className="font-semibold text-foreground">{total}</span>
-      </p>
+      {earlyPayTotal ? (
+        <p className="text-sm text-muted-foreground mb-4">
+          Amount due: <span className="line-through">{total}</span>{" "}
+          <span className="font-semibold text-emerald-700">{earlyPayTotal}</span>{" "}
+          <span className="text-xs">({earlyPayPercent}% early-payment discount, card & bank payments)</span>
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground mb-4">
+          Amount due: <span className="font-semibold text-foreground">{total}</span>
+        </p>
+      )}
 
       {error && (
         <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">

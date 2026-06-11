@@ -120,6 +120,16 @@ export async function generateRecurringInvoice(rec: RecurringInvoiceWithRelation
         organizationId: template.organizationId,
         // Override schema's @default(cuid()) with crypto-strong randomness.
         portalToken: generatePortalToken(),
+        // Snapshot the org's current early-pay offer (same rule as
+        // invoices.create) — each generated invoice carries its own terms.
+        ...(org.earlyPayDiscountEnabled &&
+        org.earlyPayDiscountPercent.toNumber() > 0 &&
+        (template.type === "SIMPLE" || template.type === "DETAILED")
+          ? {
+              earlyPayDiscountPercent: org.earlyPayDiscountPercent,
+              earlyPayDiscountDays: org.earlyPayDiscountDays,
+            }
+          : {}),
         lines: {
           create: template.lines.map((line) => ({
             sort: line.sort,

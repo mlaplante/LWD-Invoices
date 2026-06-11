@@ -245,6 +245,13 @@ model Organization {
   // When enabled, the dunning-retries cron re-attempts failed auto-charges on
   // a 1/3/7-day schedule, then escalates to a client email + admin alert.
   dunningEnabled          Boolean @default(false)
+  // ─── Early-payment discount (e.g. 2/10 net 30) ──────────────────────────────
+  // When enabled, new SIMPLE/DETAILED invoices snapshot percent+days at
+  // creation; clients paying the full balance within `days` of the invoice
+  // date get `percent` off (applied post-tax at redemption time).
+  earlyPayDiscountEnabled Boolean @default(false)
+  earlyPayDiscountPercent Decimal @default(0) @db.Decimal(5, 2)
+  earlyPayDiscountDays    Int     @default(10)
   // ─── Two-Factor Authentication ──────────────────────────────────────────────
   require2FA              Boolean @default(false)
   // ─── Portal Branding ────────────────────────────────────────────────────────
@@ -619,6 +626,15 @@ model Invoice {
 
   retainerApplied Decimal @default(0) @db.Decimal(20, 10)
   creditApplied   Decimal @default(0) @db.Decimal(20, 10)
+
+  // ─── Early-payment discount ────────────────────────────────────────────────
+  // Offer snapshot taken from the org at creation (null = no offer). On
+  // redemption the discount is applied post-tax — a FIXED_DISCOUNT line is
+  // appended and cached totals adjusted — and redeemedAt/amount record it.
+  earlyPayDiscountPercent    Decimal?  @db.Decimal(5, 2)
+  earlyPayDiscountDays       Int?
+  earlyPayDiscountRedeemedAt DateTime?
+  earlyPayDiscountAmount     Decimal   @default(0) @db.Decimal(20, 10)
 
   // When tax was computed by Stripe Tax (Organization.stripeTaxEnabled), this
   // holds the Calculation ID returned by Stripe. Used later when reconciling

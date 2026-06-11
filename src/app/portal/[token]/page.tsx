@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatDateLong, formatCurrency } from "@/lib/format";
 import { getPortalBranding } from "@/lib/portal-branding";
 import { PortalShell } from "@/components/portal/PortalShell";
+import { resolveEarlyPayOffer } from "@/server/services/early-payment-discount";
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
   DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",      dot: "bg-gray-400" },
@@ -116,6 +117,20 @@ export default async function PortalInvoicePage({
   });
 
   const isPayable = PAYABLE_STATUSES.includes(invoice.status);
+
+  // Live early-pay offer ("pay by X, save Y%") — only offered on the
+  // full-balance path, never on installment schedules.
+  const earlyPayOffer = resolveEarlyPayOffer({
+    percent: invoice.earlyPayDiscountPercent?.toNumber(),
+    days: invoice.earlyPayDiscountDays,
+    invoiceDate: invoice.date,
+    status: invoice.status,
+    total: invoice.total.toNumber(),
+    paidSoFar: invoice.payments.reduce((sum, p) => sum + p.amount.toNumber(), 0),
+    hasInstallments: invoice.partialPayments.some((pp) => !pp.isPaid),
+    redeemedAt: invoice.earlyPayDiscountRedeemedAt,
+    now: new Date(),
+  });
 
   const brandColor = invoice.organization.brandColor ?? "#2563eb";
   const branding = getPortalBranding(invoice.organization);
@@ -440,6 +455,21 @@ export default async function PortalInvoicePage({
           </div>
         )}
 
+        {/* Early-payment discount offer */}
+        {isPayable && earlyPayOffer && gateways.length > 0 && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+            <p className="text-sm font-semibold text-emerald-800">
+              Pay by {formatDateLong(earlyPayOffer.deadline)} and save {earlyPayOffer.percent}%
+            </p>
+            <p className="mt-1 text-sm text-emerald-700">
+              Pay the full balance online with card or bank debit by{" "}
+              {formatDateLong(earlyPayOffer.deadline)} and you&apos;ll be charged{" "}
+              <span className="font-semibold">{f(earlyPayOffer.discountedBalance)}</span> instead of{" "}
+              <span className="line-through">{f(earlyPayOffer.balance)}</span>.
+            </p>
+          </div>
+        )}
+
         {/* Payment buttons */}
         {isPayable && gateways.length > 0 && (() => {
           const unpaidInstallments = invoice.partialPayments.filter((pp) => !pp.isPaid);
@@ -497,6 +527,8 @@ export default async function PortalInvoicePage({
               gateways={gateways}
               total={f(invoice.total)}
               orgName={invoice.organization.name}
+              earlyPayTotal={earlyPayOffer ? f(earlyPayOffer.discountedBalance) : undefined}
+              earlyPayPercent={earlyPayOffer?.percent}
             />
           );
         })()}

@@ -23,10 +23,12 @@ type Props = {
   brandColor?: string;
   hidePoweredBy?: boolean;
   partialPayments?: PartialPaymentInfo[];
+  /** Live early-payment offer, pre-formatted by the caller. */
+  earlyPayOffer?: { percent: number; deadline: string; discountedTotal: string };
 };
 
 export function InvoiceSentEmail({
-  invoiceNumber, clientName, total, currencySymbol, dueDate, orgName, portalLink, payLink, logoUrl, brandColor, hidePoweredBy, partialPayments,
+  invoiceNumber, clientName, total, currencySymbol, dueDate, orgName, portalLink, payLink, logoUrl, brandColor, hidePoweredBy, partialPayments, earlyPayOffer,
 }: Props) {
   const accent = brandColor ?? "#2563eb";
   return (
@@ -64,6 +66,14 @@ export function InvoiceSentEmail({
             </>
           )}
         </Section>
+
+        {earlyPayOffer && (
+          <Section style={{ backgroundColor: "#ecfdf5", borderRadius: 8, padding: "14px 20px", margin: "0 0 28px", borderLeft: "3px solid #10b981" }}>
+            <Text style={{ color: "#065f46", fontSize: 14, fontWeight: "600", margin: 0 }}>
+              Pay online by {earlyPayOffer.deadline} and save {earlyPayOffer.percent}% — {currencySymbol}{earlyPayOffer.discountedTotal} instead of {currencySymbol}{total}.
+            </Text>
+          </Section>
+        )}
 
         {partialPayments && partialPayments.length > 0 && (
           <Section style={{ margin: "0 0 28px" }}>
