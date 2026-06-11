@@ -94,6 +94,7 @@ enum NotificationType {
   REFUND_ISSUED
   CREDIT_HOLD_PLACED
   AUTOMATION_TRIGGERED
+  PROJECT_BUDGET_ALERT
 }
 
 enum ClientCheckInTouchType {
@@ -931,6 +932,11 @@ model Project {
   dueDate             DateTime?
   rate                Decimal       @default(0) @db.Decimal(20, 10)
   projectedHours      Float         @default(0)
+  // Budget-alert markers set by the project-budget-alerts cron when logged
+  // hours cross 80% / 100% of projectedHours. Cleared automatically if the
+  // budget is raised (or entries removed) so a project can re-alert later.
+  budgetAlert80SentAt  DateTime?
+  budgetAlert100SentAt DateTime?
   isFlatRate          Boolean       @default(false)
   isViewable          Boolean       @default(false)
   isTimesheetViewable Boolean       @default(false)
