@@ -4,13 +4,15 @@ import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import type { GatewayType } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Landmark, Loader2 } from "lucide-react";
 
 type Gateway = {
   gatewayType: GatewayType;
   surcharge: number;
   label: string | null;
   paypalUrl?: string;
+  /** Set on the STRIPE gateway when a bank debit is offered for this invoice's currency. */
+  bankDebit?: { surcharge: number; kind: "ach" | "sepa" };
 };
 
 type Props = {
@@ -37,10 +39,10 @@ export function PaymentButtons({ token, gateways, total, orgName, partialPayment
     },
   });
 
-  const handleStripe = () => {
+  const handleStripe = (paymentMethod: "card" | "bank_debit") => {
     setError("");
-    setLoading("stripe");
-    createStripeCheckout.mutate({ token, partialPaymentId, payFullBalance });
+    setLoading(paymentMethod === "bank_debit" ? "stripe-bank" : "stripe");
+    createStripeCheckout.mutate({ token, partialPaymentId, payFullBalance, paymentMethod });
   };
 
   const stripeGateway = gateways.find((g) => g.gatewayType === "STRIPE");
@@ -49,8 +51,10 @@ export function PaymentButtons({ token, gateways, total, orgName, partialPayment
     (g) => g.gatewayType !== "STRIPE" && g.gatewayType !== "PAYPAL"
   );
 
-  const surchargeNote = (g: Gateway) =>
-    g.surcharge > 0 ? ` (+${g.surcharge}% fee)` : "";
+  const feeNote = (surcharge: number) => (surcharge > 0 ? ` (+${surcharge}% fee)` : "");
+  const surchargeNote = (g: Gateway) => feeNote(g.surcharge);
+  const bankDebitLabel = (kind: "ach" | "sepa") =>
+    kind === "ach" ? "Pay by Bank (ACH)" : "Pay by Bank (SEPA)";
 
   return (
     <div className="rounded-2xl border border-border/50 bg-card p-6">
@@ -68,7 +72,7 @@ export function PaymentButtons({ token, gateways, total, orgName, partialPayment
       <div className="space-y-3">
         {stripeGateway && (
           <Button
-            onClick={handleStripe}
+            onClick={() => handleStripe("card")}
             disabled={loading !== null}
             className="w-full py-6 gap-2 text-white hover:opacity-90"
             style={{ backgroundColor: "var(--portal-brand)" }}
@@ -82,6 +86,23 @@ export function PaymentButtons({ token, gateways, total, orgName, partialPayment
             )}
             {stripeGateway.label ?? "Pay by Credit Card"}
             {surchargeNote(stripeGateway)}
+          </Button>
+        )}
+
+        {stripeGateway?.bankDebit && (
+          <Button
+            onClick={() => handleStripe("bank_debit")}
+            disabled={loading !== null}
+            variant="outline"
+            className="w-full py-6 gap-2"
+          >
+            {loading === "stripe-bank" ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Landmark className="w-4 h-4" />
+            )}
+            {bankDebitLabel(stripeGateway.bankDebit.kind)}
+            {feeNote(stripeGateway.bankDebit.surcharge)}
           </Button>
         )}
 

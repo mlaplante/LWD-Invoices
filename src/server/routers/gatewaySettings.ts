@@ -57,6 +57,7 @@ export const gatewaySettingsRouter = router({
         gatewayType: g.gatewayType,
         isEnabled: g.isEnabled,
         surcharge: g.surcharge,
+        bankDebitSurcharge: g.bankDebitSurcharge,
         label: g.label,
         safeConfig,
       };
@@ -70,6 +71,7 @@ export const gatewaySettingsRouter = router({
           gatewayType: z.literal(GatewayType.STRIPE),
           isEnabled: z.boolean().optional(),
           surcharge: z.number().min(0).max(100).optional(),
+          bankDebitSurcharge: z.number().min(0).max(100).optional(),
           label: z.string().optional(),
           config: stripeConfigSchema,
         }),
@@ -125,12 +127,16 @@ export const gatewaySettingsRouter = router({
           gatewayType: input.gatewayType,
           isEnabled: input.isEnabled ?? false,
           surcharge: input.surcharge ?? 0,
+          bankDebitSurcharge: ("bankDebitSurcharge" in input ? input.bankDebitSurcharge : undefined) ?? 0,
           label: input.label ?? null,
           configJson,
         },
         update: {
           ...(input.isEnabled !== undefined ? { isEnabled: input.isEnabled } : {}),
           ...(input.surcharge !== undefined ? { surcharge: input.surcharge } : {}),
+          ...("bankDebitSurcharge" in input && input.bankDebitSurcharge !== undefined
+            ? { bankDebitSurcharge: input.bankDebitSurcharge }
+            : {}),
           ...(input.label !== undefined ? { label: input.label } : {}),
           configJson,
         },

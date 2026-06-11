@@ -148,6 +148,8 @@ export const portalRouter = router({
         token: z.string(),
         partialPaymentId: z.string().optional(),
         payFullBalance: z.boolean().optional(),
+        // Card and bank debit are separate sessions with separate surcharges.
+        paymentMethod: z.enum(["card", "bank_debit"]).default("card"),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -213,13 +215,17 @@ export const portalRouter = router({
           organizationId: invoice.organizationId,
           clientId: invoice.clientId,
         },
-        surcharge: gateway.surcharge.toNumber(),
+        surcharge:
+          input.paymentMethod === "bank_debit"
+            ? gateway.bankDebitSurcharge.toNumber()
+            : gateway.surcharge.toNumber(),
         appUrl,
         partialPaymentId,
         amountOverride,
         clientEmail: invoice.client.email,
         clientName: invoice.client.name,
         stripeCustomerId: invoice.client.stripeCustomerId,
+        paymentMethod: input.paymentMethod,
         achDebitEnabled: config.achDebitEnabled,
         sepaDebitEnabled: config.sepaDebitEnabled,
       });

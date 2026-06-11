@@ -2,10 +2,10 @@ import { db } from "@/server/db";
 import { notFound } from "next/navigation";
 import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 import { decryptJson } from "@/server/services/encryption";
-import type { PayPalConfig } from "@/server/services/gateway-config";
+import type { PayPalConfig, StripeConfig } from "@/server/services/gateway-config";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { CheckCircle2, CreditCard } from "lucide-react";
+import { CheckCircle2, CreditCard, Landmark } from "lucide-react";
 import { formatCurrency, formatDateLong } from "@/lib/format";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
@@ -56,6 +56,7 @@ export default async function PayPage({
         select: {
           gatewayType: true,
           surcharge: true,
+          bankDebitSurcharge: true,
           label: true,
           configJson: true,
         },
@@ -86,6 +87,26 @@ export default async function PayPage({
     ).toFixed(2);
     return `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(paypalConfig.email)}&amount=${chargedAmount}&currency_code=${inv.currency.code}&item_name=${encodeURIComponent(label)}&return=${encodeURIComponent(`${appUrl}/pay/${token}/success`)}`;
   }
+
+  // Bank debit (ACH/SEPA) availability for this invoice's currency. Bank
+  // debits carry their own surcharge, so they get a separate button + link.
+  let bankDebit: { kind: "ach" | "sepa"; surcharge: number } | undefined;
+  if (stripeGw) {
+    try {
+      const config = decryptJson<StripeConfig>(stripeGw.configJson);
+      const code = invoice.currency.code.toUpperCase();
+      if (config.achDebitEnabled && code === "USD") {
+        bankDebit = { kind: "ach", surcharge: stripeGw.bankDebitSurcharge.toNumber() };
+      } else if (config.sepaDebitEnabled && code === "EUR") {
+        bankDebit = { kind: "sepa", surcharge: stripeGw.bankDebitSurcharge.toNumber() };
+      }
+    } catch {
+      // configJson not set yet
+    }
+  }
+  const bankDebitText = bankDebit
+    ? bankDebit.kind === "ach" ? "Pay by Bank (ACH)" : "Pay by Bank (SEPA)"
+    : null;
 
   const hasGateways = !!stripeGw || !!paypalConfig;
   const orgLogo = invoice.organization.logoUrl;
@@ -234,6 +255,20 @@ export default async function PayPage({
                               )}
                             </a>
                           )}
+                          {bankDebit && (
+                            <a
+                              href={`${stripeUrl}&method=bank`}
+                              className="flex items-center justify-center gap-2 w-full rounded-lg border border-border px-3 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                            >
+                              <Landmark className="h-4 w-4" />
+                              {bankDebitText}
+                              {bankDebit.surcharge > 0 && (
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  (+{bankDebit.surcharge}% surcharge)
+                                </span>
+                              )}
+                            </a>
+                          )}
                           {ppUrl && (
                             <a
                               href={ppUrl}
@@ -279,6 +314,20 @@ export default async function PayPage({
                       {stripeGw.surcharge.toNumber() > 0 && (
                         <span className="text-xs font-normal opacity-75">
                           (+{stripeGw.surcharge.toNumber()}% surcharge)
+                        </span>
+                      )}
+                    </a>
+                  )}
+                  {bankDebit && (
+                    <a
+                      href={`/api/pay/${token}/stripe?method=bank`}
+                      className="flex items-center justify-center gap-2 w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                    >
+                      <Landmark className="h-4 w-4" />
+                      {bankDebitText}
+                      {bankDebit.surcharge > 0 && (
+                        <span className="text-xs font-normal text-muted-foreground">
+                          (+{bankDebit.surcharge}% surcharge)
                         </span>
                       )}
                     </a>

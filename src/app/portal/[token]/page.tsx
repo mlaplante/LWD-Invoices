@@ -5,7 +5,7 @@ import { PortalComments } from "@/components/portal/PortalComments";
 import { EstimateActions } from "@/components/portal/EstimateActions";
 import { ProposalSignatureForm } from "@/components/portal/ProposalSignatureForm";
 import { decryptJson } from "@/server/services/encryption";
-import type { PayPalConfig } from "@/server/services/gateway-config";
+import type { PayPalConfig, StripeConfig } from "@/server/services/gateway-config";
 import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, CheckCircle } from "lucide-react";
@@ -58,7 +58,7 @@ export default async function PortalInvoicePage({
   // Load enabled gateways — include configJson so we can build the PayPal URL server-side
   const gatewayRows = await db.gatewaySetting.findMany({
     where: { organizationId: invoice.organizationId, isEnabled: true },
-    select: { gatewayType: true, surcharge: true, label: true, configJson: true },
+    select: { gatewayType: true, surcharge: true, bankDebitSurcharge: true, label: true, configJson: true },
   });
 
   const gateways = gatewayRows.map((g) => {
@@ -67,6 +67,9 @@ export default async function PortalInvoicePage({
       surcharge: g.surcharge.toNumber(),
       label: g.label ?? null,
       paypalUrl: undefined as string | undefined,
+      // Present only when the Stripe gateway offers a bank debit for this
+      // invoice's currency — carries its own (usually lower) surcharge.
+      bankDebit: undefined as { surcharge: number; kind: "ach" | "sepa" } | undefined,
     };
     if (g.gatewayType === GatewayType.PAYPAL) {
       try {
@@ -75,6 +78,19 @@ export default async function PortalInvoicePage({
         base.paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(config.email)}&amount=${amount}&currency_code=${invoice.currency.code}&item_name=${encodeURIComponent(`Invoice ${invoice.number}`)}`;
       } catch {
         // configJson not set yet — PayPal button won't render
+      }
+    }
+    if (g.gatewayType === GatewayType.STRIPE) {
+      try {
+        const config = decryptJson<StripeConfig>(g.configJson);
+        const code = invoice.currency.code.toUpperCase();
+        if (config.achDebitEnabled && code === "USD") {
+          base.bankDebit = { surcharge: g.bankDebitSurcharge.toNumber(), kind: "ach" };
+        } else if (config.sepaDebitEnabled && code === "EUR") {
+          base.bankDebit = { surcharge: g.bankDebitSurcharge.toNumber(), kind: "sepa" };
+        }
+      } catch {
+        // configJson not set yet — bank debit button won't render
       }
     }
     return base;

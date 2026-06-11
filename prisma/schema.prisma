@@ -823,6 +823,10 @@ model GatewaySetting {
   isEnabled   Boolean     @default(false)
   configJson  String
   surcharge   Decimal     @default(0) @db.Decimal(5, 2)
+  // Separate surcharge for bank-debit methods (ACH/SEPA) on the Stripe
+  // gateway — they cost far less to accept than cards, so orgs typically
+  // surcharge them less (or not at all). Only read when gatewayType=STRIPE.
+  bankDebitSurcharge Decimal @default(0) @db.Decimal(5, 2)
   label       String?
 
   organizationId String

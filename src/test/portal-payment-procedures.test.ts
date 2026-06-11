@@ -94,6 +94,7 @@ describe("Portal Payment Procedures", () => {
     isEnabled: true,
     configJson: "encrypted-config",
     surcharge: new Decimal("2.5"),
+    bankDebitSurcharge: new Decimal("0.5"),
     label: "Pay with Stripe",
   };
 
@@ -443,6 +444,24 @@ describe("Portal Payment Procedures", () => {
       expect(createCheckoutSession).toHaveBeenCalledWith(
         expect.objectContaining({
           surcharge: 3.75,
+        })
+      );
+    });
+
+    it("uses the bank-debit surcharge and method for bank_debit checkouts", async () => {
+      const invoice = makeInvoice();
+      ctx.db.invoice.findUnique.mockResolvedValue(invoice);
+      ctx.db.gatewaySetting.findUnique.mockResolvedValue(mockGateway);
+
+      await caller.createStripeCheckout({
+        token: "test-portal-token",
+        paymentMethod: "bank_debit",
+      });
+
+      expect(createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          surcharge: 0.5,
+          paymentMethod: "bank_debit",
         })
       );
     });

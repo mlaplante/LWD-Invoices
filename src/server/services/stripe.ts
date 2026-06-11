@@ -26,6 +26,13 @@ export async function createCheckoutSession(opts: {
   clientEmail?: string | null;
   clientName?: string;
   stripeCustomerId?: string | null;
+  /**
+   * Which payment method family this session offers. Card and bank debit are
+   * separate sessions (not one session with both) because each carries its own
+   * surcharge — Stripe Checkout can't price methods differently within a
+   * session. Defaults to card.
+   */
+  paymentMethod?: "card" | "bank_debit";
   /** Org-level bank-debit toggles from StripeConfig; currency-gated below. */
   achDebitEnabled?: boolean;
   sepaDebitEnabled?: boolean;
@@ -57,10 +64,15 @@ export async function createCheckoutSession(opts: {
   // currency: us_bank_account (ACH) requires USD, sepa_debit requires EUR.
   // Both are delayed-notification methods — the webhook defers marking the
   // invoice paid until checkout.session.async_payment_succeeded.
-  const currencyCode = invoice.currency.code.toLowerCase();
-  const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] = ["card"];
-  if (opts.achDebitEnabled && currencyCode === "usd") paymentMethodTypes.push("us_bank_account");
-  if (opts.sepaDebitEnabled && currencyCode === "eur") paymentMethodTypes.push("sepa_debit");
+  const paymentMethodTypes = resolvePaymentMethodTypes({
+    paymentMethod: opts.paymentMethod ?? "card",
+    currencyCode: invoice.currency.code,
+    achDebitEnabled: opts.achDebitEnabled ?? false,
+    sepaDebitEnabled: opts.sepaDebitEnabled ?? false,
+  });
+  if (paymentMethodTypes.length === 0) {
+    throw new Error("Bank debit is not available for this invoice's currency or gateway settings");
+  }
 
   const session = await stripeClient.checkout.sessions.create({
     mode: "payment",
@@ -103,6 +115,25 @@ export async function createCheckoutSession(opts: {
   if (!session.url) throw new Error("Stripe session URL missing");
 
   return { url: session.url, sessionId: session.id, customerId: customer };
+}
+
+/**
+ * Map a method family to concrete Stripe payment_method_types for the
+ * invoice's currency. Exported for the pay surfaces, which use it to decide
+ * whether to render a bank-debit button at all (empty result = not offered).
+ */
+export function resolvePaymentMethodTypes(opts: {
+  paymentMethod: "card" | "bank_debit";
+  currencyCode: string;
+  achDebitEnabled: boolean;
+  sepaDebitEnabled: boolean;
+}): Stripe.Checkout.SessionCreateParams.PaymentMethodType[] {
+  if (opts.paymentMethod === "card") return ["card"];
+  const currencyCode = opts.currencyCode.toLowerCase();
+  const types: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] = [];
+  if (opts.achDebitEnabled && currencyCode === "usd") types.push("us_bank_account");
+  if (opts.sepaDebitEnabled && currencyCode === "eur") types.push("sepa_debit");
+  return types;
 }
 
 export function constructStripeEvent(

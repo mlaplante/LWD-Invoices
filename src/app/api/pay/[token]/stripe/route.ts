@@ -30,6 +30,9 @@ export async function GET(
   const { token } = await params;
   const url = new URL(request.url);
   const partialPaymentId = url.searchParams.get("partialPaymentId");
+  // ?method=bank starts a bank-debit (ACH/SEPA) session with its own
+  // surcharge; anything else is a card session.
+  const paymentMethod = url.searchParams.get("method") === "bank" ? "bank_debit" as const : "card" as const;
 
   if (payLimiter.isLimited(token)) {
     return NextResponse.json(
@@ -120,7 +123,10 @@ export async function GET(
         organizationId: invoice.organizationId,
         clientId: invoice.clientId,
       },
-      surcharge: gatewaySetting.surcharge.toNumber(),
+      surcharge:
+        paymentMethod === "bank_debit"
+          ? gatewaySetting.bankDebitSurcharge.toNumber()
+          : gatewaySetting.surcharge.toNumber(),
       appUrl,
       partialPaymentId: partialPaymentId ?? undefined,
       amountOverride: payAmount,
@@ -129,6 +135,7 @@ export async function GET(
       clientEmail: invoice.client?.email,
       clientName: invoice.client?.name,
       stripeCustomerId: invoice.client?.stripeCustomerId,
+      paymentMethod,
       achDebitEnabled: config.achDebitEnabled,
       sepaDebitEnabled: config.sepaDebitEnabled,
     });

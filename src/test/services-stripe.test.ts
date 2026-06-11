@@ -4,6 +4,7 @@ import {
   getStripeClient,
   createCheckoutSession,
   constructStripeEvent,
+  resolvePaymentMethodTypes,
 } from "@/server/services/stripe";
 
 // Mock the Stripe SDK
@@ -104,7 +105,7 @@ describe("Stripe Service", () => {
       expect(mockStripeInstance.checkout.sessions.create).toHaveBeenCalled();
     });
 
-    it("offers bank debits only when enabled and currency matches", async () => {
+    it("creates card-only or bank-only sessions per the requested method", async () => {
       const mockSession = { id: "cs_pm", url: "https://checkout.stripe.com/pay/cs_pm" };
       mockStripeInstance.checkout.sessions.create.mockResolvedValue(mockSession);
 
@@ -117,7 +118,8 @@ describe("Stripe Service", () => {
         clientId: "client_pm",
       };
 
-      // USD + ACH enabled -> card + us_bank_account (SEPA gated out by currency)
+      // Default (card) sessions never include bank debits, even when enabled —
+      // bank debits are a separate session because they surcharge differently.
       await createCheckoutSession({
         stripeClient: mockStripeInstance,
         invoice: { ...baseInvoice, currency: { code: "USD" } },
@@ -125,34 +127,50 @@ describe("Stripe Service", () => {
         appUrl: "https://app.example.com",
         achDebitEnabled: true,
         sepaDebitEnabled: true,
-      });
-      expect(mockStripeInstance.checkout.sessions.create).toHaveBeenLastCalledWith(
-        expect.objectContaining({ payment_method_types: ["card", "us_bank_account"] }),
-      );
-
-      // EUR + SEPA enabled -> card + sepa_debit
-      await createCheckoutSession({
-        stripeClient: mockStripeInstance,
-        invoice: { ...baseInvoice, currency: { code: "EUR" } },
-        surcharge: 0,
-        appUrl: "https://app.example.com",
-        achDebitEnabled: true,
-        sepaDebitEnabled: true,
-      });
-      expect(mockStripeInstance.checkout.sessions.create).toHaveBeenLastCalledWith(
-        expect.objectContaining({ payment_method_types: ["card", "sepa_debit"] }),
-      );
-
-      // Flags off -> card only
-      await createCheckoutSession({
-        stripeClient: mockStripeInstance,
-        invoice: { ...baseInvoice, currency: { code: "USD" } },
-        surcharge: 0,
-        appUrl: "https://app.example.com",
       });
       expect(mockStripeInstance.checkout.sessions.create).toHaveBeenLastCalledWith(
         expect.objectContaining({ payment_method_types: ["card"] }),
       );
+
+      // bank_debit + USD + ACH enabled -> us_bank_account only
+      await createCheckoutSession({
+        stripeClient: mockStripeInstance,
+        invoice: { ...baseInvoice, currency: { code: "USD" } },
+        surcharge: 0,
+        appUrl: "https://app.example.com",
+        paymentMethod: "bank_debit",
+        achDebitEnabled: true,
+        sepaDebitEnabled: true,
+      });
+      expect(mockStripeInstance.checkout.sessions.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ payment_method_types: ["us_bank_account"] }),
+      );
+
+      // bank_debit with no matching method -> throws before hitting Stripe
+      await expect(
+        createCheckoutSession({
+          stripeClient: mockStripeInstance,
+          invoice: { ...baseInvoice, currency: { code: "GBP" } },
+          surcharge: 0,
+          appUrl: "https://app.example.com",
+          paymentMethod: "bank_debit",
+          achDebitEnabled: true,
+          sepaDebitEnabled: true,
+        }),
+      ).rejects.toThrow(/Bank debit is not available/);
+    });
+
+    it("resolvePaymentMethodTypes gates bank debits by flag and currency", () => {
+      const base = { paymentMethod: "bank_debit" as const, achDebitEnabled: true, sepaDebitEnabled: true };
+      expect(resolvePaymentMethodTypes({ ...base, currencyCode: "USD" })).toEqual(["us_bank_account"]);
+      expect(resolvePaymentMethodTypes({ ...base, currencyCode: "EUR" })).toEqual(["sepa_debit"]);
+      expect(resolvePaymentMethodTypes({ ...base, currencyCode: "GBP" })).toEqual([]);
+      expect(
+        resolvePaymentMethodTypes({ ...base, achDebitEnabled: false, currencyCode: "USD" }),
+      ).toEqual([]);
+      expect(
+        resolvePaymentMethodTypes({ paymentMethod: "card", achDebitEnabled: true, sepaDebitEnabled: true, currencyCode: "USD" }),
+      ).toEqual(["card"]);
     });
 
     it("includes customer and invoice metadata", async () => {
