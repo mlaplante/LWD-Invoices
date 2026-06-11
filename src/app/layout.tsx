@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "sonner";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -24,6 +25,11 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "LaPlante Web Development Invoices",
   description: "Modern invoicing for freelancers and small teams",
+  appleWebApp: {
+    capable: true,
+    title: "LWD Invoices",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
@@ -42,6 +48,7 @@ export default function RootLayout({
       >
         <TRPCReactProvider>{children}</TRPCReactProvider>
         <Toaster richColors position="bottom-right" />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
