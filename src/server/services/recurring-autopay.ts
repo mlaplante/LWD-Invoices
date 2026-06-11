@@ -29,6 +29,43 @@ export async function attemptRecurringInvoiceAutopay(opts: {
     input: { type: "INVOICE_OVERDUE"; title: string; body: string; link: string },
   ) => Promise<unknown>;
 }): Promise<AttemptResult> {
+  if (!opts.autoCharge) {
+    return { status: "SKIPPED", reason: "Autopay is disabled" };
+  }
+  return attemptOffSessionCharge({
+    db: opts.db,
+    invoiceId: opts.invoiceId,
+    kind: AUTOPAY_KIND,
+    method: "stripe_autopay",
+    idempotencyKey: `recurring-autopay:${opts.invoiceId}`,
+    metadata: { recurringInvoiceId: opts.recurringInvoiceId, autoCharge: "true" },
+    stripeClient: opts.stripeClient,
+    sendReceipt: opts.sendReceipt,
+    notifyAdmins: opts.notifyAdmins,
+  });
+}
+
+/**
+ * Charge an invoice's saved Stripe payment method off-session and record the
+ * outcome as a PaymentAttempt of the given `kind`. The (invoiceId, kind)
+ * unique constraint makes each kind a one-shot per invoice — callers express
+ * retries as new kinds (AUTOPAY, DUNNING_RETRY_1, …) so a crashed/duplicated
+ * run can never double-charge.
+ */
+export async function attemptOffSessionCharge(opts: {
+  db?: DbClient;
+  invoiceId: string;
+  kind: string;
+  method: string;
+  idempotencyKey: string;
+  metadata?: Record<string, string>;
+  stripeClient?: StripeClient;
+  sendReceipt?: (input: { invoiceId: string; amountPaid: number; organizationId: string }) => Promise<unknown>;
+  notifyAdmins?: (
+    organizationId: string,
+    input: { type: "INVOICE_OVERDUE"; title: string; body: string; link: string },
+  ) => Promise<unknown>;
+}): Promise<AttemptResult> {
   const db = opts.db ?? defaultDb;
   const invoice = await db.invoice.findUnique({
     where: { id: opts.invoiceId },
@@ -48,12 +85,12 @@ export async function attemptRecurringInvoiceAutopay(opts: {
   if (!invoice) return { status: "SKIPPED", reason: "Invoice not found" };
   if (!invoice.client) return { status: "SKIPPED", reason: "Invoice has no client" };
   if (invoice.status === "PAID") return { status: "SKIPPED", reason: "Invoice already paid" };
-  if (!opts.autoCharge || !invoice.client.autoChargeEnabled) {
+  if (!invoice.client.autoChargeEnabled) {
     return { status: "SKIPPED", reason: "Autopay is disabled" };
   }
 
   const existingAttempt = await db.paymentAttempt.findUnique({
-    where: { invoiceId_kind: { invoiceId: invoice.id, kind: AUTOPAY_KIND } },
+    where: { invoiceId_kind: { invoiceId: invoice.id, kind: opts.kind } },
   });
   if (existingAttempt) {
     return {
@@ -64,15 +101,15 @@ export async function attemptRecurringInvoiceAutopay(opts: {
   }
 
   const amount = invoice.total.toNumber();
-  const idempotencyKey = `recurring-autopay:${invoice.id}`;
+  const idempotencyKey = opts.idempotencyKey;
   let attempt: { id: string };
   try {
     attempt = await db.paymentAttempt.create({
       data: {
-        kind: AUTOPAY_KIND,
+        kind: opts.kind,
         status: "PENDING",
         amount,
-        method: "stripe_autopay",
+        method: opts.method,
         processor: "stripe",
         idempotencyKey,
         invoiceId: invoice.id,
@@ -82,7 +119,7 @@ export async function attemptRecurringInvoiceAutopay(opts: {
   } catch (error) {
     if (isUniqueConstraintError(error)) {
       const existing = await db.paymentAttempt.findUnique({
-        where: { invoiceId_kind: { invoiceId: invoice.id, kind: AUTOPAY_KIND } },
+        where: { invoiceId_kind: { invoiceId: invoice.id, kind: opts.kind } },
       });
       return {
         status: "SKIPPED",
@@ -151,10 +188,9 @@ export async function attemptRecurringInvoiceAutopay(opts: {
         confirm: true,
         metadata: {
           invoiceId: invoice.id,
-          recurringInvoiceId: opts.recurringInvoiceId,
           orgId: invoice.organizationId,
           clientId: invoice.clientId,
-          autoCharge: "true",
+          ...(opts.metadata ?? {}),
         },
       },
       { idempotencyKey },
@@ -176,7 +212,7 @@ export async function attemptRecurringInvoiceAutopay(opts: {
       await tx.payment.create({
         data: {
           amount,
-          method: "stripe_autopay",
+          method: opts.method,
           transactionId: paymentIntent.id,
           invoiceId: invoice.id,
           organizationId: invoice.organizationId,

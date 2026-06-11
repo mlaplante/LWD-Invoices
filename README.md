@@ -47,9 +47,11 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 
 ### Payments
 - Stripe and PayPal gateway integration
-- Webhook-based status updates with idempotency
+- ACH and SEPA Direct Debit on Stripe Checkout (per-org toggles; invoices are marked paid only after the bank debit settles)
+- Webhook-based status updates with cross-instance idempotency
 - Encrypted gateway credentials stored per-organization
 - Support for multiple payment methods: STRIPE, PAYPAL, BANK_TRANSFER, CASH, CHECK, MONEY_ORDER
+- **Failed-Payment Recovery (Dunning)** — failed auto-charges are retried 1/3/7 days later, then escalated with a pay-link email to the client and an admin alert
 - **Smart Payment Nudges** — Automatic identification of reliable payers who skip pre-due reminders (80%+ on-time payment rate)
 - **"Viewed but Unpaid" Reminders** — Reminder-sequence steps that trigger off real email-open engagement (sent N hours after the client opened the invoice and still hasn't paid) instead of a fixed calendar delay
 
