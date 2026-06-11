@@ -7,6 +7,7 @@ import { sendEmail } from "@/server/services/email-sender";
 import { InvoiceStatus } from "@/generated/prisma";
 import { scoreCollectionRisk, rankCollectionsQueue } from "@/server/services/collection-risk";
 import { escapeHtml } from "@/server/services/automation-template";
+import { assertAiRateLimit } from "@/server/lib/ai-rate-limit";
 
 // Built-in fallback reminder template. The smart drafter (Gemini-first) rephrases
 // it per the selected tone and runs the fact guard; if AI is unavailable it
@@ -34,6 +35,7 @@ export const collectionsRouter = router({
   draftReminder: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ invoiceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      assertAiRateLimit("reminderDraft", ctx.orgId);
       const invoice = await ctx.db.invoice.findFirst({
         where: { id: input.invoiceId, organizationId: ctx.orgId },
         include: {

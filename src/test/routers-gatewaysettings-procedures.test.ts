@@ -73,7 +73,11 @@ describe("Gateway Settings Router Procedures", () => {
       expect(result[0].isEnabled).toBe(true);
       expect(result[0].surcharge).toBe(2.9);
       // Stripe should only return publishableKey in safe config
-      expect(result[0].safeConfig).toEqual({ publishableKey: "pk_test_123" });
+      expect(result[0].safeConfig).toEqual({
+        publishableKey: "pk_test_123",
+        achDebitEnabled: false,
+        sepaDebitEnabled: false,
+      });
       expect(result[1].gatewayType).toBe(GatewayType.PAYPAL);
       // PayPal should only return email
       expect(result[1].safeConfig).toEqual({ email: "test@paypal.com" });
@@ -263,8 +267,13 @@ describe("Gateway Settings Router Procedures", () => {
         config,
       });
 
-      // Verify encryption was called with the config
-      expect(encryptionService.encryptJson).toHaveBeenCalledWith(config);
+      // Verify encryption was called with the config (schema fills in the
+      // bank-debit toggles' defaults before encryption)
+      expect(encryptionService.encryptJson).toHaveBeenCalledWith({
+        ...config,
+        achDebitEnabled: false,
+        sepaDebitEnabled: false,
+      });
 
       // Verify the encrypted value was passed to database
       const upsertCall = ctx.db.gatewaySetting.upsert.mock.calls[0][0];

@@ -5,6 +5,11 @@ vi.mock("@/server/db", () => ({
     gatewaySetting: { findUnique: vi.fn() },
     invoice: { findUnique: vi.fn() },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
+    webhookDelivery: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({}),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     $transaction: vi.fn(),
   },
 }));
@@ -80,6 +85,63 @@ describe("Stripe webhook", () => {
     const res = await POST(makeReq(makeBody()) as any);
     expect(res.status).toBe(200);
     expect(vi.mocked(db.$transaction)).not.toHaveBeenCalled();
+  });
+
+  it("defers bank-debit checkouts that completed with payment_status unpaid", async () => {
+    vi.mocked(constructStripeEvent).mockReturnValue({
+      id: "evt_async_pending",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          metadata: { orgId: "org1", invoiceId: "inv1" },
+          payment_status: "unpaid",
+          amount_total: 10000,
+          payment_intent: "pi_test",
+          id: "cs_test",
+        },
+      },
+    } as any);
+    vi.mocked(db.invoice.findUnique).mockResolvedValue({
+      id: "inv1",
+      number: "2026-0001",
+      total: { toNumber: () => 100 },
+      status: "SENT",
+      partialPayments: [],
+      payments: [],
+    } as any);
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(vi.mocked(db.$transaction)).not.toHaveBeenCalled();
+  });
+
+  it("records the payment when async_payment_succeeded lands", async () => {
+    vi.mocked(constructStripeEvent).mockReturnValue({
+      id: "evt_async_ok",
+      type: "checkout.session.async_payment_succeeded",
+      data: {
+        object: {
+          metadata: { orgId: "org1", invoiceId: "inv1" },
+          payment_status: "paid",
+          amount_total: 10000,
+          payment_intent: "pi_test",
+          id: "cs_test",
+        },
+      },
+    } as any);
+    vi.mocked(db.invoice.findUnique).mockResolvedValue({
+      id: "inv1",
+      total: { toNumber: () => 100 },
+      status: "SENT",
+      partialPayments: [],
+      payments: [],
+    } as any);
+    mockTx.partialPayment.updateMany.mockResolvedValue({ count: 0 });
+    vi.mocked(db.$transaction).mockImplementation((fn: any) => fn(mockTx));
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(mockTx.payment.create).toHaveBeenCalled();
   });
 
   it("calls $transaction to record payment for an unpaid invoice", async () => {

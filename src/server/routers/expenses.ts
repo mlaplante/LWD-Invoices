@@ -11,6 +11,7 @@ import { getOrgTaxList } from "@/server/lib/tax-helpers";
 import { logAudit } from "../services/audit";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { suggestCategorization } from "@/server/services/expense-categorization";
+import { assertAiRateLimit } from "@/server/lib/ai-rate-limit";
 
 // Per-org throttle on the paid-LLM receipt scan. In-process (per serverless
 // instance), so the effective limit is this × replicas — enough to stop a
@@ -284,6 +285,7 @@ export const expensesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      assertAiRateLimit("expenseCategorization", ctx.orgId);
       const [history, categories] = await Promise.all([
         ctx.db.expense.findMany({
           where: { organizationId: ctx.orgId, categoryId: { not: null } },

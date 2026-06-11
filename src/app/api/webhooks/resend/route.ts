@@ -1,6 +1,8 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
+import { webhookJson } from "@/lib/webhook-response";
 import { Webhook } from "svix";
 import { db } from "@/server/db";
+import { markProcessed, wasProcessed } from "@/server/services/webhook-dedup";
 
 // Resend uses Svix to sign webhooks; verifying with the wrong secret throws.
 // We capture the raw body once because signature verification needs exact bytes.
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (!secret) {
     // Webhook is optional. If the secret isn't configured, return 503 so Resend
     // surfaces the misconfiguration in its dashboard rather than silently 200ing.
-    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    return webhookJson({ error: "Webhook not configured" }, { status: 503 });
   }
 
   const rawBody = await req.text();
@@ -55,14 +57,24 @@ export async function POST(req: NextRequest) {
     const wh = new Webhook(secret);
     payload = wh.verify(rawBody, headers) as ResendPayload;
   } catch {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    return webhookJson({ error: "Invalid signature" }, { status: 400 });
   }
 
   const resendId = payload.data?.email_id;
   const type = payload.type;
   if (!resendId || !type) {
     // Acknowledge so Resend doesn't retry, but skip — nothing to record.
-    return NextResponse.json({ ok: true });
+    return webhookJson({ ok: true });
+  }
+
+  // Dedup on the svix message id — it's stable across Resend's retries of the
+  // same delivery (email_id alone isn't unique: one email emits delivered /
+  // opened / clicked events that all share it). Without this, a replayed
+  // delivery creates duplicate EmailEvent rows and can re-fire engagement
+  // automations like the viewed-unpaid reminder.
+  const deliveryId = headers["svix-id"];
+  if (await wasProcessed(db, "resend", deliveryId)) {
+    return webhookJson({ ok: true });
   }
 
   const recipient = Array.isArray(payload.data?.to)
@@ -113,5 +125,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true });
+  await markProcessed(db, "resend", deliveryId);
+
+  return webhookJson({ ok: true });
 }

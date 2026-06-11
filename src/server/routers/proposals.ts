@@ -12,6 +12,7 @@ import { resolveInvoiceTax } from "@/server/services/invoice-tax-resolver";
 import { generateInvoiceNumber } from "@/server/services/invoice-numbering";
 import { generatePortalToken } from "@/lib/portal-session";
 import { assertInOrg } from "@/server/lib/get-for-org";
+import { assertAiRateLimit } from "@/server/lib/ai-rate-limit";
 
 const wizardLineSchema = z.object({
   name: z.string().min(1),
@@ -30,6 +31,7 @@ async function buildProposalDraft(
     excludeInvoiceId?: string;
   },
 ) {
+  assertAiRateLimit("proposalGeneration", ctx.orgId);
   const template = await ctx.db.proposalTemplate.findFirst({
     where: args.templateId
       ? { id: args.templateId, organizationId: ctx.orgId }

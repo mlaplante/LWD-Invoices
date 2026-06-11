@@ -26,6 +26,9 @@ export async function createCheckoutSession(opts: {
   clientEmail?: string | null;
   clientName?: string;
   stripeCustomerId?: string | null;
+  /** Org-level bank-debit toggles from StripeConfig; currency-gated below. */
+  achDebitEnabled?: boolean;
+  sepaDebitEnabled?: boolean;
 }): Promise<{ url: string; sessionId: string; customerId: string | undefined }> {
   const { stripeClient, invoice, surcharge, appUrl, partialPaymentId, amountOverride, successUrl, cancelUrl } = opts;
 
@@ -50,8 +53,18 @@ export async function createCheckoutSession(opts: {
     customer = newCustomer.id;
   }
 
+  // Bank debits cut fees on large invoices but each only works in its home
+  // currency: us_bank_account (ACH) requires USD, sepa_debit requires EUR.
+  // Both are delayed-notification methods — the webhook defers marking the
+  // invoice paid until checkout.session.async_payment_succeeded.
+  const currencyCode = invoice.currency.code.toLowerCase();
+  const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] = ["card"];
+  if (opts.achDebitEnabled && currencyCode === "usd") paymentMethodTypes.push("us_bank_account");
+  if (opts.sepaDebitEnabled && currencyCode === "eur") paymentMethodTypes.push("sepa_debit");
+
   const session = await stripeClient.checkout.sessions.create({
     mode: "payment",
+    payment_method_types: paymentMethodTypes,
     ...(customer ? { customer } : {}),
     line_items: [
       {

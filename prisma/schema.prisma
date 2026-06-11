@@ -241,6 +241,10 @@ model Organization {
   lateFeeRecurring        Boolean @default(false)
   lateFeeMaxApplications  Int?
   lateFeeIntervalDays     Int     @default(30)
+  // ─── Dunning (failed-payment recovery) ──────────────────────────────────────
+  // When enabled, the dunning-retries cron re-attempts failed auto-charges on
+  // a 1/3/7-day schedule, then escalates to a client email + admin alert.
+  dunningEnabled          Boolean @default(false)
   // ─── Two-Factor Authentication ──────────────────────────────────────────────
   require2FA              Boolean @default(false)
   // ─── Portal Branding ────────────────────────────────────────────────────────
@@ -550,6 +554,11 @@ model Invoice {
   // time (empty array = fall back to client.ccEmails at send time).
   scheduledSendAt DateTime?
   scheduledSendCc String[]  @default([])
+
+  // Set when dunning has exhausted charge retries (or hit a non-retryable
+  // failure) and emailed the client to pay manually. Terminal per invoice:
+  // the dunning cron skips invoices with this set.
+  dunningEscalatedAt DateTime?
 
   // Cached totals (recalculated on every save)
   subtotal      Decimal @default(0) @db.Decimal(20, 10)
@@ -2070,4 +2079,22 @@ model UserDashboardPreference {
 
   @@unique([userId, organizationId])
   @@index([organizationId])
+}
+
+// ─── Webhook Delivery Dedup ────────────────────────────────────────────────────
+// Cross-instance idempotency ledger for inbound webhooks (Stripe, Resend).
+// One row per (provider, externalId); the unique constraint makes "already
+// processed?" a single atomic insert, so multi-replica deploys can't
+// double-process a retried delivery. Rows are pruned opportunistically after
+// PRUNE_AFTER_MS in src/server/services/webhook-dedup.ts — providers stop
+// retrying long before that window closes.
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  provider    String
+  externalId  String
+  processedAt DateTime @default(now())
+
+  @@unique([provider, externalId])
+  @@index([processedAt])
 }

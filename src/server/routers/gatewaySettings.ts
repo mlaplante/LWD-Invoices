@@ -11,6 +11,8 @@ const stripeConfigSchema = z.object({
   secretKey: z.string().min(1),
   publishableKey: z.string().min(1),
   webhookSecret: z.string().min(1),
+  achDebitEnabled: z.boolean().optional().default(false),
+  sepaDebitEnabled: z.boolean().optional().default(false),
 });
 
 const paypalConfigSchema = z.object({
@@ -35,7 +37,11 @@ export const gatewaySettingsRouter = router({
         const decoded = decryptJson<Record<string, unknown>>(g.configJson);
         if (g.gatewayType === GatewayType.STRIPE) {
           const config = decoded as StripeConfig;
-          safeConfig = { publishableKey: config.publishableKey };
+          safeConfig = {
+            publishableKey: config.publishableKey,
+            achDebitEnabled: config.achDebitEnabled ?? false,
+            sepaDebitEnabled: config.sepaDebitEnabled ?? false,
+          };
         } else if (g.gatewayType === GatewayType.PAYPAL) {
           const config = decoded as PayPalConfig;
           safeConfig = { email: config.email };

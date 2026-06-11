@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { webhookJson } from "@/lib/webhook-response";
 import type { NextRequest } from "next/server";
 import type Stripe from "stripe";
 import { db } from "@/server/db";
@@ -32,14 +33,14 @@ export async function validateStripeWebhook(req: NextRequest): Promise<Result> {
   const rawBody = await req.text();
   const sig = req.headers.get("stripe-signature");
   if (!sig) {
-    return { ok: false, response: NextResponse.json({ error: "Missing signature" }, { status: 400 }) };
+    return { ok: false, response: webhookJson({ error: "Missing signature" }, { status: 400 }) };
   }
 
   let preEvent: PreEvent;
   try {
     preEvent = JSON.parse(rawBody) as PreEvent;
   } catch {
-    return { ok: false, response: NextResponse.json({ error: "Invalid JSON" }, { status: 400 }) };
+    return { ok: false, response: webhookJson({ error: "Invalid JSON" }, { status: 400 }) };
   }
 
   // Resolve which org this event belongs to. Most events carry orgId directly
@@ -50,7 +51,7 @@ export async function validateStripeWebhook(req: NextRequest): Promise<Result> {
   if (!orgId) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Could not resolve org for event" }, { status: 400 }),
+      response: webhookJson({ error: "Could not resolve org for event" }, { status: 400 }),
     };
   }
 
@@ -62,7 +63,7 @@ export async function validateStripeWebhook(req: NextRequest): Promise<Result> {
   if (!gateway?.isEnabled) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Stripe not configured for org" }, { status: 400 }),
+      response: webhookJson({ error: "Stripe not configured for org" }, { status: 400 }),
     };
   }
 
@@ -100,7 +101,7 @@ export async function validateStripeWebhook(req: NextRequest): Promise<Result> {
   // nothing to cross-check.
   const verifiedOrgId = (event.data.object as { metadata?: Record<string, string> })?.metadata?.orgId;
   if (verifiedOrgId && verifiedOrgId !== orgId) {
-    return { ok: false, response: NextResponse.json({ error: "OrgId mismatch" }, { status: 400 }) };
+    return { ok: false, response: webhookJson({ error: "OrgId mismatch" }, { status: 400 }) };
   }
 
   return { ok: true, event, orgId, config, rawBody };

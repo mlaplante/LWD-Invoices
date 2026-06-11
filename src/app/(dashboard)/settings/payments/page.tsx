@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GatewaySettingsForm } from "@/components/settings/GatewaySettingsForm";
 import { StripeTaxToggle } from "@/components/settings/StripeTaxToggle";
+import { DunningToggle } from "@/components/settings/DunningToggle";
 import { ArrowLeft } from "lucide-react";
 
 export default function PaymentsSettingsPage() {
@@ -51,6 +52,23 @@ export default function PaymentsSettingsPage() {
         </div>
         <div className="px-6 py-6">
           <StripeTaxToggle />
+        </div>
+      </div>
+
+      {/* Dunning — lives here because it acts on the Stripe auto-charge flow */}
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border/50">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Payment Recovery
+          </p>
+          <p className="text-base font-semibold mt-1">Failed-Payment Recovery</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Automatically retry failed auto-charges and escalate to the client
+            when recovery runs out of road.
+          </p>
+        </div>
+        <div className="px-6 py-6">
+          <DunningToggle />
         </div>
       </div>
     </div>

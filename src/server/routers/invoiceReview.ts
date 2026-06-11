@@ -6,6 +6,7 @@ import {
   type InvoiceReviewSnapshot,
   type RecentInvoiceSignature,
 } from "@/server/services/invoice-review";
+import { assertAiRateLimit } from "@/server/lib/ai-rate-limit";
 
 const DUPLICATE_WINDOW_DAYS = 30;
 
@@ -18,6 +19,7 @@ export const invoiceReviewRouter = router({
   review: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ invoiceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      assertAiRateLimit("invoiceReview", ctx.orgId);
       const invoice = await ctx.db.invoice.findFirst({
         where: { id: input.invoiceId, organizationId: ctx.orgId },
         include: {
