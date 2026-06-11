@@ -83,9 +83,16 @@ const SYSTEM_PROMPT =
  */
 export async function generateProposal(ctx: ProposalContext): Promise<GeneratedProposal | null> {
   if (!env.GEMINI_API_KEY) return null;
+  // User-authored fields are serialized via JSON.stringify (so they can't break
+  // out of the prompt structure) and length-capped here so a hostile client or
+  // project record can't smuggle a page of adversarial instructions — or blow
+  // up token spend — through the context.
   const userPayload = JSON.stringify({
-    client: ctx.clientName,
-    project: { name: ctx.projectName ?? null, description: ctx.projectDescription ?? null },
+    client: truncate(ctx.clientName, 200),
+    project: {
+      name: ctx.projectName ? truncate(ctx.projectName, 200) : null,
+      description: ctx.projectDescription ? truncate(ctx.projectDescription, 2000) : null,
+    },
     templateSections: ctx.templateSections,
     pastProposals: ctx.pastProposals,
     items: ctx.items.map((i) => ({ id: i.id, name: i.name, rate: i.rate })),
@@ -110,6 +117,10 @@ export async function generateProposal(ctx: ProposalContext): Promise<GeneratedP
     if (err instanceof AiOutputError) return null;
     return null;
   }
+}
+
+function truncate(value: string, max: number): string {
+  return value.length > max ? value.slice(0, max) : value;
 }
 
 /**

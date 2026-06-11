@@ -2071,3 +2071,21 @@ model UserDashboardPreference {
   @@unique([userId, organizationId])
   @@index([organizationId])
 }
+
+// ─── Webhook Delivery Dedup ────────────────────────────────────────────────────
+// Cross-instance idempotency ledger for inbound webhooks (Stripe, Resend).
+// One row per (provider, externalId); the unique constraint makes "already
+// processed?" a single atomic insert, so multi-replica deploys can't
+// double-process a retried delivery. Rows are pruned opportunistically after
+// PRUNE_AFTER_MS in src/server/services/webhook-dedup.ts — providers stop
+// retrying long before that window closes.
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  provider    String
+  externalId  String
+  processedAt DateTime @default(now())
+
+  @@unique([provider, externalId])
+  @@index([processedAt])
+}

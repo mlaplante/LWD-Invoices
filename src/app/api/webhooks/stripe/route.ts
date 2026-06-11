@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { webhookJson } from "@/lib/webhook-response";
 import { db } from "@/server/db";
 import { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import type Stripe from "stripe";
@@ -7,11 +8,13 @@ import { sendPaymentReceiptEmail } from "@/server/services/payment-receipt-email
 import { saveStripeCard } from "@/server/services/save-stripe-card";
 import { getStripeClient } from "@/server/services/stripe";
 import { validateStripeWebhook } from "@/server/services/stripe-webhook-validator";
+import { markProcessed, wasProcessed } from "@/server/services/webhook-dedup";
 
 // Track processed Stripe event IDs to prevent duplicate processing.
-// Entries auto-expire after 24 hours. In-memory is sufficient because
-// the DB transaction is already idempotent — this is an optimization
-// to skip redundant DB work.
+// Entries auto-expire after 24 hours. The in-memory map is the fast path for
+// same-instance retries; the WebhookDelivery table (webhook-dedup service)
+// makes the skip hold across replicas. The DB transaction below remains
+// idempotent as the last line of defense.
 const processedEvents = new Map<string, number>();
 const EVENT_TTL_MS = 24 * 60 * 60_000;
 
@@ -22,15 +25,24 @@ function cleanExpiredEvents() {
   }
 }
 
+// Record a fully-processed event in memory + the cross-instance ledger, and
+// ack to Stripe. Marking happens only after processing so a handler that threw
+// gets re-run on Stripe's retry.
+async function ackProcessed(eventId: string) {
+  processedEvents.set(eventId, Date.now());
+  await markProcessed(db, "stripe", eventId);
+  return webhookJson({ received: true });
+}
+
 export async function POST(req: NextRequest) {
   const validated = await validateStripeWebhook(req);
   if (!validated.ok) return validated.response;
   const { event, orgId, config } = validated;
 
-  // Idempotency: skip already-processed events
+  // Idempotency: skip already-processed events (this instance, then any instance)
   cleanExpiredEvents();
-  if (processedEvents.has(event.id)) {
-    return NextResponse.json({ received: true });
+  if (processedEvents.has(event.id) || (await wasProcessed(db, "stripe", event.id))) {
+    return webhookJson({ received: true });
   }
 
   // Refunds: reverse the recorded payment, audit, downgrade invoice status
@@ -42,8 +54,7 @@ export async function POST(req: NextRequest) {
       ? charge.payment_intent
       : charge.payment_intent?.id;
     if (!paymentIntentId) {
-      processedEvents.set(event.id, Date.now());
-      return NextResponse.json({ received: true });
+      return ackProcessed(event.id);
     }
     const payment = await db.payment.findFirst({
       where: { transactionId: paymentIntentId, organizationId: orgId },
@@ -76,8 +87,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("[stripe-webhook] Refund reconcile failed:", err);
     }
-    processedEvents.set(event.id, Date.now());
-    return NextResponse.json({ received: true });
+    return ackProcessed(event.id);
   }
 
   // Disputes: never auto-mutate the invoice — disputes can be lost and
@@ -127,8 +137,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("[stripe-webhook] Dispute upsert failed:", err);
     }
-    processedEvents.set(event.id, Date.now());
-    return NextResponse.json({ received: true });
+    return ackProcessed(event.id);
   }
 
   // Payment failed / canceled: log so the org sees why a checkout didn't
@@ -157,8 +166,7 @@ export async function POST(req: NextRequest) {
         });
       }
     }
-    processedEvents.set(event.id, Date.now());
-    return NextResponse.json({ received: true });
+    return ackProcessed(event.id);
   }
 
   if (event.type === "checkout.session.completed") {
@@ -166,7 +174,7 @@ export async function POST(req: NextRequest) {
     const invoiceId = session.metadata?.invoiceId;
 
     if (!invoiceId) {
-      return NextResponse.json({ error: "Missing invoiceId" }, { status: 400 });
+      return webhookJson({ error: "Missing invoiceId" }, { status: 400 });
     }
 
     const invoice = await db.invoice.findUnique({
@@ -175,14 +183,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (!invoice) {
-      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+      return webhookJson({ error: "Invoice not found" }, { status: 404 });
     }
 
     const partialPaymentId = session.metadata?.partialPaymentId;
 
     // Idempotency: skip if fully paid AND no specific installment targeted
     if (invoice.status === InvoiceStatus.PAID && !partialPaymentId) {
-      return NextResponse.json({ received: true });
+      return webhookJson({ received: true });
     }
 
     const amountTotal = session.amount_total ?? 0;
@@ -377,7 +385,5 @@ export async function POST(req: NextRequest) {
   }
 
   // Mark event as processed
-  processedEvents.set(event.id, Date.now());
-
-  return NextResponse.json({ received: true });
+  return ackProcessed(event.id);
 }

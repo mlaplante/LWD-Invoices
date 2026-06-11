@@ -4,6 +4,7 @@ import { router, requireRole, protectedProcedure } from "../trpc";
 import { idInput } from "../lib/schemas";
 import { generateSmartReminderDraft } from "@/server/services/smart-reminder-drafts";
 import { getClientPaymentBehaviorSummary } from "@/server/services/client-payment-score";
+import { assertAiRateLimit } from "@/server/lib/ai-rate-limit";
 
 const stepSchema = z.object({
   trigger: z.enum(["DUE_DATE_OFFSET", "VIEWED_UNPAID"]).default("DUE_DATE_OFFSET"),
@@ -183,6 +184,7 @@ export const reminderSequencesRouter = router({
   generateDraft: requireRole("OWNER", "ADMIN")
     .input(z.object({ invoiceId: z.string(), stepId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      assertAiRateLimit("reminderDraft", ctx.orgId);
       const invoice = await ctx.db.invoice.findFirst({
         where: { id: input.invoiceId, organizationId: ctx.orgId },
         include: {

@@ -5,6 +5,11 @@ vi.mock("@/server/db", () => ({
     gatewaySetting: { findUnique: vi.fn() },
     invoice: { findUnique: vi.fn() },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
+    webhookDelivery: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({}),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     $transaction: vi.fn(),
   },
 }));
