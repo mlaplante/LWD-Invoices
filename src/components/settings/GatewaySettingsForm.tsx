@@ -25,16 +25,19 @@ export function GatewaySettingsForm() {
   const [stripeLabel, setStripeLabel] = useState("");
   const [stripeAch, setStripeAch] = useState(false);
   const [stripeSepa, setStripeSepa] = useState(false);
+  const [stripeBankSurcharge, setStripeBankSurcharge] = useState("0");
   const [stripeMethodsSynced, setStripeMethodsSynced] = useState(false);
 
   // Keys are write-only (never echoed back), but the bank-debit toggles are in
   // safeConfig — sync them once so the checkboxes reflect the saved state.
-  const stripeSafeConfig = gateways?.find((g) => g.gatewayType === GatewayType.STRIPE)?.safeConfig as
+  const stripeRow = gateways?.find((g) => g.gatewayType === GatewayType.STRIPE);
+  const stripeSafeConfig = stripeRow?.safeConfig as
     | { achDebitEnabled?: boolean; sepaDebitEnabled?: boolean }
     | undefined;
   if (stripeSafeConfig && !stripeMethodsSynced) {
     setStripeAch(stripeSafeConfig.achDebitEnabled ?? false);
     setStripeSepa(stripeSafeConfig.sepaDebitEnabled ?? false);
+    setStripeBankSurcharge(String(stripeRow?.bankDebitSurcharge ?? 0));
     setStripeMethodsSynced(true);
   }
 
@@ -60,6 +63,7 @@ export function GatewaySettingsForm() {
       {
         gatewayType: GatewayType.STRIPE,
         surcharge: parseFloat(stripeSurcharge) || 0,
+        bankDebitSurcharge: parseFloat(stripeBankSurcharge) || 0,
         label: stripeLabel || undefined,
         config: {
           secretKey: stripeKey,
@@ -229,6 +233,21 @@ export function GatewaySettingsForm() {
                 />
                 <span className="text-sm">SEPA Direct Debit (EUR invoices)</span>
               </label>
+              <div className="space-y-1.5 pt-1">
+                <Label>Bank Debit Surcharge (%)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={stripeBankSurcharge}
+                  onChange={(e) => setStripeBankSurcharge(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Applied to bank debit payments instead of the card surcharge above —
+                  bank debits cost much less to accept, so this is usually lower or 0.
+                </p>
+              </div>
             </div>
 
             {errors.stripe && <p className="text-sm text-destructive">{errors.stripe}</p>}
