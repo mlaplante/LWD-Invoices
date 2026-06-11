@@ -104,6 +104,57 @@ describe("Stripe Service", () => {
       expect(mockStripeInstance.checkout.sessions.create).toHaveBeenCalled();
     });
 
+    it("offers bank debits only when enabled and currency matches", async () => {
+      const mockSession = { id: "cs_pm", url: "https://checkout.stripe.com/pay/cs_pm" };
+      mockStripeInstance.checkout.sessions.create.mockResolvedValue(mockSession);
+
+      const baseInvoice = {
+        id: "inv_pm",
+        number: "2026-0009",
+        total: { toNumber: () => 100 } as any,
+        portalToken: "tok",
+        organizationId: "org_pm",
+        clientId: "client_pm",
+      };
+
+      // USD + ACH enabled -> card + us_bank_account (SEPA gated out by currency)
+      await createCheckoutSession({
+        stripeClient: mockStripeInstance,
+        invoice: { ...baseInvoice, currency: { code: "USD" } },
+        surcharge: 0,
+        appUrl: "https://app.example.com",
+        achDebitEnabled: true,
+        sepaDebitEnabled: true,
+      });
+      expect(mockStripeInstance.checkout.sessions.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ payment_method_types: ["card", "us_bank_account"] }),
+      );
+
+      // EUR + SEPA enabled -> card + sepa_debit
+      await createCheckoutSession({
+        stripeClient: mockStripeInstance,
+        invoice: { ...baseInvoice, currency: { code: "EUR" } },
+        surcharge: 0,
+        appUrl: "https://app.example.com",
+        achDebitEnabled: true,
+        sepaDebitEnabled: true,
+      });
+      expect(mockStripeInstance.checkout.sessions.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ payment_method_types: ["card", "sepa_debit"] }),
+      );
+
+      // Flags off -> card only
+      await createCheckoutSession({
+        stripeClient: mockStripeInstance,
+        invoice: { ...baseInvoice, currency: { code: "USD" } },
+        surcharge: 0,
+        appUrl: "https://app.example.com",
+      });
+      expect(mockStripeInstance.checkout.sessions.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ payment_method_types: ["card"] }),
+      );
+    });
+
     it("includes customer and invoice metadata", async () => {
       const mockSession = {
         id: "cs_test_123",

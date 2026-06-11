@@ -19,6 +19,8 @@ type StripeConfig = {
   secretKey: string;
   publishableKey: string;
   webhookSecret: string;
+  achDebitEnabled?: boolean;
+  sepaDebitEnabled?: boolean;
 };
 
 export async function GET(
@@ -127,6 +129,8 @@ export async function GET(
       clientEmail: invoice.client?.email,
       clientName: invoice.client?.name,
       stripeCustomerId: invoice.client?.stripeCustomerId,
+      achDebitEnabled: config.achDebitEnabled,
+      sepaDebitEnabled: config.sepaDebitEnabled,
     });
     checkoutUrl = session.url;
   } catch (err) {

@@ -169,7 +169,46 @@ export async function POST(req: NextRequest) {
     return ackProcessed(event.id);
   }
 
-  if (event.type === "checkout.session.completed") {
+  // A bank-debit checkout (ACH / SEPA) completes before funds settle. Stripe
+  // then sends async_payment_succeeded (record the payment) or
+  // async_payment_failed (surface to admins) days later.
+  if (event.type === "checkout.session.async_payment_failed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const invoiceId = session.metadata?.invoiceId;
+    if (invoiceId) {
+      const invoice = await db.invoice.findFirst({
+        where: { id: invoiceId, organizationId: orgId },
+        select: { number: true, client: { select: { name: true } } },
+      });
+      if (invoice) {
+        await logAudit({
+          action: "STATUS_CHANGED",
+          entityType: "Invoice",
+          entityId: invoiceId,
+          entityLabel: `Invoice #${invoice.number}`,
+          diff: { event: event.type, sessionId: session.id },
+          organizationId: orgId,
+        });
+        try {
+          const { notifyOrgAdmins } = await import("@/server/services/notifications");
+          await notifyOrgAdmins(orgId, {
+            type: "INVOICE_OVERDUE",
+            title: `Bank debit failed for Invoice #${invoice.number}`,
+            body: `${invoice.client?.name ?? "The client"}'s bank payment did not clear. The invoice remains unpaid.`,
+            link: `/invoices/${invoiceId}`,
+          });
+        } catch (err) {
+          console.error("[stripe-webhook] async payment failure notify failed:", err);
+        }
+      }
+    }
+    return ackProcessed(event.id);
+  }
+
+  if (
+    event.type === "checkout.session.completed" ||
+    event.type === "checkout.session.async_payment_succeeded"
+  ) {
     const session = event.data.object as Stripe.Checkout.Session;
     const invoiceId = session.metadata?.invoiceId;
 
@@ -184,6 +223,20 @@ export async function POST(req: NextRequest) {
 
     if (!invoice) {
       return webhookJson({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    // Delayed-notification method still processing: don't record a payment
+    // yet — async_payment_succeeded will land later and run the paid path.
+    if (event.type === "checkout.session.completed" && session.payment_status === "unpaid") {
+      await logAudit({
+        action: "STATUS_CHANGED",
+        entityType: "Invoice",
+        entityId: invoiceId,
+        entityLabel: `Invoice #${invoice.number}`,
+        diff: { event: "bank_debit_processing", sessionId: session.id },
+        organizationId: orgId,
+      });
+      return ackProcessed(event.id);
     }
 
     const partialPaymentId = session.metadata?.partialPaymentId;

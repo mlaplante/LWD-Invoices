@@ -220,6 +220,8 @@ export const portalRouter = router({
         clientEmail: invoice.client.email,
         clientName: invoice.client.name,
         stripeCustomerId: invoice.client.stripeCustomerId,
+        achDebitEnabled: config.achDebitEnabled,
+        sepaDebitEnabled: config.sepaDebitEnabled,
       });
 
       return { url };

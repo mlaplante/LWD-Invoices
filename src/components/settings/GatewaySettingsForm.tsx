@@ -23,6 +23,20 @@ export function GatewaySettingsForm() {
   const [stripeWebhook, setStripeWebhook] = useState("");
   const [stripeSurcharge, setStripeSurcharge] = useState("0");
   const [stripeLabel, setStripeLabel] = useState("");
+  const [stripeAch, setStripeAch] = useState(false);
+  const [stripeSepa, setStripeSepa] = useState(false);
+  const [stripeMethodsSynced, setStripeMethodsSynced] = useState(false);
+
+  // Keys are write-only (never echoed back), but the bank-debit toggles are in
+  // safeConfig — sync them once so the checkboxes reflect the saved state.
+  const stripeSafeConfig = gateways?.find((g) => g.gatewayType === GatewayType.STRIPE)?.safeConfig as
+    | { achDebitEnabled?: boolean; sepaDebitEnabled?: boolean }
+    | undefined;
+  if (stripeSafeConfig && !stripeMethodsSynced) {
+    setStripeAch(stripeSafeConfig.achDebitEnabled ?? false);
+    setStripeSepa(stripeSafeConfig.sepaDebitEnabled ?? false);
+    setStripeMethodsSynced(true);
+  }
 
   // PayPal form state
   const [ppEmail, setPpEmail] = useState("");
@@ -51,6 +65,8 @@ export function GatewaySettingsForm() {
           secretKey: stripeKey,
           publishableKey: stripePubKey,
           webhookSecret: stripeWebhook,
+          achDebitEnabled: stripeAch,
+          sepaDebitEnabled: stripeSepa,
         },
       },
       {
@@ -187,6 +203,32 @@ export function GatewaySettingsForm() {
                   placeholder="Pay by Credit Card"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Bank debit payment methods</Label>
+              <p className="text-xs text-muted-foreground">
+                Lower-fee bank payments on Checkout. Funds take a few business days to
+                settle — invoices stay unpaid until the debit clears.
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={stripeAch}
+                  onChange={(e) => setStripeAch(e.target.checked)}
+                />
+                <span className="text-sm">ACH Direct Debit (USD invoices)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={stripeSepa}
+                  onChange={(e) => setStripeSepa(e.target.checked)}
+                />
+                <span className="text-sm">SEPA Direct Debit (EUR invoices)</span>
+              </label>
             </div>
 
             {errors.stripe && <p className="text-sm text-destructive">{errors.stripe}</p>}
