@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { resolveEarlyPayOffer } from "@/server/services/early-payment-discount";
 import { notFound } from "next/navigation";
 import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 import { decryptJson } from "@/server/services/encryption";
@@ -48,6 +49,20 @@ export default async function PayPage({
 
   const isPaid = invoice.status === "PAID" || remaining <= 0;
   const isPayable = PAYABLE_STATUSES.includes(invoice.status);
+
+  // Early-pay discount: the Stripe routes charge the discounted balance
+  // inside the window, so the headline amount must match.
+  const earlyPayOffer = resolveEarlyPayOffer({
+    percent: invoice.earlyPayDiscountPercent?.toNumber(),
+    days: invoice.earlyPayDiscountDays,
+    invoiceDate: invoice.date,
+    status: invoice.status,
+    total,
+    paidSoFar: paidSum,
+    hasInstallments: invoice.partialPayments.some((pp) => !pp.isPaid),
+    redeemedAt: invoice.earlyPayDiscountRedeemedAt,
+    now: new Date(),
+  });
 
   // Load enabled gateways
   const gatewayRows = !isPaid
@@ -183,9 +198,23 @@ export default async function PayPage({
                 <p className="text-sm text-muted-foreground">
                   Invoice #{invoice.number}
                 </p>
-                <p className="text-4xl font-bold text-foreground tracking-tight">
-                  {f(remaining)}
-                </p>
+                {earlyPayOffer ? (
+                  <>
+                    <p className="text-4xl font-bold text-foreground tracking-tight">
+                      {f(earlyPayOffer.discountedBalance)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      <span className="line-through">{f(earlyPayOffer.balance)}</span>{" "}
+                      <span className="font-medium text-emerald-600">
+                        {earlyPayOffer.percent}% off until {formatDateLong(earlyPayOffer.deadline)}
+                      </span>
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-4xl font-bold text-foreground tracking-tight">
+                    {f(remaining)}
+                  </p>
+                )}
                 {invoice.dueDate && (
                   <p className="text-sm text-muted-foreground">
                     Due {formatDateLong(invoice.dueDate)}
