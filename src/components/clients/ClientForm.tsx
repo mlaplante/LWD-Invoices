@@ -39,6 +39,7 @@ type Client = {
   country: string | null;
   taxId: string | null;
   notes: string | null;
+  tags: string[];
   portalPassphraseHash: string | null;
   defaultPaymentTermsDays: number | null;
 };
@@ -64,6 +65,7 @@ export function ClientForm({ mode, client }: Props) {
     country: client?.country ?? "",
     taxId: client?.taxId ?? "",
     notes: client?.notes ?? "",
+    tags: (client?.tags ?? []).join(", "),
     portalPassphrase: "",
     defaultPaymentTermsDays: client?.defaultPaymentTermsDays ?? null,
   });
@@ -114,6 +116,10 @@ export function ClientForm({ mode, client }: Props) {
       country: form.country || undefined,
       taxId: form.taxId || undefined,
       notes: form.notes || undefined,
+      tags: form.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0),
       portalPassphrase: form.portalPassphrase || undefined,
       defaultPaymentTermsDays: form.defaultPaymentTermsDays,
     };
@@ -297,6 +303,19 @@ export function ClientForm({ mode, client }: Props) {
               </Button>
             )}
           </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Tags</label>
+          <Input
+            value={form.tags}
+            onChange={(e) => handleChange("tags", e.target.value)}
+            placeholder="retainer, net-60, agency"
+            className="mt-1"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Comma-separated labels for filtering the client list. Up to 20 tags.
+          </p>
         </div>
 
         <div>

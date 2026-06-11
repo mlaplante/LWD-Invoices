@@ -1,9 +1,11 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Users, HeartHandshake } from "lucide-react";
+import { Users, HeartHandshake, Tag } from "lucide-react";
 import { SearchInput } from "@/components/ui/SearchInput";
+import { ClientImportExportButtons } from "@/components/clients/ClientImportExportButtons";
 import { Suspense } from "react";
+import { cn } from "@/lib/utils";
 
 // Generate consistent initials + color from a name
 function initials(name: string): string {
@@ -35,16 +37,29 @@ const PAGE_SIZE = 25;
 export default async function ClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; search?: string }>;
+  searchParams: Promise<{ page?: string; search?: string; tag?: string }>;
 }) {
-  const { page: rawPage, search } = await searchParams;
+  const { page: rawPage, search, tag } = await searchParams;
   const page = Math.max(1, parseInt(rawPage ?? "1", 10));
-  const { items: paginated, total } = await api.clients.list({
-    includeArchived: false,
-    search: search || undefined,
-    page,
-    pageSize: PAGE_SIZE,
-  });
+  const [{ items: paginated, total }, usedTags] = await Promise.all([
+    api.clients.list({
+      includeArchived: false,
+      search: search || undefined,
+      tag: tag || undefined,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+    api.clients.usedTags(),
+  ]);
+
+  const listParams = (p: number) => {
+    const qs = new URLSearchParams();
+    if (p > 1) qs.set("page", String(p));
+    if (search) qs.set("search", search);
+    if (tag) qs.set("tag", tag);
+    const s = qs.toString();
+    return s ? `?${s}` : "";
+  };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(totalPages, 1));
@@ -65,11 +80,38 @@ export default async function ClientsPage({
               Retention
             </Link>
           </Button>
+          <ClientImportExportButtons />
           <Button asChild size="sm">
             <Link href="/clients/new">+ New Client</Link>
           </Button>
         </div>
       </div>
+
+      {/* Tag filter chips */}
+      {usedTags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Tag className="w-3.5 h-3.5 text-muted-foreground" />
+          {usedTags.map(({ tag: t, count }) => (
+            <Link
+              key={t}
+              href={tag?.toLowerCase() === t.toLowerCase() ? "/clients" : `/clients?tag=${encodeURIComponent(t)}`}
+              className={cn(
+                "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+                tag?.toLowerCase() === t.toLowerCase()
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-accent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t} <span className="opacity-60">{count}</span>
+            </Link>
+          ))}
+          {tag && (
+            <Link href="/clients" className="text-xs text-muted-foreground underline ml-1">
+              Clear
+            </Link>
+          )}
+        </div>
+      )}
 
       {total === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -143,6 +185,15 @@ export default async function ClientsPage({
                           {client.email && (
                             <p className="text-xs text-muted-foreground mt-0.5">{client.email}</p>
                           )}
+                          {client.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {client.tags.map((t) => (
+                                <span key={t} className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -172,7 +223,7 @@ export default async function ClientsPage({
               <div className="flex items-center gap-1">
                 {currentPage > 1 && (
                   <Link
-                    href={`/clients?page=${currentPage - 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+                    href={`/clients${listParams(currentPage - 1)}`}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
                   >
                     Previous
@@ -183,7 +234,7 @@ export default async function ClientsPage({
                 </span>
                 {currentPage < totalPages && (
                   <Link
-                    href={`/clients?page=${currentPage + 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+                    href={`/clients${listParams(currentPage + 1)}`}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
                   >
                     Next
