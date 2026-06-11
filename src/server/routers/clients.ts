@@ -17,6 +17,13 @@ import {
 // around, short enough that a forgotten tab doesn't stay signed in.
 const PORTAL_PREVIEW_SESSION_MS = 60 * 60_000;
 import { getClientCreditStatus } from "../services/credit-hold";
+import { EmailPreferenceKind } from "@/generated/prisma";
+import {
+  EMAIL_PREFERENCE_KINDS,
+  buildEmailPreferencesUrl,
+  resolvePreferenceState,
+  setEmailPreference,
+} from "../services/email-preferences";
 import { buildClientHealthInputForClient } from "../services/analytics-data";
 import { calculateClientHealthScore } from "../services/client-health-score";
 
@@ -188,6 +195,7 @@ export const clientsRouter = router({
           organizationId: ctx.orgId,
           // Override schema's @default(cuid()) with crypto-strong randomness.
           portalToken: generatePortalToken(),
+          emailPreferencesToken: generatePortalToken(),
         },
       });
       await logAudit({
@@ -339,6 +347,60 @@ export const clientsRouter = router({
         organizationId: ctx.orgId,
       }).catch(() => {});
       return result;
+    }),
+
+  // ─── Email preferences (CAN-SPAM / GDPR opt-outs) ───────────────────────────
+
+  // Read model for the client's email-preference card: per-kind toggles plus
+  // the public manage-preferences URL (so admins can resend it on request).
+  emailPreferences: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const client = await getForOrg(ctx.db.client, input.clientId, ctx.orgId, {
+        select: { id: true, emailPreferencesToken: true },
+        entityName: "Client",
+      });
+      const rows = await ctx.db.clientEmailPreference.findMany({
+        where: { clientId: client.id, organizationId: ctx.orgId },
+        select: { kind: true, enabled: true },
+      });
+      return {
+        kinds: EMAIL_PREFERENCE_KINDS,
+        preferences: resolvePreferenceState(rows),
+        manageUrl: buildEmailPreferencesUrl(client.emailPreferencesToken),
+      };
+    }),
+
+  // Admin override for a single kind — e.g. honoring a verbal "stop emailing
+  // me reminders" without making the client click the footer link. Audited.
+  setEmailPreference: requireRole("OWNER", "ADMIN")
+    .input(
+      z.object({
+        clientId: z.string(),
+        kind: z.nativeEnum(EmailPreferenceKind),
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const client = await getForOrg(ctx.db.client, input.clientId, ctx.orgId, {
+        select: { id: true, name: true },
+        entityName: "Client",
+      });
+      await setEmailPreference({
+        clientId: client.id,
+        organizationId: ctx.orgId,
+        kind: input.kind,
+        enabled: input.enabled,
+      });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Client",
+        entityId: client.id,
+        entityLabel: `${client.name} — ${input.kind} emails ${input.enabled ? "enabled" : "disabled"}`,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return { ok: true };
     }),
 
   // "View as client": issues the admin a real (short-lived) portal dashboard

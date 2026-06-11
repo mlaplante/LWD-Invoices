@@ -62,7 +62,7 @@ export interface RunnerInvoice {
   status: string;
   dueDate: Date | null;
   portalToken: string;
-  client: { name: string; email: string | null };
+  client: { id: string; name: string; email: string | null };
   organization: { id: string; name: string };
   currency: { code: string };
   payments: { amount: unknown; paidAt: Date }[];
@@ -156,6 +156,8 @@ async function executeAction(
     if (!invoice.client.email) throw new Error("client has no email");
     await sendEmail({
       organizationId: invoice.organization.id,
+      clientId: invoice.client.id,
+      emailKind: "AUTOMATIONS",
       to: invoice.client.email,
       subject: interpolateTemplate(cfg.subject, vars),
       html: interpolateTemplate(cfg.body, vars),

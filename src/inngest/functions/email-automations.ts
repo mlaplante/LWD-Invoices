@@ -171,6 +171,8 @@ export const processEmailAutomations = inngest.createFunction(
         try {
           await sendEmail({
             organizationId: invoice.organizationId,
+            clientId: invoice.clientId,
+            emailKind: "AUTOMATIONS",
             to: invoice.client.email,
             subject,
             html,

@@ -108,6 +108,8 @@ export const processProposalNudges = inngest.createFunction(
         await sendEmail({
           organizationId: estimate.organizationId,
           invoiceId: estimate.id,
+          clientId: estimate.clientId,
+          emailKind: "PROPOSAL_NUDGES",
           to: estimate.client.email,
           subject: `Following up on Proposal #${estimate.number} from ${estimate.organization.name}`,
           html,

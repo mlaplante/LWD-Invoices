@@ -349,6 +349,7 @@ model Organization {
   refunds           Refund[]
   periodCloses      PeriodClose[]
   dashboardPreferences UserDashboardPreference[]
+  clientEmailPreferences ClientEmailPreference[]
 }
 
 model User {
@@ -420,6 +421,10 @@ model Client {
   notes                   String?
   defaultPaymentTermsDays Int?
   portalToken             String   @unique @default(uuid(4))
+  // Bearer token for the public email-preferences page (/unsubscribe/[token]).
+  // Deliberately separate from portalToken so unsubscribe links in every
+  // marketing-adjacent email footer never grant portal/document access.
+  emailPreferencesToken   String   @unique @default(uuid(4))
   portalPassphraseHash String?
   // ── Self-service "forgot passphrase" reset ──
   // SHA-256 of the emailed reset token (plaintext is never stored) and its
@@ -467,6 +472,35 @@ model Client {
   checkIns              ClientCheckIn[]
   inboundEmails         InboundEmail[]
   disputes              Dispute[]
+  emailPreferences      ClientEmailPreference[]
+}
+
+// Per-client opt-out for non-transactional email kinds (CAN-SPAM / GDPR).
+// Absence of a row means the kind is enabled; rows are upserted when the
+// client (via the public unsubscribe page) or an admin toggles a kind.
+// Transactional email — invoice sends, receipts, dunning for failed
+// charges — is not governed by this table and is always delivered.
+model ClientEmailPreference {
+  id      String              @id @default(cuid())
+  kind    EmailPreferenceKind
+  enabled Boolean             @default(true)
+
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, kind])
+  @@index([organizationId])
+}
+
+enum EmailPreferenceKind {
+  PAYMENT_REMINDERS
+  PROPOSAL_NUDGES
+  AUTOMATIONS
 }
 
 model ClientPortalSession {
