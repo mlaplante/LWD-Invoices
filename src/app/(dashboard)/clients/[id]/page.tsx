@@ -12,6 +12,7 @@ import { RetainerList } from "@/components/admin/retainers/RetainerList";
 import { AutoChargeBadge } from "@/components/clients/AutoChargeBadge";
 import { ClientHealthBadge } from "@/components/clients/ClientHealthBadge";
 import { ClientRemindersPanel } from "@/components/clients/ClientRemindersPanel";
+import { ClientEmailPreferencesPanel } from "@/components/clients/ClientEmailPreferencesPanel";
 import { ClientLastRemindedBadge } from "@/components/clients/ClientLastRemindedBadge";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, FileText, Receipt } from "lucide-react";
@@ -257,6 +258,9 @@ export default async function ClientDetailPage({
 
       {/* ── Reminders sent (across this client's invoices) ────────── */}
       <ClientRemindersPanel clientId={id} />
+
+      {/* ── Email preferences (opt-outs) ──────────────────────────── */}
+      <ClientEmailPreferencesPanel clientId={id} />
 
       {/* ── Invoices ─────────────────────────────────────────────── */}
       <div className="space-y-3">

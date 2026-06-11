@@ -425,9 +425,24 @@ export const invoicesRouter = router({
           state: true,
           postalCode: true,
           country: true,
+          earlyPayDiscountEnabled: true,
+          earlyPayDiscountPercent: true,
+          earlyPayDiscountDays: true,
         },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Snapshot the org's early-pay offer onto payable invoice types so a
+      // later settings change never rewrites terms already sent to a client.
+      const earlyPaySnapshot =
+        org.earlyPayDiscountEnabled &&
+        org.earlyPayDiscountPercent.toNumber() > 0 &&
+        (input.type === InvoiceType.SIMPLE || input.type === InvoiceType.DETAILED)
+          ? {
+              earlyPayDiscountPercent: org.earlyPayDiscountPercent,
+              earlyPayDiscountDays: org.earlyPayDiscountDays,
+            }
+          : {};
 
       // The new invoice carries organizationId: ctx.orgId, but that does not
       // verify the referenced client is in this tenant. Check it before any
@@ -472,6 +487,7 @@ export const invoicesRouter = router({
             organizationId: ctx.orgId,
             portalToken: generatePortalToken(),
             reminderDaysOverride: input.reminderDaysOverride ?? [],
+            ...earlyPaySnapshot,
             discountType: input.discountType ?? null,
             discountAmount: input.discountAmount ?? 0,
             discountDescription: input.discountDescription ?? null,

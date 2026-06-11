@@ -223,6 +223,8 @@ export const processReminderSequences = inngest.createFunction(
         await sendEmail({
           organizationId: invoice.organizationId,
           invoiceId: invoice.id,
+          clientId: invoice.clientId,
+          emailKind: "PAYMENT_REMINDERS",
           to: invoice.client.email,
           subject,
           html,

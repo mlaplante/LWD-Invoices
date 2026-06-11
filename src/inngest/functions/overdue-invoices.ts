@@ -99,6 +99,8 @@ export const processOverdueInvoices = inngest.createFunction(
 
             await sendEmail({
               organizationId: invoice.organizationId,
+              clientId: invoice.clientId,
+              emailKind: "PAYMENT_REMINDERS",
               to: invoice.client.email,
               subject: `OVERDUE — Invoice #${invoice.number} is ${daysOverdue} ${daysOverdue === 1 ? "day" : "days"} past due`,
               html,

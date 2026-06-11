@@ -9,6 +9,10 @@ import { saveStripeCard } from "@/server/services/save-stripe-card";
 import { getStripeClient } from "@/server/services/stripe";
 import { validateStripeWebhook } from "@/server/services/stripe-webhook-validator";
 import { markProcessed, wasProcessed } from "@/server/services/webhook-dedup";
+import {
+  computeEarlyPayRedemption,
+  earlyPayDiscountLabel,
+} from "@/server/services/early-payment-discount";
 
 // Track processed Stripe event IDs to prevent duplicate processing.
 // Entries auto-expire after 24 hours. The in-memory map is the fast path for
@@ -308,9 +312,52 @@ export async function POST(req: NextRequest) {
           (sum, p) => sum + p.amount.toNumber(),
           0
         );
-        let paymentAmount = invoiceTotal - existingTotal;
-        if (paymentAmount <= 0) paymentAmount = chargedAmount;
-        const surchargeAmount = Math.max(0, chargedAmount - paymentAmount);
+
+        // Early-pay discount redemption: the checkout charged the discounted
+        // balance (metadata written by createStripeCheckout). Book the
+        // discount post-tax — append a FIXED_DISCOUNT line and shrink the
+        // cached totals — so payments reconcile against the new total.
+        const metaDiscount = parseFloat(session.metadata?.earlyPayDiscountAmount ?? "");
+        const earlyPayDiscount =
+          Number.isFinite(metaDiscount) &&
+          metaDiscount > 0 &&
+          !invoice.earlyPayDiscountRedeemedAt &&
+          invoice.earlyPayDiscountPercent
+            ? Math.min(metaDiscount, invoiceTotal - existingTotal)
+            : 0;
+
+        let paymentAmount: number;
+        let surchargeAmount: number;
+        if (earlyPayDiscount > 0) {
+          const redemption = computeEarlyPayRedemption({
+            invoiceTotal,
+            existingPaid: existingTotal,
+            discountAmount: earlyPayDiscount,
+            chargedAmount,
+          });
+          paymentAmount = redemption.paymentAmount;
+          surchargeAmount = redemption.surchargeAmount;
+
+          const percent = invoice.earlyPayDiscountPercent?.toNumber() ?? 0;
+          const days = invoice.earlyPayDiscountDays ?? 0;
+          await tx.invoiceLine.create({
+            data: {
+              invoiceId,
+              lineType: "FIXED_DISCOUNT",
+              name: earlyPayDiscountLabel(percent, days),
+              qty: 1,
+              rate: earlyPayDiscount,
+              sort: 9999,
+              subtotal: -earlyPayDiscount,
+              taxTotal: 0,
+              total: -earlyPayDiscount,
+            },
+          });
+        } else {
+          paymentAmount = invoiceTotal - existingTotal;
+          if (paymentAmount <= 0) paymentAmount = chargedAmount;
+          surchargeAmount = Math.max(0, chargedAmount - paymentAmount);
+        }
 
         await tx.payment.create({
           data: {
@@ -336,7 +383,17 @@ export async function POST(req: NextRequest) {
 
         await tx.invoice.update({
           where: { id: invoiceId, organizationId: orgId },
-          data: { status: InvoiceStatus.PAID },
+          data: {
+            status: InvoiceStatus.PAID,
+            ...(earlyPayDiscount > 0
+              ? {
+                  discountTotal: { increment: earlyPayDiscount },
+                  total: { decrement: earlyPayDiscount },
+                  earlyPayDiscountRedeemedAt: new Date(),
+                  earlyPayDiscountAmount: earlyPayDiscount,
+                }
+              : {}),
+          },
         });
       }
     });

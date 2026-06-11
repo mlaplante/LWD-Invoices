@@ -17,6 +17,19 @@ import {
 // around, short enough that a forgotten tab doesn't stay signed in.
 const PORTAL_PREVIEW_SESSION_MS = 60 * 60_000;
 import { getClientCreditStatus } from "../services/credit-hold";
+import { EmailPreferenceKind } from "@/generated/prisma";
+import {
+  EMAIL_PREFERENCE_KINDS,
+  buildEmailPreferencesUrl,
+  resolvePreferenceState,
+  setEmailPreference,
+} from "../services/email-preferences";
+import {
+  MAX_TAGS_PER_CLIENT,
+  MAX_TAG_LENGTH,
+  normalizeTags,
+  parseClientsCsv,
+} from "../services/client-csv";
 import { buildClientHealthInputForClient } from "../services/analytics-data";
 import { calculateClientHealthScore } from "../services/client-health-score";
 
@@ -39,6 +52,8 @@ const clientSchema = z.object({
   taxId: z.string().trim().max(64).optional(),
   isTaxExempt: z.boolean().optional(),
   notes: z.string().optional(),
+  // Normalized via normalizeTags() before persisting (trim, dedupe, caps).
+  tags: z.array(z.string().trim().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS_PER_CLIENT).optional(),
   // Minimum 8 chars makes brute-force impractical given the rate-limit + lockout
   // on /api/portal/dashboard/[clientToken]/auth (10 attempts / 15 min,
   // 5-failure lockout). Max guards against accidental megabyte pastes.
@@ -60,12 +75,14 @@ export const clientsRouter = router({
       paginationInput.extend({
         includeArchived: z.boolean().default(false),
         search: z.string().max(100).optional(),
+        tag: z.string().max(MAX_TAG_LENGTH).optional(),
       })
     )
     .query(async ({ ctx, input }) => {
       const where: Prisma.ClientWhereInput = {
         organizationId: ctx.orgId,
         ...(input.includeArchived ? {} : { isArchived: false }),
+        ...(input.tag ? { tags: { has: input.tag } } : {}),
         ...(input.search
           ? {
               OR: [
@@ -181,6 +198,7 @@ export const clientsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { portalPassphrase, ...rest } = input;
       const passHash = await hashPassphraseIfProvided({ portalPassphrase });
+      if (rest.tags) rest.tags = normalizeTags(rest.tags);
       const result = await ctx.db.client.create({
         data: {
           ...rest,
@@ -188,6 +206,7 @@ export const clientsRouter = router({
           organizationId: ctx.orgId,
           // Override schema's @default(cuid()) with crypto-strong randomness.
           portalToken: generatePortalToken(),
+          emailPreferencesToken: generatePortalToken(),
         },
       });
       await logAudit({
@@ -208,6 +227,7 @@ export const clientsRouter = router({
       const passHash = removePassphrase
         ? { portalPassphraseHash: null }
         : await hashPassphraseIfProvided({ portalPassphrase });
+      if (rest.tags) rest.tags = normalizeTags(rest.tags);
       const result = await ctx.db.client.update({
         where: { id, organizationId: ctx.orgId },
         data: { ...rest, ...passHash },
@@ -339,6 +359,149 @@ export const clientsRouter = router({
         organizationId: ctx.orgId,
       }).catch(() => {});
       return result;
+    }),
+
+  // ─── Tags & CSV import ───────────────────────────────────────────────────────
+
+  // Distinct tags in use across the org's active clients, with counts —
+  // powers the tag filter on the clients list and tag suggestions in the form.
+  usedTags: protectedProcedure.query(async ({ ctx }) => {
+    const clients = await ctx.db.client.findMany({
+      where: { organizationId: ctx.orgId, isArchived: false, tags: { isEmpty: false } },
+      select: { tags: true },
+      take: 5000,
+    });
+    const counts = new Map<string, { tag: string; count: number }>();
+    for (const { tags } of clients) {
+      for (const tag of tags) {
+        const key = tag.toLowerCase();
+        const entry = counts.get(key);
+        if (entry) entry.count++;
+        else counts.set(key, { tag, count: 1 });
+      }
+    }
+    return [...counts.values()].sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+  }),
+
+  // Bulk import from CSV. Parsing happens server-side (client-csv.ts) so the
+  // same validation applies regardless of caller. Rows whose email already
+  // exists in the org are skipped rather than duplicated; rows without an
+  // email are deduped by exact name match.
+  importCsv: requireRole("OWNER", "ADMIN")
+    .input(z.object({ csv: z.string().min(1).max(1_000_000) }))
+    .mutation(async ({ ctx, input }) => {
+      const { rows, errors } = parseClientsCsv(input.csv);
+      if (rows.length === 0) {
+        return { created: 0, skipped: 0, errors };
+      }
+
+      const existing = await ctx.db.client.findMany({
+        where: { organizationId: ctx.orgId },
+        select: { name: true, email: true },
+      });
+      const existingEmails = new Set(
+        existing.map((c) => c.email?.toLowerCase()).filter(Boolean) as string[],
+      );
+      const existingNames = new Set(existing.map((c) => c.name.toLowerCase()));
+
+      let created = 0;
+      let skipped = 0;
+      for (const row of rows) {
+        const duplicate = row.email
+          ? existingEmails.has(row.email.toLowerCase())
+          : existingNames.has(row.name.toLowerCase());
+        if (duplicate) {
+          skipped++;
+          continue;
+        }
+        await ctx.db.client.create({
+          data: {
+            name: row.name,
+            email: row.email,
+            phone: row.phone,
+            address: row.address,
+            city: row.city,
+            state: row.state,
+            zip: row.zip,
+            country: row.country,
+            taxId: row.taxId,
+            notes: row.notes,
+            tags: row.tags,
+            defaultPaymentTermsDays: row.defaultPaymentTermsDays,
+            organizationId: ctx.orgId,
+            portalToken: generatePortalToken(),
+            emailPreferencesToken: generatePortalToken(),
+          },
+        });
+        if (row.email) existingEmails.add(row.email.toLowerCase());
+        existingNames.add(row.name.toLowerCase());
+        created++;
+      }
+
+      await logAudit({
+        action: "CREATED",
+        entityType: "Client",
+        entityId: "csv-import",
+        entityLabel: `CSV import — ${created} created, ${skipped} skipped`,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+
+      return { created, skipped, errors };
+    }),
+
+  // ─── Email preferences (CAN-SPAM / GDPR opt-outs) ───────────────────────────
+
+  // Read model for the client's email-preference card: per-kind toggles plus
+  // the public manage-preferences URL (so admins can resend it on request).
+  emailPreferences: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const client = await getForOrg(ctx.db.client, input.clientId, ctx.orgId, {
+        select: { id: true, emailPreferencesToken: true },
+        entityName: "Client",
+      });
+      const rows = await ctx.db.clientEmailPreference.findMany({
+        where: { clientId: client.id, organizationId: ctx.orgId },
+        select: { kind: true, enabled: true },
+      });
+      return {
+        kinds: EMAIL_PREFERENCE_KINDS,
+        preferences: resolvePreferenceState(rows),
+        manageUrl: buildEmailPreferencesUrl(client.emailPreferencesToken),
+      };
+    }),
+
+  // Admin override for a single kind — e.g. honoring a verbal "stop emailing
+  // me reminders" without making the client click the footer link. Audited.
+  setEmailPreference: requireRole("OWNER", "ADMIN")
+    .input(
+      z.object({
+        clientId: z.string(),
+        kind: z.nativeEnum(EmailPreferenceKind),
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const client = await getForOrg(ctx.db.client, input.clientId, ctx.orgId, {
+        select: { id: true, name: true },
+        entityName: "Client",
+      });
+      await setEmailPreference({
+        clientId: client.id,
+        organizationId: ctx.orgId,
+        kind: input.kind,
+        enabled: input.enabled,
+      });
+      await logAudit({
+        action: "UPDATED",
+        entityType: "Client",
+        entityId: client.id,
+        entityLabel: `${client.name} — ${input.kind} emails ${input.enabled ? "enabled" : "disabled"}`,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return { ok: true };
     }),
 
   // "View as client": issues the admin a real (short-lived) portal dashboard

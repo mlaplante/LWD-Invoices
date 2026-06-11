@@ -6,6 +6,7 @@ import { GatewayType, InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { decryptJson } from "../services/encryption";
 import { getStripeClient, createCheckoutSession } from "../services/stripe";
 import { resolvePartialPaymentAmount } from "../services/partial-payments";
+import { resolveEarlyPayOffer } from "../services/early-payment-discount";
 import type { StripeConfig } from "../services/gateway-config";
 import {
   dashboardSessionCookieName,
@@ -63,10 +64,29 @@ async function getInvoiceByToken(db: typeof import("../db").db, token: string) {
         orderBy: { sort: "asc" },
       },
       payments: { orderBy: { paidAt: "asc" } },
+      partialPayments: { orderBy: { sortOrder: "asc" } },
     },
   });
   if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
   return invoice;
+}
+
+/** Live early-pay offer for a portal invoice, or null. */
+function getInvoiceEarlyPayOffer(
+  invoice: Awaited<ReturnType<typeof getInvoiceByToken>>,
+  now = new Date(),
+) {
+  return resolveEarlyPayOffer({
+    percent: invoice.earlyPayDiscountPercent?.toNumber(),
+    days: invoice.earlyPayDiscountDays,
+    invoiceDate: invoice.date,
+    status: invoice.status,
+    total: invoice.total.toNumber(),
+    paidSoFar: (invoice.payments ?? []).reduce((sum, p) => sum + p.amount.toNumber(), 0),
+    hasInstallments: (invoice.partialPayments ?? []).some((pp) => !pp.isPaid),
+    redeemedAt: invoice.earlyPayDiscountRedeemedAt,
+    now,
+  });
 }
 
 /**
@@ -162,6 +182,20 @@ export const portalRouter = router({
       // Resolve amount override for partial / balance payments
       let amountOverride: number | undefined;
       let partialPaymentId: string | undefined;
+      let extraMetadata: Record<string, string> | undefined;
+
+      // Early-pay discount: any full-balance charge initiated within the
+      // window is charged the discounted balance. The webhook reads the
+      // metadata back and books the discount when the session settles.
+      const earlyPayOffer = input.partialPaymentId
+        ? null
+        : getInvoiceEarlyPayOffer(invoice);
+      if (earlyPayOffer) {
+        amountOverride = earlyPayOffer.discountedBalance;
+        extraMetadata = {
+          earlyPayDiscountAmount: earlyPayOffer.discountAmount.toFixed(2),
+        };
+      }
 
       if (input.partialPaymentId) {
         const partial = await ctx.db.partialPayment.findUnique({
@@ -175,7 +209,7 @@ export const portalRouter = router({
         }
         amountOverride = resolvePartialPaymentAmount(partial, invoice.total);
         partialPaymentId = partial.id;
-      } else if (input.payFullBalance) {
+      } else if (input.payFullBalance && !earlyPayOffer) {
         const invoiceTotal = invoice.total.toNumber();
         const paidSoFar = invoice.payments.reduce(
           (sum, p) => sum + p.amount.toNumber(),
@@ -228,6 +262,7 @@ export const portalRouter = router({
         paymentMethod: input.paymentMethod,
         achDebitEnabled: config.achDebitEnabled,
         sepaDebitEnabled: config.sepaDebitEnabled,
+        extraMetadata,
       });
 
       return { url };

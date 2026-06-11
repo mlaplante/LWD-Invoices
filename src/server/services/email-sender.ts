@@ -1,6 +1,12 @@
 import { db } from "@/server/db";
 import { env } from "@/lib/env";
+import type { EmailPreferenceKind } from "@/generated/prisma";
 import { getOwnerBcc } from "./email-bcc";
+import {
+  appendEmailPreferencesFooter,
+  buildEmailPreferencesUrl,
+  isEmailKindEnabled,
+} from "./email-preferences";
 
 export type SendEmailOptions = {
   organizationId: string;
@@ -16,11 +22,19 @@ export type SendEmailOptions = {
    * and the "viewed but unpaid" reminder trigger.
    */
   invoiceId?: string;
+  /**
+   * For non-transactional email, pass the recipient's client id and the
+   * preference kind. The send is suppressed when the client opted out of the
+   * kind, and an unsubscribe footer + List-Unsubscribe headers are added
+   * otherwise. Omit both for transactional mail (sends, receipts, dunning).
+   */
+  clientId?: string;
+  emailKind?: EmailPreferenceKind;
 };
 
 export type SendEmailResult =
   | { resendId: string | null; suppressed?: false }
-  | { resendId: null; suppressed: true; reason: "bounced" | "complained" };
+  | { resendId: null; suppressed: true; reason: "bounced" | "complained" | "unsubscribed" };
 
 /**
  * Sends an email via Resend with org owner BCC (if enabled).
@@ -34,6 +48,17 @@ export type SendEmailResult =
  * { suppressed: true } so callers can decide whether to surface the skip.
  */
 export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult> {
+  // Honor per-client opt-outs for non-transactional kinds before anything else.
+  if (opts.clientId && opts.emailKind) {
+    const enabled = await isEmailKindEnabled(opts.clientId, opts.emailKind);
+    if (!enabled) {
+      console.error(
+        `[email-sender] Suppressed ${opts.emailKind} send: client opted out`,
+      );
+      return { resendId: null, suppressed: true, reason: "unsubscribed" };
+    }
+  }
+
   const recipients = Array.isArray(opts.to) ? opts.to : [opts.to];
   const flagged = await db.client.findFirst({
     where: {
@@ -74,6 +99,26 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
 
   const bcc = await getOwnerBcc(opts.organizationId);
 
+  // Non-transactional mail gets a manage-preferences footer plus RFC 8058
+  // one-click List-Unsubscribe headers (mailbox providers require these for
+  // bulk-ish senders and surface their own unsubscribe button from them).
+  let html = opts.html;
+  let unsubscribeHeaders: Record<string, string> | undefined;
+  if (opts.clientId && opts.emailKind) {
+    const client = await db.client.findUnique({
+      where: { id: opts.clientId },
+      select: { emailPreferencesToken: true },
+    });
+    if (client) {
+      const url = buildEmailPreferencesUrl(client.emailPreferencesToken);
+      html = appendEmailPreferencesFooter(html, url);
+      unsubscribeHeaders = {
+        "List-Unsubscribe": `<${url}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      };
+    }
+  }
+
   // Inbound threading: when an inbound domain is configured and the email
   // relates to an invoice, route replies to reply+<invoiceId>@<domain> so the
   // inbound webhook can thread the reply back onto the invoice.
@@ -86,11 +131,12 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
     from: process.env.RESEND_FROM_EMAIL ?? "invoices@example.com",
     to: opts.to,
     subject: opts.subject,
-    html: opts.html,
+    html,
     tags: [
       { name: "org_id", value: opts.organizationId },
       ...(opts.invoiceId ? [{ name: "invoice_id", value: opts.invoiceId }] : []),
     ],
+    ...(unsubscribeHeaders ? { headers: unsubscribeHeaders } : {}),
     ...(replyTo ? { replyTo } : {}),
     ...(cc ? { cc } : {}),
     ...(bcc ? { bcc } : {}),

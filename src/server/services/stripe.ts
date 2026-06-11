@@ -36,6 +36,11 @@ export async function createCheckoutSession(opts: {
   /** Org-level bank-debit toggles from StripeConfig; currency-gated below. */
   achDebitEnabled?: boolean;
   sepaDebitEnabled?: boolean;
+  /**
+   * Extra session metadata (e.g. the early-pay discount the webhook must
+   * apply when this session settles). Values must be strings per Stripe.
+   */
+  extraMetadata?: Record<string, string>;
 }): Promise<{ url: string; sessionId: string; customerId: string | undefined }> {
   const { stripeClient, invoice, surcharge, appUrl, partialPaymentId, amountOverride, successUrl, cancelUrl } = opts;
 
@@ -107,6 +112,7 @@ export async function createCheckoutSession(opts: {
       portalToken: invoice.portalToken,
       clientId: invoice.clientId,
       ...(partialPaymentId ? { partialPaymentId } : {}),
+      ...(opts.extraMetadata ?? {}),
     },
     success_url: successUrl ?? `${appUrl}/portal/${invoice.portalToken}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: cancelUrl ?? `${appUrl}/portal/${invoice.portalToken}`,

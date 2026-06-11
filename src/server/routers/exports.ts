@@ -107,6 +107,7 @@ export const exportsRouter = router({
           zip: true,
           country: true,
           taxId: true,
+          tags: true,
           createdAt: true,
         },
         orderBy: { name: "asc" },
@@ -115,9 +116,9 @@ export const exportsRouter = router({
       const truncated = clients.length > EXPORT_ROW_CAP;
       const rows = truncated ? clients.slice(0, EXPORT_ROW_CAP) : clients;
       const csv = buildCsv(
-        ["Name", "Email", "Phone", "Address", "City", "State", "ZIP", "Country", "Tax ID", "Created"],
+        ["Name", "Email", "Phone", "Address", "City", "State", "ZIP", "Country", "Tax ID", "Tags", "Created"],
         rows.map((c) => [
-          c.name, c.email, c.phone, c.address, c.city, c.state, c.zip, c.country, c.taxId, c.createdAt,
+          c.name, c.email, c.phone, c.address, c.city, c.state, c.zip, c.country, c.taxId, c.tags.join("; "), c.createdAt,
         ]),
       );
       return { csv, count: rows.length, truncated, cap: EXPORT_ROW_CAP };

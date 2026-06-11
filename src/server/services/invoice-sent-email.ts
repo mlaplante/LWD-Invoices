@@ -2,6 +2,7 @@ import { sendEmail } from "./email-sender";
 import { sanitizeCcList } from "./cc-emails";
 import { resolvePartialPaymentAmount } from "./partial-payments";
 import { formatDate } from "@/lib/format";
+import { resolveEarlyPayOffer } from "./early-payment-discount";
 import type { FullInvoice } from "./invoice-pdf";
 
 /**
@@ -29,6 +30,21 @@ export async function sendInvoiceSentEmail(
       isPaid: pp.isPaid,
     }));
 
+  // Surface the early-pay offer in the email so the client sees it without
+  // opening the portal. Status is checked as SENT-equivalent: this helper only
+  // runs from the send path, so evaluate the offer as if already sent.
+  const offer = resolveEarlyPayOffer({
+    percent: invoice.earlyPayDiscountPercent?.toNumber(),
+    days: invoice.earlyPayDiscountDays,
+    invoiceDate: invoice.date,
+    status: "SENT",
+    total: invoice.total.toNumber(),
+    paidSoFar: 0,
+    hasInstallments: (invoice.partialPayments ?? []).some((pp) => !pp.isPaid),
+    redeemedAt: invoice.earlyPayDiscountRedeemedAt,
+    now: new Date(),
+  });
+
   const html = await render(
     InvoiceSentEmail({
       invoiceNumber: invoice.number,
@@ -41,6 +57,13 @@ export async function sendInvoiceSentEmail(
       payLink: `${appUrl}/pay/${invoice.portalToken}`,
       logoUrl: invoice.organization.logoUrl ?? undefined,
       partialPayments: partialPayments && partialPayments.length > 0 ? partialPayments : undefined,
+      earlyPayOffer: offer
+        ? {
+            percent: offer.percent,
+            deadline: formatDate(offer.deadline),
+            discountedTotal: offer.discountedBalance.toFixed(2),
+          }
+        : undefined,
     })
   );
 

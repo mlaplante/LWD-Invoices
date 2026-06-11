@@ -88,6 +88,8 @@ export const processPaymentReminders = inngest.createFunction(
         await sendEmail({
           organizationId: invoice.organizationId,
           invoiceId: invoice.id,
+          clientId: invoice.clientId,
+          emailKind: "PAYMENT_REMINDERS",
           to: invoice.client.email,
           subject: `Payment reminder — Invoice #${invoice.number} due in ${daysUntilDue} ${daysUntilDue === 1 ? "day" : "days"}`,
           html,

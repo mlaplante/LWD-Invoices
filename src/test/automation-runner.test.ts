@@ -19,7 +19,7 @@ const invoice: RunnerInvoice = {
   status: "OVERDUE",
   dueDate: new Date("2026-06-01T00:00:00Z"),
   portalToken: "tok_abc",
-  client: { name: "Acme Corp", email: "ar@acme.test" },
+  client: { id: "client_1", name: "Acme Corp", email: "ar@acme.test" },
   organization: { id: "org_1", name: "LWD" },
   currency: { code: "USD" },
   payments: [{ amount: 400, paidAt: new Date("2026-06-05T00:00:00Z") }],
@@ -97,7 +97,7 @@ describe("runRuleActions", () => {
   it("reports failed when an email action has no recipient", async () => {
     const result = await runRuleActions(
       [{ type: "SEND_EMAIL", config: { subject: "s", body: "b" } }],
-      { ...invoice, client: { name: "Acme", email: null } },
+      { ...invoice, client: { id: "client_1", name: "Acme", email: null } },
       now,
     );
     expect(result.status).toBe("failed");
@@ -112,7 +112,7 @@ describe("runRuleActions", () => {
         { type: "NOTIFY_ADMINS", config: { title: "t", body: "b" } },
         { type: "SEND_EMAIL", config: { subject: "s", body: "b" } },
       ],
-      { ...invoice, client: { name: "Acme", email: null } },
+      { ...invoice, client: { id: "client_1", name: "Acme", email: null } },
       now,
     );
     expect(result.status).toBe("partial");

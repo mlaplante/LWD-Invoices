@@ -9,6 +9,7 @@ import {
 import { headers } from "next/headers";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { safeErrorResponse } from "@/lib/api-errors";
+import { resolveEarlyPayOffer } from "@/server/services/early-payment-discount";
 
 // 10 payment attempts per token per 5 minutes
 const payLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60_000 });
@@ -101,12 +102,31 @@ export async function GET(
 
   // Determine payment amount: installment or full remaining
   let payAmount = remaining;
+  let extraMetadata: Record<string, string> | undefined;
   if (partialPaymentId) {
     const pp = invoice.partialPayments.find((p) => p.id === partialPaymentId);
     if (pp && !pp.isPaid) {
       payAmount = pp.isPercentage
         ? invoice.total.toNumber() * Number(pp.amount) / 100
         : Number(pp.amount);
+    }
+  } else {
+    // Same early-pay discount the portal checkout applies — both pay
+    // surfaces must charge identically inside the window.
+    const offer = resolveEarlyPayOffer({
+      percent: invoice.earlyPayDiscountPercent?.toNumber(),
+      days: invoice.earlyPayDiscountDays,
+      invoiceDate: invoice.date,
+      status: invoice.status,
+      total: invoice.total.toNumber(),
+      paidSoFar: totalPaid,
+      hasInstallments: invoice.partialPayments.some((pp) => !pp.isPaid),
+      redeemedAt: invoice.earlyPayDiscountRedeemedAt,
+      now: new Date(),
+    });
+    if (offer) {
+      payAmount = offer.discountedBalance;
+      extraMetadata = { earlyPayDiscountAmount: offer.discountAmount.toFixed(2) };
     }
   }
 
@@ -138,6 +158,7 @@ export async function GET(
       paymentMethod,
       achDebitEnabled: config.achDebitEnabled,
       sepaDebitEnabled: config.sepaDebitEnabled,
+      extraMetadata,
     });
     checkoutUrl = session.url;
   } catch (err) {

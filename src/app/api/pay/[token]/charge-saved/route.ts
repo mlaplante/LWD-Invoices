@@ -5,6 +5,10 @@ import { decryptJson } from "@/server/services/encryption";
 import { getStripeClient } from "@/server/services/stripe";
 import type { StripeConfig } from "@/server/services/gateway-config";
 import { safeErrorResponse } from "@/lib/api-errors";
+import {
+  earlyPayDiscountLabel,
+  resolveEarlyPayOffer,
+} from "@/server/services/early-payment-discount";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
 
@@ -93,6 +97,25 @@ export async function POST(
     chargeAmount = total - paidSum;
   }
 
+  // Early-pay discount: same offer the checkout surfaces; this path records
+  // the payment itself, so it also books the redemption below.
+  const earlyPayOffer = partialPaymentId
+    ? null
+    : resolveEarlyPayOffer({
+        percent: invoice.earlyPayDiscountPercent?.toNumber(),
+        days: invoice.earlyPayDiscountDays,
+        invoiceDate: invoice.date,
+        status: invoice.status,
+        total,
+        paidSoFar: paidSum,
+        hasInstallments: invoice.partialPayments.some((pp) => !pp.isPaid),
+        redeemedAt: invoice.earlyPayDiscountRedeemedAt,
+        now: new Date(),
+      });
+  if (earlyPayOffer) {
+    chargeAmount = earlyPayOffer.discountedBalance;
+  }
+
   if (chargeAmount <= 0) {
     return NextResponse.json({ error: "Nothing to charge" }, { status: 400 });
   }
@@ -144,16 +167,50 @@ export async function POST(
         });
       }
 
+      // Book the early-pay redemption: a post-tax FIXED_DISCOUNT line plus
+      // cached-total adjustments, mirroring the Stripe-webhook path.
+      if (earlyPayOffer) {
+        await tx.invoiceLine.create({
+          data: {
+            invoiceId: invoice.id,
+            lineType: "FIXED_DISCOUNT",
+            name: earlyPayDiscountLabel(
+              earlyPayOffer.percent,
+              invoice.earlyPayDiscountDays ?? 0,
+            ),
+            qty: 1,
+            rate: earlyPayOffer.discountAmount,
+            sort: 9999,
+            subtotal: -earlyPayOffer.discountAmount,
+            taxTotal: 0,
+            total: -earlyPayOffer.discountAmount,
+          },
+        });
+      }
+      const effectiveTotal = earlyPayOffer
+        ? total - earlyPayOffer.discountAmount
+        : total;
+
       const allPayments = await tx.payment.findMany({
         where: { invoiceId: invoice.id },
         select: { amount: true },
       });
       const totalPaid = allPayments.reduce((s, p) => s + p.amount.toNumber(), 0);
-      const newStatus = totalPaid >= total ? "PAID" : "PARTIALLY_PAID";
+      const newStatus = totalPaid >= effectiveTotal ? "PAID" : "PARTIALLY_PAID";
 
       await tx.invoice.update({
         where: { id: invoice.id },
-        data: { status: newStatus },
+        data: {
+          status: newStatus,
+          ...(earlyPayOffer
+            ? {
+                discountTotal: { increment: earlyPayOffer.discountAmount },
+                total: { decrement: earlyPayOffer.discountAmount },
+                earlyPayDiscountRedeemedAt: new Date(),
+                earlyPayDiscountAmount: earlyPayOffer.discountAmount,
+              }
+            : {}),
+        },
       });
     });
 

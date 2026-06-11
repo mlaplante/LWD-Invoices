@@ -39,7 +39,7 @@ type LoadedRule = Prisma.AutomationRuleGetPayload<{
 }>;
 
 const INVOICE_INCLUDE = {
-  client: { select: { name: true, email: true } },
+  client: { select: { id: true, name: true, email: true } },
   organization: { select: { id: true, name: true } },
   currency: { select: { code: true } },
   payments: { select: { amount: true, paidAt: true } },
