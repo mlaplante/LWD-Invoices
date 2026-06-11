@@ -10,6 +10,11 @@ import {
 } from "@/server/services/cash-flow-forecast";
 import { deriveRunway } from "@/server/services/runway";
 import {
+  describeBias,
+  scoreSnapshot,
+  summarizeAccuracy,
+} from "@/server/services/forecast-accuracy";
+import {
   buildProfitabilityInsights,
   type ProfitabilityRow,
 } from "@/server/services/profitability-insights";
@@ -182,6 +187,44 @@ export const analyticsRouter = router({
     const forecastInput = await buildCashFlowForecastInput(ctx.db, ctx.orgId);
     const forecast = projectCashFlow(forecastInput, { now });
     return deriveRunway(forecastInput, forecast);
+  }),
+
+  // How well past cash-flow forecasts matched reality. Scored snapshots come
+  // from the weekly forecast-snapshots cron; until the first 30-day window
+  // closes this returns pending counts so the UI can explain the wait.
+  forecastAccuracy: protectedProcedure.query(async ({ ctx }) => {
+    const since = new Date();
+    since.setUTCFullYear(since.getUTCFullYear() - 1);
+
+    const [scoredRows, pendingCount] = await Promise.all([
+      ctx.db.forecastSnapshot.findMany({
+        where: { organizationId: ctx.orgId, scoredAt: { not: null }, capturedAt: { gte: since } },
+        orderBy: { capturedAt: "desc" },
+        take: 200,
+      }),
+      ctx.db.forecastSnapshot.count({
+        where: { organizationId: ctx.orgId, scoredAt: null },
+      }),
+    ]);
+
+    const scored = scoredRows.map((row) => ({
+      capturedAt: row.capturedAt,
+      horizonDays: row.horizonDays,
+      projectedInflow: row.projectedInflow.toNumber(),
+      actualInflow: row.actualInflow?.toNumber() ?? 0,
+    }));
+
+    const summary = summarizeAccuracy(scored);
+    return {
+      summary,
+      biasNote: describeBias(summary),
+      pendingCount,
+      // Most recent scored snapshots for the detail table (already desc).
+      recent: scored.slice(0, 12).map((s) => ({
+        ...s,
+        ...scoreSnapshot(s.projectedInflow, s.actualInflow),
+      })),
+    };
   }),
 
   // MRR / ARR / ARPA and revenue/logo churn over the recurring-revenue book.

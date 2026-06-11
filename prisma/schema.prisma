@@ -358,6 +358,34 @@ model Organization {
   periodCloses      PeriodClose[]
   dashboardPreferences UserDashboardPreference[]
   clientEmailPreferences ClientEmailPreference[]
+  forecastSnapshots ForecastSnapshot[]
+}
+
+// Weekly capture of the cash-flow forecast so it can be graded against what
+// actually happened. The snapshot cron writes one row per horizon (30/60/90)
+// per org; once `matureAt` passes, the same cron fills `actualInflow` (sum of
+// payments received in the window) and stamps `scoredAt`. Inflow is the graded
+// axis — outflows are deterministic schedules and kept only as context.
+model ForecastSnapshot {
+  id               String   @id @default(cuid())
+  capturedAt       DateTime @default(now())
+  horizonDays      Int
+  // capturedAt + horizonDays, denormalized so the scoring pass is one indexed query.
+  matureAt         DateTime
+  projectedInflow  Decimal  @db.Decimal(20, 2)
+  projectedOutflow Decimal  @db.Decimal(20, 2)
+  // Blended collection probability (0-1) the forecast carried at capture time.
+  confidence       Decimal  @db.Decimal(5, 4)
+  actualInflow     Decimal? @db.Decimal(20, 2)
+  scoredAt         DateTime?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, capturedAt])
+  @@index([scoredAt, matureAt])
 }
 
 model User {

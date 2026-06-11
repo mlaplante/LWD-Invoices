@@ -1,4 +1,5 @@
 import { RunwaySection } from "@/components/money-intelligence/RunwaySection";
+import { ForecastAccuracySection } from "@/components/money-intelligence/ForecastAccuracySection";
 import { ScenarioPlanner } from "@/components/money-intelligence/ScenarioPlanner";
 import { ProfitabilitySection } from "@/components/money-intelligence/ProfitabilitySection";
 import { ExpenseBudgetsSection } from "@/components/money-intelligence/ExpenseBudgetsSection";
@@ -17,6 +18,7 @@ export default function MoneyIntelligencePage() {
         </p>
       </div>
       <RunwaySection />
+      <ForecastAccuracySection />
       <ExpenseBudgetsSection />
       <ScenarioPlanner />
       <ProfitabilitySection />
