@@ -81,7 +81,7 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
       {/* Backdrop */}
       {drawerOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+          className="lg:hidden fixed inset-0 z-30 bg-black/50 backdrop-blur-sm"
           onClick={() => setDrawerOpen(false)}
         />
       )}
@@ -89,16 +89,22 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
       {/* Slide-up drawer */}
       <div
         className={cn(
-          "lg:hidden fixed inset-x-0 bottom-0 z-50 bg-sidebar rounded-t-[28px]",
+          "lg:hidden fixed inset-x-0 bottom-0 z-40 bg-sidebar rounded-t-[28px]",
+          "max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain",
           "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
           drawerOpen ? "translate-y-0" : "translate-y-full"
         )}
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-2">
+        {/* Drag handle — tappable close target, pinned while the drawer scrolls */}
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(false)}
+          aria-label="Close menu"
+          className="sticky top-0 z-10 w-full flex justify-center pt-3 pb-2 bg-sidebar rounded-t-[28px]"
+        >
           <div className="w-9 h-1 rounded-full bg-sidebar-foreground/20" />
-        </div>
+        </button>
 
         {/* New Invoice CTA */}
         <div className="px-5 pt-2 pb-5">
@@ -170,7 +176,7 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
 
       {/* Bottom tab bar */}
       <div
-        className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-sidebar/95 backdrop-blur-xl border-t border-sidebar-border"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-sidebar/95 backdrop-blur-xl border-t border-sidebar-border"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <nav className="flex items-stretch h-16">
@@ -180,6 +186,7 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
               <Link
                 key={href}
                 href={href}
+                onClick={() => setDrawerOpen(false)}
                 className={cn(
                   "flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors duration-150",
                   active ? "text-primary" : "text-sidebar-foreground/35"
