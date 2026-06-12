@@ -1,5 +1,6 @@
 # LaPlante Web Development Invoices
 
+[![CI](https://github.com/mlaplante/LWD-Invoices/actions/workflows/ci.yml/badge.svg)](https://github.com/mlaplante/LWD-Invoices/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
@@ -38,6 +39,8 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - Multiple invoice types: SIMPLE, DETAILED, ESTIMATE, CREDIT_NOTE
 - **Email Engagement Panel** — per-invoice delivery/open/click timeline on the invoice detail page (powered by Resend webhook tracking)
 - **Proposal Engagement Tracking** — per-proposal delivery/open/click timeline on the estimate detail page, plus a "viewed but not signed" nudge that automatically follows up once a prospect opens a proposal but hasn't signed it (configurable per-org delay)
+- **Pre-Send Invoice QA** — a deterministic + AI scan of the invoice draft right in the editor that flags missing required info, revenue leakage, duplicate risk, tax/compliance issues, unclear descriptions, and mismatches against source data (time entries, projects), each with evidence and one-click suggested fixes
+- **Early-Payment Discounts** — classic "2/10 net 30" prompt-pay terms: set an org default, and the offer (percent + days) is snapshotted onto each invoice at creation; clients see the discounted amount on the pay page and redemption is validated server-side at checkout
 
 ### Client Portal
 - Shareable token-based portal for clients to view invoices and estimates (no account required)
@@ -48,6 +51,7 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 ### Payments
 - Stripe and PayPal gateway integration
 - ACH and SEPA Direct Debit on Stripe Checkout (per-org toggles; invoices are marked paid only after the bank debit settles)
+- **Separate Bank-Debit Surcharge** — bank debit is offered as its own "Pay by Bank (ACH/SEPA)" button on the portal and pay pages, with a surcharge configured independently from the card surcharge
 - Webhook-based status updates with cross-instance idempotency
 - Encrypted gateway credentials stored per-organization
 - Support for multiple payment methods: STRIPE, PAYPAL, BANK_TRANSFER, CASH, CHECK, MONEY_ORDER
@@ -61,9 +65,11 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - Built-in timers and timesheets
 - Bill tracked hours directly to invoices
 - Project templates for reuse
+- **Project Budget Alerts** — projects with an hours budget alert org admins once at 80% ("approaching") and once at 100% ("exceeded") of logged hours, re-arming automatically if the budget is raised
 
 ### Business Operations
-- **Clients** — Full client management with contact details and payment history tracking
+- **Clients** — Full client management with contact details, tags, payment history tracking, and CSV import/export
+- **Client Email Preferences** — Per-client opt-outs for non-transactional email (payment reminders, proposal follow-ups, automation emails) with a token-based unsubscribe page linked from every eligible email; transactional mail (invoice sends, receipts) is always delivered
 - **Reliable Payer Badge** — Visual indicator for clients with consistently on-time payments
 - **Expenses** — Categorized expense tracking with suppliers and file attachments
 - **Reports** — Revenue, payment, and unpaid invoice reports
@@ -81,7 +87,9 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 ### AI & Analytics
 - **Month-End Close Agent** — The agentic capstone. Composes the assistant, anomaly detection, disputes/refunds, and the eval harness into one workflow: it **reconciles** the month (invoice↔payment integrity, fully-paid-but-open, overpayments, pending refunds, open/lost disputes, uncategorized expenses), **flags anomalies** (duplicate receipts + per-supplier outliers), **drafts adjusting entries** (reverse duplicates, write off overpayments, reclassify expenses, book chargeback losses), and presents a **one-click close for approval**. Closing freezes a full snapshot and locks the period (reopenable); blocking integrity errors gate the close until resolved or explicitly acknowledged. The natural-language summary is grounded by the same answer-grounding guard the assistant ships, and the deterministic reconciliation core has its own golden eval suite.
 - **Ask Your Books** — A streaming chat assistant (Gemini-first tool-calling agent, with an Anthropic fallback) over your live data: "which clients owe me money?", "revenue last quarter?", "which invoices should I chase?", "projected cash position?". The answer streams token-by-token (Gemini `streamGenerateContent`). Read-only — it analyzes and recommends but never changes data.
+- **Weekly Business Briefing** — A Monday-morning email and dashboard widget (also exposed via the REST API) composing the cash-flow forecast, client health scores, overdue balances, and recommended collection actions into one digest
 - **Cash-Flow Forecast** — Forward 30/60/90-day projected cash position from open AR (weighted by aging probability), recurring invoices, autopay, and recurring expenses, with "what if a client pays late?" scenario planning
+- **Forecast Accuracy Tracking** — Each forecast is snapshotted, then graded against actual collections once its window closes, reporting per-snapshot accuracy plus the running bias (signed average error) so you know how much to trust the runway numbers
 - **Client Health Scoring** — Composite per-client score (payment behavior, email engagement, revenue trend, overdue pressure) with churn-risk band and upsell signals
 - **Recurring Revenue (MRR/ARR)** — Subscription-style MRR, ARR, ARPA, and revenue/logo churn across recurring invoices and hours-retainers
 - **Smart Collections** — Open invoices ranked by predicted late-payment risk with a recommended dunning action and tone for each
@@ -101,7 +109,7 @@ Full documentation is available at **[mintlify.com/mlaplante/LWD-Invoices](https
 - **File Attachments** — File uploads via Supabase Storage for invoices, expenses, and proposals
 - **Notifications** — In-app and email notifications for invoice sends, payments, and overdue reminders
 - **Onboarding** — Guided setup flow for new organizations
-- **Background Jobs** — 10+ automated processes including recurring invoices, payment reminders, overdue notifications, late fees, and scheduled reports
+- **Background Jobs** — 10+ automated processes including recurring invoices, payment reminders, overdue notifications, late fees, scheduled reports, weekly briefings, forecast snapshots, and project budget alerts
 - **Mobile Responsive** — Optimized layouts for mobile devices across all pages
 
 ## Tech Stack
@@ -428,6 +436,8 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
 - Testing requirements
 - Pull request process
 - Commit message format
+
+**CI & automation:** every pull request runs lint, the full test suite with coverage reporting, and a production build. CodeQL and Gitleaks scans guard against vulnerabilities and leaked secrets, and Dependabot updates (with auto-merge for passing minor/patch bumps) plus a weekly dependency-update workflow keep dependencies current.
 
 ## Support
 
