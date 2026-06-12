@@ -74,7 +74,7 @@ export function WeeklyBriefingSettings() {
   const enabled = org?.weeklyBriefingEnabled ?? false;
   const symbol = preview?.currencySymbol ?? "$";
   const money = (n: number) => `${symbol}${Math.round(n).toLocaleString("en-US")}`;
-  const h30 = preview?.forecast.find((h) => h.horizonDays === 30);
+  const h30 = preview?.forecast.find((h: { horizonDays: number }) => h.horizonDays === 30);
 
   return (
     <div className="space-y-5">

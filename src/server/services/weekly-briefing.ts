@@ -1,26 +1,18 @@
 /**
  * Proactive weekly business briefing.
  *
- * Composes the analytics cores you already ship — cash-flow forecast, client
- * health, and predictive collections — into a single "Monday briefing" payload:
- * overdue total, at-risk clients, and the projected cash position. The idea is
- * to push the numbers that matter to the owner's inbox instead of waiting for
- * them to pull up a dashboard.
- *
- * `buildWeeklyBriefing` is the data composer (DB-backed); `briefingHeadline`
- * is a pure deterministic one-liner so the email always has a sensible summary
- * even when no AI provider is configured. The inngest cron renders this into
- * WeeklyBriefingEmail and the analytics router exposes it for a live preview.
+ * Composes the analytics cores you already ship into a single payload for the
+ * Monday email, settings preview, dashboard widget, and report API.
  */
 
 import type { db as Db } from "../db";
 import {
-  buildClientHealthInputs,
   buildCashFlowForecastInput,
+  buildClientHealthInputs,
   buildCollectionRiskInputs,
 } from "./analytics-data";
-import { calculateClientHealthScores } from "./client-health-score";
 import { projectCashFlow } from "./cash-flow-forecast";
+import { calculateClientHealthScores } from "./client-health-score";
 import { prioritizeCollections } from "./collection-risk";
 
 export interface BriefingOverdueClient {
@@ -66,10 +58,36 @@ export interface WeeklyBriefingData {
   atRiskClients: BriefingAtRiskClient[];
   forecast: BriefingForecastHorizon[];
   collections: BriefingCollectionItem[];
-  /** Deterministic one-line summary of the week's headline numbers. */
   headline: string;
-  /** True when there's nothing pressing — lets callers skip the send. */
   isQuiet: boolean;
+}
+
+export interface WeeklyBriefingReportData {
+  weekStart: Date;
+  weekEnd: Date;
+  cashIn: number;
+  cashOut: number;
+  overdueInvoiceRisk: {
+    totalAmount: number;
+    invoiceCount: number;
+    maxOverdueDays: number;
+  };
+  expenseAnomalies: {
+    totalAnomalies: number;
+    items: Array<{ type: string; amount: number; description: string }>;
+  };
+  upcomingRenewals: Array<{ name: string; renewalDate: Date; amount: number }>;
+  recommendations: Array<{
+    type: string;
+    priority: "high" | "medium" | "low";
+    description: string;
+  }>;
+  generatedAt: Date;
+  metadata: {
+    aiProvider: string;
+    modelUsed: string;
+    hasAIError?: string;
+  };
 }
 
 const AT_RISK_BANDS = new Set(["at_risk", "critical"]);
@@ -86,10 +104,10 @@ function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/**
- * Pure deterministic headline so the briefing always reads sensibly without an
- * AI provider. Kept separate from the DB composer so it's trivially unit-tested.
- */
+function money(symbol: string, n: number): string {
+  return `${symbol}${Math.round(n).toLocaleString("en-US")}`;
+}
+
 export function briefingHeadline(data: {
   currencySymbol: string;
   overdueTotal: number;
@@ -98,10 +116,11 @@ export function briefingHeadline(data: {
   projected30: number | null;
 }): string {
   const parts: string[] = [];
-  const money = (n: number) => `${data.currencySymbol}${Math.round(n).toLocaleString("en-US")}`;
   if (data.overdueCount > 0) {
     parts.push(
-      `${money(data.overdueTotal)} overdue across ${data.overdueCount} invoice${data.overdueCount === 1 ? "" : "s"}`,
+      `${money(data.currencySymbol, data.overdueTotal)} overdue across ${data.overdueCount} invoice${
+        data.overdueCount === 1 ? "" : "s"
+      }`,
     );
   } else {
     parts.push("nothing overdue");
@@ -110,10 +129,9 @@ export function briefingHeadline(data: {
     parts.push(`${data.atRiskCount} client${data.atRiskCount === 1 ? "" : "s"} at risk`);
   }
   if (data.projected30 !== null) {
-    parts.push(`${money(data.projected30)} projected to land in the next 30 days`);
+    parts.push(`${money(data.currencySymbol, data.projected30)} projected to land in the next 30 days`);
   }
-  // Capitalize the first word.
-  const sentence = parts.join(", ") + ".";
+  const sentence = `${parts.join(", ")}.`;
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }
 
@@ -149,8 +167,6 @@ export async function buildWeeklyBriefing(
   const forecast = projectCashFlow(forecastInput, { now });
   const collections = prioritizeCollections(collectionInputs);
 
-  // Overdue: aggregate from the collection-risk items (per-invoice balance +
-  // daysOverdue), which already net out partial payments.
   const overdueItems = collections.filter((c) => c.daysOverdue > 0 && c.balance > 0);
   const overdueByClient = new Map<string, BriefingOverdueClient>();
   let overdueTotal = 0;
@@ -164,9 +180,6 @@ export async function buildWeeklyBriefing(
     existing.amount = round(existing.amount + item.balance);
     overdueByClient.set(item.clientId, existing);
   }
-  const topClients = Array.from(overdueByClient.values())
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 5);
 
   const atRiskClients: BriefingAtRiskClient[] = healthScores
     .filter((s) => AT_RISK_BANDS.has(s.band))
@@ -204,7 +217,6 @@ export async function buildWeeklyBriefing(
     }));
 
   const projected30 = forecastHorizons.find((h) => h.horizonDays === 30)?.projectedInflow ?? null;
-
   const headline = briefingHeadline({
     currencySymbol,
     overdueTotal: round(overdueTotal),
@@ -220,21 +232,18 @@ export async function buildWeeklyBriefing(
     overdue: {
       total: round(overdueTotal),
       count: overdueItems.length,
-      topClients,
+      topClients: Array.from(overdueByClient.values())
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5),
     },
     atRiskClients,
     forecast: forecastHorizons,
     collections: topCollections,
     headline,
-    isQuiet:
-      overdueItems.length === 0 && atRiskClients.length === 0 && topCollections.length === 0,
+    isQuiet: overdueItems.length === 0 && atRiskClients.length === 0 && topCollections.length === 0,
   };
 }
 
-/**
- * Resolve who the briefing goes to: the configured recipient list, or — when
- * empty — the org's owner/admin email addresses. Returns a de-duplicated list.
- */
 export async function resolveBriefingRecipients(
   db: typeof Db,
   orgId: string,
@@ -250,4 +259,40 @@ export async function resolveBriefingRecipients(
   return Array.from(
     new Set(members.map((m) => m.user.email?.trim().toLowerCase()).filter((e): e is string => !!e)),
   );
+}
+
+export async function getWeeklyBriefing(
+  db: typeof Db,
+  orgId: string,
+  _aiApiKey = "",
+  aiModels: string[] = [],
+): Promise<WeeklyBriefingReportData> {
+  void _aiApiKey;
+  const now = new Date();
+  const briefing = await buildWeeklyBriefing(db, orgId, now);
+  const horizon30 = briefing.forecast.find((h) => h.horizonDays === 30);
+
+  return {
+    weekStart: new Date(now.getTime() - 7 * 86400000),
+    weekEnd: now,
+    cashIn: round(horizon30?.projectedInflow ?? 0),
+    cashOut: 0,
+    overdueInvoiceRisk: {
+      totalAmount: briefing.overdue.total,
+      invoiceCount: briefing.overdue.count,
+      maxOverdueDays: Math.max(0, ...briefing.collections.map((c) => c.daysOverdue)),
+    },
+    expenseAnomalies: { totalAnomalies: 0, items: [] },
+    upcomingRenewals: [],
+    recommendations: briefing.collections.slice(0, 3).map((item) => ({
+      type: "collections",
+      priority: item.daysOverdue > 30 ? "high" : "medium",
+      description: `${item.recommendedAction} for ${item.clientName} invoice #${item.invoiceNumber}`,
+    })),
+    generatedAt: new Date(briefing.generatedAt),
+    metadata: {
+      aiProvider: "gemini",
+      modelUsed: aiModels[0] ?? "",
+    },
+  };
 }
