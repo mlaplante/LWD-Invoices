@@ -123,7 +123,7 @@ export default async function InvoiceDetailPage({
         </div>
 
         {/* Contextual actions — primary actions inline, the rest in "More" */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 lg:overflow-visible">
+        <div className="flex flex-wrap items-center gap-2">
           {(invoice.status === "DRAFT" || invoice.status === "SENT") && (
             <Button asChild variant="outline" size="sm">
               <Link href={`/invoices/${invoice.id}/edit`}>

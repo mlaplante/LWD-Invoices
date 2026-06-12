@@ -157,7 +157,7 @@ export default async function ClientDetailPage({
           <ClientHealthBadge clientId={client.id} />
           <ClientLastRemindedBadge clientId={client.id} />
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 lg:flex-wrap lg:overflow-visible">
+        <div className="flex flex-wrap items-center gap-2">
           <Button asChild size="sm">
             <Link href={`/invoices/new?clientId=${client.id}`}>
               <Receipt className="w-3.5 h-3.5 mr-1.5" />

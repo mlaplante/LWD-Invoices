@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { ChevronDown, MoreHorizontal, X } from "lucide-react";
 
 /**
  * Collapses secondary invoice actions behind a "More" toggle.
@@ -31,11 +31,23 @@ export function MoreActions({ children }: { children: React.ReactNode }) {
       {open && (
         <>
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-40 bg-black/40 sm:bg-transparent"
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <div className="absolute right-0 top-full z-50 mt-2 flex w-64 flex-col gap-1.5 rounded-xl border border-border/70 bg-popover p-2 shadow-lg [&>*]:w-full [&_button]:w-full [&_button]:justify-start [&_a]:w-full [&_a]:justify-start">
+          {/* Bottom sheet on mobile, anchored dropdown from sm: up */}
+          <div className="fixed inset-x-3 bottom-3 z-50 flex max-h-[70dvh] flex-col gap-1.5 overflow-y-auto rounded-2xl border border-border/70 bg-popover p-3 shadow-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[min(70vh,28rem)] sm:w-64 sm:rounded-xl sm:p-2 sm:shadow-lg [&>*]:w-full [&_button]:w-full [&_button]:justify-start [&_a]:w-full [&_a]:justify-start">
+            <div className="mb-1 flex items-center justify-between sm:hidden">
+              <span className="text-sm font-semibold">More actions</span>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="!w-auto rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
             {children}
           </div>
         </>
