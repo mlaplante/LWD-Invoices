@@ -47,8 +47,13 @@ export async function GET(request: Request) {
   // 2. Parse & validate params
   const { searchParams } = new URL(request.url);
   const yearStr = searchParams.get("year");
-  const format = (searchParams.get("format") ?? "zip") as Format;
-  const report = searchParams.get("report") as Report | null;
+  const formatParam = searchParams.get("format") ?? "zip";
+  const format: Format | undefined = VALID_FORMATS.find((f) => f === formatParam);
+  const reportParam = searchParams.get("report");
+  // Resolve against the whitelist so downstream lookups use the trusted
+  // constant, never the raw query-string value.
+  const report: Report | null =
+    VALID_REPORTS.find((r) => r === reportParam) ?? null;
 
   if (!yearStr) {
     return NextResponse.json(
@@ -65,7 +70,7 @@ export async function GET(request: Request) {
     );
   }
 
-  if (!VALID_FORMATS.includes(format)) {
+  if (!format) {
     return NextResponse.json(
       { error: `format must be one of: ${VALID_FORMATS.join(", ")}` },
       { status: 400 },
@@ -79,7 +84,7 @@ export async function GET(request: Request) {
     );
   }
 
-  if (report && !VALID_REPORTS.includes(report)) {
+  if (reportParam !== null && !report) {
     return NextResponse.json(
       { error: `report must be one of: ${VALID_REPORTS.join(", ")}` },
       { status: 400 },

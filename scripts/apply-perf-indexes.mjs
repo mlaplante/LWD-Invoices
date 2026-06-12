@@ -18,7 +18,7 @@ function buildSessionPoolerUrl() {
   const base = process.env.DATABASE_URL;
   if (!base) return null;
   const u = new URL(base);
-  if (u.hostname.includes("pooler.supabase.com")) {
+  if (u.hostname === "pooler.supabase.com" || u.hostname.endsWith(".pooler.supabase.com")) {
     u.port = "5432";
     u.searchParams.delete("pgbouncer");
     u.searchParams.delete("pool_timeout");
