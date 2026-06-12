@@ -1,0 +1,20 @@
+# Scans commits for leaked secrets (Stripe, Supabase, Resend, Anthropic
+# keys, etc.). fetch-depth: 0 so the full history of new commits is scanned.
+name: Secret scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

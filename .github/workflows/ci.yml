@@ -13,6 +13,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write # vitest coverage comment
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -27,4 +30,43 @@ jobs:
       # (eslint-plugin-react crashes: contextOrFilename.getFilename is not a function).
       # next.config.ts also has ignoreDuringBuilds: true for the same reason.
       - name: Test
-        run: npm run test:run
+        run: npm run test:coverage
+      - name: Coverage report
+        if: always() && github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      # Placeholder env vars: static prerendering instantiates Supabase clients
+      # at build time, but no real services are contacted. Migrations are NOT
+      # run here — netlify.toml owns `prisma migrate deploy` on real deploys.
+      - name: Build
+        run: npx next build
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          NEXT_TELEMETRY_DISABLED: "1"
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run actionlint
+        run: |
+          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
