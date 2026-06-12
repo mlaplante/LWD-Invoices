@@ -27,6 +27,7 @@ import { PaymentScheduleSection } from "./PaymentScheduleSection";
 import { calculateInvoiceTotalsWithDiscount, type TaxInput } from "@/server/services/tax-calculator";
 import { trpc } from "@/trpc/client";
 import { type PartialPaymentEntry } from "./PaymentScheduleDialog";
+import { InvoiceDraftQA } from "./InvoiceDraftQA";
 
 export type InvoiceFormData = {
   id?: string;
@@ -338,6 +339,45 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const isDraftingFromPrompt = draftFromPromptMutation.isPending;
+  const activeClient = clients.find((client) => client.id === form.clientId);
+  const qaDraft = useMemo(
+    () => ({
+      type: form.type,
+      date: form.date,
+      dueDate: form.dueDate || null,
+      currencyId: form.currencyId,
+      number: form.number ?? null,
+      notes: form.notes ?? null,
+      clientId: form.clientId || null,
+      lines: form.lines.map((line, index) => ({
+        clientLineId: line.id ?? `draft-line-${index}`,
+        persistedLineId: line.id ?? null,
+        sort: index,
+        lineType: line.lineType,
+        name: line.name,
+        description: line.description ?? null,
+        qty: line.qty,
+        rate: line.rate,
+        period: line.period ?? null,
+        discount: line.discount,
+        discountIsPercentage: line.discountIsPercentage,
+        taxIds: line.taxIds,
+        sourceTable: line.sourceTable ?? null,
+        sourceId: line.sourceId ?? null,
+      })),
+      discountType: form.discountType ?? null,
+      discountAmount: form.discountAmount ?? 0,
+      discountDescription: form.discountDescription ?? null,
+      partialPayments: schedule.map((entry) => ({
+        sortOrder: entry.sortOrder,
+        amount: entry.amount,
+        isPercentage: entry.isPercentage,
+        dueDate: entry.dueDate || null,
+        label: entry.notes ?? null,
+      })),
+    }),
+    [form, schedule],
+  );
 
   return (
     <div className="space-y-6">
@@ -525,6 +565,18 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
         dueDate={form.dueDate}
         currencySymbol={sym}
         currencySymbolPosition={symPos}
+      />
+
+      {/* Invoice Draft QA */}
+      <InvoiceDraftQA
+        mode={mode}
+        draft={qaDraft}
+        calculatedTotals={invoiceTotals}
+        invoiceId={form.id}
+        clientId={form.clientId}
+        currencyId={form.currencyId}
+        clientName={activeClient?.name}
+        currencyCode={activeCurrency?.code}
       />
 
       {/* Notes */}

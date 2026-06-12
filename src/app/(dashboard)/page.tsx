@@ -13,6 +13,7 @@ import { CashFlowInsights } from "@/components/dashboard/CashFlowInsights";
 import { OpenTasksCard } from "@/components/dashboard/OpenTasksCard";
 import { RetainerBurnCard } from "@/components/dashboard/RetainerBurnCard";
 import { DashboardLayoutEditor } from "@/components/dashboard/DashboardLayoutEditor";
+import { WeeklyBriefing } from "@/components/dashboard/WeeklyBriefing";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { WidgetKey } from "@/lib/dashboard-layout";
 
@@ -165,7 +166,43 @@ function buildSectionMap(): Record<WidgetKey, SectionEntry> {
       fallback: <Skeleton className="h-48 rounded-2xl" />,
       section: <ActivitySection />,
     },
+    weeklyBriefing: {
+      fallback: <Skeleton className="h-96 rounded-2xl" />,
+      section: <BriefingSection />,
+    },
   };
+}
+
+async function BriefingSection() {
+  const data = await api.analytics.weeklyBriefing();
+  const weekStart = new Date(data.generatedAt);
+  weekStart.setDate(weekStart.getDate() - 7);
+  return (
+    <WeeklyBriefing
+      data={{
+        weekLabel: `${weekStart.toLocaleDateString()} - ${new Date(data.generatedAt).toLocaleDateString()}`,
+        cashIn: data.forecast.find((h) => h.horizonDays === 30)?.projectedInflow ?? 0,
+        cashOut: 0,
+        netCashFlow: data.forecast.find((h) => h.horizonDays === 30)?.projectedPosition ?? 0,
+        overdueInvoices: {
+          count: data.overdue.count,
+          totalAmount: data.overdue.total,
+        },
+        expenseAnomalies: {
+          count: 0,
+          details: [],
+        },
+        upcomingRenewals: {
+          count: data.atRiskClients.length,
+          clients: data.atRiskClients.map((client) => client.clientName),
+        },
+        recommendedActions: data.collections.map(
+          (item) => `${item.recommendedAction}: #${item.invoiceNumber} · ${item.clientName}`,
+        ),
+      }}
+      error={null}
+    />
+  );
 }
 
 export default async function DashboardPage() {

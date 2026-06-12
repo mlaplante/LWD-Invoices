@@ -11,6 +11,7 @@ export const WIDGET_KEYS = [
   "tasks",
   "retainerBurn",
   "activity",
+  "weeklyBriefing",
 ] as const;
 
 export type WidgetKey = (typeof WIDGET_KEYS)[number];

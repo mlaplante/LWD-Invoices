@@ -388,3 +388,106 @@ export const gradeInvoiceReview: Grader<InvoiceReviewInput, InvoiceReviewExpecte
   const misses = checks.filter((c) => !c.ok).map((c) => c.label);
   return { score: total === 0 ? 1 : correct / total, detail: misses.length ? misses.join("; ") : undefined };
 };
+
+// ─── Weekly Business Briefing AI eval (grounding + safety) ──────────────────
+
+export interface BriefingEvalInput {
+  /** Full briefing data as provided to the AI model. */
+  briefingData: WeeklyBriefingData;
+  /** Recommendation text to grade against the data. */
+  recommendation: NonNullable<WeeklyBriefingData["recommendations"]>[number];
+}
+
+export interface BriefingEvalExpected {
+  /** True when every dollar figure in the recommendation traces to the data. */
+  grounded: boolean;
+}
+
+/**
+ * Grades whether a briefing recommendation is grounded in supplied aggregate
+ * facts. Extracts all dollar figures from the recommendation and cross-references
+ * them against the briefing data. Critical cases (hallucinated numbers) veto the
+ * suite regardless of aggregate score.
+ */
+export const gradeBriefing: Grader<BriefingEvalInput, BriefingEvalExpected> = (input, expected) => {
+  const { briefingData, recommendation } = input;
+
+  // Extract all dollar figures from the recommendation text
+  const dollarPattern = /\$([\d,]+(?:\.\d+)?)/g;
+  const recommendationFigures: number[] = [];
+  let match;
+  while ((match = dollarPattern.exec(recommendation.description)) !== null) {
+    recommendationFigures.push(parseFloat(match[1].replace(/,/g, "")));
+  }
+
+  // Extract all dollar figures from the briefing data, including dollar values
+  // embedded in evidence descriptions such as "vs avg $200".
+  const dataFigures: number[] = [];
+  const extractFigures = (obj: unknown): void => {
+    if (typeof obj === "number" && isFinite(obj)) {
+      dataFigures.push(obj);
+    } else if (typeof obj === "string") {
+      dollarPattern.lastIndex = 0;
+      let stringMatch;
+      while ((stringMatch = dollarPattern.exec(obj)) !== null) {
+        dataFigures.push(parseFloat(stringMatch[1].replace(/,/g, "")));
+      }
+    } else if (obj && typeof obj === "object") {
+      for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          extractFigures((obj as Record<string, unknown>)[key]);
+        }
+      }
+    }
+  };
+  extractFigures(briefingData);
+  dataFigures.push(
+    briefingData.cashIn - briefingData.cashOut,
+    briefingData.upcomingRenewals.reduce((sum, renewal) => sum + renewal.amount, 0),
+    briefingData.expenseAnomalies.items.reduce((sum, item) => sum + item.amount, 0),
+  );
+
+  const unsupported = recommendationFigures.filter(
+    (fig) => !dataFigures.some((d) => Math.abs(d - fig) < 0.01),
+  );
+  const grounded = unsupported.length === 0;
+  if (grounded === expected.grounded) return { score: 1 };
+  return {
+    score: 0,
+    detail: expected.grounded
+      ? `ungrounded figure(s): ${unsupported.map((fig) => `$${fig.toLocaleString()}`).join(", ")}`
+      : "expected an ungrounded recommendation, but all figures were supported",
+  };
+};
+
+// ─── Weekly Business Briefing types ─────────────────────────────────────
+
+export interface WeeklyBriefingData {
+  weekStart: Date;
+  weekEnd: Date;
+  cashIn: number;
+  cashOut: number;
+  overdueInvoiceRisk: {
+    totalAmount: number;
+    invoiceCount: number;
+    maxOverdueDays: number;
+  };
+  expenseAnomalies: {
+    totalAnomalies: number;
+    items: Array<{
+      type: string;
+      amount: number;
+      description: string;
+    }>;
+  };
+  upcomingRenewals: Array<{
+    name: string;
+    renewalDate: Date;
+    amount: number;
+  }>;
+  recommendations?: Array<{
+    type: string;
+    priority: string;
+    description: string;
+  }>;
+}

@@ -870,4 +870,42 @@ export const reportsRouter = router({
     .query(async ({ ctx, input }) => {
       return getClientConcentration(ctx.db, ctx.orgId, input);
     }),
+
+  // ─── Weekly Business Briefing ─────────────────────────────────────────
+  weeklyBriefing: protectedProcedure
+    .input(
+      z.object({
+        weekStart: z.coerce.date().optional(),
+        weekEnd: z.coerce.date().optional(),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const { getWeeklyBriefing } = await import("../services/weekly-briefing");
+
+      // Use provided dates or default to last 7 days
+      const weekStart = input?.weekStart ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const weekEnd = input?.weekEnd ?? new Date();
+
+      const aiApiKey = process.env.GEMINI_API_KEY ?? "";
+      const aiModels = process.env.GEMINI_MODELS
+        ? process.env.GEMINI_MODELS.split(",").map((m) => m.trim()).filter(Boolean)
+        : ["gemini-2.0-flash", "gemini-1.5-flash"];
+
+      if (!aiApiKey) {
+        return {
+          weekStart,
+          weekEnd,
+          cashIn: 0,
+          cashOut: 0,
+          overdueInvoiceRisk: { totalAmount: 0, invoiceCount: 0, maxOverdueDays: 0 },
+          expenseAnomalies: { totalAnomalies: 0, items: [] },
+          upcomingRenewals: [],
+          recommendations: [],
+          generatedAt: new Date(),
+          metadata: { aiProvider: "gemini", modelUsed: "", hasAIError: "GEMINI_API_KEY not configured" },
+        };
+      }
+
+      return getWeeklyBriefing(ctx.db, ctx.orgId, aiApiKey, aiModels);
+    }),
 });
