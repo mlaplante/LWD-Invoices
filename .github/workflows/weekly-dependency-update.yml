@@ -1,0 +1,40 @@
+name: Weekly Dependency Update
+
+on:
+  schedule:
+    # Mondays at 09:00 UTC
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Update all packages to latest
+        run: |
+          npx npm-check-updates -u
+          npm install
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: deps/weekly-update
+          commit-message: "chore(deps): update all packages to latest"
+          title: "chore(deps): weekly dependency update"
+          body: |
+            Automated weekly update of all packages to their latest versions via `npm-check-updates`.
+
+            Please review the CI results and changelogs for any breaking changes before merging.
+          labels: dependencies
+          delete-branch: true
