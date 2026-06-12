@@ -113,7 +113,7 @@ describe("invoices.previewPortal (view as client)", () => {
     expect(opts).toMatchObject({
       httpOnly: true,
       maxAge: 3600,
-      path: "/portal/ptok-invoice",
+      path: "/",
     });
   });
 

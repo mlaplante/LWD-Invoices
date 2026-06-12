@@ -6,21 +6,35 @@ import { generateSecureToken } from "./secure-token";
  * The cookie proves the visitor authenticated for this specific portal token,
  * without exposing the passphrase hash.
  */
-export function signPortalSession(token: string, secret: string): string {
-  return createHmac("sha256", secret).update(token).digest("hex");
+export function signPortalSession(
+  token: string,
+  secret: string,
+  maxAgeSeconds: number = 60 * 60 * 24 * 30,
+): string {
+  const exp = Math.floor(Date.now() / 1000) + maxAgeSeconds;
+  const mac = createHmac("sha256", secret).update(`${token}.${exp}`).digest("hex");
+  return `${exp}.${mac}`;
 }
 
 /**
  * Verifies a portal session cookie value using a timing-safe comparison.
+ * The cookie embeds its own expiry, signed alongside the token, so a
+ * leaked cookie cannot be replayed forever and the expiry can't be tampered.
  */
 export function verifyPortalSession(
   cookieVal: string,
   token: string,
   secret: string,
 ): boolean {
-  const expected = signPortalSession(token, secret);
+  const dot = cookieVal.indexOf(".");
+  if (dot === -1) return false;
+  const expStr = cookieVal.slice(0, dot);
+  const mac = cookieVal.slice(dot + 1);
+  const exp = Number(expStr);
+  if (!Number.isInteger(exp) || exp < Math.floor(Date.now() / 1000)) return false;
+  const expected = createHmac("sha256", secret).update(`${token}.${exp}`).digest("hex");
   try {
-    return timingSafeEqual(Buffer.from(cookieVal, "hex"), Buffer.from(expected, "hex"));
+    return timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex"));
   } catch {
     return false;
   }

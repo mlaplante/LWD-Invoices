@@ -65,14 +65,18 @@ export async function POST(
   lockout.reset(token);
 
   // Set HttpOnly cookie with a signed session token (not the hash itself)
-  const sessionVal = signPortalSession(token, getPortalSessionSecret());
+  const maxAge = 60 * 60 * 24 * 30; // 30 days
+  const sessionVal = signPortalSession(token, getPortalSessionSecret(), maxAge);
   const cookieStore = await cookies();
   cookieStore.set(`portal_auth_${token}`, sessionVal, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-    path: `/portal/${token}`,
+    maxAge,
+    // Path must cover both /portal/[token] pages and /api/portal/[token]/*
+    // routes (estimate accept/decline, PDFs) — a /portal/[token] path means
+    // the browser never sends the cookie to the API routes that verify it.
+    path: "/",
   });
 
   return NextResponse.json({ ok: true });

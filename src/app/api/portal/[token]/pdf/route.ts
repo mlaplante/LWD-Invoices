@@ -1,6 +1,8 @@
 import { type NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { db } from "@/server/db";
 import { fullInvoiceInclude } from "@/server/services/invoice-pdf";
+import { getPortalSessionSecret, verifyPortalSession } from "@/lib/portal-session";
 
 export async function GET(
   _req: NextRequest,
@@ -17,16 +19,28 @@ export async function GET(
     return new Response("Not Found", { status: 404 });
   }
 
+  // When the client portal is passphrase-protected, require the same signed
+  // session cookie the passphrase gate issues — otherwise anyone holding the
+  // URL bypasses the passphrase entirely.
+  const storedHash = invoice.client?.portalPassphraseHash ?? null;
+  if (storedHash) {
+    const cookieStore = await cookies();
+    const authCookie = cookieStore.get(`portal_auth_${token}`);
+    if (!authCookie || !verifyPortalSession(authCookie.value, token, getPortalSessionSecret())) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+  }
+
   let buffer: Buffer;
   try {
     const { getOrRenderInvoicePDF } = await import("@/server/services/invoice-pdf-cache");
     buffer = await getOrRenderInvoicePDF(invoice);
   } catch (err) {
     console.error("[PDF] generateInvoicePDF failed:", err);
-    return new Response(
-      `PDF generation failed: ${err instanceof Error ? err.message : String(err)}`,
-      { status: 500, headers: { "Content-Type": "text/plain" } }
-    );
+    return new Response("PDF generation failed", {
+      status: 500,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 
   const arrayBuffer = buffer.buffer instanceof ArrayBuffer

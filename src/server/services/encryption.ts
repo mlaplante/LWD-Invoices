@@ -38,7 +38,10 @@ export function decryptJson<T>(ciphertext: string): T {
   const authTag = Buffer.from(authTagB64, "base64");
   const encrypted = Buffer.from(encryptedB64, "base64");
 
-  const decipher = createDecipheriv(ALGORITHM, key, iv);
+  // Require a full 128-bit tag — a truncated tag weakens GCM's authentication.
+  if (authTag.length !== 16) throw new Error("Invalid ciphertext format");
+
+  const decipher = createDecipheriv(ALGORITHM, key, iv, { authTagLength: 16 });
   decipher.setAuthTag(authTag);
 
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);

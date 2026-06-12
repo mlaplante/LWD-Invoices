@@ -47,13 +47,13 @@ export const createTRPCContext = async () => {
         }),
       ]);
 
+      // UserOrganization is the sole source of truth for org access. The old
+      // app_metadata fallback let users removed from an org (membership row
+      // deleted) keep full access via stale Supabase metadata.
       const membership = activeMembership ?? firstMembership;
       if (membership) {
         orgId = membership.organizationId;
         userRole = membership.role;
-      } else {
-        orgId = (user?.app_metadata?.organizationId as string) ?? null;
-        userRole = (user?.app_metadata?.userRole as UserRole) ?? null;
       }
     }
   }

@@ -11,7 +11,6 @@ export type AuthResult =
  * Uses the same org-resolution logic as the tRPC context:
  *   1. activeOrgId cookie  +  UserOrganization membership
  *   2. First membership fallback
- *   3. Legacy app_metadata fallback
  * Returns a Response(401) if unauthorized, otherwise returns { user, orgId }.
  */
 export async function getAuthenticatedOrg(): Promise<AuthResult> {
@@ -55,11 +54,9 @@ export async function getAuthenticatedOrg(): Promise<AuthResult> {
     }
   }
 
-  // Legacy fallback: app_metadata
-  if (!orgId) {
-    orgId = (user.app_metadata?.organizationId as string) ?? null;
-  }
-
+  // Note: the legacy app_metadata fallback was removed — it bypassed
+  // UserOrganization membership checks, so users removed from an org
+  // retained API access via stale Supabase metadata.
   if (!orgId) {
     return new Response("Unauthorized", { status: 401 });
   }

@@ -1581,14 +1581,20 @@ export const invoicesRouter = router({
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
-      const sessionVal = signPortalSession(invoice.portalToken, getPortalSessionSecret());
+      const previewMaxAge = 60 * 60; // 1 hour — long enough to look around
+      const sessionVal = signPortalSession(
+        invoice.portalToken,
+        getPortalSessionSecret(),
+        previewMaxAge,
+      );
       const cookieStore = await cookies();
       cookieStore.set(`portal_auth_${invoice.portalToken}`, sessionVal, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 60 * 60, // 1 hour — long enough to look around
-        path: `/portal/${invoice.portalToken}`,
+        maxAge: previewMaxAge,
+        // "/" so the cookie also reaches /api/portal/[token]/* routes
+        path: "/",
       });
 
       await logAudit({

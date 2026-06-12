@@ -1,7 +1,9 @@
 import { type NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { db } from "@/server/db";
 import { getProposalFileSignedUrl } from "@/lib/supabase/storage";
 import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
+import { getPortalSessionSecret, verifyPortalSession } from "@/lib/portal-session";
 
 export async function GET(
   _req: NextRequest,
@@ -16,6 +18,17 @@ export async function GET(
 
   if (!invoice) {
     return new Response("Not Found", { status: 404 });
+  }
+
+  // Enforce the passphrase gate (signed session cookie) when one is set,
+  // matching the portal layout and estimate routes.
+  const storedHash = invoice.client?.portalPassphraseHash ?? null;
+  if (storedHash) {
+    const cookieStore = await cookies();
+    const authCookie = cookieStore.get(`portal_auth_${token}`);
+    if (!authCookie || !verifyPortalSession(authCookie.value, token, getPortalSessionSecret())) {
+      return new Response("Unauthorized", { status: 401 });
+    }
   }
 
   const proposal = await db.proposalContent.findFirst({
@@ -38,10 +51,10 @@ export async function GET(
     generateProposalPDF = mod.generateProposalPDF;
   } catch (err) {
     console.error("[PDF] Failed to load proposal-pdf module:", err);
-    return new Response(
-      `PDF module load failed: ${err instanceof Error ? err.message : String(err)}`,
-      { status: 500, headers: { "Content-Type": "text/plain" } }
-    );
+    return new Response("PDF generation failed", {
+      status: 500,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 
   let buffer: Buffer;
@@ -49,10 +62,10 @@ export async function GET(
     buffer = await generateProposalPDF(invoice, proposal);
   } catch (err) {
     console.error("[PDF] generateProposalPDF failed:", err);
-    return new Response(
-      `PDF generation failed: ${err instanceof Error ? err.message : String(err)}`,
-      { status: 500, headers: { "Content-Type": "text/plain" } }
-    );
+    return new Response("PDF generation failed", {
+      status: 500,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 
   const arrayBuffer = buffer.buffer instanceof ArrayBuffer
