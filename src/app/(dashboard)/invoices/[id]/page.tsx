@@ -31,6 +31,7 @@ import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButt
 import { InvoiceRefundsPanel } from "@/components/invoices/InvoiceRefundsPanel";
 import { ClientCreditHoldBanner } from "@/components/clients/ClientCreditHoldBanner";
 import { CopyPaymentLinkButton } from "@/components/invoices/CopyPaymentLinkButton";
+import { MoreActions } from "@/components/invoices/MoreActions";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, Download, Pencil } from "lucide-react";
 import { PortalPreviewButton } from "@/components/portal/PortalPreviewButton";
@@ -121,14 +122,8 @@ export default async function InvoiceDetailPage({
           </span>
         </div>
 
-        {/* Contextual actions */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 lg:flex-wrap lg:overflow-visible">
-          {invoice.type !== "CREDIT_NOTE" && (
-            <ReminderOverrideSelect
-              invoiceId={invoice.id}
-              currentSequenceId={invoice.reminderSequenceId}
-            />
-          )}
+        {/* Contextual actions — primary actions inline, the rest in "More" */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 lg:overflow-visible">
           {(invoice.status === "DRAFT" || invoice.status === "SENT") && (
             <Button asChild variant="outline" size="sm">
               <Link href={`/invoices/${invoice.id}/edit`}>
@@ -150,41 +145,6 @@ export default async function InvoiceDetailPage({
               PDF
             </a>
           </Button>
-          <RecurringInvoiceDialog invoiceId={invoice.id} />
-          <PortalPreviewButton target="invoice" id={invoice.id} fallbackUrl={portalLink} />
-          {isPayable && <CopyPaymentLinkButton payLink={payLink} />}
-          {invoice.type === "CREDIT_NOTE" ? null : (
-            <ApplyCreditNoteDialog
-              invoiceId={invoice.id}
-              clientId={invoice.client.id}
-            />
-          )}
-          {invoice.type !== "CREDIT_NOTE" &&
-            invoice.type !== "ESTIMATE" &&
-            invoice.status !== "DRAFT" && (
-              <IssueCreditNoteDialog
-                invoiceId={invoice.id}
-                lines={invoice.lines.map((l) => ({
-                  id: l.id,
-                  name: l.name,
-                  description: l.description,
-                  qty: l.qty,
-                  rate: l.rate,
-                  subtotal: l.subtotal,
-                }))}
-                currencySymbol={sym}
-                currencySymbolPosition={symPos}
-              />
-            )}
-          {isPayable && (
-            <ApplyRetainerDialog
-              invoiceId={invoice.id}
-              clientId={invoice.client.id}
-              invoiceTotal={Number(invoice.total)}
-              invoicePaid={invoice.payments.reduce((s, p) => s + Number(p.amount), 0)}
-              retainerAlreadyApplied={Number(invoice.retainerApplied)}
-            />
-          )}
           {isPayable && (
             <RecordPaymentButton
               invoiceId={invoice.id}
@@ -193,25 +153,6 @@ export default async function InvoiceDetailPage({
           )}
           {(invoice.status === "PAID" || invoice.status === "PARTIALLY_PAID") && (
             <SendReceiptButton invoiceId={invoice.id} />
-          )}
-          {invoice.type !== "CREDIT_NOTE" && (
-            <PaymentScheduleButton
-              invoiceId={invoice.id}
-              invoiceTotal={Number(invoice.total)}
-              invoiceDueDate={invoice.dueDate?.toISOString().slice(0, 10)}
-              currencySymbol={sym}
-              currencySymbolPosition={symPos}
-              existingSchedule={invoice.partialPayments.map((pp) => ({
-                id: pp.id,
-                sortOrder: pp.sortOrder,
-                amount: Number(pp.amount),
-                isPercentage: pp.isPercentage,
-                dueDate: pp.dueDate ? new Date(pp.dueDate).toISOString().slice(0, 10) : "",
-                notes: pp.notes ?? "",
-                isPaid: pp.isPaid,
-                paidAt: pp.paidAt,
-              }))}
-            />
           )}
           {invoice.type === "CREDIT_NOTE" && (
             <CreditNoteActions
@@ -222,11 +163,73 @@ export default async function InvoiceDetailPage({
           {invoice.type === "ESTIMATE" && invoice.status === "ACCEPTED" && (
             <ConvertEstimateButton invoiceId={invoice.id} />
           )}
-          <DuplicateInvoiceButton invoiceId={invoice.id} />
-          <ArchiveInvoiceButton invoiceId={invoice.id} isArchived={invoice.isArchived} />
-          {!["PAID", "PARTIALLY_PAID", "OVERDUE"].includes(invoice.status) && (
-            <DeleteInvoiceButton invoiceId={invoice.id} />
-          )}
+          <MoreActions>
+            {invoice.type !== "CREDIT_NOTE" && (
+              <ReminderOverrideSelect
+                invoiceId={invoice.id}
+                currentSequenceId={invoice.reminderSequenceId}
+              />
+            )}
+            <PortalPreviewButton target="invoice" id={invoice.id} fallbackUrl={portalLink} />
+            {isPayable && <CopyPaymentLinkButton payLink={payLink} />}
+            <RecurringInvoiceDialog invoiceId={invoice.id} />
+            {invoice.type !== "CREDIT_NOTE" && (
+              <PaymentScheduleButton
+                invoiceId={invoice.id}
+                invoiceTotal={Number(invoice.total)}
+                invoiceDueDate={invoice.dueDate?.toISOString().slice(0, 10)}
+                currencySymbol={sym}
+                currencySymbolPosition={symPos}
+                existingSchedule={invoice.partialPayments.map((pp) => ({
+                  id: pp.id,
+                  sortOrder: pp.sortOrder,
+                  amount: Number(pp.amount),
+                  isPercentage: pp.isPercentage,
+                  dueDate: pp.dueDate ? new Date(pp.dueDate).toISOString().slice(0, 10) : "",
+                  notes: pp.notes ?? "",
+                  isPaid: pp.isPaid,
+                  paidAt: pp.paidAt,
+                }))}
+              />
+            )}
+            {invoice.type !== "CREDIT_NOTE" && (
+              <ApplyCreditNoteDialog
+                invoiceId={invoice.id}
+                clientId={invoice.client.id}
+              />
+            )}
+            {invoice.type !== "CREDIT_NOTE" &&
+              invoice.type !== "ESTIMATE" &&
+              invoice.status !== "DRAFT" && (
+                <IssueCreditNoteDialog
+                  invoiceId={invoice.id}
+                  lines={invoice.lines.map((l) => ({
+                    id: l.id,
+                    name: l.name,
+                    description: l.description,
+                    qty: l.qty,
+                    rate: l.rate,
+                    subtotal: l.subtotal,
+                  }))}
+                  currencySymbol={sym}
+                  currencySymbolPosition={symPos}
+                />
+              )}
+            {isPayable && (
+              <ApplyRetainerDialog
+                invoiceId={invoice.id}
+                clientId={invoice.client.id}
+                invoiceTotal={Number(invoice.total)}
+                invoicePaid={invoice.payments.reduce((s, p) => s + Number(p.amount), 0)}
+                retainerAlreadyApplied={Number(invoice.retainerApplied)}
+              />
+            )}
+            <DuplicateInvoiceButton invoiceId={invoice.id} />
+            <ArchiveInvoiceButton invoiceId={invoice.id} isArchived={invoice.isArchived} />
+            {!["PAID", "PARTIALLY_PAID", "OVERDUE"].includes(invoice.status) && (
+              <DeleteInvoiceButton invoiceId={invoice.id} />
+            )}
+          </MoreActions>
         </div>
       </div>
 
