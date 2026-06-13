@@ -38,6 +38,10 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   experimental: {
+    // Persist Turbopack's compilation cache to .next/cache so warm builds
+    // (Netlify NETLIFY_NEXT_CACHE_PERSIST, CI actions/cache) skip recompiling
+    // unchanged modules.
+    turbopackFileSystemCacheForBuild: true,
     optimizePackageImports: [
       "lucide-react",
       "recharts",
