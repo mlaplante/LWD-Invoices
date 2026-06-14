@@ -62,6 +62,10 @@ export const organizationRouter = router({
         weeklyBriefingEnabled: true,
         weeklyBriefingRecipients: true,
         weeklyBriefingLastSentAt: true,
+        estimatedTaxEnabled: true,
+        estimatedTaxSetAsidePercent: true,
+        estimatedTaxReminderDays: true,
+        estimatedTaxReminderLastSentAt: true,
         stripeTaxEnabled: true,
         addressLine1: true,
         addressLine2: true,
@@ -170,6 +174,9 @@ export const organizationRouter = router({
         weeklyBriefingEnabled: z.boolean().optional(),
         // Capped at 10 recipients to match other fan-out limits in the app.
         weeklyBriefingRecipients: z.array(z.string().email()).max(10).optional(),
+        estimatedTaxEnabled: z.boolean().optional(),
+        estimatedTaxSetAsidePercent: z.number().min(0).max(60).optional(),
+        estimatedTaxReminderDays: z.number().int().min(1).max(30).optional(),
         // stripeTaxEnabled intentionally omitted — flip via setStripeTaxEnabled
         // so the preflight (Stripe gateway active + complete origin address) runs.
         addressLine1: z.string().max(200).nullable().optional(),

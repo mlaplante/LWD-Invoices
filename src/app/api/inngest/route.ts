@@ -19,8 +19,9 @@ import { processScheduledInvoiceSends } from "@/inngest/functions/scheduled-invo
 import { processDunningRetries } from "@/inngest/functions/dunning-retries";
 import { processProjectBudgetAlerts } from "@/inngest/functions/project-budget-alerts";
 import { processForecastSnapshots } from "@/inngest/functions/forecast-snapshots";
+import { processEstimatedTaxReminders } from "@/inngest/functions/estimated-tax-reminders";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, processRecurringExpenses, processEmailAutomations, handleAutomationEvent, processLateFees, processScheduledReports, processReminderSequences, recalculateInvoiceTotals, processRetentionCheckIns, processProposalNudges, processWeeklyBriefing, processCreditHoldEvaluation, handleAutomationRuleEvent, processAutomationRules, processScheduledInvoiceSends, processDunningRetries, processProjectBudgetAlerts, processForecastSnapshots],
+  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, processRecurringExpenses, processEmailAutomations, handleAutomationEvent, processLateFees, processScheduledReports, processReminderSequences, recalculateInvoiceTotals, processRetentionCheckIns, processProposalNudges, processWeeklyBriefing, processCreditHoldEvaluation, handleAutomationRuleEvent, processAutomationRules, processScheduledInvoiceSends, processDunningRetries, processProjectBudgetAlerts, processForecastSnapshots, processEstimatedTaxReminders],
 });

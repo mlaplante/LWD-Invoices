@@ -12,6 +12,7 @@ export const WIDGET_META: Record<WidgetKey, { label: string }> = {
   estimateConversion: { label: "Estimate conversion" },
   tasks: { label: "Open tasks" },
   retainerBurn: { label: "Retainer burn" },
+  estimatedTax: { label: "Estimated taxes" },
   activity: { label: "Recent activity" },
   weeklyBriefing: { label: "Weekly briefing" },
 };

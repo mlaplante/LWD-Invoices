@@ -12,6 +12,7 @@ import { DueThisWeek } from "@/components/dashboard/DueThisWeek";
 import { CashFlowInsights } from "@/components/dashboard/CashFlowInsights";
 import { OpenTasksCard } from "@/components/dashboard/OpenTasksCard";
 import { RetainerBurnCard } from "@/components/dashboard/RetainerBurnCard";
+import { EstimatedTaxCard } from "@/components/dashboard/EstimatedTaxCard";
 import { DashboardLayoutEditor } from "@/components/dashboard/DashboardLayoutEditor";
 import { WeeklyBriefing } from "@/components/dashboard/WeeklyBriefing";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -88,6 +89,31 @@ async function RetainerBurnSection() {
   return <RetainerBurnCard data={data} />;
 }
 
+async function EstimatedTaxSection() {
+  const data = await api.reports.estimatedTax({});
+  return (
+    <EstimatedTaxCard
+      data={{
+        currencySymbol: data.currencySymbol,
+        setAsidePercent: data.setAsidePercent,
+        ytdSetAside: data.ytd.recommendedSetAside,
+        nextDue: data.nextDue
+          ? {
+              label: data.nextDue.label,
+              dueDateLabel: new Date(data.nextDue.dueDate).toLocaleDateString("en-US", {
+                timeZone: "UTC",
+                month: "short",
+                day: "numeric",
+              }),
+              daysUntil: data.nextDue.daysUntil,
+              recommendedSetAside: data.nextDue.recommendedSetAside,
+            }
+          : null,
+      }}
+    />
+  );
+}
+
 async function ActivitySection() {
   const items = await api.dashboard.activityFeed();
   return (
@@ -161,6 +187,10 @@ function buildSectionMap(): Record<WidgetKey, SectionEntry> {
     retainerBurn: {
       fallback: <Skeleton className="h-40 rounded-2xl" />,
       section: <RetainerBurnSection />,
+    },
+    estimatedTax: {
+      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      section: <EstimatedTaxSection />,
     },
     activity: {
       fallback: <Skeleton className="h-48 rounded-2xl" />,

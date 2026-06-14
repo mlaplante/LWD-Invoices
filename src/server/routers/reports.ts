@@ -10,6 +10,7 @@ import { getTaxLiability } from "@/server/services/tax-liability";
 import { getIncomeByCategory } from "@/server/services/income-by-category";
 import { getDeductibleExpenses } from "@/server/services/deductible-expenses";
 import { get1099Pack } from "@/server/services/contractor-1099";
+import { getEstimatedTaxSummary } from "@/server/services/estimated-tax";
 
 export function groupByMonth<T>(
   items: T[],
@@ -705,6 +706,40 @@ export const reportsRouter = router({
         deductible,
         estimatedNetIncome: income.total - deductible.deductibleTotal,
         contractorExposure,
+      };
+    }),
+
+  // Self-employment estimated-tax planner: net SE income (cash basis) bucketed
+  // by IRS quarter with a recommended set-aside and SE-tax guidance.
+  estimatedTax: protectedProcedure
+    .input(
+      z.object({
+        year: z.number().int().min(2000).max(2100).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const org = await ctx.db.organization.findUniqueOrThrow({
+        where: { id: ctx.orgId },
+        select: {
+          estimatedTaxEnabled: true,
+          estimatedTaxSetAsidePercent: true,
+          estimatedTaxReminderDays: true,
+          currencies: {
+            where: { isDefault: true },
+            select: { symbol: true },
+          },
+        },
+      });
+      const year = input.year ?? new Date().getUTCFullYear();
+      const summary = await getEstimatedTaxSummary(ctx.db, ctx.orgId, {
+        year,
+        setAsidePercent: Number(org.estimatedTaxSetAsidePercent),
+      });
+      return {
+        ...summary,
+        enabled: org.estimatedTaxEnabled,
+        reminderDays: org.estimatedTaxReminderDays,
+        currencySymbol: org.currencies[0]?.symbol ?? "$",
       };
     }),
 

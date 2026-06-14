@@ -18,6 +18,13 @@ const reports = [
     color: "bg-orange-50 text-orange-600",
   },
   {
+    href: "/reports/estimated-tax",
+    label: "Estimated Taxes",
+    description: "Quarterly self-employment set-aside from net income, with federal due dates.",
+    icon: <Landmark className="w-4 h-4" />,
+    color: "bg-orange-50 text-orange-600",
+  },
+  {
     href: "/reports/client-health",
     label: "Client Health",
     description: "Composite health score, churn risk, and upsell signals per client.",
