@@ -4,22 +4,22 @@ import { Landmark, ChevronRight } from "lucide-react";
 type Props = {
   data: {
     currencySymbol: string;
-    setAsidePercent: number;
-    ytdSetAside: number;
+    ytdPaid: number;
+    ytdRecommended: number;
     nextDue: {
       label: string;
       dueDateLabel: string;
       daysUntil: number;
-      recommendedSetAside: number;
+      remaining: number;
     } | null;
   };
 };
 
 export function EstimatedTaxCard({ data }: Props) {
-  const { currencySymbol, ytdSetAside, nextDue } = data;
+  const { currencySymbol, ytdPaid, ytdRecommended, nextDue } = data;
   const money = (n: number) =>
     `${currencySymbol}${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  const urgent = nextDue !== null && nextDue.daysUntil <= 14;
+  const urgent = nextDue !== null && nextDue.remaining > 0 && nextDue.daysUntil <= 14;
 
   return (
     <div className="rounded-2xl border border-border/50 bg-card p-5">
@@ -38,14 +38,17 @@ export function EstimatedTaxCard({ data }: Props) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <p className="text-xs text-muted-foreground">Set aside YTD ({data.setAsidePercent}%)</p>
-          <p className="text-2xl font-bold tabular-nums mt-0.5 text-orange-600">{money(ytdSetAside)}</p>
+          <p className="text-xs text-muted-foreground">Paid YTD</p>
+          <p className="text-2xl font-bold tabular-nums mt-0.5">{money(ytdPaid)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">of {money(ytdRecommended)} recommended</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Next payment due</p>
           {nextDue ? (
             <>
-              <p className="text-2xl font-bold tabular-nums mt-0.5">{money(nextDue.recommendedSetAside)}</p>
+              <p className="text-2xl font-bold tabular-nums mt-0.5 text-orange-600">
+                {money(nextDue.remaining)}
+              </p>
               <p className={`text-xs mt-0.5 ${urgent ? "font-semibold text-orange-600" : "text-muted-foreground"}`}>
                 {nextDue.dueDateLabel} · {nextDue.daysUntil}d ({nextDue.label})
               </p>

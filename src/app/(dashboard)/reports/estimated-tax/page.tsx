@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronLeft, ChevronRight, CalendarClock, Settings } from "lucide-react";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { ReportHeader } from "@/components/reports/ReportHeader";
+import { EstimatedTaxPayments } from "@/components/reports/EstimatedTaxPayments";
 
 export default async function EstimatedTaxReportPage({
   searchParams,
@@ -90,8 +91,11 @@ export default async function EstimatedTaxReportPage({
               {data.nextDue.daysUntil} day{data.nextDue.daysUntil === 1 ? "" : "s"} away
             </p>
             <p className="text-sm text-orange-800 mt-0.5">
-              Recommended set-aside for this quarter:{" "}
-              <span className="font-bold tabular-nums">{money(data.nextDue.recommendedSetAside)}</span>
+              {data.nextDue.paid > 0 ? "Remaining" : "Recommended"} payment for this quarter:{" "}
+              <span className="font-bold tabular-nums">{money(data.nextDue.remaining)}</span>
+              {data.nextDue.paid > 0 && (
+                <span className="text-orange-700"> · {money(data.nextDue.paid)} already paid</span>
+              )}
             </p>
             {!data.enabled && (
               <p className="text-xs text-orange-700 mt-2">
@@ -124,13 +128,17 @@ export default async function EstimatedTaxReportPage({
           </p>
         </div>
         <div className="rounded-2xl border border-border/50 bg-card p-4">
-          <p className="text-xs text-muted-foreground font-medium">SE Tax Estimate</p>
-          <p className="text-2xl font-bold mt-0.5 tabular-nums">{money(data.ytd.seTaxEstimate)}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">15.3% × 92.35% of net</p>
+          <p className="text-xs text-muted-foreground font-medium">Paid YTD</p>
+          <p className="text-2xl font-bold mt-0.5 tabular-nums">{money(data.ytd.paid)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            SE tax est. {money(data.ytd.seTaxEstimate)}
+          </p>
         </div>
         <div className="rounded-2xl border border-border/50 bg-card p-4">
-          <p className="text-xs text-muted-foreground font-medium">Mileage Deduction</p>
-          <p className="text-2xl font-bold mt-0.5 tabular-nums">{money(data.ytd.mileageDeduction)}</p>
+          <p className="text-xs text-muted-foreground font-medium">Remaining to Set Aside</p>
+          <p className="text-2xl font-bold mt-0.5 tabular-nums text-orange-600">
+            {money(data.ytd.remaining)}
+          </p>
         </div>
       </div>
 
@@ -146,10 +154,11 @@ export default async function EstimatedTaxReportPage({
               <th className="px-6 py-3 text-left">Quarter</th>
               <th className="px-6 py-3 text-left">Due</th>
               <th className="px-6 py-3 text-right">Income</th>
-              <th className="px-6 py-3 text-right">Deductible</th>
-              <th className="px-6 py-3 text-right">Mileage</th>
+              <th className="px-6 py-3 text-right">Deductions</th>
               <th className="px-6 py-3 text-right">Net</th>
-              <th className="px-6 py-3 text-right">Set-aside</th>
+              <th className="px-6 py-3 text-right">Recommended</th>
+              <th className="px-6 py-3 text-right">Paid</th>
+              <th className="px-6 py-3 text-right">Remaining</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -171,14 +180,13 @@ export default async function EstimatedTaxReportPage({
                   <td className="px-6 py-3.5 text-muted-foreground">{fmtDate(q.dueDate)}</td>
                   <td className="px-6 py-3.5 text-right tabular-nums">{money(q.grossIncome)}</td>
                   <td className="px-6 py-3.5 text-right tabular-nums text-muted-foreground">
-                    {money(q.deductibleExpenses)}
-                  </td>
-                  <td className="px-6 py-3.5 text-right tabular-nums text-muted-foreground">
-                    {money(q.mileageDeduction)}
+                    {money(q.deductibleExpenses + q.mileageDeduction)}
                   </td>
                   <td className="px-6 py-3.5 text-right tabular-nums font-medium">{money(q.netIncome)}</td>
+                  <td className="px-6 py-3.5 text-right tabular-nums">{money(q.recommendedSetAside)}</td>
+                  <td className="px-6 py-3.5 text-right tabular-nums text-emerald-600">{money(q.paid)}</td>
                   <td className="px-6 py-3.5 text-right tabular-nums font-semibold text-orange-600">
-                    {money(q.recommendedSetAside)}
+                    {money(q.remaining)}
                   </td>
                 </tr>
               );
@@ -186,17 +194,25 @@ export default async function EstimatedTaxReportPage({
           </tbody>
           <tfoot className="border-t border-border bg-muted/20">
             <tr>
-              <td colSpan={5} className="px-6 py-3 text-sm font-semibold text-right">
+              <td colSpan={4} className="px-6 py-3 text-sm font-semibold text-right">
                 Year to date
               </td>
               <td className="px-6 py-3 text-right font-bold tabular-nums">{money(data.ytd.netIncome)}</td>
-              <td className="px-6 py-3 text-right font-bold tabular-nums text-orange-600">
+              <td className="px-6 py-3 text-right font-bold tabular-nums">
                 {money(data.ytd.recommendedSetAside)}
+              </td>
+              <td className="px-6 py-3 text-right font-bold tabular-nums text-emerald-600">
+                {money(data.ytd.paid)}
+              </td>
+              <td className="px-6 py-3 text-right font-bold tabular-nums text-orange-600">
+                {money(data.ytd.remaining)}
               </td>
             </tr>
           </tfoot>
         </table>
       </div>
+
+      <EstimatedTaxPayments year={year} currencySymbol={symbol} />
 
       <p className="text-xs text-muted-foreground max-w-2xl">
         Cash basis: income counts when payment is received; only categorized,

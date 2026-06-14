@@ -81,6 +81,19 @@ export const processEstimatedTaxReminders = inngest.createFunction(
         // Q4's payment is due in January of the following calendar year.
         const taxYear = cand.quarter === 4 ? cand.dueDate.getUTCFullYear() - 1 : cand.dueDate.getUTCFullYear();
 
+        const summaryForGate = await getEstimatedTaxSummary(db, org.id, {
+          year: taxYear,
+          setAsidePercent: Number(org.estimatedTaxSetAsidePercent),
+          now,
+        });
+        const gateQuarter = summaryForGate.quarters.find((q) => q.quarter === cand.quarter)!;
+        // Nothing left to set aside this quarter — don't nag (and don't mark sent,
+        // so a later balance increase can still trigger a reminder in-window).
+        if (gateQuarter.remaining <= 0) {
+          skipped++;
+          continue;
+        }
+
         const members = await db.userOrganization.findMany({
           where: { organizationId: org.id, role: { in: ["OWNER", "ADMIN"] } },
           select: { user: { select: { email: true } } },
@@ -97,12 +110,7 @@ export const processEstimatedTaxReminders = inngest.createFunction(
           continue;
         }
 
-        const summary = await getEstimatedTaxSummary(db, org.id, {
-          year: taxYear,
-          setAsidePercent: Number(org.estimatedTaxSetAsidePercent),
-          now,
-        });
-        const quarter = summary.quarters.find((q) => q.quarter === cand.quarter)!;
+        const quarter = gateQuarter;
         const symbol = org.currencies[0]?.symbol ?? "$";
         const daysUntil = Math.max(0, Math.ceil((cand.dueDate.getTime() - now.getTime()) / MS_PER_DAY));
 
@@ -117,7 +125,8 @@ export const processEstimatedTaxReminders = inngest.createFunction(
             periodLabel: quarter.label,
             dueDateLabel: fmtDueDate(cand.dueDate),
             daysUntil,
-            recommendedSetAside: fmtMoney(symbol, quarter.recommendedSetAside),
+            amountDue: fmtMoney(symbol, quarter.remaining),
+            alreadyPaid: quarter.paid > 0 ? fmtMoney(symbol, quarter.paid) : undefined,
             netIncome: fmtMoney(symbol, quarter.netIncome),
             reportLink: `${appUrl}/reports/estimated-tax?year=${taxYear}`,
           }),

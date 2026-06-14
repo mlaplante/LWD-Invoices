@@ -95,8 +95,8 @@ async function EstimatedTaxSection() {
     <EstimatedTaxCard
       data={{
         currencySymbol: data.currencySymbol,
-        setAsidePercent: data.setAsidePercent,
-        ytdSetAside: data.ytd.recommendedSetAside,
+        ytdPaid: data.ytd.paid,
+        ytdRecommended: data.ytd.recommendedSetAside,
         nextDue: data.nextDue
           ? {
               label: data.nextDue.label,
@@ -106,7 +106,7 @@ async function EstimatedTaxSection() {
                 day: "numeric",
               }),
               daysUntil: data.nextDue.daysUntil,
-              recommendedSetAside: data.nextDue.recommendedSetAside,
+              remaining: data.nextDue.remaining,
             }
           : null,
       }}

@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { Prisma } from "@/generated/prisma";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
+import { logAudit } from "../services/audit";
 import { InvoiceStatus, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 import { getArAgingAsOf, getDsoTrend } from "@/server/services/ar-reports";
@@ -741,6 +743,72 @@ export const reportsRouter = router({
         reminderDays: org.estimatedTaxReminderDays,
         currencySymbol: org.currencies[0]?.symbol ?? "$",
       };
+    }),
+
+  // Recorded estimated-tax payments for a tax year (drives paid vs. remaining).
+  estimatedTaxPayments: protectedProcedure
+    .input(z.object({ year: z.number().int().min(2000).max(2100).optional() }))
+    .query(async ({ ctx, input }) => {
+      const year = input.year ?? new Date().getUTCFullYear();
+      const rows = await ctx.db.estimatedTaxPayment.findMany({
+        where: { organizationId: ctx.orgId, year },
+        orderBy: [{ quarter: "asc" }, { paidAt: "asc" }],
+        select: { id: true, year: true, quarter: true, amount: true, paidAt: true, note: true },
+      });
+      return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+    }),
+
+  addEstimatedTaxPayment: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(
+      z.object({
+        year: z.number().int().min(2000).max(2100),
+        quarter: z.number().int().min(1).max(4),
+        amount: z.number().positive().max(100_000_000),
+        paidAt: z.coerce.date().optional(),
+        note: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const created = await ctx.db.estimatedTaxPayment.create({
+        data: {
+          organizationId: ctx.orgId,
+          year: input.year,
+          quarter: input.quarter,
+          amount: input.amount,
+          paidAt: input.paidAt ?? new Date(),
+          note: input.note,
+        },
+      });
+      await logAudit({
+        action: "CREATED",
+        entityType: "EstimatedTaxPayment",
+        entityId: created.id,
+        entityLabel: `Q${created.quarter} ${created.year} estimated tax payment`,
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return { ...created, amount: Number(created.amount) };
+    }),
+
+  deleteEstimatedTaxPayment: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      // Scope the delete to the org so one tenant can't remove another's record.
+      const result = await ctx.db.estimatedTaxPayment.deleteMany({
+        where: { id: input.id, organizationId: ctx.orgId },
+      });
+      if (result.count === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found" });
+      }
+      await logAudit({
+        action: "DELETED",
+        entityType: "EstimatedTaxPayment",
+        entityId: input.id,
+        entityLabel: "Estimated tax payment",
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
+      return { success: true };
     }),
 
   expenseCategories: protectedProcedure.query(async ({ ctx }) => {

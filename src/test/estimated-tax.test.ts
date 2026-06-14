@@ -96,6 +96,60 @@ describe("buildEstimatedTaxSummary", () => {
     expect(s.quarters[0].seTaxEstimate).toBe(0);
   });
 
+  it("applies recorded payments to compute paid and remaining", () => {
+    const s = buildEstimatedTaxSummary({
+      year: 2026,
+      setAsidePercent: 30,
+      income,
+      deductibleExpenses,
+      mileageDeductions,
+      payments: [
+        { quarter: 1, amount: 1_000 },
+        { quarter: 1, amount: 500 }, // two payments stack within a quarter
+        { quarter: 2, amount: 5_000 }, // overpays Q2 (recommended 1800) → remaining floored at 0
+      ],
+      now: new Date("2026-01-01T00:00:00Z"),
+    });
+    // Q1 recommended = 7500 * 0.3 = 2250; paid 1500 → remaining 750
+    expect(s.quarters[0].paid).toBe(1_500);
+    expect(s.quarters[0].remaining).toBeCloseTo(2_250 * 1 - 1_500, 6);
+    // Q2 recommended = 1800; paid 5000 → remaining 0
+    expect(s.quarters[1].paid).toBe(5_000);
+    expect(s.quarters[1].remaining).toBe(0);
+    // YTD paid = 6500; recommended = 17500*0.3 = 5250 → remaining floored at 0
+    expect(s.ytd.paid).toBe(6_500);
+    expect(s.ytd.remaining).toBe(0);
+  });
+
+  it("defaults paid/remaining to zero when no payments are passed", () => {
+    const s = buildEstimatedTaxSummary({
+      year: 2026,
+      setAsidePercent: 30,
+      income,
+      deductibleExpenses,
+      mileageDeductions,
+      now: new Date("2026-01-01T00:00:00Z"),
+    });
+    expect(s.ytd.paid).toBe(0);
+    expect(s.quarters[0].remaining).toBe(s.quarters[0].recommendedSetAside);
+  });
+
+  it("reflects a payment in nextDue.remaining", () => {
+    const s = buildEstimatedTaxSummary({
+      year: 2026,
+      setAsidePercent: 30,
+      income,
+      deductibleExpenses,
+      mileageDeductions,
+      payments: [{ quarter: 2, amount: 1_000 }],
+      now: new Date("2026-05-01T00:00:00Z"), // next = Q2
+    });
+    expect(s.nextDue?.quarter).toBe(2);
+    expect(s.nextDue?.paid).toBe(1_000);
+    // Q2 recommended 1800 − 1000 paid = 800
+    expect(s.nextDue?.remaining).toBeCloseTo(1_800 - 1_000, 6);
+  });
+
   it("picks the next unpaid due date relative to now", () => {
     const s = buildEstimatedTaxSummary({
       year: 2026,

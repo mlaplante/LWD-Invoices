@@ -345,6 +345,7 @@ model Organization {
   invoiceReminders        InvoiceReminder[]
   clientCheckIns          ClientCheckIn[]
   checkInTemplates        CheckInTemplate[]
+  estimatedTaxPayments    EstimatedTaxPayment[]
   // Retention/check-in automation feature flag. retentionEnabledAt is the
   // floor for cron-generated check-ins so newly-enabled orgs don't get
   // flooded with historical backfill.
@@ -1265,6 +1266,28 @@ model MileageEntry {
   updatedAt DateTime @updatedAt
 
   @@index([organizationId, date])
+}
+
+// ─── Estimated Quarterly Taxes ────────────────────────────────────────────────
+
+// A self-employment estimated-tax payment the org has made for a given tax
+// year + IRS quarter. Tracked so the Estimated Taxes report can show paid vs.
+// recommended and reminders can skip already-satisfied quarters.
+model EstimatedTaxPayment {
+  id       String   @id @default(cuid())
+  year     Int
+  quarter  Int // 1–4
+  amount   Decimal  @db.Decimal(20, 2)
+  paidAt   DateTime @default(now())
+  note     String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, year])
 }
 
 // ─── 1099 / Contractor Tax Pack ───────────────────────────────────────────────

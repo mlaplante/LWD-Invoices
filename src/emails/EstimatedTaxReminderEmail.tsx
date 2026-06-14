@@ -10,7 +10,9 @@ type Props = {
   dueDateLabel: string;
   daysUntil: number;
   /** Pre-formatted money strings (caller applies the currency symbol). */
-  recommendedSetAside: string;
+  amountDue: string;
+  /** Pre-formatted amount already paid this quarter, when any. */
+  alreadyPaid?: string;
   netIncome: string;
   /** Link to the Estimated Taxes report. */
   reportLink: string;
@@ -28,7 +30,8 @@ export function EstimatedTaxReminderEmail({
   periodLabel,
   dueDateLabel,
   daysUntil,
-  recommendedSetAside,
+  amountDue,
+  alreadyPaid,
   netIncome,
   reportLink,
   logoUrl,
@@ -52,7 +55,9 @@ export function EstimatedTaxReminderEmail({
         <Text style={{ color: "#4b5563", fontSize: 15, lineHeight: "1.6", margin: "0 0 20px" }}>
           The federal deadline is <strong>{dueDateLabel}</strong> — {daysUntil} day
           {daysUntil === 1 ? "" : "s"} away. Based on your net self-employment income
-          this quarter ({netIncome}), here&apos;s what we suggest setting aside:
+          this quarter ({netIncome})
+          {alreadyPaid ? <> and the {alreadyPaid} you&apos;ve already paid</> : null}, here&apos;s
+          what we suggest paying:
         </Text>
 
         <Section
@@ -66,10 +71,10 @@ export function EstimatedTaxReminderEmail({
           }}
         >
           <Text style={{ fontSize: 12, color: "#9a3412", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 6px" }}>
-            Recommended set-aside · {periodLabel}
+            Remaining for {periodLabel}
           </Text>
           <Text style={{ fontSize: 30, fontWeight: "bold", color: "#9a3412", margin: 0 }}>
-            {recommendedSetAside}
+            {amountDue}
           </Text>
         </Section>
 

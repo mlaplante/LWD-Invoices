@@ -28,6 +28,8 @@ export type EstimatedTaxQuarter = {
   netIncome: number;
   recommendedSetAside: number;
   seTaxEstimate: number;
+  paid: number;
+  remaining: number;
 };
 
 export type EstimatedTaxTotals = {
@@ -37,6 +39,8 @@ export type EstimatedTaxTotals = {
   netIncome: number;
   recommendedSetAside: number;
   seTaxEstimate: number;
+  paid: number;
+  remaining: number;
 };
 
 export type EstimatedTaxNextDue = {
@@ -44,8 +48,13 @@ export type EstimatedTaxNextDue = {
   label: string;
   dueDate: Date;
   recommendedSetAside: number;
+  paid: number;
+  remaining: number;
   daysUntil: number;
 };
+
+/** A recorded estimated-tax payment, already scoped to the tax year. */
+export type QuarterPayment = { quarter: number; amount: number };
 
 export type EstimatedTaxSummary = {
   year: number;
@@ -109,6 +118,7 @@ export function buildEstimatedTaxSummary(args: {
   income: DatedAmount[];
   deductibleExpenses: DatedAmount[];
   mileageDeductions: DatedAmount[];
+  payments?: QuarterPayment[];
   now: Date;
 }): EstimatedTaxSummary {
   const { year, setAsidePercent, income, deductibleExpenses, mileageDeductions, now } = args;
@@ -118,6 +128,7 @@ export function buildEstimatedTaxSummary(args: {
   const gross = [0, 0, 0, 0];
   const ded = [0, 0, 0, 0];
   const miles = [0, 0, 0, 0];
+  const paid = [0, 0, 0, 0];
 
   for (const r of income) {
     const i = bucketIndex(r.date, periods);
@@ -131,10 +142,14 @@ export function buildEstimatedTaxSummary(args: {
     const i = bucketIndex(r.date, periods);
     if (i >= 0) miles[i] += r.amount;
   }
+  for (const p of args.payments ?? []) {
+    if (p.quarter >= 1 && p.quarter <= 4) paid[p.quarter - 1] += p.amount;
+  }
 
   const quarters: EstimatedTaxQuarter[] = periods.map((p, i) => {
     const netIncome = gross[i] - ded[i] - miles[i];
     const positiveNet = Math.max(0, netIncome);
+    const recommendedSetAside = positiveNet * rate;
     return {
       quarter: p.quarter,
       label: `Q${p.quarter} ${year}`,
@@ -145,21 +160,27 @@ export function buildEstimatedTaxSummary(args: {
       deductibleExpenses: ded[i],
       mileageDeduction: miles[i],
       netIncome,
-      recommendedSetAside: positiveNet * rate,
+      recommendedSetAside,
       seTaxEstimate: selfEmploymentTax(positiveNet),
+      paid: paid[i],
+      remaining: Math.max(0, recommendedSetAside - paid[i]),
     };
   });
 
   const sum = (sel: (q: EstimatedTaxQuarter) => number) =>
     quarters.reduce((s, q) => s + sel(q), 0);
   const ytdNet = sum((q) => q.grossIncome) - sum((q) => q.deductibleExpenses) - sum((q) => q.mileageDeduction);
+  const ytdRecommended = Math.max(0, ytdNet) * rate;
+  const ytdPaid = sum((q) => q.paid);
   const ytd: EstimatedTaxTotals = {
     grossIncome: sum((q) => q.grossIncome),
     deductibleExpenses: sum((q) => q.deductibleExpenses),
     mileageDeduction: sum((q) => q.mileageDeduction),
     netIncome: ytdNet,
-    recommendedSetAside: Math.max(0, ytdNet) * rate,
+    recommendedSetAside: ytdRecommended,
     seTaxEstimate: selfEmploymentTax(Math.max(0, ytdNet)),
+    paid: ytdPaid,
+    remaining: Math.max(0, ytdRecommended - ytdPaid),
   };
 
   // Next due = the earliest quarter whose payment deadline hasn't passed.
@@ -171,6 +192,8 @@ export function buildEstimatedTaxSummary(args: {
         label: upcoming.label,
         dueDate: upcoming.dueDate,
         recommendedSetAside: upcoming.recommendedSetAside,
+        paid: upcoming.paid,
+        remaining: upcoming.remaining,
         daysUntil: Math.max(0, Math.ceil((upcoming.dueDate.getTime() - nowT) / MS_PER_DAY)),
       }
     : null;
@@ -194,7 +217,7 @@ export async function getEstimatedTaxSummary(
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEnd = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999));
 
-  const [payments, expenses, mileage] = await Promise.all([
+  const [payments, expenses, mileage, taxPayments] = await Promise.all([
     db.payment.findMany({
       where: { organizationId: orgId, paidAt: { gte: yearStart, lte: yearEnd } },
       select: { amount: true, paidAt: true },
@@ -212,6 +235,10 @@ export async function getEstimatedTaxSummary(
       where: { organizationId: orgId, date: { gte: yearStart, lte: yearEnd } },
       select: { miles: true, ratePerMile: true, date: true },
     }),
+    db.estimatedTaxPayment.findMany({
+      where: { organizationId: orgId, year },
+      select: { quarter: true, amount: true },
+    }),
   ]);
 
   return buildEstimatedTaxSummary({
@@ -227,6 +254,7 @@ export async function getEstimatedTaxSummary(
       date: m.date,
       amount: Number(m.miles) * Number(m.ratePerMile),
     })),
+    payments: taxPayments.map((p) => ({ quarter: p.quarter, amount: Number(p.amount) })),
   });
 }
 
