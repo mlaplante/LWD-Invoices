@@ -10,6 +10,7 @@ export const WIDGET_KEYS = [
   "estimateConversion",
   "tasks",
   "retainerBurn",
+  "estimatedTax",
   "activity",
   "weeklyBriefing",
 ] as const;

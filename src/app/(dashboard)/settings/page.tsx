@@ -6,7 +6,7 @@ import { BrandingForm } from "@/components/settings/BrandingForm";
 import { PortalBrandingForm } from "@/components/settings/PortalBrandingForm";
 import { CurrencyManager } from "@/components/settings/CurrencyManager";
 import { TaxManager } from "@/components/settings/TaxManager";
-import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell, Shield, User, HeartHandshake, Newspaper, Workflow } from "lucide-react";
+import { CreditCard, FileText, FolderKanban, ScrollText, Wallet, Mail, ShieldAlert, Palette, ChevronRight, CalendarClock, Bell, Shield, User, HeartHandshake, Newspaper, Workflow, Landmark } from "lucide-react";
 
 // ── Sub-page nav cards ─────────────────────────────────────────────────────────
 
@@ -115,6 +115,13 @@ const subPages = [
     description: "Proactive Monday email: overdue total, at-risk clients, projected cash.",
     icon: <Newspaper className="w-4 h-4" />,
     color: "bg-cyan-50 text-cyan-600",
+  },
+  {
+    href: "/settings/estimated-tax",
+    label: "Estimated Taxes",
+    description: "Quarterly self-employment set-aside percentage and due-date reminders.",
+    icon: <Landmark className="w-4 h-4" />,
+    color: "bg-orange-50 text-orange-600",
   },
 ];
 

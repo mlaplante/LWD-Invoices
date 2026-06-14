@@ -283,6 +283,16 @@ model Organization {
   // MileageEntry at creation so changing the rate doesn't rewrite history.
   // Default mirrors the 2025 IRS standard business rate ($0.70/mile).
   mileageRatePerMile  Decimal  @default(0.70) @db.Decimal(10, 4)
+  // ─── Estimated Quarterly Taxes (self-employment set-aside) ──────────────────
+  // US calendar-year, cash-basis estimator. Recommends a reserve of
+  // estimatedTaxSetAsidePercent × net SE income (gross payments received −
+  // deductible expenses − mileage deduction). When enabled, the
+  // estimated-tax-reminders cron emails org admins estimatedTaxReminderDays
+  // before each federal due date (Apr 15 / Jun 15 / Sep 15 / Jan 15).
+  estimatedTaxEnabled            Boolean   @default(false)
+  estimatedTaxSetAsidePercent    Decimal   @default(30) @db.Decimal(5, 2)
+  estimatedTaxReminderDays       Int       @default(7)
+  estimatedTaxReminderLastSentAt DateTime?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
@@ -335,6 +345,7 @@ model Organization {
   invoiceReminders        InvoiceReminder[]
   clientCheckIns          ClientCheckIn[]
   checkInTemplates        CheckInTemplate[]
+  estimatedTaxPayments    EstimatedTaxPayment[]
   // Retention/check-in automation feature flag. retentionEnabledAt is the
   // floor for cron-generated check-ins so newly-enabled orgs don't get
   // flooded with historical backfill.
@@ -1255,6 +1266,28 @@ model MileageEntry {
   updatedAt DateTime @updatedAt
 
   @@index([organizationId, date])
+}
+
+// ─── Estimated Quarterly Taxes ────────────────────────────────────────────────
+
+// A self-employment estimated-tax payment the org has made for a given tax
+// year + IRS quarter. Tracked so the Estimated Taxes report can show paid vs.
+// recommended and reminders can skip already-satisfied quarters.
+model EstimatedTaxPayment {
+  id       String   @id @default(cuid())
+  year     Int
+  quarter  Int // 1–4
+  amount   Decimal  @db.Decimal(20, 2)
+  paidAt   DateTime @default(now())
+  note     String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, year])
 }
 
 // ─── 1099 / Contractor Tax Pack ───────────────────────────────────────────────
