@@ -9,6 +9,7 @@ import {
   earlyPayDiscountLabel,
   resolveEarlyPayOffer,
 } from "@/server/services/early-payment-discount";
+import { resolveAppUrlFromHeaders } from "@/lib/app-url";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
 
@@ -222,10 +223,8 @@ export async function POST(
       partialPaymentId: partialPaymentId ?? undefined,
     }).catch((err) => console.error("Receipt email failed:", err));
 
-    const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
-    const proto = req.headers.get("x-forwarded-proto") ?? "https";
     return NextResponse.redirect(
-      `${proto}://${host}/portal/${invoice.portalToken}/payment-success`,
+      `${resolveAppUrlFromHeaders(req.headers)}/portal/${invoice.portalToken}/payment-success`,
       303
     );
   } catch (err: unknown) {

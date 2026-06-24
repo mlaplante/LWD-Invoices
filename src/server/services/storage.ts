@@ -1,5 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import {
+  extensionForMimeType,
+  readValidatedFile,
+  SAFE_DOCUMENT_MIME_TYPES,
+  SAFE_IMAGE_MIME_TYPES,
+  SAFE_TEXT_MIME_TYPES,
+} from "@/lib/file-validation";
 
 const BUCKET = "attachments";
 
@@ -21,27 +28,45 @@ async function ensureBucket() {
 // can never escape the intended pathname prefix in the storage bucket.
 function sanitizeFilename(name: string): string {
   const base = name.split(/[\\/]/).pop() ?? "file";
-  const cleaned = base.replace(/[^\w.\-]+/g, "_").replace(/^\.+/, "");
+  const withoutExtension = base.replace(/\.[^.]*$/, "");
+  const cleaned = withoutExtension.replace(/[^\w.\-]+/g, "_").replace(/^\.+/, "");
   return cleaned.length > 0 ? cleaned.slice(0, 200) : "file";
+}
+
+function sanitizePathname(pathname: string): string {
+  return pathname
+    .split("/")
+    .map((segment) => segment.replace(/[^\w.\-]+/g, "_").replace(/^\.+/, ""))
+    .filter(Boolean)
+    .join("/");
 }
 
 export async function uploadFile(
   filename: string,
-  file: Blob,
+  file: Pick<File, "arrayBuffer" | "type">,
   pathname: string,
+  allowedTypes: readonly string[] = [
+    ...SAFE_IMAGE_MIME_TYPES,
+    ...SAFE_DOCUMENT_MIME_TYPES,
+    ...SAFE_TEXT_MIME_TYPES,
+  ],
 ): Promise<{ url: string }> {
   await ensureBucket();
   const supabase = getClient();
 
+  const validated = await readValidatedFile(file, allowedTypes);
+  if (!validated.ok) throw new Error(validated.error);
+
   const safeName = sanitizeFilename(filename);
-  const path = `${pathname}/${safeName}`;
-  const arrayBuffer = await file.arrayBuffer();
+  const safePathname = sanitizePathname(pathname);
+  const ext = extensionForMimeType(file.type);
+  const path = `${safePathname}/${crypto.randomUUID()}-${safeName}.${ext}`;
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, arrayBuffer, {
+    .upload(path, validated.arrayBuffer, {
       contentType: file.type,
-      upsert: true,
+      upsert: false,
     });
 
   if (error) throw error;

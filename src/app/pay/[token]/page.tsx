@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { CheckCircle2, CreditCard, Landmark } from "lucide-react";
 import { formatCurrency, formatDateLong } from "@/lib/format";
+import { resolveAppUrlFromHeaders } from "@/lib/app-url";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
 
@@ -32,9 +33,7 @@ export default async function PayPage({
   const inv = invoice;
 
   const hdrs = await headers();
-  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
-  const proto = hdrs.get("x-forwarded-proto") ?? "https";
-  const appUrl = `${proto}://${host}`;
+  const appUrl = resolveAppUrlFromHeaders(hdrs);
 
   const sym = invoice.currency.symbol;
   const symPos = invoice.currency.symbolPosition;

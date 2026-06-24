@@ -1,4 +1,5 @@
 import { createAdminClient } from "./admin";
+import { readValidatedFile } from "@/lib/file-validation";
 
 const BUCKET = "proposals";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -19,6 +20,11 @@ export async function uploadProposalFile(
     throw new Error("File must be under 10MB");
   }
 
+  const validated = await readValidatedFile(file, ALLOWED_TYPES);
+  if (!validated.ok) {
+    throw new Error(validated.error);
+  }
+
   const supabase = createAdminClient();
   // Whitelist the extension instead of trusting the client-supplied filename,
   // since `file.name` flows directly into the storage path below.
@@ -27,7 +33,7 @@ export async function uploadProposalFile(
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(storagePath, file, {
+    .upload(storagePath, validated.arrayBuffer, {
       contentType: file.type,
       upsert: true,
     });

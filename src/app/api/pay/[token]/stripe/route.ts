@@ -10,6 +10,7 @@ import { headers } from "next/headers";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { safeErrorResponse } from "@/lib/api-errors";
 import { resolveEarlyPayOffer } from "@/server/services/early-payment-discount";
+import { resolveAppUrlFromHeaders } from "@/lib/app-url";
 
 // 10 payment attempts per token per 5 minutes
 const payLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60_000 });
@@ -173,7 +174,5 @@ export async function GET(
 }
 
 function getAppUrl(hdrs: Headers): string {
-  const host = hdrs.get("host") ?? "localhost:3000";
-  const proto = hdrs.get("x-forwarded-proto") ?? "http";
-  return `${proto}://${host}`;
+  return resolveAppUrlFromHeaders(hdrs);
 }

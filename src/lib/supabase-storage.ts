@@ -1,5 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { env } from "./env";
+import {
+  extensionForMimeType,
+  readValidatedFile,
+  SAFE_IMAGE_MIME_TYPES,
+} from "./file-validation";
 
 const BUCKET = "logos";
 const RECEIPTS_BUCKET = "receipts";
@@ -9,26 +14,30 @@ function getClient() {
 }
 
 export async function uploadLogo(orgId: string, file: File): Promise<string> {
+  const validated = await readValidatedFile(file, SAFE_IMAGE_MIME_TYPES);
+  if (!validated.ok) {
+    throw new Error(validated.error);
+  }
+
   const supabase = getClient();
 
   // Create the bucket if it doesn't exist yet (idempotent)
   const { error: bucketError } = await supabase.storage.createBucket(BUCKET, {
     public: true,
     fileSizeLimit: 2 * 1024 * 1024,
-    allowedMimeTypes: ["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"],
+    allowedMimeTypes: [...SAFE_IMAGE_MIME_TYPES],
   });
   // Ignore "already exists" error
   if (bucketError && !bucketError.message.includes("already exists")) {
     throw bucketError;
   }
 
-  const ext = file.name.split(".").pop() ?? "png";
+  const ext = extensionForMimeType(file.type);
   const path = `${orgId}/logo.${ext}`;
 
-  const arrayBuffer = await file.arrayBuffer();
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, arrayBuffer, {
+    .upload(path, validated.arrayBuffer, {
       contentType: file.type,
       upsert: true,
     });
@@ -45,38 +54,41 @@ const ALLOWED_RECEIPT_TYPES = [
   "image/webp",
   "image/gif",
   "application/pdf",
-];
+] as const;
+const ALLOWED_RECEIPT_TYPE_SET = new Set<string>(ALLOWED_RECEIPT_TYPES);
 const MAX_RECEIPT_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export async function uploadReceipt(
   orgId: string,
   file: File
 ): Promise<{ url: string; error?: never } | { url?: never; error: string }> {
-  if (!ALLOWED_RECEIPT_TYPES.includes(file.type)) {
+  if (!ALLOWED_RECEIPT_TYPE_SET.has(file.type)) {
     return { error: "Invalid file type. Allowed: PNG, JPEG, WebP, GIF, PDF" };
   }
   if (file.size > MAX_RECEIPT_SIZE) {
     return { error: "File too large (max 10 MB)" };
   }
 
+  const validated = await readValidatedFile(file, ALLOWED_RECEIPT_TYPES);
+  if (!validated.ok) return { error: validated.error };
+
   const supabase = getClient();
 
   const { error: bucketError } = await supabase.storage.createBucket(RECEIPTS_BUCKET, {
     public: true,
     fileSizeLimit: MAX_RECEIPT_SIZE,
-    allowedMimeTypes: ALLOWED_RECEIPT_TYPES,
+    allowedMimeTypes: [...ALLOWED_RECEIPT_TYPES],
   });
   if (bucketError && !bucketError.message.includes("already exists")) {
     throw bucketError;
   }
 
-  const ext = file.name.split(".").pop() ?? "bin";
+  const ext = extensionForMimeType(file.type);
   const path = `${orgId}/${crypto.randomUUID()}.${ext}`;
 
-  const arrayBuffer = await file.arrayBuffer();
   const { error: uploadError } = await supabase.storage
     .from(RECEIPTS_BUCKET)
-    .upload(path, arrayBuffer, { contentType: file.type });
+    .upload(path, validated.arrayBuffer, { contentType: file.type });
 
   if (uploadError) throw uploadError;
 
@@ -89,34 +101,15 @@ export async function uploadReceipt(
 // the returned storage path (not a public URL) and serve the file through an
 // authenticated route that mints a short-lived signed URL on demand.
 const W9_BUCKET = "contractor-w9";
-const ALLOWED_W9_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+const ALLOWED_W9_TYPES = ["application/pdf", ...SAFE_IMAGE_MIME_TYPES] as const;
+const ALLOWED_W9_TYPE_SET = new Set<string>(ALLOWED_W9_TYPES);
 const MAX_W9_SIZE = 10 * 1024 * 1024; // 10 MB
-
-// file.type comes from the client's multipart Content-Type header, so it is
-// attacker-controlled — sniff magic bytes to keep HTML/SVG payloads from being
-// stored as "PDFs" and later rendered inline in an admin's browser.
-function matchesMagicBytes(bytes: Uint8Array, declaredType: string): boolean {
-  const startsWith = (sig: number[], offset = 0) =>
-    sig.every((b, i) => bytes[offset + i] === b);
-  switch (declaredType) {
-    case "application/pdf":
-      return startsWith([0x25, 0x50, 0x44, 0x46]); // %PDF
-    case "image/png":
-      return startsWith([0x89, 0x50, 0x4e, 0x47]);
-    case "image/jpeg":
-      return startsWith([0xff, 0xd8, 0xff]);
-    case "image/webp":
-      return startsWith([0x52, 0x49, 0x46, 0x46]) && startsWith([0x57, 0x45, 0x42, 0x50], 8); // RIFF....WEBP
-    default:
-      return false;
-  }
-}
 
 async function ensureW9Bucket(supabase: ReturnType<typeof getClient>) {
   const { error } = await supabase.storage.createBucket(W9_BUCKET, {
     public: false,
     fileSizeLimit: MAX_W9_SIZE,
-    allowedMimeTypes: ALLOWED_W9_TYPES,
+    allowedMimeTypes: [...ALLOWED_W9_TYPES],
   });
   if (error && !error.message.includes("already exists")) {
     throw error;
@@ -128,27 +121,25 @@ export async function uploadW9(
   contractorId: string,
   file: File,
 ): Promise<{ path: string; error?: never } | { path?: never; error: string }> {
-  if (!ALLOWED_W9_TYPES.includes(file.type)) {
+  if (!ALLOWED_W9_TYPE_SET.has(file.type)) {
     return { error: "Invalid file type. Allowed: PDF, PNG, JPEG, WebP" };
   }
   if (file.size > MAX_W9_SIZE) {
     return { error: "File too large (max 10 MB)" };
   }
 
-  const arrayBuffer = await file.arrayBuffer();
-  if (!matchesMagicBytes(new Uint8Array(arrayBuffer), file.type)) {
-    return { error: "File content does not match its declared type" };
-  }
+  const validated = await readValidatedFile(file, ALLOWED_W9_TYPES);
+  if (!validated.ok) return { error: validated.error };
 
   const supabase = getClient();
   await ensureW9Bucket(supabase);
 
-  const ext = file.name.split(".").pop() ?? "pdf";
+  const ext = extensionForMimeType(file.type);
   const path = `${orgId}/${contractorId}/${crypto.randomUUID()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from(W9_BUCKET)
-    .upload(path, arrayBuffer, { contentType: file.type, upsert: true });
+    .upload(path, validated.arrayBuffer, { contentType: file.type, upsert: true });
 
   if (uploadError) return { error: uploadError.message };
 
