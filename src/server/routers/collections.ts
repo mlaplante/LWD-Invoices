@@ -2,7 +2,10 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, requireRole } from "../trpc";
 import { generateSmartReminderDraft } from "@/server/services/smart-reminder-drafts";
-import { getClientPaymentBehaviorSummary } from "@/server/services/client-payment-score";
+import {
+  getClientPaymentBehaviorSummary,
+  getClientPaymentBehaviorSummaries,
+} from "@/server/services/client-payment-score";
 import { sendEmail } from "@/server/services/email-sender";
 import { InvoiceStatus } from "@/generated/prisma";
 import { scoreCollectionRisk, rankCollectionsQueue } from "@/server/services/collection-risk";
@@ -196,13 +199,10 @@ export const collectionsRouter = router({
         return [{ inv, balance }];
       });
 
-      // Fetch each distinct client's payment-behavior summary exactly once
-      // to avoid one DB round-trip per invoice (many invoices share a client).
+      // Fetch all distinct clients' payment-behavior summaries in a single query
+      // (instead of one round-trip per client) to score the whole queue cheaply.
       const clientIds = [...new Set(withBalance.map((x) => x.inv.clientId))];
-      const behaviorEntries = await Promise.all(
-        clientIds.map(async (id) => [id, await getClientPaymentBehaviorSummary(ctx.db, id)] as const),
-      );
-      const behaviorMap = new Map(behaviorEntries);
+      const behaviorMap = await getClientPaymentBehaviorSummaries(ctx.db, clientIds);
 
       const scores = withBalance.map(({ inv, balance }) => {
         const behavior = behaviorMap.get(inv.clientId)!;

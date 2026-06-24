@@ -7,22 +7,47 @@ import { assertInOrg } from "../lib/get-for-org";
 import { logAudit } from "../services/audit";
 
 export const ticketsRouter = router({
+  // Cursor-paginated ticket list. The list view never renders message bodies,
+  // so we no longer pull the full `messages` history per ticket (that lives on
+  // the detail `get`); only `client` (name) is needed for the row. Summary tiles
+  // come from `summary` below so they stay correct across pages.
   list: protectedProcedure
     .input(z.object({
       status: z.nativeEnum(TicketStatus).optional(),
       clientId: z.string().optional(),
+      limit: z.number().int().min(1).max(100).default(50),
+      cursor: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      return ctx.db.ticket.findMany({
+      const items = await ctx.db.ticket.findMany({
         where: {
           organizationId: ctx.orgId,
           ...(input.status ? { status: input.status } : {}),
           ...(input.clientId ? { clientId: input.clientId } : {}),
         },
-        include: { client: true, messages: { orderBy: { createdAt: "asc" } } },
+        include: { client: { select: { id: true, name: true } } },
         orderBy: { createdAt: "desc" },
+        take: input.limit + 1,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       });
+
+      let nextCursor: string | undefined;
+      if (items.length > input.limit) {
+        nextCursor = items.pop()!.id; // the extra row marks "there's more"
+      }
+      return { items, nextCursor };
     }),
+
+  // Org-wide ticket counts for the summary tiles — counted in the DB so they
+  // stay accurate regardless of how many list pages have been loaded.
+  summary: protectedProcedure.query(async ({ ctx }) => {
+    const [total, open, urgent] = await Promise.all([
+      ctx.db.ticket.count({ where: { organizationId: ctx.orgId } }),
+      ctx.db.ticket.count({ where: { organizationId: ctx.orgId, status: TicketStatus.OPEN } }),
+      ctx.db.ticket.count({ where: { organizationId: ctx.orgId, priority: TicketPriority.URGENT } }),
+    ]);
+    return { total, open, urgent };
+  }),
 
   get: protectedProcedure
     .input(idInput)

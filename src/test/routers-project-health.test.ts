@@ -49,42 +49,36 @@ describe("projects.healthScores", () => {
   });
 
   it("returns two scores sorted ascending for an org with two projects", async () => {
-    // project.findMany returns the two project stubs (for buildProjectHealthInputs)
-    ctx.db.project.findMany.mockResolvedValue([{ id: "pa" }, { id: "pb" }]);
-
-    // project.findFirst: return different stubs keyed on where.id so scores differ.
-    // "pa" has an overdue task → lower score; "pb" has only a completed task → higher.
-    ctx.db.project.findFirst.mockImplementation(({ where }: any) => {
-      if (where?.id === "pa") {
-        return Promise.resolve({
-          id: "pa", name: "Alpha", isFlatRate: false,
-          rate: { toNumber: () => 100 }, projectedHours: 100,
-          clientId: "ca",
-          client: { id: "ca", name: "Client A" },
-          tasks: [
-            { isCompleted: false, dueDate: new Date("2020-01-01") }, // overdue task
-          ],
-          timeEntries: [
-            { minutes: { toNumber: () => 300 }, invoiceLineId: null, retainerId: null },
-          ],
-        });
-      }
-      if (where?.id === "pb") {
-        return Promise.resolve({
-          id: "pb", name: "Beta", isFlatRate: false,
-          rate: { toNumber: () => 100 }, projectedHours: 100,
-          clientId: "cb",
-          client: { id: "cb", name: "Client B" },
-          tasks: [
-            { isCompleted: true, dueDate: new Date("2020-01-01") }, // completed — no penalty
-          ],
-          timeEntries: [
-            { minutes: { toNumber: () => 300 }, invoiceLineId: null, retainerId: null },
-          ],
-        });
-      }
-      return Promise.resolve(null);
-    });
+    // buildProjectHealthInputs now bulk-loads all projects in one findMany with
+    // the full select, so the stubs carry full project data (no per-project
+    // findFirst). "pa" has an overdue task → lower score; "pb" only a completed
+    // task → higher.
+    ctx.db.project.findMany.mockResolvedValue([
+      {
+        id: "pa", name: "Alpha", isFlatRate: false,
+        rate: { toNumber: () => 100 }, projectedHours: 100,
+        clientId: "ca",
+        client: { id: "ca", name: "Client A" },
+        tasks: [
+          { isCompleted: false, dueDate: new Date("2020-01-01") }, // overdue task
+        ],
+        timeEntries: [
+          { minutes: { toNumber: () => 300 }, invoiceLineId: null, retainerId: null },
+        ],
+      },
+      {
+        id: "pb", name: "Beta", isFlatRate: false,
+        rate: { toNumber: () => 100 }, projectedHours: 100,
+        clientId: "cb",
+        client: { id: "cb", name: "Client B" },
+        tasks: [
+          { isCompleted: true, dueDate: new Date("2020-01-01") }, // completed — no penalty
+        ],
+        timeEntries: [
+          { minutes: { toNumber: () => 300 }, invoiceLineId: null, retainerId: null },
+        ],
+      },
+    ]);
 
     ctx.db.invoice.findMany.mockResolvedValue([]);
     ctx.db.emailEvent.findMany.mockResolvedValue([]);
