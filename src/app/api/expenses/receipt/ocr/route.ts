@@ -3,17 +3,14 @@ import { db } from "@/server/db";
 import { parseReceiptWithOCR } from "@/server/services/receipt-ocr";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
+import { readValidatedFile, SAFE_IMAGE_MIME_TYPES } from "@/lib/file-validation";
 
 // OCR runs an LLM per receipt — cap per-org usage so a misbehaving client or
 // compromised session can't run up the bill.
 const ocrLimiter = createRateLimiter({ limit: 30, windowMs: 10 * 60_000 });
 
-const ALLOWED_MIME_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-];
+const ALLOWED_MIME_TYPES = SAFE_IMAGE_MIME_TYPES;
+const ALLOWED_MIME_TYPE_SET = new Set<string>(ALLOWED_MIME_TYPES);
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -38,7 +35,7 @@ export async function POST(req: Request) {
         { status: 400 },
       );
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    if (!ALLOWED_MIME_TYPE_SET.has(file.type)) {
       return NextResponse.json(
         {
           error: `Unsupported file type: ${file.type}. Supported: ${ALLOWED_MIME_TYPES.join(", ")}`,
@@ -54,7 +51,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const validated = await readValidatedFile(file, ALLOWED_MIME_TYPES);
+    if (!validated.ok) {
+      return NextResponse.json({ error: validated.error }, { status: 400 });
+    }
+
+    const buffer = Buffer.from(validated.arrayBuffer);
     const ocr = await parseReceiptWithOCR(buffer, file.type);
 
     // Try to match vendor to existing supplier

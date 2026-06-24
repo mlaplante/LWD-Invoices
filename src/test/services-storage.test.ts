@@ -11,6 +11,23 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
+function makeBlob(mimeType: string): Blob {
+  switch (mimeType) {
+    case "application/pdf":
+      return new Blob(["%PDF-1.7\n"], { type: mimeType });
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      return new Blob([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], { type: mimeType });
+    case "image/png":
+      return new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: mimeType });
+    case "image/jpeg":
+      return new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: mimeType });
+    case "text/plain":
+      return new Blob(["plain content"], { type: mimeType });
+    default:
+      return new Blob(["content"], { type: mimeType });
+  }
+}
+
 describe("Storage Service", () => {
   let mockSupabaseClient: any;
   let mockStorageFrom: any;
@@ -21,6 +38,7 @@ describe("Storage Service", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000000");
 
     // Setup mock functions
     mockUpload = vi.fn();
@@ -51,7 +69,7 @@ describe("Storage Service", () => {
     it("uploads file successfully and returns object URL", async () => {
       const filename = "invoice.pdf";
       const pathname = "org_123/invoices";
-      const file = new Blob(["test content"], { type: "application/pdf" });
+      const file = makeBlob("application/pdf");
 
       // Mock successful bucket creation
       mockCreateBucket.mockResolvedValue({ error: null });
@@ -70,11 +88,11 @@ describe("Storage Service", () => {
       expect(result).toEqual({ url: publicUrl });
       expect(mockStorageFrom).toHaveBeenCalledWith("attachments");
       expect(mockUpload).toHaveBeenCalledWith(
-        "org_123/invoices/invoice.pdf",
+        "org_123/invoices/00000000-0000-4000-8000-000000000000-invoice.pdf",
         expect.any(ArrayBuffer),
         {
           contentType: "application/pdf",
-          upsert: true,
+          upsert: false,
         }
       );
     });
@@ -82,7 +100,7 @@ describe("Storage Service", () => {
     it("throws error when upload fails due to permissions", async () => {
       const filename = "document.pdf";
       const pathname = "org_123/files";
-      const file = new Blob(["content"], { type: "application/pdf" });
+      const file = makeBlob("application/pdf");
 
       // Mock successful bucket creation
       mockCreateBucket.mockResolvedValue({ error: null });
@@ -99,7 +117,7 @@ describe("Storage Service", () => {
     it("throws error when bucket creation fails (non-exists)", async () => {
       const filename = "test.txt";
       const pathname = "org_123/docs";
-      const file = new Blob(["test"], { type: "text/plain" });
+      const file = makeBlob("text/plain");
 
       // Mock bucket creation failure
       const bucketError = new Error("Storage bucket error");
@@ -113,7 +131,7 @@ describe("Storage Service", () => {
     it("ignores 'already exists' error during bucket creation", async () => {
       const filename = "invoice.pdf";
       const pathname = "org_123/invoices";
-      const file = new Blob(["content"], { type: "application/pdf" });
+      const file = makeBlob("application/pdf");
 
       // Mock bucket creation with "already exists" error (should be ignored)
       mockCreateBucket.mockResolvedValue({
@@ -137,10 +155,7 @@ describe("Storage Service", () => {
     it("converts Blob to ArrayBuffer correctly", async () => {
       const filename = "document.docx";
       const pathname = "org_123/documents";
-      const fileContent = "binary content";
-      const file = new Blob([fileContent], {
-        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
+      const file = makeBlob("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
@@ -161,7 +176,7 @@ describe("Storage Service", () => {
     it("constructs correct storage path from pathname and filename", async () => {
       const filename = "invoice-2026-001.pdf";
       const pathname = "org_456/invoices/2026-feb";
-      const file = new Blob(["content"], { type: "application/pdf" });
+      const file = makeBlob("application/pdf");
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
@@ -172,7 +187,7 @@ describe("Storage Service", () => {
       await uploadFile(filename, file, pathname);
 
       expect(mockUpload).toHaveBeenCalledWith(
-        "org_456/invoices/2026-feb/invoice-2026-001.pdf",
+        "org_456/invoices/2026-feb/00000000-0000-4000-8000-000000000000-invoice-2026-001.pdf",
         expect.any(ArrayBuffer),
         expect.any(Object)
       );
@@ -243,7 +258,7 @@ describe("Storage Service", () => {
     it("returns correctly formatted public URL", async () => {
       const filename = "statement.pdf";
       const pathname = "org_123/statements";
-      const file = new Blob(["content"], { type: "application/pdf" });
+      const file = makeBlob("application/pdf");
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
@@ -262,7 +277,7 @@ describe("Storage Service", () => {
     it("includes bucket name in generated URL", async () => {
       const filename = "receipt.pdf";
       const pathname = "org_123/receipts";
-      const file = new Blob(["content"], { type: "application/pdf" });
+      const file = makeBlob("application/pdf");
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
@@ -280,7 +295,7 @@ describe("Storage Service", () => {
     it("preserves file path segments in URL", async () => {
       const filename = "2026-02-invoice.pdf";
       const pathname = "org_123/invoices/2026/02";
-      const file = new Blob(["content"], { type: "application/pdf" });
+      const file = makeBlob("application/pdf");
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
@@ -301,7 +316,7 @@ describe("Storage Service", () => {
     it("handles empty filename", async () => {
       const filename = "";
       const pathname = "org_123/files";
-      const file = new Blob(["content"], { type: "text/plain" });
+      const file = makeBlob("text/plain");
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
@@ -317,7 +332,7 @@ describe("Storage Service", () => {
     it("handles large filename", async () => {
       const filename = "a".repeat(255) + ".pdf";
       const pathname = "org_123/files";
-      const file = new Blob(["content"], { type: "application/pdf" });
+      const file = makeBlob("application/pdf");
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
@@ -335,8 +350,8 @@ describe("Storage Service", () => {
     it("preserves file MIME type during upload", async () => {
       const mimeTypes = [
         "application/pdf",
-        "application/vnd.ms-excel",
-        "text/csv",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain",
         "image/png",
         "image/jpeg",
       ];
@@ -348,7 +363,7 @@ describe("Storage Service", () => {
           data: { publicUrl: "https://test.supabase.co/storage/v1/object/public/attachments/org_123/files/file" },
         });
 
-        const file = new Blob(["content"], { type: mimeType });
+        const file = makeBlob(mimeType);
         await uploadFile("file", file, "org_123/files");
 
         expect(mockUpload).toHaveBeenCalledWith(
@@ -359,10 +374,10 @@ describe("Storage Service", () => {
       }
     });
 
-    it("uses upsert option to allow file replacement", async () => {
+    it("disables upsert so duplicate filenames cannot overwrite earlier uploads", async () => {
       const filename = "invoice.pdf";
       const pathname = "org_123/invoices";
-      const file = new Blob(["content"], { type: "application/pdf" });
+      const file = makeBlob("application/pdf");
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
@@ -375,7 +390,7 @@ describe("Storage Service", () => {
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(ArrayBuffer),
-        expect.objectContaining({ upsert: true })
+        expect.objectContaining({ upsert: false })
       );
     });
   });

@@ -2,8 +2,10 @@ import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { uploadLogo } from "@/lib/supabase-storage";
 import { NextResponse } from "next/server";
+import { SAFE_IMAGE_MIME_TYPES } from "@/lib/file-validation";
 
-const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"];
+const ALLOWED_TYPES = SAFE_IMAGE_MIME_TYPES;
+const ALLOWED_TYPE_SET = new Set<string>(ALLOWED_TYPES);
 const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export async function POST(req: Request) {
@@ -15,7 +17,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    if (!ALLOWED_TYPES.includes(file.type))
+    if (!ALLOWED_TYPE_SET.has(file.type))
       return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
     if (file.size > MAX_SIZE)
       return NextResponse.json({ error: "File too large (max 2 MB)" }, { status: 400 });

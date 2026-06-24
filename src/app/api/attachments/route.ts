@@ -3,18 +3,35 @@ import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { uploadFile } from "@/server/services/storage";
 import { AttachmentContext } from "@/generated/prisma";
+import {
+  SAFE_DOCUMENT_MIME_TYPES,
+  SAFE_IMAGE_MIME_TYPES,
+  SAFE_TEXT_MIME_TYPES,
+} from "@/lib/file-validation";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "application/pdf",
-  "text/plain",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+const ALLOWED_TYPES = new Set<string>([
+  ...SAFE_IMAGE_MIME_TYPES,
+  ...SAFE_DOCUMENT_MIME_TYPES,
+  ...SAFE_TEXT_MIME_TYPES,
 ]);
+
+async function contextBelongsToOrg(
+  context: AttachmentContext,
+  contextId: string,
+  organizationId: string,
+): Promise<boolean> {
+  switch (context) {
+    case "INVOICE":
+      return Boolean(await db.invoice.findFirst({ where: { id: contextId, organizationId }, select: { id: true } }));
+    case "PROJECT":
+      return Boolean(await db.project.findFirst({ where: { id: contextId, organizationId }, select: { id: true } }));
+    case "CLIENT":
+      return Boolean(await db.client.findFirst({ where: { id: contextId, organizationId }, select: { id: true } }));
+    case "TICKET":
+      return Boolean(await db.ticket.findFirst({ where: { id: contextId, organizationId }, select: { id: true } }));
+  }
+}
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthenticatedOrg();
@@ -48,11 +65,24 @@ export async function POST(req: NextRequest) {
   const org = await db.organization.findUnique({ where: { id: orgId } });
   if (!org) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { url } = await uploadFile(
-    file.name,
-    file,
-    `${org.id}/${context.toLowerCase()}/${contextId}`,
-  );
+  if (!(await contextBelongsToOrg(context, contextId, org.id))) {
+    return NextResponse.json({ error: "Attachment context not found" }, { status: 404 });
+  }
+
+  let url: string;
+  try {
+    ({ url } = await uploadFile(
+      file.name,
+      file,
+      `${org.id}/${context.toLowerCase()}/${contextId}`,
+      [...ALLOWED_TYPES],
+    ));
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Upload failed" },
+      { status: 400 },
+    );
+  }
 
   const attachment = await db.attachment.create({
     data: {
