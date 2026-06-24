@@ -1,7 +1,31 @@
 import type { Config } from "@netlify/functions";
 import pg from "pg";
 
-export default async (_req: Request) => {
+const handler = async () => {
+  const siteUrl =
+    Netlify.env.get("URL") ??
+    Netlify.env.get("DEPLOY_PRIME_URL") ??
+    Netlify.env.get("NEXT_PUBLIC_APP_URL");
+  const warmupSecret = Netlify.env.get("WARMUP_SECRET");
+
+  if (siteUrl && warmupSecret) {
+    try {
+      const warmup = await fetch(new URL("/api/warmup", siteUrl), {
+        headers: { "x-warmup-secret": warmupSecret },
+        cache: "no-store",
+      });
+
+      if (!warmup.ok) {
+        console.warn("[db-heartbeat] App warmup returned", warmup.status);
+      } else {
+        console.log("[db-heartbeat] App warmup OK");
+      }
+      return;
+    } catch (err) {
+      console.error("[db-heartbeat] App warmup failed:", err);
+    }
+  }
+
   const client = new pg.Client({
     connectionString: Netlify.env.get("DATABASE_URL"),
     connectionTimeoutMillis: 5000,
@@ -18,7 +42,9 @@ export default async (_req: Request) => {
   }
 };
 
+export default handler;
+
 export const config: Config = {
-  // Every 4 days at midnight UTC
-  schedule: "0 0 */4 * *",
+  // Keep the Netlify Next function and Supabase pooler path warm during idle gaps.
+  schedule: "*/15 * * * *",
 };

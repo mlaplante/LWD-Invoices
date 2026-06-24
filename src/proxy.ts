@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   "/api/pay",
   "/api/webhooks",
   "/api/trpc",
+  "/api/warmup",
   "/api/inngest",
   "/api/onboarding",
   "/api/auth",
