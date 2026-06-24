@@ -1459,8 +1459,8 @@ describe("Tickets Router", () => {
 
       const result = await caller.list({});
 
-      expect(result).toHaveLength(1);
-      expect(result[0]?.subject).toBe("Bug report");
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.subject).toBe("Bug report");
     });
 
     it("filters by status when provided", async () => {
@@ -1498,7 +1498,7 @@ describe("Tickets Router", () => {
 
       const result = await caller.list({});
 
-      expect(result).toHaveLength(0);
+      expect(result.items).toHaveLength(0);
     });
   });
 
