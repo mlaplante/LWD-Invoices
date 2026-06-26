@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma migrate deploy && next build",
+    "analyze": "ANALYZE=true next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
@@ -74,6 +75,7 @@
   "devDependencies": {
     "@netlify/functions": "^5.3.0",
     "@netlify/plugin-nextjs": "^5.15.12",
+    "@next/bundle-analyzer": "^16.2.9",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26.0.0",
     "@types/pg": "^8.20.0",

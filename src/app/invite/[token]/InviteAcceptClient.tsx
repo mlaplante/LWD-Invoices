@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
@@ -31,7 +32,14 @@ export function InviteAcceptClient({ token, orgName, orgLogoUrl, inviterName, ro
   return (
     <div className="rounded-2xl border border-border/50 bg-card p-8 text-center">
       {orgLogoUrl && (
-        <img src={orgLogoUrl} alt={orgName} className="h-12 w-auto mx-auto mb-4" />
+        <Image
+          src={orgLogoUrl}
+          alt={orgName}
+          width={160}
+          height={48}
+          unoptimized
+          className="mx-auto mb-4 h-12 w-auto"
+        />
       )}
       <h1 className="text-xl font-bold mb-2">Join {orgName}</h1>
       <p className="text-sm text-muted-foreground mb-6">

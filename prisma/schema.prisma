@@ -860,6 +860,7 @@ model Payment {
   createdAt DateTime @default(now())
 
   @@index([organizationId, paidAt])
+  @@index([organizationId, invoiceId])
   @@index([invoiceId])
 }
 
@@ -1197,6 +1198,7 @@ model Expense {
   updatedAt DateTime @updatedAt
 
   @@index([recurringExpenseId])
+  @@index([organizationId, createdAt])
 }
 
 // ─── Recurring Expenses ──────────────────────────────────────────────────────

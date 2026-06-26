@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { Input } from "@/components/ui/input";
@@ -115,10 +116,12 @@ export function ProposalSignatureForm({ token, invoiceNumber }: Props) {
         <div className="space-y-1.5">
           <Label>Preview</Label>
           <div className="rounded-lg border border-border bg-white p-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={signatureDataUrl}
               alt="Your signature"
+              width={240}
+              height={60}
+              unoptimized
               className="h-[60px] w-auto object-contain"
             />
           </div>

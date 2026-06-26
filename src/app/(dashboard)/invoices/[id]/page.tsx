@@ -1,4 +1,5 @@
 import { api } from "@/trpc/server";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
@@ -243,9 +244,12 @@ export default async function InvoiceDetailPage({
         <div className="grid grid-cols-1 gap-6 px-4 sm:px-8 pt-6 sm:pt-8 pb-6 border-b border-border/50 sm:grid-cols-[1fr_auto] sm:gap-10">
           <div>
             {invoice.organization.logoUrl && (
-              <img
+              <Image
                 src={invoice.organization.logoUrl}
                 alt={invoice.organization.name}
+                width={160}
+                height={40}
+                unoptimized
                 className="mb-3 h-10 w-auto max-w-[160px] object-contain"
               />
             )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { WIDGET_META } from "@/components/dashboard/widget-registry";
@@ -22,7 +22,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Settings, X } from "lucide-react";
+import { GripVertical, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -91,11 +91,12 @@ function SortableRow({
 
 export function DashboardLayoutEditor({ onSaved }: { onSaved?: () => void }) {
   const [open, setOpen] = useState(false);
-  const [layout, setLayout] = useState<LayoutEntry[]>([]);
+  const [draftLayout, setDraftLayout] = useState<LayoutEntry[] | null>(null);
 
   const { data: savedLayout, isLoading } = trpc.dashboardLayout.get.useQuery(undefined, {
     enabled: open,
   });
+  const layout = useMemo(() => draftLayout ?? savedLayout ?? [], [draftLayout, savedLayout]);
 
   const saveMutation = trpc.dashboardLayout.save.useMutation({
     onSuccess: () => {
@@ -107,11 +108,6 @@ export function DashboardLayoutEditor({ onSaved }: { onSaved?: () => void }) {
       toast.error("Failed to save layout");
     },
   });
-
-  // Sync remote layout when dialog opens
-  useEffect(() => {
-    if (savedLayout) setLayout(savedLayout);
-  }, [savedLayout]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -128,24 +124,25 @@ export function DashboardLayoutEditor({ onSaved }: { onSaved?: () => void }) {
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (over && active.id !== over.id) {
-        setLayout((prev) => {
-          const oldIndex = prev.findIndex((e) => e.key === active.id);
-          const newIndex = prev.findIndex((e) => e.key === over.id);
-          const next = arrayMove(prev, oldIndex, newIndex);
-          announce(
-            `${WIDGET_META[active.id as WidgetKey].label} moved to position ${newIndex + 1}`,
-          );
-          return next;
-        });
+        const oldIndex = layout.findIndex((e) => e.key === active.id);
+        const newIndex = layout.findIndex((e) => e.key === over.id);
+        const next = arrayMove(layout, oldIndex, newIndex);
+        announce(
+          `${WIDGET_META[active.id as WidgetKey].label} moved to position ${newIndex + 1}`,
+        );
+        setDraftLayout(next);
       }
     },
-    [],
+    [layout],
   );
 
   const handleToggle = useCallback((key: WidgetKey) => {
-    setLayout((prev) =>
-      prev.map((e) => (e.key === key ? { ...e, visible: !e.visible } : e)),
-    );
+    setDraftLayout(layout.map((e) => (e.key === key ? { ...e, visible: !e.visible } : e)));
+  }, [layout]);
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) setDraftLayout(null);
   }, []);
 
   function handleSave() {
@@ -164,7 +161,7 @@ export function DashboardLayoutEditor({ onSaved }: { onSaved?: () => void }) {
         Edit layout
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Customize dashboard</DialogTitle>

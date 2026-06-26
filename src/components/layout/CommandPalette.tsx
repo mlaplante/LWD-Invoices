@@ -68,13 +68,13 @@ export function CommandPalette() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [query]);
 
-  // Reset query when dialog closes
-  useEffect(() => {
-    if (!open) {
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
       setQuery("");
       setDebouncedQuery("");
     }
-  }, [open]);
+  }, []);
 
   const { data } = trpc.search.global.useQuery(
     { query: debouncedQuery },
@@ -102,7 +102,7 @@ export function CommandPalette() {
 
   return (
     <>
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
         className="p-0 overflow-hidden max-w-lg"

@@ -1,5 +1,6 @@
 import { db } from "@/server/db";
 import { resolveEarlyPayOffer } from "@/server/services/early-payment-discount";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 import { decryptJson } from "@/server/services/encryption";
@@ -162,10 +163,12 @@ export default async function PayPage({
           {/* Org branding */}
           <div className="flex flex-col items-center gap-3">
             {orgLogo && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
+              <Image
                 src={orgLogo}
                 alt={orgName}
+                width={160}
+                height={48}
+                unoptimized
                 className="h-12 w-auto max-w-[160px] rounded-lg object-contain"
               />
             )}

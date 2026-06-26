@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -143,10 +144,12 @@ export function PortalBrandingForm({ org }: Props) {
             style={{ borderColor: `${brandColor}20` }}
           >
             {org.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={org.logoUrl}
                 alt={org.name}
+                width={120}
+                height={32}
+                unoptimized
                 className="mx-auto mb-2 h-8 w-auto max-w-[120px] object-contain"
               />
             )}

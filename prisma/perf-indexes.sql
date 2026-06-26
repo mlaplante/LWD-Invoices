@@ -33,6 +33,8 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS "InvoiceLine_sourceTable_sourceId_idx"
 -- ─── Payment ──────────────────────────────────────────────────────────────────
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "Payment_organizationId_paidAt_idx"
   ON "Payment" ("organizationId", "paidAt");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "Payment_organizationId_invoiceId_idx"
+  ON "Payment" ("organizationId", "invoiceId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "Payment_invoiceId_idx"
   ON "Payment" ("invoiceId");
 
@@ -61,6 +63,8 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS "Expense_organizationId_dueDate_idx"
   ON "Expense" ("organizationId", "dueDate");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "Expense_organizationId_paidAt_idx"
   ON "Expense" ("organizationId", "paidAt");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "Expense_organizationId_createdAt_idx"
+  ON "Expense" ("organizationId", "createdAt");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "Expense_projectId_idx"
   ON "Expense" ("projectId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "Expense_categoryId_idx"

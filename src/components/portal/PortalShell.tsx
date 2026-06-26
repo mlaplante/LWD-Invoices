@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { PortalBranding } from "@/lib/portal-branding";
 
 type Props = {
@@ -24,10 +25,12 @@ export function PortalShell({ branding, children, maxWidth = "max-w-3xl" }: Prop
       >
         <div className={`mx-auto ${maxWidth} px-4 py-6 text-center`}>
           {branding.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={branding.logoUrl}
               alt={branding.orgName}
+              width={160}
+              height={48}
+              unoptimized
               className="mx-auto mb-3 h-12 w-auto max-w-[160px] object-contain"
             />
           )}

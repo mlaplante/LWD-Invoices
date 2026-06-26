@@ -1,3 +1,5 @@
+import createBundleAnalyzer from "@next/bundle-analyzer";
+
 // CSP: keep 'unsafe-inline' on style-src for Tailwind/Radix runtime styles and
 // inline <style> tags emitted by Next; remove if we move to a nonce strategy.
 // connect-src includes Supabase (auth + storage), Stripe, PayPal, and Resend
@@ -21,6 +23,9 @@ const contentSecurityPolicy = [
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-DNS-Prefetch-Control", value: "on" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
@@ -29,8 +34,10 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  poweredByHeader: false,
   images: {
     formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   serverExternalPackages: ["@react-pdf/renderer", "svix", "@anthropic-ai/sdk"],
   typescript: {
@@ -71,4 +78,8 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+const withBundleAnalyzer = createBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
+
+export default withBundleAnalyzer(nextConfig);

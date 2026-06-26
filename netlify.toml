@@ -58,6 +58,18 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# Service workers must revalidate so clients receive cache/version updates
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Offline shell is static and contains no account data
+[[headers]]
+  for = "/offline.html"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
 # Client portal and pay pages — token-gated, contains per-recipient data.
 # Must NOT be cached by shared/CDN caches; force revalidation on every hit.
 [[headers]]

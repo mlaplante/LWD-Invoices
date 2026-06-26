@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useRef } from "react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -91,10 +92,12 @@ export function BrandingForm({ org }: Props) {
 
         {logoUrl ? (
           <div className="flex items-center gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={logoUrl}
               alt="Organization logo"
+              width={160}
+              height={64}
+              unoptimized
               className="h-16 w-auto max-w-[160px] rounded border object-contain p-1"
             />
             <div className="flex gap-2">

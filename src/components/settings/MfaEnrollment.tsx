@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -224,7 +225,14 @@ export function MfaEnrollment() {
 
         {qrCode && (
           <div className="flex justify-center">
-            <img src={qrCode} alt="TOTP QR Code" className="w-48 h-48 rounded-lg border" />
+            <Image
+              src={qrCode}
+              alt="TOTP QR Code"
+              width={192}
+              height={192}
+              unoptimized
+              className="h-48 w-48 rounded-lg border"
+            />
           </div>
         )}
 

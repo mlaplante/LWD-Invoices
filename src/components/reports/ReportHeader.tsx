@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type Props = {
   title: string;
   orgName: string;
@@ -13,9 +15,12 @@ export function ReportHeader({ title, orgName, logoUrl, dateRange }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {logoUrl && (
-              <img
+              <Image
                 src={logoUrl}
                 alt={orgName}
+                width={160}
+                height={40}
+                unoptimized
                 className="h-10 w-auto max-w-[160px] object-contain"
               />
             )}

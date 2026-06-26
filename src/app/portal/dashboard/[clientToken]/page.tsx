@@ -85,36 +85,57 @@ export default async function PortalDashboardPage({
   const pos = firstCurrency?.symbolPosition ?? "before";
 
   // Compute summaries
-  let outstandingTotal = 0;
-  let overdueTotal = 0;
+  const summary = invoices.reduce(
+    (acc, inv) => {
+      const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+      const balance = Number(inv.total) - paid;
 
-  const invoiceRows = invoices.map((inv) => {
-    const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
-    const balance = Number(inv.total) - paid;
+      if (["SENT", "PARTIALLY_PAID"].includes(inv.status) && balance > 0) {
+        acc.outstandingTotal += balance;
+      }
+      if (inv.status === "OVERDUE" && balance > 0) {
+        acc.outstandingTotal += balance;
+        acc.overdueTotal += balance;
+      }
 
-    if (["SENT", "PARTIALLY_PAID"].includes(inv.status) && balance > 0) {
-      outstandingTotal += balance;
-    }
-    if (inv.status === "OVERDUE" && balance > 0) {
-      outstandingTotal += balance;
-      overdueTotal += balance;
-    }
+      acc.invoiceRows.push({
+        id: inv.id,
+        number: inv.number,
+        status: inv.status,
+        date: inv.date.toISOString(),
+        dueDate: inv.dueDate?.toISOString() ?? null,
+        total: Number(inv.total).toFixed(2),
+        amountPaid: paid.toFixed(2),
+        portalToken: inv.portalToken ?? "",
+        currency: {
+          symbol: inv.currency.symbol,
+          symbolPosition: inv.currency.symbolPosition,
+        },
+      });
 
-    return {
-      id: inv.id,
-      number: inv.number,
-      status: inv.status,
-      date: inv.date.toISOString(),
-      dueDate: inv.dueDate?.toISOString() ?? null,
-      total: Number(inv.total).toFixed(2),
-      amountPaid: paid.toFixed(2),
-      portalToken: inv.portalToken,
-      currency: {
-        symbol: inv.currency.symbol,
-        symbolPosition: inv.currency.symbolPosition,
-      },
-    };
-  });
+      return acc;
+    },
+    {
+      outstandingTotal: 0,
+      overdueTotal: 0,
+      invoiceRows: [] as Array<{
+        id: string;
+        number: string;
+        status: string;
+        date: string;
+        dueDate: string | null;
+        total: string;
+        amountPaid: string;
+        portalToken: string;
+        currency: {
+          symbol: string;
+          symbolPosition: string;
+        };
+      }>,
+    },
+  );
+
+  const { outstandingTotal, overdueTotal, invoiceRows } = summary;
 
   // Gather recent payments across all invoices (last 10)
   const allPayments = invoices
