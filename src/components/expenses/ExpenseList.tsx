@@ -9,6 +9,7 @@ import { Pencil, Trash2, Plus, Paperclip, Repeat, Pause, Play, Archive, Tag } fr
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatFrequency } from "@/lib/format";
+import { receiptHref } from "@/lib/receipt-link";
 
 export function ExpenseList() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -456,7 +457,7 @@ export function ExpenseList() {
                       <td className="px-6 py-3.5 text-center">
                         {expense.receiptUrl ? (
                           <a
-                            href={expense.receiptUrl}
+                            href={receiptHref(expense.receiptUrl)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex text-muted-foreground hover:text-primary transition-colors"

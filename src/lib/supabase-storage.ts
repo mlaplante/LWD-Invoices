@@ -58,10 +58,34 @@ const ALLOWED_RECEIPT_TYPES = [
 const ALLOWED_RECEIPT_TYPE_SET = new Set<string>(ALLOWED_RECEIPT_TYPES);
 const MAX_RECEIPT_SIZE = 10 * 1024 * 1024; // 10 MB
 
+// Receipts contain financial PII, so the bucket is PRIVATE and files are
+// served through /api/receipts/view, which checks org membership and mints a
+// short-lived signed URL. A bucket created public by an earlier deploy is
+// flipped private here.
+async function ensureReceiptsBucket(supabase: ReturnType<typeof getClient>) {
+  const { error } = await supabase.storage.createBucket(RECEIPTS_BUCKET, {
+    public: false,
+    fileSizeLimit: MAX_RECEIPT_SIZE,
+    allowedMimeTypes: [...ALLOWED_RECEIPT_TYPES],
+  });
+  if (error) {
+    if (!error.message.includes("already exists")) throw error;
+    const { error: updateError } = await supabase.storage.updateBucket(
+      RECEIPTS_BUCKET,
+      {
+        public: false,
+        fileSizeLimit: MAX_RECEIPT_SIZE,
+        allowedMimeTypes: [...ALLOWED_RECEIPT_TYPES],
+      },
+    );
+    if (updateError) throw updateError;
+  }
+}
+
 export async function uploadReceipt(
   orgId: string,
   file: File
-): Promise<{ url: string; error?: never } | { url?: never; error: string }> {
+): Promise<{ path: string; error?: never } | { path?: never; error: string }> {
   if (!ALLOWED_RECEIPT_TYPE_SET.has(file.type)) {
     return { error: "Invalid file type. Allowed: PNG, JPEG, WebP, GIF, PDF" };
   }
@@ -73,15 +97,7 @@ export async function uploadReceipt(
   if (!validated.ok) return { error: validated.error };
 
   const supabase = getClient();
-
-  const { error: bucketError } = await supabase.storage.createBucket(RECEIPTS_BUCKET, {
-    public: true,
-    fileSizeLimit: MAX_RECEIPT_SIZE,
-    allowedMimeTypes: [...ALLOWED_RECEIPT_TYPES],
-  });
-  if (bucketError && !bucketError.message.includes("already exists")) {
-    throw bucketError;
-  }
+  await ensureReceiptsBucket(supabase);
 
   const ext = extensionForMimeType(file.type);
   const path = `${orgId}/${crypto.randomUUID()}.${ext}`;
@@ -92,8 +108,23 @@ export async function uploadReceipt(
 
   if (uploadError) throw uploadError;
 
-  const { data } = supabase.storage.from(RECEIPTS_BUCKET).getPublicUrl(path);
-  return { url: data.publicUrl };
+  return { path };
+}
+
+/**
+ * Mint a short-lived signed URL for a stored receipt. Returns null if the
+ * value can't be resolved to a path or Supabase declines.
+ */
+export async function createReceiptSignedUrl(
+  path: string,
+  expiresInSeconds = 60,
+): Promise<string | null> {
+  const supabase = getClient();
+  const { data, error } = await supabase.storage
+    .from(RECEIPTS_BUCKET)
+    .createSignedUrl(path, expiresInSeconds);
+  if (error || !data) return null;
+  return data.signedUrl;
 }
 
 // ── Contractor W-9 documents ──────────────────────────────────────────────────

@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { Paperclip, X, ExternalLink, Sparkles } from "lucide-react";
 import { ReceiptOCRDropzone } from "./ReceiptOCRDropzone";
+import { receiptHref } from "@/lib/receipt-link";
 import type { OCRResult } from "@/server/services/receipt-ocr";
 
 type Tax = { id: string; name: string; rate: number };
@@ -441,7 +442,7 @@ export function ExpenseForm({
             <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm">
               <Paperclip className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
               <a
-                href={receiptUrl}
+                href={receiptHref(receiptUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 truncate text-primary hover:underline"

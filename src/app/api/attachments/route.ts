@@ -69,9 +69,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Attachment context not found" }, { status: 404 });
   }
 
-  let url: string;
+  let path: string;
   try {
-    ({ url } = await uploadFile(
+    ({ path } = await uploadFile(
       file.name,
       file,
       `${org.id}/${context.toLowerCase()}/${contextId}`,
@@ -90,7 +90,9 @@ export async function POST(req: NextRequest) {
       originalName: file.name,
       mimeType: file.type,
       size: file.size,
-      storageUrl: url,
+      // Private bucket: store the storage path; downloads go through
+      // /api/attachments/[id]/download which mints a signed URL.
+      storageUrl: path,
       context,
       contextId,
       uploadedById: userId,
