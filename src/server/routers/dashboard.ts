@@ -359,7 +359,7 @@ export const dashboardRouter = router({
         status: true,
         client: { select: { name: true } },
         payments: { select: { amount: true } },
-        currency: { select: { symbol: true, symbolPosition: true } },
+        currency: { select: { code: true, symbol: true, symbolPosition: true } },
       },
       orderBy: { dueDate: "asc" },
       take: 10,

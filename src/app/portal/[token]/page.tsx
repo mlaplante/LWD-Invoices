@@ -54,7 +54,7 @@ export default async function PortalInvoicePage({
 
   const sym = invoice.currency.symbol;
   const symPos = invoice.currency.symbolPosition;
-  const f = (n: Parameters<typeof formatCurrency>[0]) => formatCurrency(n, sym, symPos);
+  const f = (n: Parameters<typeof formatCurrency>[0]) => formatCurrency(n, sym, symPos, invoice.currency.code);
 
   // Load enabled gateways — include configJson so we can build the PayPal URL server-side
   const gatewayRows = await db.gatewaySetting.findMany({

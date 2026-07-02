@@ -156,7 +156,7 @@ export const portalRouter = router({
           dueDate: true,
           total: true,
           portalToken: true,
-          currency: { select: { symbol: true, symbolPosition: true } },
+          currency: { select: { code: true, symbol: true, symbolPosition: true } },
         },
         orderBy: { date: "desc" },
       });

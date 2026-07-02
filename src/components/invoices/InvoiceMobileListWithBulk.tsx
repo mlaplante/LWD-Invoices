@@ -23,7 +23,7 @@ type Invoice = {
   type: InvoiceType;
   date: string | null;
   total: number;
-  currency: { symbol: string; symbolPosition: string };
+  currency: { symbol: string; symbolPosition: string; code?: string };
   client: { name: string };
   recurringInvoice?: { isActive: boolean; frequency: string } | null;
 };
@@ -184,7 +184,7 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className="font-semibold text-sm">
-                    {formatCurrency(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
+                    {formatCurrency(inv.total, inv.currency.symbol, inv.currency.symbolPosition, inv.currency.code)}
                   </span>
                   <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium", badge.className)}>
                     <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", badge.dot)} />
