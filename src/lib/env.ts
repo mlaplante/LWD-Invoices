@@ -22,9 +22,22 @@ export const env = createEnv({
       .length(64)
       .optional()
       .refine(
-        (val) => process.env.NODE_ENV !== "production" || !!val,
-        "GATEWAY_ENCRYPTION_KEY is required in production",
+        (val) =>
+          process.env.NODE_ENV !== "production" ||
+          !!val ||
+          !!process.env.GATEWAY_ENCRYPTION_KEYS,
+        "GATEWAY_ENCRYPTION_KEY (or GATEWAY_ENCRYPTION_KEYS) is required in production",
       ),
+    // Ordered keyring for key rotation: "<keyId>:<64-char hex>,...". The
+    // first entry encrypts new values; every entry can decrypt. See
+    // src/server/services/encryption.ts for the rotation procedure.
+    GATEWAY_ENCRYPTION_KEYS: z
+      .string()
+      .regex(
+        /^\s*[^:,\s]+:[0-9a-fA-F]{64}\s*(,\s*[^:,\s]+:[0-9a-fA-F]{64}\s*)*$/,
+        'GATEWAY_ENCRYPTION_KEYS must be "<keyId>:<64-char hex>" entries, comma-separated',
+      )
+      .optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -116,6 +129,7 @@ export const env = createEnv({
     RESEND_INBOUND_DOMAIN: process.env.RESEND_INBOUND_DOMAIN,
     RESEND_INBOUND_WEBHOOK_SECRET: process.env.RESEND_INBOUND_WEBHOOK_SECRET,
     GATEWAY_ENCRYPTION_KEY: process.env.GATEWAY_ENCRYPTION_KEY,
+    GATEWAY_ENCRYPTION_KEYS: process.env.GATEWAY_ENCRYPTION_KEYS,
     NODE_ENV: process.env.NODE_ENV,
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
     INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
