@@ -1,10 +1,10 @@
 /**
  * Upstash-backed sliding-window limiter, shared across replicas.
  *
- * Used by `src/proxy.ts` to throttle traffic to /portal, /pay, and
- * /api/webhooks at the edge before a route handler runs. If Upstash env
- * vars aren't set, getRateLimiters() returns null and the proxy skips
- * the check (dev/test mode).
+ * Used by `src/proxy.ts` to throttle traffic to the portal, pay, webhook,
+ * v1 API, and AI endpoints at the edge before a route handler runs. If
+ * Upstash env vars aren't set, getRateLimiters() returns null and the proxy
+ * skips the check (dev/test mode).
  *
  * For per-route in-process limits inside a single handler (e.g. brute-force
  * protection on a passphrase check), prefer the in-memory limiter in
@@ -18,6 +18,7 @@ type Limiters = {
   pay: Ratelimit;
   webhook: Ratelimit;
   apiV1: Ratelimit;
+  ai: Ratelimit;
 };
 
 function createRateLimiter(): Limiters | null {
@@ -58,6 +59,15 @@ function createRateLimiter(): Limiters | null {
       limiter: Ratelimit.slidingWindow(120, "1 m"),
       prefix: "rl:api-v1",
     }),
+    // Cross-replica backstop for LLM-backed endpoints: the per-org budget
+    // caps in src/server/lib/ai-rate-limit.ts are in-process, so this edge
+    // limit is what actually bounds spend across replicas / cold starts.
+    ai: new Ratelimit({
+      redis,
+      ephemeralCache: new Map(),
+      limiter: Ratelimit.slidingWindow(30, "1 m"),
+      prefix: "rl:ai",
+    }),
   };
 }
 
@@ -72,12 +82,26 @@ export function getRateLimiters(): Limiters | null {
   return rateLimiters;
 }
 
-export type RateLimitBucket = "portal" | "pay" | "webhook" | "apiV1";
+export type RateLimitBucket = "portal" | "pay" | "webhook" | "apiV1" | "ai";
 
 export function getBucketForPath(pathname: string): RateLimitBucket | null {
-  if (pathname.startsWith("/portal")) return "portal";
-  if (pathname.startsWith("/pay")) return "pay";
+  // The /api/* prefixes matter as much as the page routes: the actual
+  // brute-forceable endpoints are API routes (/api/portal/[token]/auth for
+  // passphrase guessing, /api/pay/[token]/charge-saved for card charging),
+  // which the bare /portal and /pay prefixes do not match.
+  if (pathname.startsWith("/portal") || pathname.startsWith("/api/portal")) {
+    return "portal";
+  }
+  if (pathname.startsWith("/pay") || pathname.startsWith("/api/pay")) {
+    return "pay";
+  }
   if (pathname.startsWith("/api/webhooks")) return "webhook";
   if (pathname.startsWith("/api/v1")) return "apiV1";
+  if (
+    pathname.startsWith("/api/assistant") ||
+    pathname.startsWith("/api/expenses/receipt/ocr")
+  ) {
+    return "ai";
+  }
   return null;
 }
