@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 vi.mock("@/server/db", () => ({
   db: {
     organization: { findUnique: vi.fn() },
+    user: { findFirst: vi.fn() },
+    userOrganization: { findUnique: vi.fn(), findFirst: vi.fn() },
     payment: { findMany: vi.fn() },
     expense: { findMany: vi.fn() },
     invoice: { findMany: vi.fn() },
@@ -49,6 +51,16 @@ describe("Weekly Briefing API Endpoint", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearRateLimits();
+
+    // Happy-path auth: active user with a membership in test-org-123.
+    vi.mocked(db.user.findFirst).mockResolvedValue({
+      id: "db-user-1",
+      isActive: true,
+    } as any);
+    vi.mocked(db.userOrganization.findFirst).mockResolvedValue({
+      organizationId: "test-org-123",
+    } as any);
+
     
     // Mock the NextRequest object
     mockNextRequest = {
@@ -87,18 +99,18 @@ describe("Weekly Briefing API Endpoint", () => {
       expect(response.status).toBe(401);
     });
 
-    it("returns 404 when organization not found", async () => {
-      vi.mocked(db.organization.findUnique).mockResolvedValue(null);
-      
+    it("returns 401 when the caller has no organization membership", async () => {
+      vi.mocked(db.userOrganization.findFirst).mockResolvedValue(null as any);
+
       const req = {
         ...mockNextRequest,
         headers: new Map([["authorization", "Bearer valid-token"]]),
       };
-      
+
       const routeModule = await import("@/app/api/v1/reports/weekly-briefing/route");
       const response = await routeModule.GET(req as any);
-      
-      expect(response.status).toBe(404);
+
+      expect(response.status).toBe(401);
     });
 
     it("returns weekly briefing data when authentication succeeds", async () => {
@@ -268,8 +280,12 @@ describe("Weekly Briefing API Endpoint", () => {
         name: "Test Organization",
         brandColor: "#2563eb",
       } as any);
-      
-      // Mock authentication with specific organization
+
+      // The caller's membership resolves to org-123
+      vi.mocked(db.userOrganization.findFirst).mockResolvedValue({
+        organizationId: "org-123",
+      } as any);
+
       const req = {
         ...mockNextRequest,
         headers: new Map([["authorization", "Bearer org-123-token"]]),

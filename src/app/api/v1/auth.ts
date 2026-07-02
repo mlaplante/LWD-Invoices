@@ -44,15 +44,58 @@ export async function withV1Auth(
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
 
-  const orgId = user.app_metadata?.organizationId as string | undefined;
-  if (!orgId) {
+  // UserOrganization is the sole source of truth for org access — same rule
+  // as the tRPC context (src/server/trpc.ts). Resolving the org from
+  // app_metadata would let users removed from an org keep API access via
+  // stale Supabase metadata, and would skip the isActive suspension check.
+  const dbUser = await db.user.findFirst({
+    where: { supabaseId: user.id },
+    select: { id: true, isActive: true },
+  });
+
+  if (!dbUser) {
     return NextResponse.json({ error: "No organization context" }, { status: 401 });
   }
+  if (dbUser.isActive === false) {
+    return NextResponse.json(
+      { error: "Your account has been suspended" },
+      { status: 403 },
+    );
+  }
 
-  // Verify the organization exists
-  const org = await db.organization.findUnique({ where: { id: orgId } });
-  if (!org) {
-    return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+  // Multi-org callers can pin the target org via header; it must be one of
+  // their memberships. Otherwise fall back to the first membership.
+  const requestedOrgId = req.headers.get("x-organization-id");
+
+  let orgId: string | null = null;
+  if (requestedOrgId) {
+    const membership = await db.userOrganization.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: dbUser.id,
+          organizationId: requestedOrgId,
+        },
+      },
+      select: { organizationId: true },
+    });
+    if (!membership) {
+      return NextResponse.json(
+        { error: "Not a member of the requested organization" },
+        { status: 403 },
+      );
+    }
+    orgId = membership.organizationId;
+  } else {
+    const firstMembership = await db.userOrganization.findFirst({
+      where: { userId: dbUser.id },
+      select: { organizationId: true },
+      orderBy: { createdAt: "asc" },
+    });
+    orgId = firstMembership?.organizationId ?? null;
+  }
+
+  if (!orgId) {
+    return NextResponse.json({ error: "No organization context" }, { status: 401 });
   }
 
   return handler({ orgId, userId: user.id });
