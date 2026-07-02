@@ -1,4 +1,5 @@
 import createBundleAnalyzer from "@next/bundle-analyzer";
+import type { NextConfig } from "next";
 
 // CSP: keep 'unsafe-inline' on style-src for Tailwind/Radix runtime styles and
 // inline <style> tags emitted by Next; remove if we move to a nonce strategy.
@@ -33,7 +34,7 @@ const securityHeaders = [
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
 ];
 
-const nextConfig = {
+const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: {
     formats: ["image/avif", "image/webp"],
