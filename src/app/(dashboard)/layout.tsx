@@ -11,6 +11,7 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { Plus } from "lucide-react";
 import { CommandPalette, SearchTriggerButton } from "@/components/layout/CommandPalette";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /* ── Dynamic fragments wrapped in Suspense for PPR ── */
@@ -101,6 +102,7 @@ export default async function DashboardLayout({
         </div>
         <div className="flex items-center gap-3">
           <SearchTriggerButton />
+          <ThemeToggle />
           <NotificationBell />
           <Suspense fallback={<UserMenuFallback />}>
             <UserMenuSection />
@@ -113,6 +115,7 @@ export default async function DashboardLayout({
         {/* Desktop top bar */}
         <header className="hidden lg:flex items-center justify-end gap-3 mb-5 px-1 print:hidden">
           <SearchTriggerButton />
+          <ThemeToggle />
           <NotificationBell />
           <Suspense fallback={<UserMenuFallback />}>
             <UserMenuSection />
