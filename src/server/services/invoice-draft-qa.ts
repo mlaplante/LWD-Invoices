@@ -2,7 +2,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 import { extractGeminiText } from "./natural-language-invoice";
-import { parseValidatedJson, AiOutputError } from "./ai-structured-output";
+import { parseValidatedJson } from "./ai-structured-output";
 
 // ─── Finding Schema ──────────────────────────────────────────────────────────
 
@@ -478,8 +478,9 @@ async function checkUnclearDescriptions(req: ScanInvoiceDraftRequest): Promise<I
       );
     });
   } catch (err) {
-    if (err instanceof AiOutputError) return [];
-    // A provider/network failure should never block — degrade to no AI findings.
+    // A provider/network failure should never block — degrade to no AI
+    // findings — but log it so outages don't masquerade as clean scans.
+    console.error("[invoice-draft-qa] AI scan failed:", err);
     return [];
   }
 }

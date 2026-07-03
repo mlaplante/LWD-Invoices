@@ -67,7 +67,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 import { extractGeminiText } from "./natural-language-invoice";
-import { parseValidatedJson, AiOutputError } from "./ai-structured-output";
+import { parseValidatedJson } from "./ai-structured-output";
 
 export interface OrgCategory {
   id: string;
@@ -134,7 +134,9 @@ export async function classifyWithAi(
       source: "ai",
     };
   } catch (err) {
-    if (err instanceof AiOutputError) return null;
+    // Degrade gracefully, but never silently: a provider outage or schema
+    // drift would otherwise look identical to "no suggestion".
+    console.error("[expense-categorization] AI categorization failed:", err);
     return null;
   }
 }

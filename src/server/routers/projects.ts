@@ -71,7 +71,7 @@ export const projectsRouter = router({
 
       const include = {
         client: { select: { id: true, name: true } },
-        currency: { select: { id: true, symbol: true, symbolPosition: true } },
+        currency: { select: { id: true, code: true, symbol: true, symbolPosition: true } },
         _count: {
           select: { tasks: true, timeEntries: true, expenses: true },
         },

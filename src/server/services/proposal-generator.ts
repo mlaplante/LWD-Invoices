@@ -2,7 +2,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 import { extractGeminiText } from "./natural-language-invoice";
-import { parseValidatedJson, AiOutputError } from "./ai-structured-output";
+import { parseValidatedJson } from "./ai-structured-output";
 
 export interface OrgItem {
   id: string;
@@ -114,7 +114,9 @@ export async function generateProposal(ctx: ProposalContext): Promise<GeneratedP
       suggestedItems: groundSuggestedItems(raw.suggestedItems, ctx.items),
     };
   } catch (err) {
-    if (err instanceof AiOutputError) return null;
+    // Degrade gracefully, but never silently: a provider outage or schema
+    // drift would otherwise look identical to "no suggestion".
+    console.error("[proposal-generator] AI generation failed:", err);
     return null;
   }
 }

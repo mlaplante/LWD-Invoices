@@ -41,7 +41,7 @@ export const timesheetsRouter = router({
               name: true,
               rate: true,
               currency: {
-                select: { symbol: true, symbolPosition: true },
+                select: { code: true, symbol: true, symbolPosition: true },
               },
             },
           },
@@ -93,7 +93,7 @@ export const timesheetsRouter = router({
               id: true,
               name: true,
               rate: true,
-              currency: { select: { symbol: true, symbolPosition: true } },
+              currency: { select: { code: true, symbol: true, symbolPosition: true } },
             },
           },
         },

@@ -154,7 +154,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 import { extractGeminiText } from "./natural-language-invoice";
-import { parseValidatedJson, AiOutputError } from "./ai-structured-output";
+import { parseValidatedJson } from "./ai-structured-output";
 
 export function runDeterministicChecks(snap: InvoiceReviewSnapshot): ReviewFinding[] {
   return [
@@ -228,8 +228,9 @@ export async function checkUnclearDescriptions(snap: InvoiceReviewSnapshot): Pro
     });
     return guardUnclearDescriptionFlags(snap, flags);
   } catch (err) {
-    if (err instanceof AiOutputError) return [];
-    // A provider/network failure should never block sending — degrade to no AI findings.
+    // A provider/network failure should never block sending — degrade to no
+    // AI findings — but log it so outages don't masquerade as clean reviews.
+    console.error("[invoice-review] AI review failed:", err);
     return [];
   }
 }

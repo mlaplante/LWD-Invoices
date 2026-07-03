@@ -17,11 +17,19 @@ function getClient() {
   return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
+// Attachments contain financial PII (invoices, client docs), so the bucket is
+// PRIVATE and files are served through short-lived signed URLs. A bucket
+// created public by an earlier deploy is flipped private here.
 async function ensureBucket() {
   const supabase = getClient();
-  const { error } = await supabase.storage.createBucket(BUCKET, { public: true });
-  // Ignore "already exists" error
-  if (error && !error.message.includes("already exists")) throw error;
+  const { error } = await supabase.storage.createBucket(BUCKET, { public: false });
+  if (error) {
+    if (!error.message.includes("already exists")) throw error;
+    const { error: updateError } = await supabase.storage.updateBucket(BUCKET, {
+      public: false,
+    });
+    if (updateError) throw updateError;
+  }
 }
 
 // Strip path separators and traversal sequences so a caller-supplied filename
@@ -50,7 +58,7 @@ export async function uploadFile(
     ...SAFE_DOCUMENT_MIME_TYPES,
     ...SAFE_TEXT_MIME_TYPES,
   ],
-): Promise<{ url: string }> {
+): Promise<{ path: string }> {
   await ensureBucket();
   const supabase = getClient();
 
@@ -71,20 +79,44 @@ export async function uploadFile(
 
   if (error) throw error;
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  return { url: data.publicUrl };
+  return { path };
 }
 
-export async function deleteFile(storageUrl: string): Promise<void> {
-  const supabase = getClient();
-
-  // Extract path from Supabase public URL:
-  // https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
+// Attachment rows created before the private-bucket change store a full
+// Supabase public URL; newer rows store the bare storage path. Normalize both
+// to a path, or null for values that don't belong to our bucket.
+export function storagePathFromUrl(storageUrlOrPath: string): string | null {
   const marker = `/storage/v1/object/public/${BUCKET}/`;
-  const idx = storageUrl.indexOf(marker);
-  if (idx === -1) return; // URL doesn't match expected format; skip
+  const idx = storageUrlOrPath.indexOf(marker);
+  if (idx !== -1) return storageUrlOrPath.slice(idx + marker.length);
+  if (/^https?:\/\//.test(storageUrlOrPath)) return null;
+  return storageUrlOrPath;
+}
 
-  const path = storageUrl.slice(idx + marker.length);
+/**
+ * Mint a short-lived signed URL for a stored attachment. Returns null if the
+ * stored value can't be resolved to a path or Supabase declines.
+ */
+export async function createAttachmentSignedUrl(
+  storageUrlOrPath: string,
+  expiresInSeconds = 60,
+): Promise<string | null> {
+  const path = storagePathFromUrl(storageUrlOrPath);
+  if (!path) return null;
+
+  const supabase = getClient();
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, expiresInSeconds);
+  if (error || !data) return null;
+  return data.signedUrl;
+}
+
+export async function deleteFile(storageUrlOrPath: string): Promise<void> {
+  const path = storagePathFromUrl(storageUrlOrPath);
+  if (!path) return; // Value doesn't match our bucket; skip
+
+  const supabase = getClient();
   const { error } = await supabase.storage.from(BUCKET).remove([path]);
   if (error) throw error;
 }

@@ -38,7 +38,7 @@ export default async function PayPage({
 
   const sym = invoice.currency.symbol;
   const symPos = invoice.currency.symbolPosition;
-  const f = (n: number) => formatCurrency(n, sym, symPos);
+  const f = (n: number) => formatCurrency(n, sym, symPos, invoice.currency.code);
 
   const total = invoice.total.toNumber();
   const paidSum = invoice.payments.reduce(

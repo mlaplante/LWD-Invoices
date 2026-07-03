@@ -301,7 +301,7 @@ export const invoicesRouter = router({
           status: true,
           total: true,
           client: { select: { id: true, name: true } },
-          currency: { select: { symbol: true, symbolPosition: true } },
+          currency: { select: { code: true, symbol: true, symbolPosition: true } },
         },
         orderBy: { lastViewed: "desc" },
         take: input.limit,

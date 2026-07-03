@@ -88,7 +88,7 @@ export function AttachmentPanel({ context, contextId }: Props) {
               {formatBytes(a.size)}
             </span>
             <a
-              href={a.storageUrl}
+              href={`/api/attachments/${a.id}/download`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Open attachment"

@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { uploadFile, deleteFile } from "@/server/services/storage";
+import {
+  uploadFile,
+  deleteFile,
+  createAttachmentSignedUrl,
+  storagePathFromUrl,
+} from "@/server/services/storage";
 import { createClient } from "@supabase/supabase-js";
 
 // Mock Supabase
@@ -33,8 +38,9 @@ describe("Storage Service", () => {
   let mockStorageFrom: any;
   let mockUpload: any;
   let mockRemove: any;
-  let mockGetPublicUrl: any;
+  let mockCreateSignedUrl: any;
   let mockCreateBucket: any;
+  let mockUpdateBucket: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,20 +49,22 @@ describe("Storage Service", () => {
     // Setup mock functions
     mockUpload = vi.fn();
     mockRemove = vi.fn();
-    mockGetPublicUrl = vi.fn();
+    mockCreateSignedUrl = vi.fn();
     mockCreateBucket = vi.fn();
+    mockUpdateBucket = vi.fn().mockResolvedValue({ error: null });
 
     // Setup storage.from chain
     mockStorageFrom = vi.fn(() => ({
       upload: mockUpload,
       remove: mockRemove,
-      getPublicUrl: mockGetPublicUrl,
+      createSignedUrl: mockCreateSignedUrl,
     }));
 
     // Setup storage mock
     mockSupabaseClient = {
       storage: {
         createBucket: mockCreateBucket,
+        updateBucket: mockUpdateBucket,
         from: mockStorageFrom,
       },
     };
@@ -66,26 +74,19 @@ describe("Storage Service", () => {
   });
 
   describe("uploadFile", () => {
-    it("uploads file successfully and returns object URL", async () => {
+    it("uploads file successfully and returns the storage path", async () => {
       const filename = "invoice.pdf";
       const pathname = "org_123/invoices";
       const file = makeBlob("application/pdf");
 
-      // Mock successful bucket creation
       mockCreateBucket.mockResolvedValue({ error: null });
-
-      // Mock successful upload
       mockUpload.mockResolvedValue({ error: null });
-
-      // Mock public URL generation
-      const publicUrl = "https://test.supabase.co/storage/v1/object/public/attachments/org_123/invoices/invoice.pdf";
-      mockGetPublicUrl.mockReturnValue({
-        data: { publicUrl },
-      });
 
       const result = await uploadFile(filename, file, pathname);
 
-      expect(result).toEqual({ url: publicUrl });
+      expect(result).toEqual({
+        path: "org_123/invoices/00000000-0000-4000-8000-000000000000-invoice.pdf",
+      });
       expect(mockStorageFrom).toHaveBeenCalledWith("attachments");
       expect(mockUpload).toHaveBeenCalledWith(
         "org_123/invoices/00000000-0000-4000-8000-000000000000-invoice.pdf",
@@ -97,15 +98,36 @@ describe("Storage Service", () => {
       );
     });
 
+    it("creates the bucket as PRIVATE", async () => {
+      const file = makeBlob("application/pdf");
+      mockCreateBucket.mockResolvedValue({ error: null });
+      mockUpload.mockResolvedValue({ error: null });
+
+      await uploadFile("invoice.pdf", file, "org_123/invoices");
+
+      expect(mockCreateBucket).toHaveBeenCalledWith("attachments", { public: false });
+      expect(mockUpdateBucket).not.toHaveBeenCalled();
+    });
+
+    it("flips a pre-existing bucket private", async () => {
+      const file = makeBlob("application/pdf");
+      mockCreateBucket.mockResolvedValue({
+        error: { message: "bucket already exists" },
+      });
+      mockUpload.mockResolvedValue({ error: null });
+
+      await uploadFile("invoice.pdf", file, "org_123/invoices");
+
+      expect(mockUpdateBucket).toHaveBeenCalledWith("attachments", { public: false });
+    });
+
     it("throws error when upload fails due to permissions", async () => {
       const filename = "document.pdf";
       const pathname = "org_123/files";
       const file = makeBlob("application/pdf");
 
-      // Mock successful bucket creation
       mockCreateBucket.mockResolvedValue({ error: null });
 
-      // Mock upload failure
       const uploadError = new Error("Permission denied: User does not have write access");
       mockUpload.mockResolvedValue({ error: uploadError });
 
@@ -119,37 +141,12 @@ describe("Storage Service", () => {
       const pathname = "org_123/docs";
       const file = makeBlob("text/plain");
 
-      // Mock bucket creation failure
       const bucketError = new Error("Storage bucket error");
       mockCreateBucket.mockResolvedValue({ error: bucketError });
 
       await expect(uploadFile(filename, file, pathname)).rejects.toThrow(
         "Storage bucket error"
       );
-    });
-
-    it("ignores 'already exists' error during bucket creation", async () => {
-      const filename = "invoice.pdf";
-      const pathname = "org_123/invoices";
-      const file = makeBlob("application/pdf");
-
-      // Mock bucket creation with "already exists" error (should be ignored)
-      mockCreateBucket.mockResolvedValue({
-        error: { message: "bucket already exists" },
-      });
-
-      // Mock successful upload
-      mockUpload.mockResolvedValue({ error: null });
-
-      // Mock public URL
-      mockGetPublicUrl.mockReturnValue({
-        data: { publicUrl: "https://test.supabase.co/storage/v1/object/public/attachments/org_123/invoices/invoice.pdf" },
-      });
-
-      const result = await uploadFile(filename, file, pathname);
-
-      expect(result).toHaveProperty("url");
-      expect(mockUpload).toHaveBeenCalled();
     });
 
     it("converts Blob to ArrayBuffer correctly", async () => {
@@ -159,9 +156,6 @@ describe("Storage Service", () => {
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
-      mockGetPublicUrl.mockReturnValue({
-        data: { publicUrl: "https://test.supabase.co/storage/v1/object/public/attachments/org_123/documents/document.docx" },
-      });
 
       await uploadFile(filename, file, pathname);
 
@@ -180,17 +174,79 @@ describe("Storage Service", () => {
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
-      mockGetPublicUrl.mockReturnValue({
-        data: { publicUrl: "https://test.supabase.co/storage/v1/object/public/attachments/org_456/invoices/2026-feb/invoice-2026-001.pdf" },
-      });
 
-      await uploadFile(filename, file, pathname);
+      const result = await uploadFile(filename, file, pathname);
 
       expect(mockUpload).toHaveBeenCalledWith(
         "org_456/invoices/2026-feb/00000000-0000-4000-8000-000000000000-invoice-2026-001.pdf",
         expect.any(ArrayBuffer),
         expect.any(Object)
       );
+      expect(result.path).toContain("2026-feb");
+      expect(result.path).toContain("invoice-2026-001.pdf");
+    });
+  });
+
+  describe("storagePathFromUrl", () => {
+    it("extracts the path from a legacy public URL", () => {
+      expect(
+        storagePathFromUrl(
+          "https://test.supabase.co/storage/v1/object/public/attachments/org_123/invoices/invoice.pdf",
+        ),
+      ).toBe("org_123/invoices/invoice.pdf");
+    });
+
+    it("passes through a bare storage path", () => {
+      expect(storagePathFromUrl("org_123/invoices/invoice.pdf")).toBe(
+        "org_123/invoices/invoice.pdf",
+      );
+    });
+
+    it("returns null for foreign URLs", () => {
+      expect(storagePathFromUrl("https://example.com/some/other/path/file.pdf")).toBeNull();
+    });
+  });
+
+  describe("createAttachmentSignedUrl", () => {
+    it("signs a bare storage path", async () => {
+      mockCreateSignedUrl.mockResolvedValue({
+        data: { signedUrl: "https://test.supabase.co/storage/v1/object/sign/attachments/org_123/invoices/invoice.pdf?token=abc" },
+        error: null,
+      });
+
+      const url = await createAttachmentSignedUrl("org_123/invoices/invoice.pdf");
+
+      expect(mockStorageFrom).toHaveBeenCalledWith("attachments");
+      expect(mockCreateSignedUrl).toHaveBeenCalledWith("org_123/invoices/invoice.pdf", 60);
+      expect(url).toContain("token=abc");
+    });
+
+    it("signs a legacy public URL by extracting its path", async () => {
+      mockCreateSignedUrl.mockResolvedValue({
+        data: { signedUrl: "https://signed.example/x" },
+        error: null,
+      });
+
+      await createAttachmentSignedUrl(
+        "https://test.supabase.co/storage/v1/object/public/attachments/org_123/files/doc.pdf",
+      );
+
+      expect(mockCreateSignedUrl).toHaveBeenCalledWith("org_123/files/doc.pdf", 60);
+    });
+
+    it("returns null for foreign URLs without calling Supabase", async () => {
+      const url = await createAttachmentSignedUrl("https://example.com/file.pdf");
+
+      expect(url).toBeNull();
+      expect(mockCreateSignedUrl).not.toHaveBeenCalled();
+    });
+
+    it("returns null when Supabase declines", async () => {
+      mockCreateSignedUrl.mockResolvedValue({ data: null, error: new Error("not found") });
+
+      const url = await createAttachmentSignedUrl("org_123/files/gone.pdf");
+
+      expect(url).toBeNull();
     });
   });
 
@@ -203,6 +259,14 @@ describe("Storage Service", () => {
       await deleteFile(storageUrl);
 
       expect(mockStorageFrom).toHaveBeenCalledWith("attachments");
+      expect(mockRemove).toHaveBeenCalledWith(["org_123/invoices/invoice.pdf"]);
+    });
+
+    it("deletes by bare storage path (new rows)", async () => {
+      mockRemove.mockResolvedValue({ error: null });
+
+      await deleteFile("org_123/invoices/invoice.pdf");
+
       expect(mockRemove).toHaveBeenCalledWith(["org_123/invoices/invoice.pdf"]);
     });
 
@@ -254,64 +318,6 @@ describe("Storage Service", () => {
     });
   });
 
-  describe("URL generation", () => {
-    it("returns correctly formatted public URL", async () => {
-      const filename = "statement.pdf";
-      const pathname = "org_123/statements";
-      const file = makeBlob("application/pdf");
-
-      mockCreateBucket.mockResolvedValue({ error: null });
-      mockUpload.mockResolvedValue({ error: null });
-
-      const expectedUrl = "https://test.supabase.co/storage/v1/object/public/attachments/org_123/statements/statement.pdf";
-      mockGetPublicUrl.mockReturnValue({
-        data: { publicUrl: expectedUrl },
-      });
-
-      const result = await uploadFile(filename, file, pathname);
-
-      expect(result.url).toBe(expectedUrl);
-      expect(result.url).toMatch(/^https:\/\/.*\/storage\/v1\/object\/public\/attachments\//);
-    });
-
-    it("includes bucket name in generated URL", async () => {
-      const filename = "receipt.pdf";
-      const pathname = "org_123/receipts";
-      const file = makeBlob("application/pdf");
-
-      mockCreateBucket.mockResolvedValue({ error: null });
-      mockUpload.mockResolvedValue({ error: null });
-
-      const urlWithBucket = "https://test.supabase.co/storage/v1/object/public/attachments/org_123/receipts/receipt.pdf";
-      mockGetPublicUrl.mockReturnValue({
-        data: { publicUrl: urlWithBucket },
-      });
-
-      const result = await uploadFile(filename, file, pathname);
-
-      expect(result.url).toContain("attachments");
-    });
-
-    it("preserves file path segments in URL", async () => {
-      const filename = "2026-02-invoice.pdf";
-      const pathname = "org_123/invoices/2026/02";
-      const file = makeBlob("application/pdf");
-
-      mockCreateBucket.mockResolvedValue({ error: null });
-      mockUpload.mockResolvedValue({ error: null });
-
-      const expectedUrl = "https://test.supabase.co/storage/v1/object/public/attachments/org_123/invoices/2026/02/2026-02-invoice.pdf";
-      mockGetPublicUrl.mockReturnValue({
-        data: { publicUrl: expectedUrl },
-      });
-
-      const result = await uploadFile(filename, file, pathname);
-
-      expect(result.url).toContain("2026/02");
-      expect(result.url).toContain("2026-02-invoice.pdf");
-    });
-  });
-
   describe("edge cases and error handling", () => {
     it("handles empty filename", async () => {
       const filename = "";
@@ -320,13 +326,10 @@ describe("Storage Service", () => {
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
-      mockGetPublicUrl.mockReturnValue({
-        data: { publicUrl: "https://test.supabase.co/storage/v1/object/public/attachments/org_123/files/" },
-      });
 
       const result = await uploadFile(filename, file, pathname);
 
-      expect(result).toHaveProperty("url");
+      expect(result).toHaveProperty("path");
     });
 
     it("handles large filename", async () => {
@@ -336,15 +339,10 @@ describe("Storage Service", () => {
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
-      mockGetPublicUrl.mockReturnValue({
-        data: {
-          publicUrl: `https://test.supabase.co/storage/v1/object/public/attachments/org_123/files/${filename}`,
-        },
-      });
 
       const result = await uploadFile(filename, file, pathname);
 
-      expect(result).toHaveProperty("url");
+      expect(result).toHaveProperty("path");
     });
 
     it("preserves file MIME type during upload", async () => {
@@ -359,9 +357,6 @@ describe("Storage Service", () => {
       for (const mimeType of mimeTypes) {
         mockCreateBucket.mockResolvedValue({ error: null });
         mockUpload.mockResolvedValue({ error: null });
-        mockGetPublicUrl.mockReturnValue({
-          data: { publicUrl: "https://test.supabase.co/storage/v1/object/public/attachments/org_123/files/file" },
-        });
 
         const file = makeBlob(mimeType);
         await uploadFile("file", file, "org_123/files");
@@ -381,9 +376,6 @@ describe("Storage Service", () => {
 
       mockCreateBucket.mockResolvedValue({ error: null });
       mockUpload.mockResolvedValue({ error: null });
-      mockGetPublicUrl.mockReturnValue({
-        data: { publicUrl: "https://test.supabase.co/storage/v1/object/public/attachments/org_123/invoices/invoice.pdf" },
-      });
 
       await uploadFile(filename, file, pathname);
 

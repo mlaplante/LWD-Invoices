@@ -20,7 +20,7 @@ type Invoice = {
   type: InvoiceType;
   date: string | null;
   total: number;
-  currency: { symbol: string; symbolPosition: string };
+  currency: { symbol: string; symbolPosition: string; code?: string };
   client: { name: string };
   recurringInvoice?: { isActive: boolean; frequency: string } | null;
 };
@@ -111,7 +111,7 @@ const InvoiceRow = React.memo(function InvoiceRow({ inv, isSelected, onToggle, p
         {inv.client.name}
       </td>
       <td className="py-3.5 text-right font-mono font-semibold tabular-nums text-foreground">
-        {formatCurrency(inv.total, inv.currency.symbol, inv.currency.symbolPosition)}
+        {formatCurrency(inv.total, inv.currency.symbol, inv.currency.symbolPosition, inv.currency.code)}
       </td>
       <td className="py-3.5 pl-4">
         <div className="flex items-center gap-1.5">

@@ -83,7 +83,7 @@ export default async function InvoiceDetailPage({
 
   const sym = invoice.currency.symbol;
   const symPos = invoice.currency.symbolPosition;
-  const f = (n: Parameters<typeof formatCurrency>[0]) => formatCurrency(n, sym, symPos);
+  const f = (n: Parameters<typeof formatCurrency>[0]) => formatCurrency(n, sym, symPos, invoice.currency.code);
 
   const headersList = await headers();
   const host = headersList.get("host") ?? "localhost:3000";

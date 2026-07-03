@@ -27,7 +27,7 @@ export default async function PaySuccessPage({
           hidePoweredBy: true,
         },
       },
-      currency: { select: { symbol: true, symbolPosition: true } },
+      currency: { select: { code: true, symbol: true, symbolPosition: true } },
     },
   });
 
@@ -36,7 +36,7 @@ export default async function PaySuccessPage({
   const branding = getPortalBranding(invoice.organization);
   const sym = invoice.currency.symbol;
   const symPos = invoice.currency.symbolPosition;
-  const fmtAmount = (n: number) => formatCurrency(n, sym, symPos);
+  const fmtAmount = (n: number) => formatCurrency(n, sym, symPos, invoice.currency.code);
 
   return (
     <PortalShell branding={branding}>
