@@ -22,6 +22,7 @@ import {
   renderTaxPdf,
   renderAgingPdf,
 } from "@/server/services/year-end-pdf";
+import { buildYearEndZip } from "@/server/services/year-end-export-job";
 
 const VALID_FORMATS = ["csv", "pdf", "zip"] as const;
 const VALID_REPORTS = ["pl", "expenses", "payments", "tax", "aging"] as const;
@@ -128,37 +129,10 @@ export async function GET(request: Request) {
     });
   }
 
-  // format === "zip" — bundle all 5 CSVs + 5 PDFs
-  const JSZip = (await import("jszip")).default;
-  const [plData, expensesData, paymentsData, taxData, agingData] = await Promise.all([
-    fetchMap.pl(),
-    fetchMap.expenses(),
-    fetchMap.payments(),
-    fetchMap.tax(),
-    fetchMap.aging(),
-  ]);
-
-  const [plPdf, expensesPdf, paymentsPdf, taxPdf, agingPdf] = await Promise.all([
-    renderPLPdf(plData as never, year),
-    renderExpensePdf(expensesData as never, year),
-    renderPaymentPdf(paymentsData as never, year),
-    renderTaxPdf(taxData as never, year),
-    renderAgingPdf(agingData as never, year),
-  ]);
-
-  const zip = new JSZip();
-  zip.file(`pl-${year}.csv`, plToCsv(plData as never));
-  zip.file(`pl-${year}.pdf`, plPdf);
-  zip.file(`expenses-${year}.csv`, expensesToCsv(expensesData as never));
-  zip.file(`expenses-${year}.pdf`, expensesPdf);
-  zip.file(`payments-${year}.csv`, paymentsToCsv(paymentsData as never));
-  zip.file(`payments-${year}.pdf`, paymentsPdf);
-  zip.file(`tax-liability-${year}.csv`, taxToCsv(taxData as never));
-  zip.file(`tax-liability-${year}.pdf`, taxPdf);
-  zip.file(`ar-aging-${year}.csv`, agingToCsv(agingData as never));
-  zip.file(`ar-aging-${year}.pdf`, agingPdf);
-
-  const zipBuffer = await zip.generateAsync({ type: "uint8array" });
+  // format === "zip" — synchronous fallback (small orgs / direct links). The
+  // year-end page uses the background job at /api/reports/year-end/jobs so
+  // large exports don't race the serverless timeout.
+  const zipBuffer = await buildYearEndZip(db, orgId, year);
 
   return new Response(zipBuffer as unknown as BodyInit, {
     headers: {
