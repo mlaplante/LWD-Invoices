@@ -196,56 +196,61 @@ export const reportsRouter = router({
   profitLoss: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {
-      const dateFilter = input.from || input.to
-        ? { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) }
-        : undefined;
+      // Monthly rollups happen in SQL (GROUP BY month at UTC, matching the old
+      // groupByMonth JS helper) so the payload is one row per month instead of
+      // every payment/expense/credit row in the range.
+      const monthly = (rows: Array<{ month: string; total: number }>) => {
+        const result: Record<string, number> = {};
+        for (const r of rows) result[r.month] = r.total;
+        return result;
+      };
 
-      const [payments, expenses, discountedInvoices, appliedCredits] = await Promise.all([
-        ctx.db.payment.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            ...(dateFilter ? { paidAt: dateFilter } : {}),
-          },
-          select: { amount: true, paidAt: true },
-        }),
-        ctx.db.expense.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            ...(dateFilter ? { createdAt: dateFilter } : {}),
-          },
-          select: { rate: true, qty: true, createdAt: true },
-        }),
-        ctx.db.invoice.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            isArchived: false,
-            status: { notIn: [InvoiceStatus.DRAFT] },
-            discountType: { not: null },
-            discountAmount: { gt: 0 },
-            ...(dateFilter ? { date: dateFilter } : {}),
-          },
-          select: { discountType: true, discountAmount: true, subtotal: true },
-        }),
-        ctx.db.creditNoteApplication.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            ...(dateFilter ? { createdAt: dateFilter } : {}),
-          },
-          select: { amount: true, createdAt: true },
-        }),
+      const [revRows, expRows, credRows, discountRows] = await Promise.all([
+        ctx.db.$queryRaw<Array<{ month: string; total: number }>>`
+          SELECT to_char("paidAt" AT TIME ZONE 'UTC', 'YYYY-MM') AS month, SUM(amount)::float AS total
+          FROM "Payment"
+          WHERE "organizationId" = ${ctx.orgId}
+            ${input.from ? Prisma.sql`AND "paidAt" >= ${input.from}` : Prisma.empty}
+            ${input.to ? Prisma.sql`AND "paidAt" <= ${input.to}` : Prisma.empty}
+          GROUP BY month
+        `,
+        ctx.db.$queryRaw<Array<{ month: string; total: number }>>`
+          SELECT to_char("createdAt" AT TIME ZONE 'UTC', 'YYYY-MM') AS month, SUM(rate * qty)::float AS total
+          FROM "Expense"
+          WHERE "organizationId" = ${ctx.orgId}
+            ${input.from ? Prisma.sql`AND "createdAt" >= ${input.from}` : Prisma.empty}
+            ${input.to ? Prisma.sql`AND "createdAt" <= ${input.to}` : Prisma.empty}
+          GROUP BY month
+        `,
+        ctx.db.$queryRaw<Array<{ month: string; total: number }>>`
+          SELECT to_char("createdAt" AT TIME ZONE 'UTC', 'YYYY-MM') AS month, SUM(amount)::float AS total
+          FROM "CreditNoteApplication"
+          WHERE "organizationId" = ${ctx.orgId}
+            ${input.from ? Prisma.sql`AND "createdAt" >= ${input.from}` : Prisma.empty}
+            ${input.to ? Prisma.sql`AND "createdAt" <= ${input.to}` : Prisma.empty}
+          GROUP BY month
+        `,
+        ctx.db.$queryRaw<Array<{ total: number }>>`
+          SELECT COALESCE(SUM(
+            CASE WHEN "discountType" = 'percentage'
+              THEN subtotal * "discountAmount" / 100
+              ELSE "discountAmount"
+            END
+          ), 0)::float AS total
+          FROM "Invoice"
+          WHERE "organizationId" = ${ctx.orgId}
+            AND "isArchived" = false
+            AND status <> ${InvoiceStatus.DRAFT}::"InvoiceStatus"
+            AND "discountType" IS NOT NULL
+            AND "discountAmount" > 0
+            ${input.from ? Prisma.sql`AND "date" >= ${input.from}` : Prisma.empty}
+            ${input.to ? Prisma.sql`AND "date" <= ${input.to}` : Prisma.empty}
+        `,
       ]);
 
-      const revenueByMonth = groupByMonth(payments, (p) => p.paidAt, (p) => Number(p.amount));
-      const expensesByMonth = groupByMonth(
-        expenses,
-        (e) => e.createdAt,
-        (e) => Number(e.rate) * e.qty,
-      );
-      const creditsByMonth = groupByMonth(
-        appliedCredits,
-        (c) => c.createdAt,
-        (c) => Number(c.amount),
-      );
+      const revenueByMonth = monthly(revRows);
+      const expensesByMonth = monthly(expRows);
+      const creditsByMonth = monthly(credRows);
 
       const allMonths = Array.from(
         new Set([
@@ -266,16 +271,6 @@ export const reportsRouter = router({
       const totalExpenses = Object.values(expensesByMonth).reduce((s, v) => s + v, 0);
       const totalCredits = Object.values(creditsByMonth).reduce((s, v) => s + v, 0);
 
-      // Calculate total discounts given
-      let totalDiscountsGiven = 0;
-      for (const inv of discountedInvoices) {
-        if (inv.discountType === "percentage") {
-          totalDiscountsGiven += Number(inv.subtotal) * Number(inv.discountAmount) / 100;
-        } else {
-          totalDiscountsGiven += Number(inv.discountAmount);
-        }
-      }
-
       return {
         revenueByMonth,
         expensesByMonth,
@@ -285,81 +280,60 @@ export const reportsRouter = router({
         totalExpenses,
         totalCredits,
         netIncome: totalRevenue - totalExpenses - totalCredits,
-        totalDiscountsGiven: Math.round(totalDiscountsGiven * 100) / 100,
+        totalDiscountsGiven: Math.round((discountRows[0]?.total ?? 0) * 100) / 100,
       };
     }),
 
   profitabilityByClient: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {
-      const dateFilter = input.from || input.to
-        ? { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) }
-        : undefined;
-
-      // Revenue: payments grouped by invoice's clientId
-      const payments = await ctx.db.payment.findMany({
-        where: {
-          organizationId: ctx.orgId,
-          ...(dateFilter ? { paidAt: dateFilter } : {}),
-        },
-        select: {
-          amount: true,
-          invoice: { select: { clientId: true } },
-        },
-      });
-
-      // Costs: expenses via project.clientId + time entry cost via project
-      const [expenses, timeEntries] = await Promise.all([
-        ctx.db.expense.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            project: { isNot: null },
-            ...(dateFilter ? { createdAt: dateFilter } : {}),
-          },
-          select: {
-            rate: true,
-            qty: true,
-            project: { select: { clientId: true } },
-          },
-        }),
-        ctx.db.timeEntry.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            ...(dateFilter ? { date: dateFilter } : {}),
-          },
-          select: {
-            minutes: true,
-            project: { select: { clientId: true, rate: true } },
-          },
+      // Revenue and costs aggregate in SQL (GROUP BY clientId) so the payload
+      // is one row per client instead of every payment/expense/time entry.
+      const [revenueRows, expenseCostRows, timeCostRows, clients] = await Promise.all([
+        // Revenue: payments grouped by invoice's clientId
+        ctx.db.$queryRaw<Array<{ id: string; total: number }>>`
+          SELECT i."clientId" AS id, SUM(p.amount)::float AS total
+          FROM "Payment" p
+          JOIN "Invoice" i ON i.id = p."invoiceId"
+          WHERE p."organizationId" = ${ctx.orgId}
+            ${input.from ? Prisma.sql`AND p."paidAt" >= ${input.from}` : Prisma.empty}
+            ${input.to ? Prisma.sql`AND p."paidAt" <= ${input.to}` : Prisma.empty}
+          GROUP BY i."clientId"
+        `,
+        // Costs: expenses via project.clientId
+        ctx.db.$queryRaw<Array<{ id: string; total: number }>>`
+          SELECT pr."clientId" AS id, SUM(e.rate * e.qty)::float AS total
+          FROM "Expense" e
+          JOIN "Project" pr ON pr.id = e."projectId"
+          WHERE e."organizationId" = ${ctx.orgId}
+            ${input.from ? Prisma.sql`AND e."createdAt" >= ${input.from}` : Prisma.empty}
+            ${input.to ? Prisma.sql`AND e."createdAt" <= ${input.to}` : Prisma.empty}
+          GROUP BY pr."clientId"
+        `,
+        // Costs: time entries at the project's rate
+        ctx.db.$queryRaw<Array<{ id: string; total: number }>>`
+          SELECT pr."clientId" AS id, SUM(t.minutes * pr.rate / 60.0)::float AS total
+          FROM "TimeEntry" t
+          JOIN "Project" pr ON pr.id = t."projectId"
+          WHERE t."organizationId" = ${ctx.orgId}
+            ${input.from ? Prisma.sql`AND t."date" >= ${input.from}` : Prisma.empty}
+            ${input.to ? Prisma.sql`AND t."date" <= ${input.to}` : Prisma.empty}
+          GROUP BY pr."clientId"
+        `,
+        // Client names
+        ctx.db.client.findMany({
+          where: { organizationId: ctx.orgId },
+          select: { id: true, name: true },
         }),
       ]);
-
-      // Client names
-      const clients = await ctx.db.client.findMany({
-        where: { organizationId: ctx.orgId },
-        select: { id: true, name: true },
-      });
       const clientMap = new Map(clients.map((c) => [c.id, c.name]));
 
-      // Aggregate by clientId
       const revenueByClient: Record<string, number> = {};
-      for (const p of payments) {
-        const cid = p.invoice.clientId;
-        revenueByClient[cid] = (revenueByClient[cid] ?? 0) + Number(p.amount);
-      }
+      for (const r of revenueRows) revenueByClient[r.id] = r.total;
 
       const costByClient: Record<string, number> = {};
-      for (const e of expenses) {
-        if (!e.project) continue;
-        const cid = e.project.clientId;
-        costByClient[cid] = (costByClient[cid] ?? 0) + Number(e.rate) * e.qty;
-      }
-      for (const t of timeEntries) {
-        if (!t.project) continue;
-        const cid = t.project.clientId;
-        const hours = Number(t.minutes) / 60;
-        costByClient[cid] = (costByClient[cid] ?? 0) + hours * Number(t.project.rate);
-      }
+      for (const r of expenseCostRows) costByClient[r.id] = (costByClient[r.id] ?? 0) + r.total;
+      for (const r of timeCostRows) costByClient[r.id] = (costByClient[r.id] ?? 0) + r.total;
 
       const allClientIds = Array.from(
         new Set([...Object.keys(revenueByClient), ...Object.keys(costByClient)])
@@ -397,104 +371,75 @@ export const reportsRouter = router({
   profitabilityByProject: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {
-      const dateFilter = input.from || input.to
-        ? { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) }
-        : undefined;
+      // Revenue: invoice lines sourced from TimeEntry or Expense, on paid/sent
+      // invoices. TimeEntry.invoiceLineId and Expense.invoiceLineId store the
+      // InvoiceLine id without a Prisma relation, so the line→project mapping
+      // is built in SQL. DISTINCT ON keeps one project per line (each line is
+      // counted once), preferring the Expense mapping like the previous
+      // Map-based implementation did.
+      const paidStatuses: string[] = ["PAID", "SENT", "PARTIALLY_PAID"];
 
-      // Revenue: invoice lines sourced from TimeEntry or Expense, on paid/sent invoices.
-      // TimeEntry.invoiceLineId and Expense.invoiceLineId store the InvoiceLine id,
-      // but there is no Prisma relation — so we query InvoiceLine by sourceTable/sourceId.
-      const paidStatuses = ["PAID", "SENT", "PARTIALLY_PAID"] as const;
-
-      // Get all project time-entry ids and expense ids so we can look up their project
-      const [billedTimeEntries, billedExpenses] = await Promise.all([
-        ctx.db.timeEntry.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            invoiceLineId: { not: null },
-            ...(dateFilter ? { date: dateFilter } : {}),
-          },
-          select: { id: true, projectId: true, invoiceLineId: true },
-        }),
-        ctx.db.expense.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            invoiceLineId: { not: null },
-            projectId: { not: null },
-            ...(dateFilter ? { createdAt: dateFilter } : {}),
-          },
-          select: { id: true, projectId: true, invoiceLineId: true },
-        }),
-      ]);
-
-      // Build lookup: invoiceLineId -> projectId
-      const lineToProject = new Map<string, string>();
-      for (const t of billedTimeEntries) {
-        if (t.invoiceLineId && t.projectId) lineToProject.set(t.invoiceLineId, t.projectId);
-      }
-      for (const e of billedExpenses) {
-        if (e.invoiceLineId && e.projectId) lineToProject.set(e.invoiceLineId, e.projectId);
-      }
-
-      // Fetch invoice lines + invoice status for those line ids
-      const lineIds = Array.from(lineToProject.keys());
-      const invoiceLines = lineIds.length > 0
-        ? await ctx.db.invoiceLine.findMany({
-            where: { id: { in: lineIds } },
-            select: { id: true, total: true, invoice: { select: { status: true } } },
-          })
-        : [];
-
-      // Revenue by project
-      const revenueByProject: Record<string, number> = {};
-      for (const line of invoiceLines) {
-        if (!paidStatuses.includes(line.invoice.status as typeof paidStatuses[number])) continue;
-        const pid = lineToProject.get(line.id);
-        if (!pid) continue;
-        revenueByProject[pid] = (revenueByProject[pid] ?? 0) + Number(line.total);
-      }
-
-      // Costs: all expenses + time entries by project
-      const [allExpenses, allTime] = await Promise.all([
-        ctx.db.expense.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            projectId: { not: null },
-            ...(dateFilter ? { createdAt: dateFilter } : {}),
-          },
-          select: { projectId: true, rate: true, qty: true },
-        }),
-        ctx.db.timeEntry.findMany({
-          where: {
-            organizationId: ctx.orgId,
-            ...(dateFilter ? { date: dateFilter } : {}),
-          },
-          select: {
-            projectId: true,
-            minutes: true,
-            project: { select: { rate: true } },
-          },
+      const [revenueRows, expenseCostRows, timeCostRows, projects] = await Promise.all([
+        ctx.db.$queryRaw<Array<{ id: string; total: number }>>`
+          SELECT src."projectId" AS id, SUM(il.total)::float AS total
+          FROM (
+            SELECT DISTINCT ON ("invoiceLineId") "invoiceLineId", "projectId"
+            FROM (
+              SELECT "invoiceLineId", "projectId", 0 AS priority
+              FROM "TimeEntry"
+              WHERE "organizationId" = ${ctx.orgId}
+                AND "invoiceLineId" IS NOT NULL AND "projectId" IS NOT NULL
+                ${input.from ? Prisma.sql`AND "date" >= ${input.from}` : Prisma.empty}
+                ${input.to ? Prisma.sql`AND "date" <= ${input.to}` : Prisma.empty}
+              UNION ALL
+              SELECT "invoiceLineId", "projectId", 1 AS priority
+              FROM "Expense"
+              WHERE "organizationId" = ${ctx.orgId}
+                AND "invoiceLineId" IS NOT NULL AND "projectId" IS NOT NULL
+                ${input.from ? Prisma.sql`AND "createdAt" >= ${input.from}` : Prisma.empty}
+                ${input.to ? Prisma.sql`AND "createdAt" <= ${input.to}` : Prisma.empty}
+            ) mapped
+            ORDER BY "invoiceLineId", priority DESC
+          ) src
+          JOIN "InvoiceLine" il ON il.id = src."invoiceLineId"
+          JOIN "Invoice" i ON i.id = il."invoiceId"
+          WHERE i.status::text = ANY(${paidStatuses}::text[])
+          GROUP BY src."projectId"
+        `,
+        // Costs: all project expenses
+        ctx.db.$queryRaw<Array<{ id: string; total: number }>>`
+          SELECT e."projectId" AS id, SUM(e.rate * e.qty)::float AS total
+          FROM "Expense" e
+          WHERE e."organizationId" = ${ctx.orgId}
+            AND e."projectId" IS NOT NULL
+            ${input.from ? Prisma.sql`AND e."createdAt" >= ${input.from}` : Prisma.empty}
+            ${input.to ? Prisma.sql`AND e."createdAt" <= ${input.to}` : Prisma.empty}
+          GROUP BY e."projectId"
+        `,
+        // Costs: time entries at the project's rate
+        ctx.db.$queryRaw<Array<{ id: string; total: number }>>`
+          SELECT t."projectId" AS id, SUM(t.minutes * pr.rate / 60.0)::float AS total
+          FROM "TimeEntry" t
+          JOIN "Project" pr ON pr.id = t."projectId"
+          WHERE t."organizationId" = ${ctx.orgId}
+            ${input.from ? Prisma.sql`AND t."date" >= ${input.from}` : Prisma.empty}
+            ${input.to ? Prisma.sql`AND t."date" <= ${input.to}` : Prisma.empty}
+          GROUP BY t."projectId"
+        `,
+        // Project names + client names
+        ctx.db.project.findMany({
+          where: { organizationId: ctx.orgId },
+          select: { id: true, name: true, client: { select: { name: true } } },
         }),
       ]);
-
-      // Project names + client names
-      const projects = await ctx.db.project.findMany({
-        where: { organizationId: ctx.orgId },
-        select: { id: true, name: true, client: { select: { name: true } } },
-      });
       const projectMap = new Map(projects.map((p) => [p.id, { name: p.name, clientName: p.client.name }]));
 
-      // Costs by project
+      const revenueByProject: Record<string, number> = {};
+      for (const r of revenueRows) revenueByProject[r.id] = r.total;
+
       const costByProject: Record<string, number> = {};
-      for (const e of allExpenses) {
-        if (!e.projectId) continue;
-        costByProject[e.projectId] = (costByProject[e.projectId] ?? 0) + Number(e.rate) * e.qty;
-      }
-      for (const t of allTime) {
-        if (!t.projectId || !t.project) continue;
-        const hours = Number(t.minutes) / 60;
-        costByProject[t.projectId] = (costByProject[t.projectId] ?? 0) + hours * Number(t.project.rate);
-      }
+      for (const r of expenseCostRows) costByProject[r.id] = (costByProject[r.id] ?? 0) + r.total;
+      for (const r of timeCostRows) costByProject[r.id] = (costByProject[r.id] ?? 0) + r.total;
 
       const allProjectIds = Array.from(
         new Set([...Object.keys(revenueByProject), ...Object.keys(costByProject)])
