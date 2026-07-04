@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, FileText, Receipt, CreditCard, Scale, Gauge } from "lucide-react";
+import { ArrowLeft, Download, FileText, Loader2, Receipt, CreditCard, Scale, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -53,8 +53,50 @@ const reports = [
   },
 ];
 
+const ZIP_POLL_INTERVAL_MS = 2000;
+const ZIP_POLL_TIMEOUT_MS = 5 * 60 * 1000;
+
 export default function YearEndExportPage() {
   const [year, setYear] = useState(String(currentYear));
+  const [zipState, setZipState] = useState<"idle" | "preparing" | "failed">("idle");
+  const zipRunning = useRef(false);
+
+  // The full ZIP renders 5 PDFs and can outlive a serverless request on a big
+  // org, so it runs as a background job: enqueue, poll, then download the
+  // signed URL once the archive is ready.
+  async function downloadZip() {
+    if (zipRunning.current) return;
+    zipRunning.current = true;
+    setZipState("preparing");
+    try {
+      const res = await fetch("/api/reports/year-end/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year: Number(year) }),
+      });
+      if (!res.ok) throw new Error("enqueue failed");
+      const { jobId } = (await res.json()) as { jobId: string };
+
+      const deadline = Date.now() + ZIP_POLL_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, ZIP_POLL_INTERVAL_MS));
+        const poll = await fetch(`/api/reports/year-end/jobs/${jobId}`);
+        if (!poll.ok) continue;
+        const body = (await poll.json()) as { status: string; url?: string };
+        if (body.status === "ready" && body.url) {
+          window.location.assign(body.url);
+          setZipState("idle");
+          return;
+        }
+        if (body.status === "failed") break;
+      }
+      setZipState("failed");
+    } catch {
+      setZipState("failed");
+    } finally {
+      zipRunning.current = false;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -86,12 +128,28 @@ export default function YearEndExportPage() {
           </SelectContent>
         </Select>
 
-        <Button asChild>
-          <a href={`/api/reports/year-end?year=${year}&format=zip`}>
-            <Download className="w-4 h-4 mr-2" />
-            Download All (ZIP)
-          </a>
+        <Button onClick={downloadZip} disabled={zipState === "preparing"}>
+          {zipState === "preparing" ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Preparing…
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4 mr-2" />
+              Download All (ZIP)
+            </>
+          )}
         </Button>
+        {zipState === "failed" && (
+          <p className="text-sm text-destructive">
+            Export failed.{" "}
+            <a className="underline" href={`/api/reports/year-end?year=${year}&format=zip`}>
+              Try the direct download
+            </a>
+            .
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

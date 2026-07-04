@@ -56,11 +56,19 @@ export default async function PortalInvoicePage({
   const symPos = invoice.currency.symbolPosition;
   const f = (n: Parameters<typeof formatCurrency>[0]) => formatCurrency(n, sym, symPos, invoice.currency.code);
 
-  // Load enabled gateways — include configJson so we can build the PayPal URL server-side
-  const gatewayRows = await db.gatewaySetting.findMany({
-    where: { organizationId: invoice.organizationId, isEnabled: true },
-    select: { gatewayType: true, surcharge: true, bankDebitSurcharge: true, label: true, configJson: true },
-  });
+  // Load enabled gateways (configJson included so we can build the PayPal URL
+  // server-side) and public comments together — both depend only on the invoice.
+  const [gatewayRows, comments] = await Promise.all([
+    db.gatewaySetting.findMany({
+      where: { organizationId: invoice.organizationId, isEnabled: true },
+      select: { gatewayType: true, surcharge: true, bankDebitSurcharge: true, label: true, configJson: true },
+    }),
+    db.comment.findMany({
+      where: { invoiceId: invoice.id, isPrivate: false },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, body: true, authorName: true, createdAt: true },
+    }),
+  ]);
 
   const gateways = gatewayRows.map((g) => {
     const base = {
@@ -108,13 +116,6 @@ export default async function PortalInvoicePage({
       return undefined;
     }
   }
-
-  // Load public comments
-  const comments = await db.comment.findMany({
-    where: { invoiceId: invoice.id, isPrivate: false },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, body: true, authorName: true, createdAt: true },
-  });
 
   const isPayable = PAYABLE_STATUSES.includes(invoice.status);
 

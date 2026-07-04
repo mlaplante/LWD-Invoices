@@ -2,7 +2,8 @@ import Link from "next/link";
 
 type ActivityItem = {
   id: string;
-  createdAt: Date;
+  // string when the row came through a JSON-serializing cache layer
+  createdAt: Date | string;
   action: string;
   entityType: string;
   entityLabel: string | null;
@@ -11,7 +12,7 @@ type ActivityItem = {
 
 type Props = { items: ActivityItem[]; linkItems?: boolean };
 
-function relativeTime(date: Date): string {
+function relativeTime(date: Date | string): string {
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "just now";

@@ -24,127 +24,133 @@ export const dashboardRouter = router({
         })
         .optional()
     )
-    .query(async ({ ctx }) => {
-      const now = new Date();
-      const thisMonthStart = new Date(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        1
-      );
-      const lastMonthStart = new Date(
-        now.getUTCFullYear(),
-        now.getUTCMonth() - 1,
-        1
-      );
-      const lastMonthEnd = new Date(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        0,
-        23,
-        59,
-        59,
-        999
-      );
+    .query(({ ctx }) =>
+      unstable_cache(
+        async () => {
+        const now = new Date();
+        const thisMonthStart = new Date(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          1
+        );
+        const lastMonthStart = new Date(
+          now.getUTCFullYear(),
+          now.getUTCMonth() - 1,
+          1
+        );
+        const lastMonthEnd = new Date(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          0,
+          23,
+          59,
+          59,
+          999
+        );
 
-      const outstandingStatuses: InvoiceStatus[] = [
-        InvoiceStatus.SENT,
-        InvoiceStatus.PARTIALLY_PAID,
-        InvoiceStatus.OVERDUE,
-      ];
+        const outstandingStatuses: InvoiceStatus[] = [
+          InvoiceStatus.SENT,
+          InvoiceStatus.PARTIALLY_PAID,
+          InvoiceStatus.OVERDUE,
+        ];
 
-      const [
-        thisMonthPaymentAgg,
-        lastMonthPaymentAgg,
-        outstandingRows,
-        overdueRows,
-        thisMonthExpensesAgg,
-        lastMonthExpensesAgg,
-      ] = await Promise.all([
-        ctx.db.payment.aggregate({
-          where: { organizationId: ctx.orgId, paidAt: { gte: thisMonthStart } },
-          _sum: { amount: true },
-        }),
-        ctx.db.payment.aggregate({
-          where: { organizationId: ctx.orgId, paidAt: { gte: lastMonthStart, lte: lastMonthEnd } },
-          _sum: { amount: true },
-        }),
-        ctx.db.$queryRaw<Array<{ count: number; balance: number }>>`
-          SELECT COUNT(*)::int AS count,
-                 COALESCE(SUM(GREATEST(i.total - COALESCE(p.paid, 0), 0)), 0)::float AS balance
-          FROM "Invoice" i
-          LEFT JOIN (
-            SELECT "invoiceId", SUM(amount) AS paid
-            FROM "Payment"
+        const [
+          thisMonthPaymentAgg,
+          lastMonthPaymentAgg,
+          outstandingRows,
+          overdueRows,
+          thisMonthExpensesAgg,
+          lastMonthExpensesAgg,
+        ] = await Promise.all([
+          ctx.db.payment.aggregate({
+            where: { organizationId: ctx.orgId, paidAt: { gte: thisMonthStart } },
+            _sum: { amount: true },
+          }),
+          ctx.db.payment.aggregate({
+            where: { organizationId: ctx.orgId, paidAt: { gte: lastMonthStart, lte: lastMonthEnd } },
+            _sum: { amount: true },
+          }),
+          ctx.db.$queryRaw<Array<{ count: number; balance: number }>>`
+            SELECT COUNT(*)::int AS count,
+                   COALESCE(SUM(GREATEST(i.total - COALESCE(p.paid, 0), 0)), 0)::float AS balance
+            FROM "Invoice" i
+            LEFT JOIN (
+              SELECT "invoiceId", SUM(amount) AS paid
+              FROM "Payment"
+              WHERE "organizationId" = ${ctx.orgId}
+              GROUP BY "invoiceId"
+            ) p ON p."invoiceId" = i.id
+            WHERE i."organizationId" = ${ctx.orgId}
+              AND i."isArchived" = false
+              AND i.status::text = ANY(${outstandingStatuses}::text[])
+          `,
+          ctx.db.$queryRaw<Array<{ count: number; balance: number }>>`
+            SELECT COUNT(*)::int AS count,
+                   COALESCE(SUM(GREATEST(i.total - COALESCE(p.paid, 0), 0)), 0)::float AS balance
+            FROM "Invoice" i
+            LEFT JOIN (
+              SELECT "invoiceId", SUM(amount) AS paid
+              FROM "Payment"
+              WHERE "organizationId" = ${ctx.orgId}
+              GROUP BY "invoiceId"
+            ) p ON p."invoiceId" = i.id
+            WHERE i."organizationId" = ${ctx.orgId}
+              AND i."isArchived" = false
+              AND i.status = ${InvoiceStatus.OVERDUE}::"InvoiceStatus"
+          `,
+          ctx.db.$queryRaw<Array<{ total: number }>>`
+            SELECT COALESCE(SUM(rate * qty), 0)::float AS total
+            FROM "Expense"
             WHERE "organizationId" = ${ctx.orgId}
-            GROUP BY "invoiceId"
-          ) p ON p."invoiceId" = i.id
-          WHERE i."organizationId" = ${ctx.orgId}
-            AND i."isArchived" = false
-            AND i.status::text = ANY(${outstandingStatuses}::text[])
-        `,
-        ctx.db.$queryRaw<Array<{ count: number; balance: number }>>`
-          SELECT COUNT(*)::int AS count,
-                 COALESCE(SUM(GREATEST(i.total - COALESCE(p.paid, 0), 0)), 0)::float AS balance
-          FROM "Invoice" i
-          LEFT JOIN (
-            SELECT "invoiceId", SUM(amount) AS paid
-            FROM "Payment"
+              AND "createdAt" >= ${thisMonthStart}
+          `,
+          ctx.db.$queryRaw<Array<{ total: number }>>`
+            SELECT COALESCE(SUM(rate * qty), 0)::float AS total
+            FROM "Expense"
             WHERE "organizationId" = ${ctx.orgId}
-            GROUP BY "invoiceId"
-          ) p ON p."invoiceId" = i.id
-          WHERE i."organizationId" = ${ctx.orgId}
-            AND i."isArchived" = false
-            AND i.status = ${InvoiceStatus.OVERDUE}::"InvoiceStatus"
-        `,
-        ctx.db.$queryRaw<Array<{ total: number }>>`
-          SELECT COALESCE(SUM(rate * qty), 0)::float AS total
-          FROM "Expense"
-          WHERE "organizationId" = ${ctx.orgId}
-            AND "createdAt" >= ${thisMonthStart}
-        `,
-        ctx.db.$queryRaw<Array<{ total: number }>>`
-          SELECT COALESCE(SUM(rate * qty), 0)::float AS total
-          FROM "Expense"
-          WHERE "organizationId" = ${ctx.orgId}
-            AND "createdAt" >= ${lastMonthStart}
-            AND "createdAt" <= ${lastMonthEnd}
-        `,
-      ]);
+              AND "createdAt" >= ${lastMonthStart}
+              AND "createdAt" <= ${lastMonthEnd}
+          `,
+        ]);
 
-      const revenueThisMonth = Number(thisMonthPaymentAgg._sum.amount ?? 0);
-      const revenueLastMonth = Number(lastMonthPaymentAgg._sum.amount ?? 0);
-      const revenueChange =
-        revenueLastMonth > 0
-          ? Math.round(
-              ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100
-            )
-          : null;
+        const revenueThisMonth = Number(thisMonthPaymentAgg._sum.amount ?? 0);
+        const revenueLastMonth = Number(lastMonthPaymentAgg._sum.amount ?? 0);
+        const revenueChange =
+          revenueLastMonth > 0
+            ? Math.round(
+                ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100
+              )
+            : null;
 
-      const outstandingCount = outstandingRows[0]?.count ?? 0;
-      const outstandingTotal = outstandingRows[0]?.balance ?? 0;
-      const overdueCount = overdueRows[0]?.count ?? 0;
-      const overdueTotal = overdueRows[0]?.balance ?? 0;
+        const outstandingCount = outstandingRows[0]?.count ?? 0;
+        const outstandingTotal = outstandingRows[0]?.balance ?? 0;
+        const overdueCount = overdueRows[0]?.count ?? 0;
+        const overdueTotal = overdueRows[0]?.balance ?? 0;
 
-      const expensesThisMonth = thisMonthExpensesAgg[0]?.total ?? 0;
-      const expensesLastMonth = lastMonthExpensesAgg[0]?.total ?? 0;
-      const expensesChange =
-        expensesLastMonth > 0
-          ? Math.round(((expensesThisMonth - expensesLastMonth) / expensesLastMonth) * 100)
-          : null;
+        const expensesThisMonth = thisMonthExpensesAgg[0]?.total ?? 0;
+        const expensesLastMonth = lastMonthExpensesAgg[0]?.total ?? 0;
+        const expensesChange =
+          expensesLastMonth > 0
+            ? Math.round(((expensesThisMonth - expensesLastMonth) / expensesLastMonth) * 100)
+            : null;
 
-      return {
-        revenueThisMonth,
-        revenueLastMonth,
-        revenueChange,
-        outstandingCount,
-        outstandingTotal,
-        overdueCount,
-        overdueTotal,
-        cashCollected: revenueThisMonth,
-        expensesThisMonth,
-        expensesChange,
-      };
-    }),
+        return {
+          revenueThisMonth,
+          revenueLastMonth,
+          revenueChange,
+          outstandingCount,
+          outstandingTotal,
+          overdueCount,
+          overdueTotal,
+          cashCollected: revenueThisMonth,
+          expensesThisMonth,
+          expensesChange,
+        };
+        },
+        ["dashboard:summary", ctx.orgId],
+        { tags: [dashTag(ctx.orgId)], revalidate: DASHBOARD_TTL }
+      )()
+    ),
 
   revenueChart: protectedProcedure.query(({ ctx }) =>
     unstable_cache(
@@ -250,20 +256,29 @@ export const dashboardRouter = router({
     )()
   ),
 
-  activityFeed: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.auditLog.findMany({
-      where: { organizationId: ctx.orgId },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: {
-        id: true,
-        createdAt: true,
-        action: true,
-        entityType: true,
-        entityLabel: true,
+  activityFeed: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      async () => {
+        const rows = await ctx.db.auditLog.findMany({
+          where: { organizationId: ctx.orgId },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          select: {
+            id: true,
+            createdAt: true,
+            action: true,
+            entityType: true,
+            entityLabel: true,
+          },
+        });
+        // unstable_cache JSON-serializes: normalize Date so hits and misses
+        // return the same shape.
+        return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
       },
-    });
-  }),
+      ["dashboard:activityFeed", ctx.orgId],
+      { tags: [dashTag(ctx.orgId)], revalidate: DASHBOARD_TTL }
+    )()
+  ),
 
   topClients: protectedProcedure.query(({ ctx }) =>
     unstable_cache(
@@ -295,7 +310,9 @@ export const dashboardRouter = router({
     )()
   ),
 
-  estimateConversion: protectedProcedure.query(async ({ ctx }) => {
+  estimateConversion: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      async () => {
     const now = new Date();
     const thisMonthStart = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
     const lastMonthStart = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1);
@@ -336,9 +353,15 @@ export const dashboardRouter = router({
       thisMonth: calc(thisMonth),
       lastMonth: calc(lastMonth),
     };
-  }),
+      },
+      ["dashboard:estimateConversion", ctx.orgId],
+      { tags: [dashTag(ctx.orgId)], revalidate: DASHBOARD_TTL }
+    )()
+  ),
 
-  dueThisWeek: protectedProcedure.query(async ({ ctx }) => {
+  dueThisWeek: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      async () => {
     const now = new Date();
     const endOfWeek = new Date(now);
     endOfWeek.setDate(endOfWeek.getDate() + 7);
@@ -378,7 +401,11 @@ export const dashboardRouter = router({
         symbolPosition: inv.currency.symbolPosition,
       };
     });
-  }),
+      },
+      ["dashboard:dueThisWeek", ctx.orgId],
+      { tags: [dashTag(ctx.orgId)], revalidate: DASHBOARD_TTL }
+    )()
+  ),
 
   agingReceivables: protectedProcedure.query(({ ctx }) =>
     unstable_cache(
@@ -431,7 +458,9 @@ export const dashboardRouter = router({
     )()
   ),
 
-  cashFlowInsights: protectedProcedure.query(async ({ ctx }) => {
+  cashFlowInsights: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      async () => {
     const now = new Date();
     const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
     const currentQuarterStart = new Date(Date.UTC(now.getUTCFullYear(), Math.floor(now.getUTCMonth() / 3) * 3, 1));
@@ -511,26 +540,43 @@ export const dashboardRouter = router({
     const narrative = await generateCashFlowNarrative(metrics);
 
     return { metrics, narrative };
-  }),
+      },
+      // Also caches the LLM narrative call — the most expensive part of this widget.
+      ["dashboard:cashFlowInsights", ctx.orgId],
+      { tags: [dashTag(ctx.orgId)], revalidate: DASHBOARD_TTL }
+    )()
+  ),
 
-  openTasks: protectedProcedure.query(async ({ ctx }) => {
-    const openCount = await ctx.db.projectTask.count({
-      where: { organizationId: ctx.orgId, isCompleted: false },
-    });
-    return { openCount };
-  }),
+  openTasks: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      async () => {
+        const openCount = await ctx.db.projectTask.count({
+          where: { organizationId: ctx.orgId, isCompleted: false },
+        });
+        return { openCount };
+      },
+      ["dashboard:openTasks", ctx.orgId],
+      { tags: [dashTag(ctx.orgId)], revalidate: DASHBOARD_TTL }
+    )()
+  ),
 
-  retainerBurn: protectedProcedure.query(async ({ ctx }) => {
-    const periods = await ctx.db.hoursRetainerPeriod.findMany({
-      where: { status: "ACTIVE", retainer: { is: { organizationId: ctx.orgId } } },
-      select: { includedHoursSnapshot: true, timeEntries: { select: { minutes: true } } },
-    });
-    let includedHours = 0;
-    let usedHours = 0;
-    for (const p of periods) {
-      includedHours += Number(p.includedHoursSnapshot);
-      usedHours += p.timeEntries.reduce((sum: number, t: { minutes: unknown }) => sum + Number(t.minutes), 0) / 60;
-    }
-    return { includedHours, usedHours, periodCount: periods.length };
-  }),
+  retainerBurn: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      async () => {
+        const periods = await ctx.db.hoursRetainerPeriod.findMany({
+          where: { status: "ACTIVE", retainer: { is: { organizationId: ctx.orgId } } },
+          select: { includedHoursSnapshot: true, timeEntries: { select: { minutes: true } } },
+        });
+        let includedHours = 0;
+        let usedHours = 0;
+        for (const p of periods) {
+          includedHours += Number(p.includedHoursSnapshot);
+          usedHours += p.timeEntries.reduce((sum: number, t: { minutes: unknown }) => sum + Number(t.minutes), 0) / 60;
+        }
+        return { includedHours, usedHours, periodCount: periods.length };
+      },
+      ["dashboard:retainerBurn", ctx.orgId],
+      { tags: [dashTag(ctx.orgId)], revalidate: DASHBOARD_TTL }
+    )()
+  ),
 });

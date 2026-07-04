@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { PrismaClient } from "@/generated/prisma";
 
 /**
@@ -86,7 +87,10 @@ type ReceivableInvoice = {
  * a zero balance at any as-of date — important for historical point-in-time
  * reconstruction in the DSO trend.
  */
-async function fetchReceivables(db: PrismaClient, orgId: string): Promise<ReceivableInvoice[]> {
+// React cache(): arAging and dsoTrend render on the same DSO board (and batch
+// into one tRPC request), so this org-wide scan runs once per request, not once
+// per procedure.
+const fetchReceivables = cache(async (db: PrismaClient, orgId: string): Promise<ReceivableInvoice[]> => {
   const invoices = await db.invoice.findMany({
     where: {
       organizationId: orgId,
@@ -116,7 +120,7 @@ async function fetchReceivables(db: PrismaClient, orgId: string): Promise<Receiv
     currencySymbol: i.currency.symbol,
     payments: i.payments.map((p) => ({ amount: Number(p.amount), paidAt: p.paidAt })),
   }));
-}
+});
 
 // ── AR aging (point-in-time) ────────────────────────────────────────────────────
 

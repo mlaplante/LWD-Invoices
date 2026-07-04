@@ -579,16 +579,46 @@ describe("Reports Router Procedures", () => {
   // profitLoss
   // ──────────────────────────────────────────────────────────
   describe("profitLoss", () => {
+    // profitLoss aggregates in SQL: four $queryRaw calls issued in order —
+    // revenue by month, expenses by month, credits by month, discount total.
+    function mockProfitLossRaw({
+      revenue = [],
+      expenses = [],
+      credits = [],
+      discountTotal = 0,
+    }: {
+      revenue?: Array<{ month: string; total: number }>;
+      expenses?: Array<{ month: string; total: number }>;
+      credits?: Array<{ month: string; total: number }>;
+      discountTotal?: number;
+    }) {
+      ctx.db.$queryRaw
+        .mockResolvedValueOnce(revenue)
+        .mockResolvedValueOnce(expenses)
+        .mockResolvedValueOnce(credits)
+        .mockResolvedValueOnce([{ total: discountTotal }]);
+    }
+
+    // Flatten a $queryRaw template call's parameters, descending into nested
+    // Prisma.sql fragments, so tests can assert on the bound values.
+    function rawCallParams(call: unknown[]): unknown[] {
+      const flat: unknown[] = [];
+      const visit = (v: unknown) => {
+        if (v && typeof v === "object" && "values" in (v as object) && "strings" in (v as object)) {
+          for (const inner of (v as { values: unknown[] }).values) visit(inner);
+        } else {
+          flat.push(v);
+        }
+      };
+      for (const arg of call.slice(1)) visit(arg);
+      return flat;
+    }
+
     it("calculates net income from payments minus expenses minus credits", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([
-        { amount: 1000, paidAt: new Date("2026-01-15") },
-        { amount: 2000, paidAt: new Date("2026-01-20") },
-      ]);
-      ctx.db.expense.findMany.mockResolvedValue([
-        { rate: 100, qty: 2, createdAt: new Date("2026-01-10") },
-      ]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
+      mockProfitLossRaw({
+        revenue: [{ month: "2026-01", total: 3000 }],
+        expenses: [{ month: "2026-01", total: 200 }],
+      });
 
       const result = await caller.profitLoss({});
 
@@ -599,18 +629,17 @@ describe("Reports Router Procedures", () => {
     });
 
     it("groups revenue, expenses, and credits by month", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([
-        { amount: 1000, paidAt: new Date("2026-01-15") },
-        { amount: 500, paidAt: new Date("2026-02-10") },
-      ]);
-      ctx.db.expense.findMany.mockResolvedValue([
-        { rate: 50, qty: 1, createdAt: new Date("2026-01-05") },
-        { rate: 100, qty: 1, createdAt: new Date("2026-02-15") },
-      ]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([
-        { amount: 200, createdAt: new Date("2026-01-20") },
-      ]);
+      mockProfitLossRaw({
+        revenue: [
+          { month: "2026-01", total: 1000 },
+          { month: "2026-02", total: 500 },
+        ],
+        expenses: [
+          { month: "2026-01", total: 50 },
+          { month: "2026-02", total: 100 },
+        ],
+        credits: [{ month: "2026-01", total: 200 }],
+      });
 
       const result = await caller.profitLoss({});
 
@@ -621,40 +650,8 @@ describe("Reports Router Procedures", () => {
       expect(result.netByMonth["2026-02"]).toBe(500 - 100);
     });
 
-    it("calculates percentage-based discounts", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([
-        { discountType: "percentage", discountAmount: 10, subtotal: 1000 },
-      ]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
-
-      const result = await caller.profitLoss({});
-
-      expect(result.totalDiscountsGiven).toBe(100);
-    });
-
-    it("calculates flat amount discounts", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([
-        { discountType: "flat", discountAmount: 50, subtotal: 1000 },
-      ]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
-
-      const result = await caller.profitLoss({});
-
-      expect(result.totalDiscountsGiven).toBe(50);
-    });
-
-    it("combines multiple discounts", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([
-        { discountType: "percentage", discountAmount: 10, subtotal: 1000 }, // 100
-        { discountType: "flat", discountAmount: 25, subtotal: 500 },        // 25
-      ]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
+    it("returns the SQL-computed discount total", async () => {
+      mockProfitLossRaw({ discountTotal: 125 });
 
       const result = await caller.profitLoss({});
 
@@ -662,12 +659,7 @@ describe("Reports Router Procedures", () => {
     });
 
     it("rounds discounts to 2 decimal places", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([
-        { discountType: "percentage", discountAmount: 33.33, subtotal: 100 },
-      ]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
+      mockProfitLossRaw({ discountTotal: 33.333 });
 
       const result = await caller.profitLoss({});
 
@@ -675,10 +667,7 @@ describe("Reports Router Procedures", () => {
     });
 
     it("returns all expected fields", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
+      mockProfitLossRaw({});
 
       const result = await caller.profitLoss({});
 
@@ -694,10 +683,7 @@ describe("Reports Router Procedures", () => {
     });
 
     it("handles empty data with zeroes", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
+      mockProfitLossRaw({});
 
       const result = await caller.profitLoss({});
 
@@ -709,24 +695,35 @@ describe("Reports Router Procedures", () => {
       expect(result.netByMonth).toEqual({});
     });
 
-    it("filters payments by date range", async () => {
+    it("binds the date range into all four queries", async () => {
       const from = new Date("2026-01-01");
       const to = new Date("2026-01-31");
 
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
+      mockProfitLossRaw({});
 
       await caller.profitLoss({ from, to });
 
-      expect(ctx.db.payment.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            paidAt: { gte: from, lte: to },
-          }),
-        })
-      );
+      expect(ctx.db.$queryRaw).toHaveBeenCalledTimes(4);
+      // Compare timestamps: zod re-instantiates Dates during input parsing,
+      // so reference equality (toContain) would never match.
+      const boundTimes = (call: unknown[]) =>
+        rawCallParams(call)
+          .filter((p): p is Date => p instanceof Date)
+          .map((p) => p.getTime());
+      for (const call of ctx.db.$queryRaw.mock.calls) {
+        expect(boundTimes(call)).toEqual([from.getTime(), to.getTime()]);
+      }
+    });
+
+    it("does not bind dates when no range is provided", async () => {
+      mockProfitLossRaw({});
+
+      await caller.profitLoss({});
+
+      for (const call of ctx.db.$queryRaw.mock.calls) {
+        const params = rawCallParams(call);
+        expect(params.filter((p: unknown) => p instanceof Date)).toHaveLength(0);
+      }
     });
   });
 
@@ -1792,18 +1789,30 @@ describe("Reports Router Procedures", () => {
   });
 
   describe("profitLoss - additional edge cases", () => {
+    function mockProfitLossRaw({
+      revenue = [],
+      expenses = [],
+      credits = [],
+      discountTotal = 0,
+    }: {
+      revenue?: Array<{ month: string; total: number }>;
+      expenses?: Array<{ month: string; total: number }>;
+      credits?: Array<{ month: string; total: number }>;
+      discountTotal?: number;
+    }) {
+      ctx.db.$queryRaw
+        .mockResolvedValueOnce(revenue)
+        .mockResolvedValueOnce(expenses)
+        .mockResolvedValueOnce(credits)
+        .mockResolvedValueOnce([{ total: discountTotal }]);
+    }
+
     it("includes credits in net income calculation", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([
-        { amount: 5000, paidAt: new Date("2026-01-15") },
-      ]);
-      ctx.db.expense.findMany.mockResolvedValue([
-        { rate: 200, qty: 3, createdAt: new Date("2026-01-10") },
-      ]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([
-        { amount: 500, createdAt: new Date("2026-01-20") },
-        { amount: 300, createdAt: new Date("2026-01-25") },
-      ]);
+      mockProfitLossRaw({
+        revenue: [{ month: "2026-01", total: 5000 }],
+        expenses: [{ month: "2026-01", total: 600 }],
+        credits: [{ month: "2026-01", total: 800 }],
+      });
 
       const result = await caller.profitLoss({});
 
@@ -1814,16 +1823,11 @@ describe("Reports Router Procedures", () => {
     });
 
     it("merges all months from revenue, expenses, and credits", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([
-        { amount: 1000, paidAt: new Date("2026-01-15") },
-      ]);
-      ctx.db.expense.findMany.mockResolvedValue([
-        { rate: 100, qty: 1, createdAt: new Date("2026-02-10") },
-      ]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([
-        { amount: 50, createdAt: new Date("2026-03-05") },
-      ]);
+      mockProfitLossRaw({
+        revenue: [{ month: "2026-01", total: 1000 }],
+        expenses: [{ month: "2026-02", total: 100 }],
+        credits: [{ month: "2026-03", total: 50 }],
+      });
 
       const result = await caller.profitLoss({});
 
@@ -1833,134 +1837,29 @@ describe("Reports Router Procedures", () => {
       expect(result.netByMonth["2026-03"]).toBe(-50);
     });
 
-    it("filters expenses by date range", async () => {
-      const from = new Date("2026-01-01");
-      const to = new Date("2026-01-31");
-
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
-
-      await caller.profitLoss({ from, to });
-
-      expect(ctx.db.expense.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            createdAt: { gte: from, lte: to },
-          }),
-        })
-      );
-    });
-
-    it("filters invoices (discounts) by date range", async () => {
-      const from = new Date("2026-01-01");
-      const to = new Date("2026-01-31");
-
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
-
-      await caller.profitLoss({ from, to });
-
-      expect(ctx.db.invoice.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            date: { gte: from, lte: to },
-          }),
-        })
-      );
-    });
-
-    it("filters credit note applications by date range", async () => {
-      const from = new Date("2026-01-01");
-      const to = new Date("2026-01-31");
-
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
-
-      await caller.profitLoss({ from, to });
-
-      expect(ctx.db.creditNoteApplication.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            createdAt: { gte: from, lte: to },
-          }),
-        })
-      );
-    });
-
-    it("does not add date filters when no dates provided", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
-
-      await caller.profitLoss({});
-
-      const paymentCallArgs = ctx.db.payment.findMany.mock.calls[0][0];
-      expect(paymentCallArgs.where.paidAt).toBeUndefined();
-
-      const expenseCallArgs = ctx.db.expense.findMany.mock.calls[0][0];
-      expect(expenseCallArgs.where.createdAt).toBeUndefined();
-    });
-
-    it("excludes DRAFT invoices from discount calculation", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
-
-      await caller.profitLoss({});
-
-      expect(ctx.db.invoice.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            status: { notIn: [InvoiceStatus.DRAFT] },
-            discountType: { not: null },
-            discountAmount: { gt: 0 },
-          }),
-        })
-      );
-    });
-
-    it("handles large number of payments and expenses across months", async () => {
-      const payments = Array.from({ length: 12 }, (_, i) => ({
-        amount: 1000 + i * 100,
-        paidAt: new Date(2026, i, 15),
+    it("sums many months of revenue and expenses", async () => {
+      const revenue = Array.from({ length: 12 }, (_, i) => ({
+        month: `2026-${String(i + 1).padStart(2, "0")}`,
+        total: 1000 + i * 100,
       }));
       const expenses = Array.from({ length: 6 }, (_, i) => ({
-        rate: 50,
-        qty: 2,
-        createdAt: new Date(2026, i * 2, 10),
+        month: `2026-${String(i * 2 + 1).padStart(2, "0")}`,
+        total: 100,
       }));
 
-      ctx.db.payment.findMany.mockResolvedValue(payments);
-      ctx.db.expense.findMany.mockResolvedValue(expenses);
-      ctx.db.invoice.findMany.mockResolvedValue([]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
+      mockProfitLossRaw({ revenue, expenses });
 
       const result = await caller.profitLoss({});
 
-      const expectedRevenue = payments.reduce((s, p) => s + p.amount, 0);
-      const expectedExpenses = expenses.reduce((s, e) => s + e.rate * e.qty, 0);
+      const expectedRevenue = revenue.reduce((s, r) => s + r.total, 0);
+      const expectedExpenses = expenses.reduce((s, e) => s + e.total, 0);
       expect(result.totalRevenue).toBe(expectedRevenue);
       expect(result.totalExpenses).toBe(expectedExpenses);
       expect(result.netIncome).toBe(expectedRevenue - expectedExpenses);
     });
 
-    it("handles zero discount amount", async () => {
-      ctx.db.payment.findMany.mockResolvedValue([]);
-      ctx.db.expense.findMany.mockResolvedValue([]);
-      // Router filters discountAmount: { gt: 0 } so these shouldn't appear,
-      // but if they somehow do, the calculation should still work
-      ctx.db.invoice.findMany.mockResolvedValue([
-        { discountType: "percentage", discountAmount: 0, subtotal: 1000 },
-      ]);
-      ctx.db.creditNoteApplication.findMany.mockResolvedValue([]);
+    it("handles zero discount total", async () => {
+      mockProfitLossRaw({ discountTotal: 0 });
 
       const result = await caller.profitLoss({});
 
