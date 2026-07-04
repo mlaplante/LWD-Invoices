@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { unstable_cache } from "next/cache";
 import { TRPCError } from "@trpc/server";
 import { Prisma } from "@/generated/prisma";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { logAudit } from "../services/audit";
+import { orgTag, invalidateOrg } from "../cached";
 import { InvoiceStatus, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 import { getArAgingAsOf, getDsoTrend } from "@/server/services/ar-reports";
@@ -719,30 +721,48 @@ export const reportsRouter = router({
         year: z.number().int().min(2000).max(2100).optional(),
       }),
     )
-    .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findUniqueOrThrow({
-        where: { id: ctx.orgId },
-        select: {
-          estimatedTaxEnabled: true,
-          estimatedTaxSetAsidePercent: true,
-          estimatedTaxReminderDays: true,
-          currencies: {
-            where: { isDefault: true },
-            select: { symbol: true },
-          },
-        },
-      });
+    .query(({ ctx, input }) => {
       const year = input.year ?? new Date().getUTCFullYear();
-      const summary = await getEstimatedTaxSummary(ctx.db, ctx.orgId, {
-        year,
-        setAsidePercent: Number(org.estimatedTaxSetAsidePercent),
-      });
-      return {
-        ...summary,
-        enabled: org.estimatedTaxEnabled,
-        reminderDays: org.estimatedTaxReminderDays,
-        currencySymbol: org.currencies[0]?.symbol ?? "$",
-      };
+      // Rendered on the dashboard on every load; TTL-cached with explicit
+      // invalidation when a payment is recorded/deleted. Dates are normalized
+      // to ISO strings because unstable_cache JSON-serializes.
+      return unstable_cache(
+        async () => {
+          const org = await ctx.db.organization.findUniqueOrThrow({
+            where: { id: ctx.orgId },
+            select: {
+              estimatedTaxEnabled: true,
+              estimatedTaxSetAsidePercent: true,
+              estimatedTaxReminderDays: true,
+              currencies: {
+                where: { isDefault: true },
+                select: { symbol: true },
+              },
+            },
+          });
+          const summary = await getEstimatedTaxSummary(ctx.db, ctx.orgId, {
+            year,
+            setAsidePercent: Number(org.estimatedTaxSetAsidePercent),
+          });
+          return {
+            ...summary,
+            quarters: summary.quarters.map((q) => ({
+              ...q,
+              periodStart: q.periodStart.toISOString(),
+              periodEnd: q.periodEnd.toISOString(),
+              dueDate: q.dueDate.toISOString(),
+            })),
+            nextDue: summary.nextDue
+              ? { ...summary.nextDue, dueDate: summary.nextDue.dueDate.toISOString() }
+              : null,
+            enabled: org.estimatedTaxEnabled,
+            reminderDays: org.estimatedTaxReminderDays,
+            currencySymbol: org.currencies[0]?.symbol ?? "$",
+          };
+        },
+        ["reports:estimatedTax", ctx.orgId, String(year)],
+        { tags: [orgTag(ctx.orgId, "estimated-tax")], revalidate: 60 }
+      )();
     }),
 
   // Recorded estimated-tax payments for a tax year (drives paid vs. remaining).
@@ -787,6 +807,7 @@ export const reportsRouter = router({
         userId: ctx.userId,
         organizationId: ctx.orgId,
       }).catch(() => {});
+      invalidateOrg(ctx.orgId, "estimated-tax");
       return { ...created, amount: Number(created.amount) };
     }),
 
@@ -808,6 +829,7 @@ export const reportsRouter = router({
         userId: ctx.userId,
         organizationId: ctx.orgId,
       }).catch(() => {});
+      invalidateOrg(ctx.orgId, "estimated-tax");
       return { success: true };
     }),
 

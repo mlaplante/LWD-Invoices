@@ -26,7 +26,7 @@ export default async function EstimatedTaxReportPage({
   const symbol = data.currencySymbol;
   const money = (n: number) =>
     `${symbol}${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const fmtDate = (d: Date) =>
+  const fmtDate = (d: Date | string) =>
     new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   return (

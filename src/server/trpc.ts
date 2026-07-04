@@ -5,7 +5,7 @@ import superjson from "@/lib/superjson";
 import { ZodError } from "zod";
 import type { UserRole } from "@/generated/prisma";
 import { cookies } from "next/headers";
-import { findDbUserBySupabaseId } from "./user-context";
+import { findDbUserBySupabaseId, resolveMembership } from "./user-context";
 
 export const createTRPCContext = async () => {
   const { data: { user } } = await getUser();
@@ -24,33 +24,10 @@ export const createTRPCContext = async () => {
     if (dbUser) {
       isActive = dbUser.isActive;
 
-      // Fetch the active membership and the fallback first-membership in
-      // parallel. The activeOrgId lookup is a unique key hit, so the second
-      // findFirst is cheap when the cookie is fresh, and saves a roundtrip
-      // when the cookie is stale or absent.
-      const [activeMembership, firstMembership] = await Promise.all([
-        activeOrgId
-          ? db.userOrganization.findUnique({
-              where: {
-                userId_organizationId: {
-                  userId: dbUser.id,
-                  organizationId: activeOrgId,
-                },
-              },
-              select: { role: true, organizationId: true },
-            })
-          : Promise.resolve(null),
-        db.userOrganization.findFirst({
-          where: { userId: dbUser.id },
-          select: { role: true, organizationId: true },
-          orderBy: { createdAt: "asc" },
-        }),
-      ]);
-
       // UserOrganization is the sole source of truth for org access. The old
       // app_metadata fallback let users removed from an org (membership row
       // deleted) keep full access via stale Supabase metadata.
-      const membership = activeMembership ?? firstMembership;
+      const membership = await resolveMembership(dbUser.id, activeOrgId);
       if (membership) {
         orgId = membership.organizationId;
         userRole = membership.role;

@@ -1,11 +1,11 @@
 import { QueryClient, defaultShouldDehydrateQuery } from "@tanstack/react-query";
 import superjson from "@/lib/superjson";
 
-// Routers whose backend caches at ~60s (see src/server/routers/dashboard.ts and
-// src/server/routers/reports.ts). Aligning the client staleTime keeps the
+// Routers whose backend caches at ~60s (see src/server/routers/dashboard.ts,
+// reports.ts, and analytics.ts). Aligning the client staleTime keeps the
 // dashboard fresher than the 5-minute global default without overshooting the
 // backend cache window.
-const SHORT_STALE_ROUTERS = new Set(["dashboard", "reports", "search"]);
+const SHORT_STALE_ROUTERS = new Set(["dashboard", "reports", "search", "analytics"]);
 
 export function makeQueryClient() {
   const client = new QueryClient({

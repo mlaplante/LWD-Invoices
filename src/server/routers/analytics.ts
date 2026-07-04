@@ -1,5 +1,8 @@
 import { z } from "zod";
+import { unstable_cache } from "next/cache";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import type { db as Db } from "../db";
+import { orgTag } from "../cached";
 import { buildWeeklyBriefing, resolveBriefingRecipients } from "@/server/services/weekly-briefing";
 import { getAppUrl } from "@/lib/app-url";
 import { calculateClientHealthScores, calculateClientHealthScore } from "@/server/services/client-health-score";
@@ -34,6 +37,33 @@ import { recommendSendWindow, nextSendWindowOccurrence } from "@/server/services
 import { computeBudgetVsActual } from "@/server/services/expense-budgets";
 import { getBenchmarksForOrg } from "@/server/services/benchmarking-data";
 
+// Same passive-TTL strategy as the dashboard router: these are whole-org
+// analytics scans whose cost grows with history, and 60s staleness is fine.
+// All cached payloads below are JSON-safe (numbers/strings/booleans only) —
+// unstable_cache JSON-serializes, so anything returning Date/Decimal must be
+// normalized before it can be cached.
+const ANALYTICS_TTL = 60;
+const analyticsTag = (orgId: string) => orgTag(orgId, "analytics");
+
+// Shared by collectionsRisk + paymentProbability, which used to each run the
+// full buildCollectionRiskInputs scan — one org-wide query pass instead of two
+// per collections-page load.
+const getCollectionRiskData = (db: typeof Db, orgId: string) =>
+  unstable_cache(
+    async () => {
+      const now = new Date();
+      const org = await db.organization.findUnique({
+        where: { id: orgId },
+        select: { smartRemindersThreshold: true },
+      });
+      const threshold = org?.smartRemindersThreshold ?? 80;
+      const inputs = await buildCollectionRiskInputs(db, orgId, now, threshold);
+      return { generatedAt: now.toISOString(), threshold, inputs };
+    },
+    ["analytics:collectionRiskInputs", orgId],
+    { tags: [analyticsTag(orgId)], revalidate: ANALYTICS_TTL }
+  )();
+
 export const analyticsRouter = router({
   // Anonymized cross-tenant benchmark: how this org's DSO / overdue share
   // compares to similar-sized businesses. The output is aggregate + k-anonymized
@@ -44,11 +74,17 @@ export const analyticsRouter = router({
   }),
 
   // Composite per-client health scores (payment, engagement, revenue, overdue).
-  clientHealth: protectedProcedure.query(async ({ ctx }) => {
-    const now = new Date();
-    const inputs = await buildClientHealthInputs(ctx.db, ctx.orgId, now);
-    return { generatedAt: now.toISOString(), scores: calculateClientHealthScores(inputs) };
-  }),
+  clientHealth: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      async () => {
+        const now = new Date();
+        const inputs = await buildClientHealthInputs(ctx.db, ctx.orgId, now);
+        return { generatedAt: now.toISOString(), scores: calculateClientHealthScores(inputs) };
+      },
+      ["analytics:clientHealth", ctx.orgId],
+      { tags: [analyticsTag(ctx.orgId)], revalidate: ANALYTICS_TTL }
+    )()
+  ),
 
   // Health score for a single client (client-detail badge). Returns null when
   // the client has no invoices to score yet.
@@ -92,8 +128,6 @@ export const analyticsRouter = router({
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-      const now = new Date();
-      const forecastInput = await buildCashFlowForecastInput(ctx.db, ctx.orgId, input?.startingCash);
       const plan: ScenarioPlan = {
         latePayments: input?.scenarios ?? [],
         contractorHire: input?.contractorHire ?? null,
@@ -101,93 +135,120 @@ export const analyticsRouter = router({
       };
       const hasScenario =
         (plan.latePayments?.length ?? 0) > 0 || Boolean(plan.contractorHire) || Boolean(plan.churn);
-      const base = projectCashFlow(forecastInput, { now });
-      const scenario = hasScenario ? applyScenarioPlan(forecastInput, plan, { now }) : null;
-      return { base, scenario, appliedPlan: plan };
+
+      const compute = async () => {
+        const now = new Date();
+        const forecastInput = await buildCashFlowForecastInput(ctx.db, ctx.orgId, input?.startingCash);
+        const base = projectCashFlow(forecastInput, { now });
+        const scenario = hasScenario ? applyScenarioPlan(forecastInput, plan, { now }) : null;
+        return { base, scenario, appliedPlan: plan };
+      };
+
+      // Cache only the default view (no what-if plan, no custom starting cash) —
+      // scenario inputs are free-form and would fragment the cache into
+      // single-use keys, and what-if math on a fresh input build stays exact.
+      if (hasScenario || input?.startingCash !== undefined) return compute();
+      return unstable_cache(
+        compute,
+        ["analytics:cashFlowForecast", ctx.orgId],
+        { tags: [analyticsTag(ctx.orgId)], revalidate: ANALYTICS_TTL }
+      )();
     }),
 
   // Cash-margin profitability insights: per-client margin = revenue − (expenses
   // + attributable contractor pay), with the owner's own time counted as free.
   // This is a SEPARATE basis from /reports/profitability (which counts tracked
   // time at the billing rate); that report is intentionally left untouched.
-  profitabilityInsights: protectedProcedure.query(async ({ ctx }) => {
-    const [payments, expenses, contractorPayments, clients] = await Promise.all([
-      ctx.db.payment.findMany({
-        where: { organizationId: ctx.orgId },
-        select: { amount: true, invoice: { select: { clientId: true } } },
-      }),
-      ctx.db.expense.findMany({
-        where: { organizationId: ctx.orgId, project: { isNot: null } },
-        select: { id: true, rate: true, qty: true, project: { select: { clientId: true } } },
-      }),
-      // ContractorPayment has no `expense` relation (only an expenseId), so pay
-      // is attributed to a client by mapping its expenseId → the expense's
-      // project client below; unlinked payments are counted org-wide.
-      ctx.db.contractorPayment.findMany({
-        where: { organizationId: ctx.orgId },
-        select: { amount: true, expenseId: true },
-      }),
-      ctx.db.client.findMany({
-        where: { organizationId: ctx.orgId },
-        select: { id: true, name: true },
-      }),
-    ]);
+  profitabilityInsights: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      async () => {
+        const [payments, expenses, contractorPayments, clients] = await Promise.all([
+          ctx.db.payment.findMany({
+            where: { organizationId: ctx.orgId },
+            select: { amount: true, invoice: { select: { clientId: true } } },
+          }),
+          ctx.db.expense.findMany({
+            where: { organizationId: ctx.orgId, project: { isNot: null } },
+            select: { id: true, rate: true, qty: true, project: { select: { clientId: true } } },
+          }),
+          // ContractorPayment has no `expense` relation (only an expenseId), so pay
+          // is attributed to a client by mapping its expenseId → the expense's
+          // project client below; unlinked payments are counted org-wide.
+          ctx.db.contractorPayment.findMany({
+            where: { organizationId: ctx.orgId },
+            select: { amount: true, expenseId: true },
+          }),
+          ctx.db.client.findMany({
+            where: { organizationId: ctx.orgId },
+            select: { id: true, name: true },
+          }),
+        ]);
 
-    const clientName = new Map(clients.map((c) => [c.id, c.name]));
-    const revenueByClient = new Map<string, number>();
-    const costByClient = new Map<string, number>();
-    const add = (map: Map<string, number>, key: string, amount: number) =>
-      map.set(key, (map.get(key) ?? 0) + amount);
+        const clientName = new Map(clients.map((c) => [c.id, c.name]));
+        const revenueByClient = new Map<string, number>();
+        const costByClient = new Map<string, number>();
+        const add = (map: Map<string, number>, key: string, amount: number) =>
+          map.set(key, (map.get(key) ?? 0) + amount);
 
-    for (const p of payments) {
-      if (p.invoice.clientId) add(revenueByClient, p.invoice.clientId, Number(p.amount));
-    }
-    const expenseToClient = new Map<string, string>();
-    for (const e of expenses) {
-      if (e.project?.clientId) {
-        add(costByClient, e.project.clientId, Number(e.rate) * e.qty);
-        expenseToClient.set(e.id, e.project.clientId);
-      }
-    }
-    let unattributedContractorCost = 0;
-    for (const cp of contractorPayments) {
-      const clientId = cp.expenseId ? expenseToClient.get(cp.expenseId) : undefined;
-      if (clientId) add(costByClient, clientId, Number(cp.amount));
-      else unattributedContractorCost += Number(cp.amount);
-    }
+        for (const p of payments) {
+          if (p.invoice.clientId) add(revenueByClient, p.invoice.clientId, Number(p.amount));
+        }
+        const expenseToClient = new Map<string, string>();
+        for (const e of expenses) {
+          if (e.project?.clientId) {
+            add(costByClient, e.project.clientId, Number(e.rate) * e.qty);
+            expenseToClient.set(e.id, e.project.clientId);
+          }
+        }
+        let unattributedContractorCost = 0;
+        for (const cp of contractorPayments) {
+          const clientId = cp.expenseId ? expenseToClient.get(cp.expenseId) : undefined;
+          if (clientId) add(costByClient, clientId, Number(cp.amount));
+          else unattributedContractorCost += Number(cp.amount);
+        }
 
-    const ids = new Set([...revenueByClient.keys(), ...costByClient.keys()]);
-    const rows: ProfitabilityRow[] = Array.from(ids).map((id) => {
-      const revenue = Math.round((revenueByClient.get(id) ?? 0) * 100) / 100;
-      const cost = Math.round((costByClient.get(id) ?? 0) * 100) / 100;
-      const margin = Math.round((revenue - cost) * 100) / 100;
-      return {
-        id,
-        name: clientName.get(id) ?? "Unknown",
-        revenue,
-        cost,
-        margin,
-        marginPercent: revenue > 0 ? Math.round((margin / revenue) * 10000) / 100 : 0,
-      };
-    });
-    rows.sort((a, b) => a.marginPercent - b.marginPercent);
+        const ids = new Set([...revenueByClient.keys(), ...costByClient.keys()]);
+        const rows: ProfitabilityRow[] = Array.from(ids).map((id) => {
+          const revenue = Math.round((revenueByClient.get(id) ?? 0) * 100) / 100;
+          const cost = Math.round((costByClient.get(id) ?? 0) * 100) / 100;
+          const margin = Math.round((revenue - cost) * 100) / 100;
+          return {
+            id,
+            name: clientName.get(id) ?? "Unknown",
+            revenue,
+            cost,
+            margin,
+            marginPercent: revenue > 0 ? Math.round((margin / revenue) * 10000) / 100 : 0,
+          };
+        });
+        rows.sort((a, b) => a.marginPercent - b.marginPercent);
 
-    return {
-      rows,
-      insights: buildProfitabilityInsights(rows),
-      unattributedContractorCost: Math.round(unattributedContractorCost * 100) / 100,
-    };
-  }),
+        return {
+          rows,
+          insights: buildProfitabilityInsights(rows),
+          unattributedContractorCost: Math.round(unattributedContractorCost * 100) / 100,
+        };
+      },
+      ["analytics:profitabilityInsights", ctx.orgId],
+      { tags: [analyticsTag(ctx.orgId)], revalidate: ANALYTICS_TTL }
+    )()
+  ),
 
   // Runway / burn summary: monthly burn + net-position trajectory over the
   // forecast horizon. No stored bank balance, so days-of-cash stays null unless
   // a starting balance is supplied.
-  runway: protectedProcedure.query(async ({ ctx }) => {
-    const now = new Date();
-    const forecastInput = await buildCashFlowForecastInput(ctx.db, ctx.orgId);
-    const forecast = projectCashFlow(forecastInput, { now });
-    return deriveRunway(forecastInput, forecast);
-  }),
+  runway: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      async () => {
+        const now = new Date();
+        const forecastInput = await buildCashFlowForecastInput(ctx.db, ctx.orgId);
+        const forecast = projectCashFlow(forecastInput, { now });
+        return deriveRunway(forecastInput, forecast);
+      },
+      ["analytics:runway", ctx.orgId],
+      { tags: [analyticsTag(ctx.orgId)], revalidate: ANALYTICS_TTL }
+    )()
+  ),
 
   // How well past cash-flow forecasts matched reality. Scored snapshots come
   // from the weekly forecast-snapshots cron; until the first 30-day window
@@ -247,15 +308,9 @@ export const analyticsRouter = router({
 
   // Predictive collections / dunning queue ranked by late-payment risk.
   collectionsRisk: protectedProcedure.query(async ({ ctx }) => {
-    const now = new Date();
-    const org = await ctx.db.organization.findUnique({
-      where: { id: ctx.orgId },
-      select: { smartRemindersThreshold: true },
-    });
-    const threshold = org?.smartRemindersThreshold ?? 80;
-    const inputs = await buildCollectionRiskInputs(ctx.db, ctx.orgId, now, threshold);
+    const { generatedAt, threshold, inputs } = await getCollectionRiskData(ctx.db, ctx.orgId);
     return {
-      generatedAt: now.toISOString(),
+      generatedAt,
       reliablePayerThreshold: threshold,
       invoices: prioritizeCollections(inputs),
     };
@@ -265,13 +320,7 @@ export const analyticsRouter = router({
   // risk) for the invoice badge + detail breakdown. Returns a map keyed by
   // invoiceId so the UI can look up a single invoice without re-scoring.
   paymentProbability: protectedProcedure.query(async ({ ctx }) => {
-    const now = new Date();
-    const org = await ctx.db.organization.findUnique({
-      where: { id: ctx.orgId },
-      select: { smartRemindersThreshold: true },
-    });
-    const threshold = org?.smartRemindersThreshold ?? 80;
-    const inputs = await buildCollectionRiskInputs(ctx.db, ctx.orgId, now, threshold);
+    const { generatedAt, inputs } = await getCollectionRiskData(ctx.db, ctx.orgId);
     const invoices = inputs.map((input) => {
       const score = scoreCollectionRisk(input);
       return {
@@ -286,7 +335,7 @@ export const analyticsRouter = router({
     });
     const byInvoiceId: Record<string, (typeof invoices)[number]> = {};
     for (const inv of invoices) byInvoiceId[inv.invoiceId] = inv;
-    return { generatedAt: now.toISOString(), invoices, byInvoiceId };
+    return { generatedAt, invoices, byInvoiceId };
   }),
 
   // Recommended send window (weekday + time of day) for a client's invoice
@@ -371,9 +420,15 @@ export const analyticsRouter = router({
 
   // Live preview of the weekly business briefing (same payload the Monday cron
   // emails) — powers the settings preview + the in-app briefing surface.
-  weeklyBriefing: protectedProcedure.query(async ({ ctx }) => {
-    return buildWeeklyBriefing(ctx.db, ctx.orgId, new Date());
-  }),
+  weeklyBriefing: protectedProcedure.query(({ ctx }) =>
+    unstable_cache(
+      // Runs the client-health, forecast, and collection-risk builders in one
+      // go — by far the heaviest dashboard payload, so the cache matters most here.
+      () => buildWeeklyBriefing(ctx.db, ctx.orgId, new Date()),
+      ["analytics:weeklyBriefing", ctx.orgId],
+      { tags: [analyticsTag(ctx.orgId)], revalidate: ANALYTICS_TTL }
+    )()
+  ),
 
   // Send the briefing to the configured recipients right now (or admin fallback).
   // Useful to test delivery without waiting for Monday.
