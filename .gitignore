@@ -64,7 +64,6 @@ docs/plans/
 docs/test-coverage-*.md
 .claude/plans/
 .claude/settings.local.json
-.claude/skills/
 node-compile-cache/
 .playwright-mcp/
 
