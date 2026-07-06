@@ -65,7 +65,9 @@ async function hashPassphraseIfProvided(
   input: { portalPassphrase?: string },
 ): Promise<{ portalPassphraseHash?: string }> {
   if (!input.portalPassphrase) return {};
-  const hash = await bcrypt.hash(input.portalPassphrase, 12);
+  // Cost 13: existing cost-12 hashes still verify (bcrypt stores the cost in
+  // the hash), so this is a forward-only strengthening with no migration.
+  const hash = await bcrypt.hash(input.portalPassphrase, 13);
   return { portalPassphraseHash: hash };
 }
 
@@ -228,10 +230,19 @@ export const clientsRouter = router({
         ? { portalPassphraseHash: null }
         : await hashPassphraseIfProvided({ portalPassphrase });
       if (rest.tags) rest.tags = normalizeTags(rest.tags);
+      // Changing or removing the passphrase must invalidate any live portal
+      // sessions — otherwise an admin rotating a compromised passphrase leaves
+      // a stolen 30-day session cookie working. Mirrors the self-service reset
+      // route (api/portal/reset-passphrase). `passHash` is a non-empty object
+      // only when the passphrase actually changed.
+      const passphraseChanged = "portalPassphraseHash" in passHash;
       const result = await ctx.db.client.update({
         where: { id, organizationId: ctx.orgId },
         data: { ...rest, ...passHash },
       });
+      if (passphraseChanged) {
+        await ctx.db.clientPortalSession.deleteMany({ where: { clientId: result.id } });
+      }
       await logAudit({
         action: "UPDATED",
         entityType: "Client",

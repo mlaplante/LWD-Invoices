@@ -121,7 +121,7 @@ describe("Organization Router Procedures", () => {
         id: "test-org-123",
         name: "Updated Org Name",
         slug: "test-org",
-        logoUrl: "https://example.com/new-logo.png",
+        logoUrl: "https://test.supabase.co/storage/v1/object/public/logos/new-logo.png",
         brandColor: "#00FF00",
         invoicePrefix: "INV",
         invoiceNextNumber: 100,
@@ -135,21 +135,32 @@ describe("Organization Router Procedures", () => {
 
       const result = await caller.update({
         name: "Updated Org Name",
-        logoUrl: "https://example.com/new-logo.png",
+        logoUrl: "https://test.supabase.co/storage/v1/object/public/logos/new-logo.png",
         brandColor: "#00FF00",
       });
 
       expect(result.name).toBe("Updated Org Name");
-      expect(result.logoUrl).toBe("https://example.com/new-logo.png");
+      expect(result.logoUrl).toBe("https://test.supabase.co/storage/v1/object/public/logos/new-logo.png");
       expect(result.brandColor).toBe("#00FF00");
       expect(ctx.db.organization.update).toHaveBeenCalledWith({
         where: { id: "test-org-123" },
         data: {
           name: "Updated Org Name",
-          logoUrl: "https://example.com/new-logo.png",
+          logoUrl: "https://test.supabase.co/storage/v1/object/public/logos/new-logo.png",
           brandColor: "#00FF00",
         },
       });
+    });
+
+    it("rejects a logoUrl that is not on the storage host (SSRF guard)", async () => {
+      mockUpdateDeps();
+      await expect(
+        caller.update({ logoUrl: "http://169.254.169.254/latest/meta-data/" }),
+      ).rejects.toThrow(/storage host/);
+      await expect(
+        caller.update({ logoUrl: "https://evil.example.com/logo.png" }),
+      ).rejects.toThrow(/storage host/);
+      expect(ctx.db.organization.update).not.toHaveBeenCalled();
     });
 
     it("validates brandColor with hex format", async () => {

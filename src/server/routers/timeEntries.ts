@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
 import { PrismaClient, LineType } from "@/generated/prisma";
 import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
@@ -44,7 +44,7 @@ export const timeEntriesRouter = router({
       });
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z
         .object({
@@ -113,7 +113,7 @@ export const timeEntriesRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         id: z.string(),
@@ -134,7 +134,7 @@ export const timeEntriesRouter = router({
       return ctx.db.timeEntry.update({ where: { id, organizationId: ctx.orgId }, data });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.timeEntry.findUnique({
@@ -150,7 +150,7 @@ export const timeEntriesRouter = router({
       return ctx.db.timeEntry.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
-  billToInvoice: protectedProcedure
+  billToInvoice: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         invoiceId: z.string(),

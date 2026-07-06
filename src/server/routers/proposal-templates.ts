@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
 import { TRPCError } from "@trpc/server";
 import { proposalSectionsSchema, validateSections } from "./proposal-templates-helpers";
@@ -20,7 +20,7 @@ export const proposalTemplatesRouter = router({
       return template;
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({
       name: z.string().min(1).max(200),
       sections: proposalSectionsSchema,
@@ -50,7 +50,7 @@ export const proposalTemplatesRouter = router({
       return created;
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({
       id: z.string(),
       name: z.string().min(1).max(200).optional(),
@@ -86,7 +86,7 @@ export const proposalTemplatesRouter = router({
       return updated;
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.proposalTemplate.findFirst({

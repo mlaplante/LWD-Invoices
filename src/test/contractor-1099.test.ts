@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Decimal } from "@prisma/client-runtime-utils";
 import { createMockPrismaClient } from "./mocks/prisma";
 import { get1099Pack, NEC_1099_THRESHOLD } from "@/server/services/contractor-1099";
+import { encryptString } from "@/server/services/encryption";
 
 function makeContractor(overrides: Record<string, unknown> = {}) {
   return {
@@ -98,6 +99,21 @@ describe("get1099Pack", () => {
 
     const pack = await get1099Pack(db, "test-org-123", 2025);
     expect(pack.rows[0].tinMasked).toBe("**-***4321");
+  });
+
+  it("prefers the encrypted payer TIN and decrypts it (legacy plaintext ignored)", async () => {
+    db.organization.findUnique.mockResolvedValue({
+      ...org,
+      payerTin: "99-9999999", // stale legacy value must NOT win
+      payerTinEncrypted: encryptString("123456789"),
+    });
+    db.contractor.findMany.mockResolvedValue([makeContractor({ id: "c_1" })]);
+    db.contractorPayment.groupBy.mockResolvedValue([
+      { contractorId: "c_1", _sum: { amount: new Decimal("1500") }, _count: { _all: 3 } },
+    ]);
+
+    const pack = await get1099Pack(db, "test-org-123", 2025);
+    expect(pack.payer.tin).toBe("123456789");
   });
 
   it("marks eligible contractors without a W-9 as missingW9", async () => {

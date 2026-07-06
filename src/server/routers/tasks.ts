@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
 import { LineType } from "@/generated/prisma";
 import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
@@ -36,7 +36,7 @@ export const tasksRouter = router({
       });
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         projectId: z.string(),
@@ -62,7 +62,7 @@ export const tasksRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         id: z.string(),
@@ -91,7 +91,7 @@ export const tasksRouter = router({
       });
     }),
 
-  complete: protectedProcedure
+  complete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ id: z.string(), isCompleted: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       await getForOrg(ctx.db.projectTask, input.id, ctx.orgId, { entityName: "Task" });
@@ -101,14 +101,14 @@ export const tasksRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
       await getForOrg(ctx.db.projectTask, input.id, ctx.orgId, { entityName: "Task" });
       return ctx.db.projectTask.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
-  reorder: protectedProcedure
+  reorder: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.array(z.string()))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.$transaction(
@@ -121,7 +121,7 @@ export const tasksRouter = router({
       );
     }),
 
-  billToInvoice: protectedProcedure
+  billToInvoice: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         invoiceId: z.string(),

@@ -2,6 +2,7 @@ import { db } from "@/server/db";
 import { NextResponse } from "next/server";
 import { get1099Pack } from "@/server/services/contractor-1099";
 import { render1099FormsPdf } from "@/server/services/contractor-1099-pdf";
+import { safeErrorResponse } from "@/lib/api-errors";
 
 /**
  * Download a single contractor's 1099-NEC form from the portal.
@@ -51,8 +52,11 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error("[contractor-portal 1099]", err);
-    const message = err instanceof Error ? err.message : "Failed to generate 1099";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // PDF/1099 rendering errors can carry file paths and library internals;
+    // don't echo them to an unauthenticated token holder.
+    return safeErrorResponse("Failed to generate 1099", 500, {
+      route: "contractor-portal/[token]/1099",
+      cause: err,
+    });
   }
 }

@@ -1,4 +1,15 @@
 import type { PrismaClient } from "@/generated/prisma";
+import { decryptString } from "./encryption";
+
+/**
+ * Resolve the payer TIN for 1099 rendering, preferring the encrypted column and
+ * falling back to the legacy plaintext `payerTin` for rows not yet backfilled
+ * (see scripts/backfill-payer-tin.ts). Returns "" when neither is set.
+ */
+function resolvePayerTin(org: { payerTinEncrypted: string | null; payerTin: string | null } | null): string {
+  if (org?.payerTinEncrypted) return decryptString(org.payerTinEncrypted);
+  return org?.payerTin ?? "";
+}
 
 // IRS reporting threshold for Form 1099-NEC box 1 (nonemployee compensation).
 // A payer must file a 1099-NEC for any contractor paid this much or more in
@@ -98,7 +109,7 @@ export async function get1099Pack(
 
   const payer: Payer = {
     name: org?.name ?? "",
-    tin: org?.payerTin ?? "",
+    tin: resolvePayerTin(org),
     addressLine1: org?.addressLine1 ?? "",
     addressLine2: org?.addressLine2 ?? "",
     city: org?.city ?? "",

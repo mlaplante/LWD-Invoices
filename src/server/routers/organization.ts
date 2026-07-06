@@ -3,6 +3,29 @@ import { router, protectedProcedure, requireRole } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { logAudit } from "../services/audit";
 import { invalidateOrg } from "../cached";
+import { env } from "@/lib/env";
+import { encryptString } from "../services/encryption";
+
+// The org logo is rendered server-side by react-pdf (it fetches the URL when
+// generating invoice/proposal PDFs), so an arbitrary logoUrl is an SSRF vector
+// — e.g. http://169.254.169.254/... or an internal host. The only supported
+// upload path (/api/logo) writes a URL under the app's own Supabase storage
+// host, so pin logoUrl to that origin (https only).
+const logoUrlSchema = z
+  .string()
+  .url()
+  .refine(
+    (u) => {
+      try {
+        const url = new URL(u);
+        if (url.protocol !== "https:") return false;
+        return url.origin === new URL(env.NEXT_PUBLIC_SUPABASE_URL).origin;
+      } catch {
+        return false;
+      }
+    },
+    { message: "logoUrl must be an https URL on the app's storage host" },
+  );
 
 const timeZoneSchema = z.string().refine(
   (timeZone) => {
@@ -136,7 +159,7 @@ export const organizationRouter = router({
     .input(
       z.object({
         name: z.string().min(1).optional(),
-        logoUrl: z.string().url().nullable().optional(),
+        logoUrl: logoUrlSchema.nullable().optional(),
         brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
         timeZone: timeZoneSchema.optional(),
         invoicePrefix: z.string().min(1).max(10).optional(),
@@ -186,12 +209,36 @@ export const organizationRouter = router({
         postalCode: z.string().max(20).nullable().optional(),
         country: z.string().max(100).nullable().optional(),
         phone: z.string().max(30).nullable().optional(),
+        // Payer federal Tax ID (EIN/SSN) for 1099-NEC forms. Accepted in the
+        // clear over the wire but never persisted in the clear: encrypted
+        // server-side into payerTinEncrypted (see below). null clears it.
+        payerTin: z.string().max(30).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Extract payerTin so it is NEVER written to the legacy plaintext column.
+      // Encrypt it into payerTinEncrypted/payerTinLast4 and null out the legacy
+      // column, mirroring how Contractor TINs are stored (contractors.ts).
+      const { payerTin, ...rest } = input;
+      const tinData =
+        payerTin === undefined
+          ? {}
+          : payerTin === null
+            ? { payerTinEncrypted: null, payerTinLast4: null, payerTin: null }
+            : (() => {
+                const digits = payerTin.replace(/\D/g, "");
+                return digits
+                  ? {
+                      payerTinEncrypted: encryptString(digits),
+                      payerTinLast4: digits.slice(-4),
+                      payerTin: null,
+                    }
+                  : { payerTinEncrypted: null, payerTinLast4: null, payerTin: null };
+              })();
+
       const result = await ctx.db.organization.update({
         where: { id: ctx.orgId },
-        data: input,
+        data: { ...rest, ...tinData },
       });
 
       await logAudit({

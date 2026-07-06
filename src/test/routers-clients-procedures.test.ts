@@ -344,6 +344,24 @@ describe("Clients Router Procedures", () => {
       });
     });
 
+    it("revokes portal sessions when the passphrase is changed", async () => {
+      ctx.db.client.update.mockResolvedValue({ id: "c_1", name: "X", organizationId: "test-org-123" });
+      await caller.update({ id: "c_1", portalPassphrase: "new-secret-passphrase" });
+      expect(ctx.db.clientPortalSession.deleteMany).toHaveBeenCalledWith({ where: { clientId: "c_1" } });
+    });
+
+    it("revokes portal sessions when the passphrase is removed", async () => {
+      ctx.db.client.update.mockResolvedValue({ id: "c_1", name: "X", organizationId: "test-org-123" });
+      await caller.update({ id: "c_1", removePassphrase: true });
+      expect(ctx.db.clientPortalSession.deleteMany).toHaveBeenCalledWith({ where: { clientId: "c_1" } });
+    });
+
+    it("does not revoke portal sessions on an unrelated update", async () => {
+      ctx.db.client.update.mockResolvedValue({ id: "c_1", name: "X", organizationId: "test-org-123" });
+      await caller.update({ id: "c_1", name: "X" });
+      expect(ctx.db.clientPortalSession.deleteMany).not.toHaveBeenCalled();
+    });
+
     it("updates client with partial fields", async () => {
       ctx.db.client.update.mockResolvedValue({
         id: "c_1",

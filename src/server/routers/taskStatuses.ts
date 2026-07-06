@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
 import { getTaskStatusesForOrg, invalidateOrg } from "../cached";
 
@@ -9,7 +9,7 @@ export const taskStatusesRouter = router({
     return getTaskStatusesForOrg(ctx.db, ctx.orgId);
   }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         title: z.string().min(1),
@@ -26,7 +26,7 @@ export const taskStatusesRouter = router({
       return created;
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         id: z.string(),
@@ -47,7 +47,7 @@ export const taskStatusesRouter = router({
       return updated;
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.taskStatus.findUnique({
@@ -59,7 +59,7 @@ export const taskStatusesRouter = router({
       return deleted;
     }),
 
-  reorder: protectedProcedure
+  reorder: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.array(z.string()))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.$transaction(

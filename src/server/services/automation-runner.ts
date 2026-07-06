@@ -13,7 +13,7 @@ import { z } from "zod";
 import type { AutomationActionType } from "@/generated/prisma";
 import { sendEmail } from "./email-sender";
 import { notifyOrgAdmins } from "./notifications";
-import { buildTemplateVariables, interpolateTemplate } from "./automation-template";
+import { buildTemplateVariables, interpolateTemplate, renderTemplateHtml } from "./automation-template";
 import { daysOverdue, type AutomationEntity } from "./automation-engine";
 
 // ─── Action config schemas ─────────────────────────────────────────────────────
@@ -160,7 +160,10 @@ async function executeAction(
       emailKind: "AUTOMATIONS",
       to: invoice.client.email,
       subject: interpolateTemplate(cfg.subject, vars),
-      html: interpolateTemplate(cfg.body, vars),
+      // renderTemplateHtml escapes interpolated values (e.g. a client name
+      // containing markup) before building the HTML body, then linkifies URLs.
+      // Plain interpolateTemplate here would inject unescaped user data as HTML.
+      html: renderTemplateHtml(cfg.body, vars),
       invoiceId: invoice.id,
     });
     return;

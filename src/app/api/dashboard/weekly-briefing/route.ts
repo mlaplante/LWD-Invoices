@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
-import { getUser } from "@/lib/supabase/server";
 import { db } from "@/server/db";
 import { buildWeeklyBriefing } from "@/server/services/weekly-briefing";
+import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 
 export async function GET() {
-  const { data: { user } } = await getUser();
-  if (!user) {
+  // Resolve the org through live UserOrganization membership (+ activeOrgId
+  // cookie), not the stale app_metadata.organizationId — the latter let a user
+  // removed from an org keep reading its financial briefing.
+  const auth = await getAuthenticatedOrg();
+  if (isAuthError(auth)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const orgId = user.app_metadata?.organizationId as string | undefined;
-  if (!orgId) {
-    return NextResponse.json({ error: "No organization context" }, { status: 401 });
-  }
+  const { orgId } = auth;
 
   const data = await buildWeeklyBriefing(db, orgId);
   const horizon30 = data.forecast.find((h) => h.horizonDays === 30);

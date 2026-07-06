@@ -3,6 +3,7 @@ import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { getProposalFileSignedUrl } from "@/lib/supabase/storage";
 import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
+import { safeErrorResponse } from "@/lib/api-errors";
 
 export async function GET(
   _req: NextRequest,
@@ -43,22 +44,20 @@ export async function GET(
     const mod = await import("@/server/services/proposal-pdf");
     generateProposalPDF = mod.generateProposalPDF;
   } catch (err) {
-    console.error("[PDF] Failed to load proposal-pdf module:", err);
-    return new Response(
-      `PDF module load failed: ${err instanceof Error ? err.message : String(err)}`,
-      { status: 500, headers: { "Content-Type": "text/plain" } }
-    );
+    return safeErrorResponse("PDF module load failed", 500, {
+      route: "invoices/[id]/proposal-pdf",
+      cause: err,
+    });
   }
 
   let buffer: Buffer;
   try {
     buffer = await generateProposalPDF(invoice, proposal);
   } catch (err) {
-    console.error("[PDF] generateProposalPDF failed:", err);
-    return new Response(
-      `PDF generation failed: ${err instanceof Error ? err.message : String(err)}`,
-      { status: 500, headers: { "Content-Type": "text/plain" } }
-    );
+    return safeErrorResponse("PDF generation failed", 500, {
+      route: "invoices/[id]/proposal-pdf",
+      cause: err,
+    });
   }
 
   // Copy into a clean ArrayBuffer to avoid SharedArrayBuffer ambiguity

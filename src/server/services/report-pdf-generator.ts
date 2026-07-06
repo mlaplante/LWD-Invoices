@@ -8,6 +8,22 @@ export type ReportData = {
 };
 
 /**
+ * Escape a value for safe interpolation into report HTML. This HTML is both
+ * rendered to PDF and embedded verbatim into scheduled-report emails, so
+ * user-controlled fields (org/client/expense/supplier/tax names, invoice
+ * numbers) must be escaped or a name like `<img onerror=...>` becomes markup
+ * in the recipient's mail client.
+ */
+function esc(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Generates report HTML suitable for PDF conversion or email embedding.
  * Each report type queries the same data as the tRPC report procedures.
  */
@@ -63,7 +79,7 @@ async function generateProfitLossReport(
   const netIncome = totalRevenue - totalExpenses;
 
   const html = `
-    <h1>${orgName} - Profit &amp; Loss Report</h1>
+    <h1>${esc(orgName)} - Profit &amp; Loss Report</h1>
     <p>Generated: ${new Date().toLocaleDateString()}</p>
     <table style="width:100%; border-collapse:collapse; margin-top:20px;">
       <tr style="border-bottom:2px solid #000;">
@@ -111,7 +127,7 @@ async function generateAgingReport(orgId: string, orgName: string): Promise<Repo
   const total = Object.values(buckets).reduce((s, v) => s + v, 0);
 
   const html = `
-    <h1>${orgName} - Aging Report</h1>
+    <h1>${esc(orgName)} - Aging Report</h1>
     <p>Generated: ${now.toLocaleDateString()}</p>
     <table style="width:100%; border-collapse:collapse; margin-top:20px;">
       <tr style="border-bottom:2px solid #000;"><th style="text-align:left; padding:8px;">Bucket</th><th style="text-align:right; padding:8px;">Amount</th></tr>
@@ -143,9 +159,9 @@ async function generateUnpaidReport(
 
   const rows = invoices.map((inv) => `
     <tr>
-      <td style="padding:8px;">#${inv.number}</td>
-      <td style="padding:8px;">${inv.client.name}</td>
-      <td style="padding:8px;">${inv.status}</td>
+      <td style="padding:8px;">#${esc(inv.number)}</td>
+      <td style="padding:8px;">${esc(inv.client.name)}</td>
+      <td style="padding:8px;">${esc(inv.status)}</td>
       <td style="padding:8px;">${inv.dueDate?.toLocaleDateString() ?? "\u2014"}</td>
       <td style="text-align:right; padding:8px;">$${Number(inv.total).toFixed(2)}</td>
     </tr>
@@ -154,7 +170,7 @@ async function generateUnpaidReport(
   const total = invoices.reduce((s, inv) => s + Number(inv.total), 0);
 
   const html = `
-    <h1>${orgName} - Unpaid Invoices Report</h1>
+    <h1>${esc(orgName)} - Unpaid Invoices Report</h1>
     <p>Generated: ${new Date().toLocaleDateString()} | ${invoices.length} invoices</p>
     <table style="width:100%; border-collapse:collapse; margin-top:20px;">
       <tr style="border-bottom:2px solid #000;">
@@ -193,9 +209,9 @@ async function generateExpensesReport(
 
   const rows = expenses.map((e) => `
     <tr>
-      <td style="padding:8px;">${e.name}</td>
-      <td style="padding:8px;">${e.category?.name ?? "\u2014"}</td>
-      <td style="padding:8px;">${e.supplier?.name ?? "\u2014"}</td>
+      <td style="padding:8px;">${esc(e.name)}</td>
+      <td style="padding:8px;">${e.category?.name ? esc(e.category.name) : "\u2014"}</td>
+      <td style="padding:8px;">${e.supplier?.name ? esc(e.supplier.name) : "\u2014"}</td>
       <td style="text-align:right; padding:8px;">$${(Number(e.rate) * e.qty).toFixed(2)}</td>
     </tr>
   `).join("");
@@ -203,7 +219,7 @@ async function generateExpensesReport(
   const total = expenses.reduce((s, e) => s + Number(e.rate) * e.qty, 0);
 
   const html = `
-    <h1>${orgName} - Expenses Report</h1>
+    <h1>${esc(orgName)} - Expenses Report</h1>
     <p>Generated: ${new Date().toLocaleDateString()} | ${expenses.length} expenses</p>
     <table style="width:100%; border-collapse:collapse; margin-top:20px;">
       <tr style="border-bottom:2px solid #000;">
@@ -254,13 +270,13 @@ async function generateTaxLiabilityReport(
 
   const rows = Array.from(byTax.values())
     .sort((a, b) => b.total - a.total)
-    .map((t) => `<tr><td style="padding:8px;">${t.name} (${t.rate}%)</td><td style="text-align:right; padding:8px;">$${t.total.toFixed(2)}</td></tr>`)
+    .map((t) => `<tr><td style="padding:8px;">${esc(t.name)} (${t.rate}%)</td><td style="text-align:right; padding:8px;">$${t.total.toFixed(2)}</td></tr>`)
     .join("");
 
   const grandTotal = Array.from(byTax.values()).reduce((s, t) => s + t.total, 0);
 
   const html = `
-    <h1>${orgName} - Tax Liability Report</h1>
+    <h1>${esc(orgName)} - Tax Liability Report</h1>
     <p>Generated: ${new Date().toLocaleDateString()}</p>
     <table style="width:100%; border-collapse:collapse; margin-top:20px;">
       <tr style="border-bottom:2px solid #000;"><th style="text-align:left; padding:8px;">Tax</th><th style="text-align:right; padding:8px;">Collected</th></tr>

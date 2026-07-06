@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
+import { safeErrorResponse } from "@/lib/api-errors";
 
 export async function GET(_req: NextRequest) {
   const auth = await getAuthenticatedOrg();
@@ -29,22 +30,20 @@ export async function GET(_req: NextRequest) {
     const mod = await import("@/server/services/invoice-pdf");
     generateInvoicePDF = mod.generateInvoicePDF;
   } catch (err) {
-    console.error("[PDF] Failed to load invoice-pdf module:", err);
-    return new Response(
-      `PDF module load failed: ${err instanceof Error ? err.message : String(err)}`,
-      { status: 500, headers: { "Content-Type": "text/plain" } }
-    );
+    return safeErrorResponse("PDF module load failed", 500, {
+      route: "invoices/preview-pdf",
+      cause: err,
+    });
   }
 
   let buffer: Buffer;
   try {
     buffer = await generateInvoicePDF(invoice);
   } catch (err) {
-    console.error("[PDF] Preview generation failed:", err);
-    return new Response(
-      `PDF generation failed: ${err instanceof Error ? err.message : String(err)}`,
-      { status: 500, headers: { "Content-Type": "text/plain" } }
-    );
+    return safeErrorResponse("PDF generation failed", 500, {
+      route: "invoices/preview-pdf",
+      cause: err,
+    });
   }
 
   const arrayBuffer =

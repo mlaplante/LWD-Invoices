@@ -95,12 +95,21 @@ export async function proxy(request: NextRequest) {
   }
 
   // MFA checks — only call Supabase MFA APIs when there's reason to believe
-  // MFA is relevant (org requires 2FA or user previously enrolled).
+  // MFA is relevant (org requires 2FA or the user has a verified factor).
   // This avoids 1-2 extra network round-trips on every authenticated request.
+  //
+  // Enrollment state is read from the user's actual factors (getUser() returns
+  // them, so no extra round-trip), NOT from an app_metadata.mfaEnrolled flag:
+  // that flag was never written anywhere, so a user who self-enrolled TOTP in
+  // an org that doesn't org-wide require 2FA would otherwise skip the aal2
+  // step-up entirely, leaving an attacker with only the password able to reach
+  // the dashboard on an aal1 session despite the enrolled second factor.
   const orgRequire2FA = user.app_metadata?.require2FA as boolean | undefined;
-  const mfaEnrolled = user.app_metadata?.mfaEnrolled as boolean | undefined;
+  const hasVerifiedFactor = (user.factors ?? []).some(
+    (f) => f.status === "verified",
+  );
 
-  if (orgRequire2FA || mfaEnrolled) {
+  if (orgRequire2FA || hasVerifiedFactor) {
     const { data: aal } =
       await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
 
@@ -118,8 +127,8 @@ export async function proxy(request: NextRequest) {
 
     // Org enforcement: if org requires 2FA and user isn't enrolled, redirect to enrollment
     if (orgRequire2FA && !pathname.startsWith("/mfa-enroll")) {
-      const hasVerifiedFactor = aal?.nextLevel === "aal2";
-      if (!hasVerifiedFactor) {
+      const enrolled = aal?.nextLevel === "aal2";
+      if (!enrolled) {
         const enrollUrl = new URL("/mfa-enroll", request.url);
         return NextResponse.redirect(enrollUrl);
       }

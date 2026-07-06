@@ -125,11 +125,14 @@ export function MfaEnrollment() {
     // we generate them client-side and display them. In production, these would be
     // stored server-side. For now, Supabase's built-in recovery is handled via
     // email-based account recovery.)
-    const codes = Array.from({ length: 8 }, () =>
-      Array.from({ length: 8 }, () =>
-        "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]
-      ).join("")
-    );
+    // Use the crypto RNG, not Math.random(): if these codes are ever wired to
+    // real auth, a predictable generator would be a bypass.
+    const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const codes = Array.from({ length: 8 }, () => {
+      const bytes = new Uint8Array(8);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+    });
     setRecoveryCodes(codes);
     setState("recovery-codes");
     toast.success("Two-factor authentication enabled");
