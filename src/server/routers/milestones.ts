@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { generatePortalToken } from "@/lib/portal-session";
@@ -15,7 +15,7 @@ export const milestonesRouter = router({
       });
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         projectId: z.string(),
@@ -35,7 +35,7 @@ export const milestonesRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         id: z.string(),
@@ -58,7 +58,7 @@ export const milestonesRouter = router({
       return ctx.db.milestone.update({ where: { id, organizationId: ctx.orgId }, data });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.milestone.findUnique({
@@ -75,7 +75,7 @@ export const milestonesRouter = router({
       return ctx.db.milestone.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
-  reorder: protectedProcedure
+  reorder: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.array(z.string()))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.$transaction(
@@ -88,7 +88,7 @@ export const milestonesRouter = router({
       );
     }),
 
-  complete: protectedProcedure
+  complete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const milestone = await ctx.db.milestone.findUnique({
@@ -171,7 +171,7 @@ export const milestonesRouter = router({
       });
     }),
 
-  reopen: protectedProcedure
+  reopen: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const milestone = await ctx.db.milestone.findUnique({

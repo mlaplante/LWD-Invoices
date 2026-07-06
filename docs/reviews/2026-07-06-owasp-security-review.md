@@ -12,12 +12,13 @@ finding acted on below was confirmed by reading the code and tracing the data
 flow to a user-controlled input, not from a grep hit alone.
 
 **Verification ceiling:** Changes are **type-checked (`tsc --noEmit` clean) and
-unit-tested** — full suite **2158 tests pass** (2153 baseline + 5 new). No live
+unit-tested** — full suite **2162 tests pass** (2153 baseline + 9 new). No live
 database, no deployed environment, and no browser session were exercised. The
 2FA-enforcement change (middleware) and the SSRF host-pin are verified by tests
 and by reading Supabase's `getUser()` contract, not by an end-to-end auth run —
 validate the 2FA step-up against a real Supabase session before treating it as
-closed. `npm audit` (prod + dev): **0 vulnerabilities**.
+closed. The `payerTin` migration + backfill are authored but not applied (no DB
+in sandbox — see that item). `npm audit` (prod + dev): **0 vulnerabilities**.
 
 ---
 
@@ -117,30 +118,37 @@ are security theater until stored server-side — is noted under Roadmap.)
 still verify (bcrypt stores the cost in the hash), so this is forward-only with
 no migration.
 
+### A01 — `VIEWER` locked out of business-data mutations (**Medium**, intra-tenant) — *fixed in follow-up*
+Policy confirmed: `VIEWER` is read-only. Every ungated business-data mutation now
+uses `requireRole("OWNER","ADMIN","ACCOUNTANT")` (the "everyone except VIEWER"
+set) across `milestones`, `tasks`, `timeEntries`, `proposals` (create/update/
+delete), `projectTemplates`, `proposal-templates`, `taskStatuses`, `discussions`,
+and `timers`. **Deliberately left open** — self-scoped state a read-only user
+still needs: `notifications` (mark own read), `dashboardLayout` (own layout),
+`team.updateProfile`/`acceptInvite` (own account), `assistant.ask` (read-only
+query), `organization.switchOrg` (own session), and the public `portal.*`
+procedures. Queries (`list`/`get`) stay on `protectedProcedure`, so `VIEWER`
+retains full read access. Regression tests in
+`src/test/routers-viewer-role-gating.test.ts` assert VIEWER→FORBIDDEN on
+representative mutations, VIEWER can still read, and ACCOUNTANT passes the gate.
+
+### A02 — Organization `payerTin` (EIN/SSN) encrypted at rest (**Medium**) — *fixed in follow-up*
+Added `payerTinEncrypted` + `payerTinLast4` columns (migration
+`20260706000000_encrypt_payer_tin`) mirroring `Contractor.tinEncrypted`.
+`organization.update` now accepts `payerTin` and encrypts it server-side into
+`payerTinEncrypted`/`payerTinLast4`, nulling the legacy plaintext column so new
+writes never persist plaintext. The 1099 read path decrypts `payerTinEncrypted`
+and falls back to the legacy plaintext column for rows not yet backfilled.
+`scripts/backfill-payer-tin.ts` (npm `backfill:payer-tin`) re-encrypts existing
+plaintext rows. **Verification ceiling (Gate 5):** the migration and backfill are
+authored but **not run** — the sandbox has no DB. Before treating this closed:
+run `prisma migrate deploy` (happens automatically on the Netlify deploy) and the
+backfill against production, confirm zero remaining plaintext rows, then drop the
+legacy `payerTin` column in a follow-up migration.
+
 ---
 
 ## Confirmed still-open — needs a decision, migration, or ops change (not fixed here)
-
-### A01 — `VIEWER` role can perform mutations on several routers (**Medium**, intra-tenant)
-`milestones`, `tasks`, `timeEntries`, `proposals`, `projectTemplates`,
-`proposal-templates`, `taskStatuses` gate their update/delete (and create) on
-bare `protectedProcedure`, so a `VIEWER` can create/edit/delete and bill
-tasks/time to invoices in their own org. Blast radius is **intra-tenant only**
-(all queries are correctly org-scoped) — this is not a cross-tenant leak. It is
-**not auto-fixed** because the *whole* router (including `create`) is un-gated,
-so whether `VIEWER` is a strict read-only role or the default collaborator role
-is a **product-policy decision**: adding `requireRole` could lock out legitimate
-users. **Recommendation:** decide `VIEWER`'s contract, then gate these mutations
-with `requireRole("OWNER","ADMIN","ACCOUNTANT")` to match the financial routers.
-
-### A02 — Organization `payerTin` (EIN/SSN) stored in plaintext (**Medium**)
-`prisma/schema.prisma` `Organization.payerTin` holds the org's federal Tax ID
-(the schema comment notes it can be a sole-proprietor SSN) unencrypted, while the
-analogous `Contractor.tinEncrypted` is AES-GCM-encrypted with a `tinLast4`
-display value. **Not fixed here** — it needs a schema migration + encrypt-on-read/
-write path + backfill of existing rows, which is out of scope for a no-DB review
-pass. **Recommendation:** mirror the `Contractor.tinEncrypted`/`tinLast4` pattern
-(`encryptString`/`decryptString` from `encryption.ts`) in a dedicated migration PR.
 
 ### A02 — No key-rotation re-encrypt tooling (**Medium**, AUDIT-2026-05 S8)
 Still no `gateway:rotate-encryption-key` script; the keyring supports rotation but
@@ -213,8 +221,8 @@ them through `safeErrorResponse` for consistency in a follow-up cleanup.
 
 | Category | Status |
 |---|---|
-| A01 Broken Access Control | 1 fixed (weekly-briefing); 1 open policy decision (`VIEWER` mutations); no cross-tenant IDOR found |
-| A02 Cryptographic Failures | recovery-code RNG + bcrypt fixed; `payerTin` plaintext + rotation tooling open |
+| A01 Broken Access Control | weekly-briefing + `VIEWER` read-only gating fixed; no cross-tenant IDOR found |
+| A02 Cryptographic Failures | recovery-code RNG + bcrypt + `payerTin` encryption fixed; key-rotation tooling open |
 | A03 Injection | email HTML ×2 + CSV formula injection fixed; SQL/DOM-XSS clean |
 | A04 Insecure Design | anti-enumeration, dedup, lockout, keyring all present |
 | A05 Security Misconfiguration | strong headers; CSP `unsafe-inline` + Upstash-unset gap open (ops) |

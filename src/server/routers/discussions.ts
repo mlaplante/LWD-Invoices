@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 
 export const discussionsRouter = router({
   list: protectedProcedure
@@ -13,7 +13,7 @@ export const discussionsRouter = router({
       });
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ projectId: z.string(), subject: z.string().min(1), body: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       // Verify project belongs to org
@@ -34,7 +34,7 @@ export const discussionsRouter = router({
       });
     }),
 
-  reply: protectedProcedure
+  reply: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ discussionId: z.string(), body: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       // Verify discussion belongs to org

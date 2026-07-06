@@ -276,8 +276,13 @@ model Organization {
   phone               String?
   // ─── 1099 / Contractor Tax Pack ─────────────────────────────────────────────
   // Payer's federal Tax ID (EIN/SSN), printed in the PAYER block of generated
-  // 1099-NEC forms. Stored as entered; surfaced only to org admins.
-  payerTin            String?
+  // 1099-NEC forms. Encrypted at rest (AES-GCM), mirroring Contractor.tinEncrypted.
+  // `payerTin` is the LEGACY plaintext column, kept only so existing rows keep
+  // working until backfilled (scripts/backfill-payer-tin.ts) and then dropped.
+  // New writes go to payerTinEncrypted and null out payerTin.
+  payerTin            String?  // DEPRECATED: legacy plaintext, do not write
+  payerTinEncrypted   String?  // AES-GCM ciphertext of the payer SSN/EIN
+  payerTinLast4       String?  // last 4 digits, for display
   // ─── Mileage Tracking ───────────────────────────────────────────────────────
   // Default deduction/reimbursement rate per mile. Snapshotted onto each
   // MileageEntry at creation so changing the rate doesn't rewrite history.

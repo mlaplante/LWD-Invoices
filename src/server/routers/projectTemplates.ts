@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
 
 const templateTaskSchema = z.object({
@@ -32,7 +32,7 @@ export const projectTemplatesRouter = router({
       return template;
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         name: z.string().min(1),
@@ -61,7 +61,7 @@ export const projectTemplatesRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         id: z.string(),
@@ -109,7 +109,7 @@ export const projectTemplatesRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.projectTemplate.findUnique({
@@ -119,7 +119,7 @@ export const projectTemplatesRouter = router({
       return ctx.db.projectTemplate.delete({ where: { id: input.id, organizationId: ctx.orgId } });
     }),
 
-  applyToProject: protectedProcedure
+  applyToProject: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ templateId: z.string(), projectId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const template = await ctx.db.projectTemplate.findUnique({

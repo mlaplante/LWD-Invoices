@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, requireRole } from "../trpc";
 import { roundMinutes } from "../services/time-rounding";
 
 const pauseEventSchema = z.object({
@@ -52,7 +52,7 @@ export const timersRouter = router({
     });
   }),
 
-  start: protectedProcedure
+  start: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Check for existing active timer
@@ -93,7 +93,7 @@ export const timersRouter = router({
       });
     }),
 
-  pause: protectedProcedure
+  pause: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const timer = await ctx.db.timer.findFirst({
@@ -125,7 +125,7 @@ export const timersRouter = router({
       });
     }),
 
-  resume: protectedProcedure
+  resume: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const timer = await ctx.db.timer.findFirst({
@@ -144,7 +144,7 @@ export const timersRouter = router({
       });
     }),
 
-  stop: protectedProcedure
+  stop: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const timer = await ctx.db.timer.findFirst({

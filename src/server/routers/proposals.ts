@@ -154,7 +154,7 @@ export const proposalsRouter = router({
       });
     }),
 
-  create: protectedProcedure
+  create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         invoiceId: z.string(),
@@ -233,7 +233,7 @@ export const proposalsRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(
       z.object({
         invoiceId: z.string(),
@@ -256,7 +256,7 @@ export const proposalsRouter = router({
       });
     }),
 
-  delete: protectedProcedure
+  delete: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ invoiceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.proposalContent.findFirst({

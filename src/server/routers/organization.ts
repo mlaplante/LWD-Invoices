@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { logAudit } from "../services/audit";
 import { invalidateOrg } from "../cached";
 import { env } from "@/lib/env";
+import { encryptString } from "../services/encryption";
 
 // The org logo is rendered server-side by react-pdf (it fetches the URL when
 // generating invoice/proposal PDFs), so an arbitrary logoUrl is an SSRF vector
@@ -208,12 +209,36 @@ export const organizationRouter = router({
         postalCode: z.string().max(20).nullable().optional(),
         country: z.string().max(100).nullable().optional(),
         phone: z.string().max(30).nullable().optional(),
+        // Payer federal Tax ID (EIN/SSN) for 1099-NEC forms. Accepted in the
+        // clear over the wire but never persisted in the clear: encrypted
+        // server-side into payerTinEncrypted (see below). null clears it.
+        payerTin: z.string().max(30).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Extract payerTin so it is NEVER written to the legacy plaintext column.
+      // Encrypt it into payerTinEncrypted/payerTinLast4 and null out the legacy
+      // column, mirroring how Contractor TINs are stored (contractors.ts).
+      const { payerTin, ...rest } = input;
+      const tinData =
+        payerTin === undefined
+          ? {}
+          : payerTin === null
+            ? { payerTinEncrypted: null, payerTinLast4: null, payerTin: null }
+            : (() => {
+                const digits = payerTin.replace(/\D/g, "");
+                return digits
+                  ? {
+                      payerTinEncrypted: encryptString(digits),
+                      payerTinLast4: digits.slice(-4),
+                      payerTin: null,
+                    }
+                  : { payerTinEncrypted: null, payerTinLast4: null, payerTin: null };
+              })();
+
       const result = await ctx.db.organization.update({
         where: { id: ctx.orgId },
-        data: input,
+        data: { ...rest, ...tinData },
       });
 
       await logAudit({
