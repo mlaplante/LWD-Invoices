@@ -3,6 +3,28 @@ import { router, protectedProcedure, requireRole } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { logAudit } from "../services/audit";
 import { invalidateOrg } from "../cached";
+import { env } from "@/lib/env";
+
+// The org logo is rendered server-side by react-pdf (it fetches the URL when
+// generating invoice/proposal PDFs), so an arbitrary logoUrl is an SSRF vector
+// — e.g. http://169.254.169.254/... or an internal host. The only supported
+// upload path (/api/logo) writes a URL under the app's own Supabase storage
+// host, so pin logoUrl to that origin (https only).
+const logoUrlSchema = z
+  .string()
+  .url()
+  .refine(
+    (u) => {
+      try {
+        const url = new URL(u);
+        if (url.protocol !== "https:") return false;
+        return url.origin === new URL(env.NEXT_PUBLIC_SUPABASE_URL).origin;
+      } catch {
+        return false;
+      }
+    },
+    { message: "logoUrl must be an https URL on the app's storage host" },
+  );
 
 const timeZoneSchema = z.string().refine(
   (timeZone) => {
@@ -136,7 +158,7 @@ export const organizationRouter = router({
     .input(
       z.object({
         name: z.string().min(1).optional(),
-        logoUrl: z.string().url().nullable().optional(),
+        logoUrl: logoUrlSchema.nullable().optional(),
         brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
         timeZone: timeZoneSchema.optional(),
         invoicePrefix: z.string().min(1).max(10).optional(),

@@ -9,17 +9,25 @@ import { router, requireRole } from "../trpc";
  *
  * CSV escaping is intentionally minimal but RFC 4180-correct: any cell
  * containing ", \n, or \r is wrapped in double quotes, with embedded
- * quotes doubled.
+ * quotes doubled. Cells that start with a spreadsheet formula trigger
+ * (=, +, -, @, tab, CR) are additionally prefixed with a single quote so
+ * Excel/Sheets treat them as text, not executable formulas — matching the
+ * guard used by every other CSV path in the app (year-end, 1099, report
+ * exports). Without it a user-controlled value like =HYPERLINK(...) or a
+ * DDE payload runs when an accountant opens the export.
  */
+
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
 
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const s =
+  const raw =
     value instanceof Date
       ? value.toISOString()
       : typeof value === "object" && "toNumber" in (value as object)
       ? String((value as { toNumber(): number }).toNumber())
       : String(value);
+  const s = FORMULA_PREFIX.test(raw) ? `'${raw}` : raw;
   if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

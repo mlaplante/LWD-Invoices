@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { uploadW9 } from "@/lib/supabase-storage";
 import { NextResponse } from "next/server";
+import { safeErrorResponse } from "@/lib/api-errors";
 
 /**
  * Self-service W-9 upload from the contractor portal. Token-authenticated (no
@@ -42,8 +43,9 @@ export async function POST(
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[contractor-portal w9 upload]", err);
-    const message = err instanceof Error ? err.message : "Upload failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return safeErrorResponse("Upload failed", 500, {
+      route: "contractor-portal/[token]/w9",
+      cause: err,
+    });
   }
 }

@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { fullInvoiceInclude } from "@/server/services/invoice-pdf";
+import { safeErrorResponse } from "@/lib/api-errors";
 
 export async function GET(
   _req: NextRequest,
@@ -27,11 +28,10 @@ export async function GET(
     const { getOrRenderInvoicePDF } = await import("@/server/services/invoice-pdf-cache");
     buffer = await getOrRenderInvoicePDF(invoice);
   } catch (err) {
-    console.error("[PDF] generateInvoicePDF failed:", err);
-    return new Response(
-      `PDF generation failed: ${err instanceof Error ? err.message : String(err)}`,
-      { status: 500, headers: { "Content-Type": "text/plain" } }
-    );
+    return safeErrorResponse("PDF generation failed", 500, {
+      route: "invoices/[id]/pdf",
+      cause: err,
+    });
   }
 
   // Copy into a clean ArrayBuffer to avoid SharedArrayBuffer ambiguity

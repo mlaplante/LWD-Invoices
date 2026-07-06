@@ -81,6 +81,17 @@ describe("runRuleActions", () => {
     expect(arg.invoiceId).toBe("inv_1");
   });
 
+  it("escapes HTML in interpolated client data (no email-body injection)", async () => {
+    await runRuleActions(
+      [{ type: "SEND_EMAIL", config: { subject: "Hi", body: "Hi {{clientName}}" } }],
+      { ...invoice, client: { ...invoice.client, name: '<img src=x onerror="alert(1)">' } },
+      now,
+    );
+    const arg = sendEmail.mock.calls[0][0];
+    expect(arg.html).not.toContain("<img src=x");
+    expect(arg.html).toContain("&lt;img");
+  });
+
   it("notifies admins for a NOTIFY_ADMINS action", async () => {
     const result = await runRuleActions(
       [{ type: "NOTIFY_ADMINS", config: { title: "Overdue {{invoiceNumber}}", body: "Chase {{clientName}}" } }],
