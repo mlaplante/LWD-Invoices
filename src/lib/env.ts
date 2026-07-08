@@ -115,11 +115,20 @@ export const env = createEnv({
     // service-role key isn't also a cookie-forgery key — rotating one
     // shouldn't invalidate every portal session, and vice versa.
     PORTAL_SESSION_SECRET: z.string().min(32).optional(),
+    // Sentry error monitoring (server + edge runtimes). Optional: when unset,
+    // Sentry.init no-ops and no events are sent — so dev/preview without a
+    // Sentry project just runs with monitoring disabled. Note: SENTRY_ORG /
+    // SENTRY_PROJECT / SENTRY_AUTH_TOKEN are build-time only (source-map
+    // upload in next.config.ts) and are intentionally read via process.env
+    // there rather than validated here.
+    SENTRY_DSN: z.string().url().optional(),
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
     NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+    // Sentry DSN for the browser SDK. Optional — see SENTRY_DSN above.
+    NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
   },
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
@@ -157,9 +166,11 @@ export const env = createEnv({
     PROPOSAL_AI_PROVIDER: process.env.PROPOSAL_AI_PROVIDER,
     GEMINI_PROPOSAL_MODELS: process.env.GEMINI_PROPOSAL_MODELS,
     PORTAL_SESSION_SECRET: process.env.PORTAL_SESSION_SECRET,
+    SENTRY_DSN: process.env.SENTRY_DSN,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
 });

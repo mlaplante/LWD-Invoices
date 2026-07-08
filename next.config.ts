@@ -1,4 +1,5 @@
 import createBundleAnalyzer from "@next/bundle-analyzer";
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 // CSP: keep 'unsafe-inline' on style-src for Tailwind/Radix runtime styles and
@@ -40,7 +41,9 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
-  serverExternalPackages: ["@react-pdf/renderer", "svix", "@anthropic-ai/sdk"],
+  // @sentry/profiling-node ships a native .node addon; it must be externalized
+  // (not bundled) so it loads correctly in the Netlify/Lambda server runtime.
+  serverExternalPackages: ["@react-pdf/renderer", "svix", "@anthropic-ai/sdk", "@sentry/profiling-node"],
   typescript: {
     // Type-check in CI separately — skip during next build to save ~10-20s
     ignoreBuildErrors: true,
@@ -83,4 +86,25 @@ const withBundleAnalyzer = createBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-export default withBundleAnalyzer(nextConfig);
+// Wrap with Sentry LAST so it composes over the bundle-analyzer config.
+// Source maps upload only when SENTRY_AUTH_TOKEN is present (CI/Netlify);
+// locally it's absent and upload is skipped. org/project/authToken come from
+// the environment — see .env.example. tunnelRoute proxies browser events
+// through same-origin /monitoring, so the strict CSP's `connect-src 'self'`
+// already covers ingest (no CSP change needed) and ad-blockers don't drop them.
+export default withSentryConfig(withBundleAnalyzer(nextConfig), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Quiet in local builds, verbose in CI.
+  silent: !process.env.CI,
+  // Upload source maps for the full client bundle (incl. third-party) for
+  // readable stack traces, then delete them so they aren't served publicly.
+  widenClientFileUpload: true,
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+  // Route browser events through our own origin to satisfy the CSP.
+  tunnelRoute: "/monitoring",
+  // NOTE: `disableLogger` (Sentry debug-logger tree-shaking) is intentionally
+  // omitted — it's deprecated in v10 and is a no-op under Turbopack, which is
+  // this app's default builder. There's no Turbopack-supported equivalent yet.
+});
