@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function InvoiceDetailError({
   error,
@@ -10,24 +11,18 @@ export default function InvoiceDetailError({
   reset: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center">
-      <h2 className="text-xl font-semibold">Failed to load invoice</h2>
-      <p className="text-sm text-muted-foreground max-w-md">
-        {error.digest ? `Error ID: ${error.digest}` : "An unexpected error occurred."}
-      </p>
-      <div className="flex gap-3">
-        <button
-          onClick={reset}
-          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90"
-        >
-          Try again
-        </button>
-        <Link
-          href="/invoices"
-          className="px-4 py-2 rounded-md border border-border text-sm hover:bg-accent transition-colors"
-        >
-          Back to invoices
-        </Link>
+    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+      <div className="rounded-2xl border border-border/60 bg-card px-6 py-7 shadow-sm">
+        <h2 className="font-display text-3xl">Failed to load invoice</h2>
+        <p role="alert" className="mt-2 max-w-md text-sm text-muted-foreground">
+          {error.digest ? `Error ID: ${error.digest}` : "An unexpected error occurred."}
+        </p>
+        <div className="mt-5 flex justify-center gap-3">
+          <Button onClick={reset}>Try again</Button>
+          <Button asChild variant="outline">
+            <Link href="/invoices">Back to invoices</Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

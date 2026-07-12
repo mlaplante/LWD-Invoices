@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthShell } from "@/components/layout/AuthShell";
 function GithubIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -76,26 +77,17 @@ export default function SignUpPage() {
 
   if (sent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-        <div className="w-full max-w-sm text-center space-y-3">
-          <h1 className="text-2xl font-bold">Check your email</h1>
-          <p className="text-muted-foreground text-sm">
-            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
-          </p>
-        </div>
-      </div>
+      <AuthShell title="Check your email" description={`We sent a confirmation link to ${email}. Open it to activate your account.`}>
+        <Link href="/sign-in" className="text-sm font-medium text-primary hover:underline">
+          Back to sign in
+        </Link>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Create account</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Start using LWD Invoices today
-          </p>
-        </div>
+    <AuthShell title="Create your account" description="Set up a calmer way to run your client billing.">
+      <div className="space-y-6">
 
         <form onSubmit={handleSignUp} className="space-y-4">
           <div className="space-y-1.5">
@@ -136,7 +128,7 @@ export default function SignUpPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
@@ -171,6 +163,6 @@ export default function SignUpPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

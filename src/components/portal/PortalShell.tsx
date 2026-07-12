@@ -34,7 +34,7 @@ export function PortalShell({ branding, children, maxWidth = "max-w-3xl" }: Prop
               className="mx-auto mb-3 h-12 w-auto max-w-[160px] object-contain"
             />
           )}
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="font-display text-3xl leading-none tracking-tight text-foreground">
             {branding.orgName}
           </h1>
           {branding.tagline && (

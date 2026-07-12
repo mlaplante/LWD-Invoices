@@ -87,7 +87,7 @@ export function SidebarNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-col gap-0.5 flex-1">
+    <nav aria-label="Primary navigation" className="flex min-h-0 flex-1 flex-col gap-0.5">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30 px-2 mb-1">
         Main
       </p>

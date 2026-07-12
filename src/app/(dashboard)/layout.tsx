@@ -73,7 +73,7 @@ export default async function DashboardLayout({
       </a>
 
       {/* ── Desktop sidebar (static shell, pre-rendered) ──── */}
-      <aside className="hidden lg:flex w-56 shrink-0 flex-col p-4 gap-0 bg-sidebar print:hidden">
+      <aside className="hidden lg:flex w-56 shrink-0 flex-col gap-0 overflow-y-auto bg-sidebar p-4 print:hidden">
         <div className="flex items-center px-2 mb-6">
           <Image src="/logo-horizontal.png" alt="LWD Invoices" width={180} height={40} className="h-9 w-auto" priority />
         </div>
@@ -96,7 +96,7 @@ export default async function DashboardLayout({
       </aside>
 
       {/* ── Mobile fixed top header ────────────────────────── */}
-      <header className="lg:hidden fixed top-0 inset-x-0 z-20 h-14 flex items-center justify-between px-4 bg-sidebar border-b border-sidebar-border print:hidden">
+      <header className="lg:hidden fixed top-0 inset-x-0 z-20 h-14 flex items-center justify-between border-b border-sidebar-border bg-sidebar px-4 shadow-sm print:hidden">
         <div className="flex items-center">
           <Image src="/logo-horizontal.png" alt="LWD Invoices" width={150} height={34} className="h-7 w-auto" priority />
         </div>

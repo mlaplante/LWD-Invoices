@@ -73,6 +73,7 @@ export default async function InvoicesPage({
   }
 
   const { items: paginatedInvoices, total } = result;
+  const hasFilters = Boolean(search || dateFrom || dateTo || activeTab !== "all");
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(totalPages, 1));
   const start = (currentPage - 1) * PAGE_SIZE;
@@ -92,7 +93,7 @@ export default async function InvoicesPage({
     <div className="space-y-5">
       {/* Page heading */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
+        <h1 className="font-display text-3xl tracking-tight">Invoices</h1>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap print:hidden">
             <Suspense>
@@ -113,24 +114,27 @@ export default async function InvoicesPage({
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-1 border-b border-border print:hidden">
-        {TABS.map((t) => (
-          <Link
-            key={t.id}
-            href={t.id === "all" ? "/invoices" : `/invoices?tab=${t.id}`}
-            className={cn(
-              "px-4 py-2.5 text-sm font-medium transition-colors relative",
-              activeTab === t.id
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {t.label}
-            {activeTab === t.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-            )}
-          </Link>
-        ))}
+      <div className="overflow-x-auto border-b border-border print:hidden">
+        <nav aria-label="Invoice filters" className="flex min-w-max items-center gap-1">
+          {TABS.map((t) => (
+            <Link
+              key={t.id}
+              href={t.id === "all" ? "/invoices" : `/invoices?tab=${t.id}`}
+              aria-current={activeTab === t.id ? "page" : undefined}
+              className={cn(
+                "relative px-4 py-2.5 text-sm font-medium transition-colors",
+                activeTab === t.id
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.label}
+              {activeTab === t.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
+              )}
+            </Link>
+          ))}
+        </nav>
       </div>
 
       {/* Invoice table */}
@@ -139,13 +143,21 @@ export default async function InvoicesPage({
           <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
             <FileText className="w-6 h-6 text-primary" />
           </div>
-          <p className="font-semibold text-foreground">No invoices yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create your first invoice to get started.
+          <p className="font-semibold text-foreground">
+            {hasFilters ? "No invoices match these filters" : "No invoices yet"}
           </p>
-          <Button asChild className="mt-5" size="sm">
-            <Link href="/invoices/new">Create Invoice</Link>
-          </Button>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {hasFilters ? "Try clearing a filter or changing your search." : "Create your first invoice to get started."}
+          </p>
+          {hasFilters ? (
+            <Button asChild className="mt-5" size="sm" variant="outline">
+              <Link href="/invoices">Clear filters</Link>
+            </Button>
+          ) : (
+            <Button asChild className="mt-5" size="sm">
+              <Link href="/invoices/new">Create Invoice</Link>
+            </Button>
+          )}
         </div>
       ) : (
         <>

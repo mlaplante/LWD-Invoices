@@ -130,8 +130,40 @@
   body {
     @apply bg-background text-foreground;
   }
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
 }
 
 .font-display {
   font-family: var(--font-instrument-serif), serif;
+}
+
+.auth-shell__intro::before,
+.auth-shell__intro::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.auth-shell__intro::before {
+  width: 34rem;
+  height: 34rem;
+  right: -15rem;
+  top: -14rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 48%, transparent);
+  box-shadow: 0 0 0 3.5rem color-mix(in oklab, var(--primary) 8%, transparent),
+    0 0 0 7rem color-mix(in oklab, var(--primary) 4%, transparent);
+}
+
+.auth-shell__intro::after {
+  width: 18rem;
+  height: 18rem;
+  left: -8rem;
+  bottom: -11rem;
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
 }

@@ -64,13 +64,14 @@ export default async function ClientsPage({
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(totalPages, 1));
   const start = (currentPage - 1) * PAGE_SIZE;
+  const hasFilters = Boolean(search || tag);
 
   return (
     <div className="space-y-5">
       {/* Page heading */}
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">Clients</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-3xl tracking-tight">Clients</h1>
+        <div className="flex flex-wrap items-center gap-2">
           <Suspense>
             <SearchInput placeholder="Search clients…" />
           </Suspense>
@@ -118,13 +119,21 @@ export default async function ClientsPage({
           <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
             <Users className="w-6 h-6 text-primary" />
           </div>
-          <p className="font-semibold text-foreground">No clients yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add your first client to get started.
+          <p className="font-semibold text-foreground">
+            {hasFilters ? "No clients match these filters" : "No clients yet"}
           </p>
-          <Button asChild className="mt-5" size="sm">
-            <Link href="/clients/new">Add Client</Link>
-          </Button>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {hasFilters ? "Try clearing a filter or changing your search." : "Add your first client to get started."}
+          </p>
+          {hasFilters ? (
+            <Button asChild className="mt-5" size="sm" variant="outline">
+              <Link href="/clients">Clear filters</Link>
+            </Button>
+          ) : (
+            <Button asChild className="mt-5" size="sm">
+              <Link href="/clients/new">Add Client</Link>
+            </Button>
+          )}
         </div>
       ) : (
         <>

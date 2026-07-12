@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { AuthShell } from "@/components/layout/AuthShell";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -52,14 +53,8 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Reset password</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Enter your new password below.
-          </p>
-        </div>
+    <AuthShell title="Choose a new password" description="Use at least eight characters to keep your account secure.">
+      <div className="space-y-6">
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -88,7 +83,7 @@ export default function ResetPasswordPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
@@ -96,6 +91,6 @@ export default function ResetPasswordPage() {
           </Button>
         </form>
       </div>
-    </div>
+    </AuthShell>
   );
 }

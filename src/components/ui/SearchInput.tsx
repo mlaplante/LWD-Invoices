@@ -41,6 +41,7 @@ export function SearchInput({ placeholder = "Search…", paramName = "search" }:
         defaultValue={searchValue}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
+        aria-label={placeholder}
         className="h-8 w-56 rounded-lg border border-border bg-background pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
       />
     </div>

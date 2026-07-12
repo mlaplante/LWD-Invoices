@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ClientsLoading() {
   return (
-    <div className="space-y-5">
+    <div aria-busy="true" aria-label="Loading clients" className="space-y-5">
       <div className="flex items-center justify-between">
         <Skeleton className="h-8 w-24" />
         <Skeleton className="h-8 w-28" />

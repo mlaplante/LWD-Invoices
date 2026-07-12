@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthShell } from "@/components/layout/AuthShell";
 
 export default function ForgotPasswordPage() {
   const supabaseRef = useRef<SupabaseClient | null>(null);
@@ -41,29 +42,19 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-        <div className="w-full max-w-sm text-center space-y-3">
-          <h1 className="text-2xl font-bold">Check your email</h1>
-          <p className="text-muted-foreground text-sm">
-            We sent a password reset link to <strong>{email}</strong>. Click it to reset your password.
-          </p>
+      <AuthShell title="Check your email" description={`We sent a password reset link to ${email}. Open it to choose a new password.`}>
+        <div className="space-y-4">
           <Link href="/sign-in" className="text-sm text-primary font-medium hover:underline">
             Back to sign in
           </Link>
         </div>
-      </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Forgot password</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Enter your email and we&apos;ll send you a reset link.
-          </p>
-        </div>
+    <AuthShell title="Reset your password" description="Enter your email and we’ll send a link to reset it.">
+      <div className="space-y-6">
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -80,7 +71,7 @@ export default function ForgotPasswordPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
@@ -95,6 +86,6 @@ export default function ForgotPasswordPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

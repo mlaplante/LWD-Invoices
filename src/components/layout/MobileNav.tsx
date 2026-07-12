@@ -88,6 +88,7 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
 
       {/* Slide-up drawer */}
       <div
+        id="mobile-navigation-menu"
         className={cn(
           "lg:hidden fixed inset-x-0 bottom-0 z-40 bg-sidebar rounded-t-[28px]",
           "max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain",
@@ -179,7 +180,7 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
         className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-sidebar/95 backdrop-blur-xl border-t border-sidebar-border"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <nav className="flex items-stretch h-16">
+        <nav aria-label="Mobile navigation" className="flex items-stretch h-16">
           {tabs.map(({ href, label, icon: Icon }) => {
             const active = isActive(href);
             return (
@@ -201,7 +202,10 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
             );
           })}
           <button
+            type="button"
             onClick={() => setDrawerOpen((o) => !o)}
+            aria-controls="mobile-navigation-menu"
+            aria-expanded={drawerOpen}
             className={cn(
               "flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors duration-150",
               moreActive ? "text-primary" : "text-sidebar-foreground/35"

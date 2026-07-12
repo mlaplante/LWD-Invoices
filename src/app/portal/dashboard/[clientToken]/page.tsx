@@ -168,7 +168,7 @@ export default async function PortalDashboardPage({
       {/* Welcome header + download */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="font-display text-3xl tracking-tight text-foreground">
             Welcome, {client.name}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">

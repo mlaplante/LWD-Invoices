@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function InvoicesLoading() {
   return (
-    <div className="space-y-5">
+    <div aria-busy="true" aria-label="Loading invoices" className="space-y-5">
       <div className="flex items-center justify-between">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-8 w-28" />

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthShell } from "@/components/layout/AuthShell";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -41,14 +42,8 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Create your workspace</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Set up an organization to get started with LWD Invoices.
-          </p>
-        </div>
+    <AuthShell title="Create your workspace" description="Start with the business name your clients know you by.">
+      <div className="space-y-6">
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -65,7 +60,7 @@ export default function OnboardingPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
 
           <Button type="submit" className="w-full" disabled={loading || !name.trim()}>
@@ -73,6 +68,6 @@ export default function OnboardingPage() {
           </Button>
         </form>
       </div>
-    </div>
+    </AuthShell>
   );
 }

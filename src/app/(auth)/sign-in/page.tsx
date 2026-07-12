@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthShell } from "@/components/layout/AuthShell";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 type Mode = "password" | "magic-link" | "magic-link-sent";
 
@@ -119,29 +120,19 @@ export default function SignInPage() {
 
   if (mode === "magic-link-sent") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-        <div className="w-full max-w-sm text-center space-y-3">
-          <h1 className="text-2xl font-bold">Check your email</h1>
-          <p className="text-muted-foreground text-sm">
-            We sent a magic link to <strong>{email}</strong>. Click it to sign in.
-          </p>
+      <AuthShell title="Check your email" description={`We sent a magic link to ${email}. Open it to sign in.`}>
+        <div className="space-y-4">
           <Button variant="ghost" size="sm" onClick={() => setMode("magic-link")}>
             Resend link
           </Button>
         </div>
-      </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Sign in</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Welcome back to LWD Invoices
-          </p>
-        </div>
+    <AuthShell title="Welcome back" description="Sign in to manage your invoices and client relationships.">
+      <div className="space-y-6">
 
         {mode === "password" ? (
           <form onSubmit={handlePasswordSignIn} className="space-y-4">
@@ -177,7 +168,7 @@ export default function SignInPage() {
             </div>
 
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+              <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
@@ -200,7 +191,7 @@ export default function SignInPage() {
             </div>
 
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+              <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
@@ -250,6 +241,6 @@ export default function SignInPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

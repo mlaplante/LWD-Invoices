@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShieldCheck } from "lucide-react";
 import { safeRedirectPath } from "@/lib/safe-redirect";
+import { AuthShell } from "@/components/layout/AuthShell";
 
 export default function MfaChallengePage() {
   const router = useRouter();
@@ -78,18 +79,14 @@ export default function MfaChallengePage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center space-y-2">
+    <AuthShell title="Two-factor verification" description="Enter the six-digit code from your authenticator app.">
+      <div className="space-y-6">
+        <div className="space-y-2">
           <div className="flex justify-center">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
               <ShieldCheck className="w-6 h-6 text-primary" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold">Two-Factor Verification</h1>
-          <p className="text-muted-foreground text-sm">
-            Enter the 6-digit code from your authenticator app.
-          </p>
         </div>
 
         <form onSubmit={handleVerify} className="space-y-4">
@@ -112,7 +109,7 @@ export default function MfaChallengePage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
 
           <Button type="submit" className="w-full" disabled={loading || code.length !== 6}>
@@ -127,6 +124,6 @@ export default function MfaChallengePage() {
           </a>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }
