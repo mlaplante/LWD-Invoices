@@ -78,7 +78,7 @@ export function getAiAvailability(): AiAvailability {
 - Modify: the most settings-like existing router (check `src/server/routers/_app.ts` for a `settings`/`organization`/`system` router; if none fits, create `src/server/routers/system.ts` and register `system: systemRouter`)
 - Test: extend that router's existing procedure test file (or create one following `src/test/routers-*-procedures.test.ts` conventions)
 
-- [ ] **Step 1:** Add a `protectedProcedure` query `aiCapabilities` returning `getAiAvailability()` but ONLY the shape the client needs — do not leak which specific vendor keys exist:
+- [x] **Step 1:** Add a `protectedProcedure` query `aiCapabilities` returning `getAiAvailability()` but ONLY the shape the client needs — do not leak which specific vendor keys exist:
 
 ```ts
 aiCapabilities: protectedProcedure.query(() => {
@@ -87,7 +87,7 @@ aiCapabilities: protectedProcedure.query(() => {
 }),
 ```
 
-- [ ] **Step 2:** Test: keyless → `{ aiEnabled: false }`; with a key → `{ aiEnabled: true }`. Commit.
+- [x] **Step 2:** Test: keyless → `{ aiEnabled: false }`; with a key → `{ aiEnabled: true }`. Commit.
 
 ### Task 3: Fix `reports.weeklyBriefing` zeroed-data gate
 

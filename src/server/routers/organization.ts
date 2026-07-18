@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { logAudit } from "../services/audit";
+import { getAiAvailability } from "../services/ai-availability";
 import { invalidateOrg } from "../cached";
 import { env } from "@/lib/env";
 import { encryptString } from "../services/encryption";
@@ -40,6 +41,11 @@ const timeZoneSchema = z.string().refine(
 );
 
 export const organizationRouter = router({
+  aiCapabilities: protectedProcedure.query(() => {
+    const a = getAiAvailability();
+    return { aiEnabled: a.anyConfigured };
+  }),
+
   get: protectedProcedure.query(async ({ ctx }) => {
     const org = await ctx.db.organization.findUnique({
       where: { id: ctx.orgId },

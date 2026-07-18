@@ -1,10 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { organizationRouter } from "@/server/routers/organization";
 import { createMockContext } from "./mocks/trpc-context";
+import { getAiAvailability } from "@/server/services/ai-availability";
 
 // Mock the audit service (it uses a global db import, not ctx.db)
 vi.mock("@/server/services/audit", () => ({
   logAudit: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/server/services/ai-availability", () => ({
+  getAiAvailability: vi.fn(),
 }));
 
 // Mock the supabase admin import (called when name or require2FA changes)
@@ -26,6 +31,30 @@ describe("Organization Router Procedures", () => {
     vi.clearAllMocks();
     ctx = createMockContext();
     caller = organizationRouter.createCaller(ctx);
+  });
+
+  describe("aiCapabilities", () => {
+    it("reports AI disabled when no provider key is configured", async () => {
+      vi.mocked(getAiAvailability).mockReturnValue({
+        gemini: false,
+        openai: false,
+        anthropic: false,
+        anyConfigured: false,
+      });
+
+      await expect(caller.aiCapabilities()).resolves.toEqual({ aiEnabled: false });
+    });
+
+    it("reports AI enabled when a provider key is configured", async () => {
+      vi.mocked(getAiAvailability).mockReturnValue({
+        gemini: true,
+        openai: false,
+        anthropic: false,
+        anyConfigured: true,
+      });
+
+      await expect(caller.aiCapabilities()).resolves.toEqual({ aiEnabled: true });
+    });
   });
 
   describe("get", () => {
@@ -351,4 +380,3 @@ describe("Organization Router Procedures", () => {
     });
   });
 });
-
