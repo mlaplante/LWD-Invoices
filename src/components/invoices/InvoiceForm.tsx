@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useTransition, useRef } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  useRef,
+} from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { InvoiceType } from "@/generated/prisma";
@@ -24,7 +30,10 @@ import { HelpCircle } from "lucide-react";
 import { LineItemEditor, type LineItemValue } from "./LineItemEditor";
 import { InvoiceMetadata } from "./InvoiceMetadata";
 import { PaymentScheduleSection } from "./PaymentScheduleSection";
-import { calculateInvoiceTotalsWithDiscount, type TaxInput } from "@/server/services/tax-calculator";
+import {
+  calculateInvoiceTotalsWithDiscount,
+  type TaxInput,
+} from "@/server/services/tax-calculator";
 import { trpc } from "@/trpc/client";
 import { type PartialPaymentEntry } from "./PaymentScheduleDialog";
 import { InvoiceDraftQA } from "./InvoiceDraftQA";
@@ -52,14 +61,31 @@ type Props = {
   initialData?: Partial<InvoiceFormData>;
   orgPaymentTermsDays: number;
   orgDefaultDepositPercent: number | null;
-  clients: { id: string; name: string; defaultPaymentTermsDays: number | null }[];
-  currencies: { id: string; code: string; symbol: string; symbolPosition: string }[];
+  clients: {
+    id: string;
+    name: string;
+    defaultPaymentTermsDays: number | null;
+  }[];
+  currencies: {
+    id: string;
+    code: string;
+    symbol: string;
+    symbolPosition: string;
+  }[];
   taxes: { id: string; name: string; rate: number; isCompound: boolean }[];
 };
 
 const REMINDER_DAY_OPTIONS = [1, 2, 3, 5, 7, 14, 30];
 
-export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefaultDepositPercent, clients, currencies, taxes }: Props) {
+export function InvoiceForm({
+  mode,
+  initialData,
+  orgPaymentTermsDays,
+  orgDefaultDepositPercent,
+  clients,
+  currencies,
+  taxes,
+}: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const savingRef = useRef(false);
@@ -79,19 +105,21 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
   });
 
   const [useCustomReminders, setUseCustomReminders] = useState(
-    (initialData?.reminderDaysOverride?.length ?? 0) > 0
+    (initialData?.reminderDaysOverride?.length ?? 0) > 0,
   );
 
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [schedule, setSchedule] = useState<PartialPaymentEntry[]>(
-    initialData?.partialPayments ?? []
+    initialData?.partialPayments ?? [],
   );
 
   const [depositEnabled, setDepositEnabled] = useState(() => {
     if (mode === "edit") return false;
     return orgDefaultDepositPercent !== null;
   });
-  const [depositPercent, setDepositPercent] = useState(orgDefaultDepositPercent ?? 50);
+  const [depositPercent, setDepositPercent] = useState(
+    orgDefaultDepositPercent ?? 50,
+  );
 
   const activeCurrency =
     currencies.find((c) => c.id === form.currencyId) ?? defaultCurrency;
@@ -122,7 +150,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
     })),
     taxInputs,
     form.discountType ?? null,
-    form.discountAmount ?? 0
+    form.discountAmount ?? 0,
   );
 
   const sym = activeCurrency?.symbol ?? "$";
@@ -141,18 +169,26 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
     lineWarnings: string[];
   } | null>(null);
   const [naturalDraftInfo, setNaturalDraftInfo] = useState<string | null>(null);
-  const { data: stripeTaxPreflight } = trpc.organization.stripeTaxPreflight.useQuery(
-    { clientId: form.clientId || undefined },
-    { staleTime: 30_000 },
-  );
+  const { data: stripeTaxPreflight } =
+    trpc.organization.stripeTaxPreflight.useQuery(
+      { clientId: form.clientId || undefined },
+      { staleTime: 30_000 },
+    );
 
   // Non-blocking duplicate guard: once a client + a non-zero total are present,
   // check for a recent same-client invoice with a near-identical amount so a
   // double-bill is caught before sending. Never gates submission.
   const duplicateTotal = Math.round(invoiceTotals.total * 100) / 100;
   const { data: duplicateCheck } = trpc.invoices.checkDuplicate.useQuery(
-    { clientId: form.clientId, amount: duplicateTotal, excludeInvoiceId: form.id },
-    { enabled: Boolean(form.clientId) && duplicateTotal > 0, staleTime: 15_000 },
+    {
+      clientId: form.clientId,
+      amount: duplicateTotal,
+      excludeInvoiceId: form.id,
+    },
+    {
+      enabled: Boolean(form.clientId) && duplicateTotal > 0,
+      staleTime: 15_000,
+    },
   );
   const duplicateMatch = duplicateCheck?.matches[0];
 
@@ -166,7 +202,11 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
   function handleClientChange(clientId: string) {
     const client = clients.find((c) => c.id === clientId);
     const termsDays = client?.defaultPaymentTermsDays ?? orgPaymentTermsDays;
-    setForm((p) => ({ ...p, clientId, dueDate: calcDueDate(p.date, termsDays) }));
+    setForm((p) => ({
+      ...p,
+      clientId,
+      dueDate: calcDueDate(p.date, termsDays),
+    }));
   }
 
   function handleDateChange(newDate: string) {
@@ -204,7 +244,10 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
           description: line.description ?? undefined,
           qty: Number(line.qty),
           rate: Number(line.rate),
-          period: line.period === null || line.period === undefined ? undefined : Number(line.period),
+          period:
+            line.period === null || line.period === undefined
+              ? undefined
+              : Number(line.period),
           discount: Number(line.discount),
           discountIsPercentage: line.discountIsPercentage,
           taxIds: line.taxIds,
@@ -216,9 +259,15 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
         ambiguities: draft.ambiguities,
         lineWarnings: draft.lines.flatMap((line) => line.warnings ?? []),
       });
-      toast.success("Draft invoice created. Review and edit before saving or sending.");
+      toast.success(
+        "Draft invoice created. Review and edit before saving or sending.",
+      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create draft from prompt");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to create draft from prompt",
+      );
     }
   }
 
@@ -268,7 +317,12 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
   const didInitDeposit = useRef(false);
   useEffect(() => {
-    if (mode === "create" && depositEnabled && schedule.length === 0 && !didInitDeposit.current) {
+    if (
+      mode === "create" &&
+      depositEnabled &&
+      schedule.length === 0 &&
+      !didInitDeposit.current
+    ) {
       didInitDeposit.current = true;
       applyDepositSchedule(depositPercent, form.dueDate);
     }
@@ -286,16 +340,20 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
       discountType: form.discountType ?? null,
       discountAmount: form.discountAmount ?? 0,
       discountDescription: form.discountDescription || undefined,
-      installmentAutoChargeEnabled: schedule.length > 0 ? form.installmentAutoChargeEnabled ?? false : false,
-      partialPayments: schedule.length > 0
-        ? schedule.map((s) => ({
-            sortOrder: s.sortOrder,
-            amount: s.amount,
-            isPercentage: s.isPercentage,
-            dueDate: s.dueDate ? new Date(s.dueDate) : undefined,
-            notes: s.notes || undefined,
-          }))
-        : undefined,
+      installmentAutoChargeEnabled:
+        schedule.length > 0
+          ? (form.installmentAutoChargeEnabled ?? false)
+          : false,
+      partialPayments:
+        schedule.length > 0
+          ? schedule.map((s) => ({
+              sortOrder: s.sortOrder,
+              amount: s.amount,
+              isPercentage: s.isPercentage,
+              dueDate: s.dueDate ? new Date(s.dueDate) : undefined,
+              notes: s.notes || undefined,
+            }))
+          : undefined,
       lines: form.lines.map((l, idx) => ({
         sort: idx,
         lineType: l.lineType,
@@ -315,8 +373,13 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
   async function copyPrevious() {
     if (!form.clientId) return;
-    const prev = await utils.invoices.lastForClient.fetch({ clientId: form.clientId });
-    if (!prev) { toast.error("No previous invoice for this client"); return; }
+    const prev = await utils.invoices.lastForClient.fetch({
+      clientId: form.clientId,
+    });
+    if (!prev) {
+      toast.error("No previous invoice for this client");
+      return;
+    }
     setForm((f) => ({
       ...f,
       type: prev.type,
@@ -334,13 +397,22 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
       try {
         if (mode === "create") {
           const inv = await createMutation.mutateAsync(buildInput());
-          router.push(andSend ? `/invoices/${inv.id}?send=1` : `/invoices/${inv.id}`);
+          router.push(
+            andSend ? `/invoices/${inv.id}?send=1` : `/invoices/${inv.id}`,
+          );
         } else if (form.id) {
-          const inv = await updateMutation.mutateAsync({ id: form.id, ...buildInput() });
-          router.push(andSend ? `/invoices/${inv.id}?send=1` : `/invoices/${inv.id}`);
+          const inv = await updateMutation.mutateAsync({
+            id: form.id,
+            ...buildInput(),
+          });
+          router.push(
+            andSend ? `/invoices/${inv.id}?send=1` : `/invoices/${inv.id}`,
+          );
         }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to save invoice");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to save invoice",
+        );
       } finally {
         savingRef.current = false;
       }
@@ -396,7 +468,8 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
           <div className="space-y-1">
             <h2 className="text-sm font-semibold">Create from a prompt</h2>
             <p className="text-sm text-muted-foreground">
-              Describe the invoice in plain English. We’ll draft it only — review all matches before saving or sending.
+              Describe the invoice in plain English. We’ll draft it only —
+              review all matches before saving or sending.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -420,11 +493,19 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
             </Button>
           </div>
           {naturalDraftReview && (
-            <div className="rounded-lg border bg-background p-3 text-sm" role="status" aria-live="polite">
-              <p className="font-medium">Review required before saving or sending</p>
-              {naturalDraftReview.ambiguities.length === 0 && naturalDraftReview.lineWarnings.length === 0 ? (
+            <div
+              className="rounded-lg border bg-background p-3 text-sm"
+              role="status"
+              aria-live="polite"
+            >
+              <p className="font-medium">
+                Review required before saving or sending
+              </p>
+              {naturalDraftReview.ambiguities.length === 0 &&
+              naturalDraftReview.lineWarnings.length === 0 ? (
                 <p className="mt-1 text-muted-foreground">
-                  Draft fields were filled from your prompt. Confirm the client, line items, taxes, and due date.
+                  Draft fields were filled from your prompt. Confirm the client,
+                  line items, taxes, and due date.
                 </p>
               ) : (
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
@@ -439,13 +520,16 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
             </div>
           )}
           {naturalDraftInfo && (
-            <p className="text-sm text-muted-foreground" role="status">{naturalDraftInfo}</p>
+            <p className="text-sm text-muted-foreground" role="status">
+              {naturalDraftInfo}
+            </p>
           )}
         </section>
       )}
       {mode === "create" && aiCapabilities?.aiEnabled === false && (
         <p className="text-sm text-muted-foreground">
-          Create-from-prompt is unavailable until an AI provider key is configured. Enter invoice details manually.
+          Create-from-prompt is unavailable until an AI provider key is
+          configured. Enter invoice details manually.
         </p>
       )}
 
@@ -489,8 +573,18 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
               <div className="space-y-2 text-sm">
                 <p className="font-medium">Keyboard shortcuts</p>
                 <ul className="space-y-1 text-muted-foreground">
-                  <li><kbd className="rounded border px-1 text-xs font-mono">Enter</kbd> — new row</li>
-                  <li><kbd className="rounded border px-1 text-xs font-mono">⌘/Ctrl+D</kbd> — duplicate row</li>
+                  <li>
+                    <kbd className="rounded border px-1 text-xs font-mono">
+                      Enter
+                    </kbd>{" "}
+                    — new row
+                  </li>
+                  <li>
+                    <kbd className="rounded border px-1 text-xs font-mono">
+                      ⌘/Ctrl+D
+                    </kbd>{" "}
+                    — duplicate row
+                  </li>
                   <li>Drag handle or arrow keys — reorder</li>
                 </ul>
               </div>
@@ -510,18 +604,24 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
         <h3 className="text-sm font-semibold">Invoice Discount</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Discount Type</label>
+            <label
+              htmlFor="invoice-discount-type"
+              className="text-xs text-muted-foreground"
+            >
+              Discount Type
+            </label>
             <Select
               value={form.discountType ?? "none"}
               onValueChange={(v: string) =>
                 setForm((f) => ({
                   ...f,
-                  discountType: v === "none" ? null : (v as "percentage" | "fixed"),
-                  discountAmount: v === "none" ? 0 : f.discountAmount ?? 0,
+                  discountType:
+                    v === "none" ? null : (v as "percentage" | "fixed"),
+                  discountAmount: v === "none" ? 0 : (f.discountAmount ?? 0),
                 }))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger id="invoice-discount-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -534,10 +634,14 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
           {form.discountType && (
             <>
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">
+                <label
+                  htmlFor="invoice-discount-amount"
+                  className="text-xs text-muted-foreground"
+                >
                   {form.discountType === "percentage" ? "Percentage" : "Amount"}
                 </label>
                 <Input
+                  id="invoice-discount-amount"
                   type="number"
                   min={0}
                   max={form.discountType === "percentage" ? 100 : undefined}
@@ -549,15 +653,26 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
                       discountAmount: parseFloat(e.target.value) || 0,
                     }))
                   }
-                  placeholder={form.discountType === "percentage" ? "0-100" : "0.00"}
+                  placeholder={
+                    form.discountType === "percentage" ? "0-100" : "0.00"
+                  }
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Description (optional)</label>
+                <label
+                  htmlFor="invoice-discount-description"
+                  className="text-xs text-muted-foreground"
+                >
+                  Description (optional)
+                </label>
                 <Input
+                  id="invoice-discount-description"
                   value={form.discountDescription ?? ""}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, discountDescription: e.target.value }))
+                    setForm((f) => ({
+                      ...f,
+                      discountDescription: e.target.value,
+                    }))
                   }
                   placeholder="e.g. Early payment discount"
                   maxLength={200}
@@ -583,8 +698,12 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
         dueDate={form.dueDate}
         currencySymbol={sym}
         currencySymbolPosition={symPos}
-        installmentAutoChargeEnabled={form.installmentAutoChargeEnabled ?? false}
-        setInstallmentAutoChargeEnabled={(installmentAutoChargeEnabled) => setForm((current) => ({ ...current, installmentAutoChargeEnabled }))}
+        installmentAutoChargeEnabled={
+          form.installmentAutoChargeEnabled ?? false
+        }
+        setInstallmentAutoChargeEnabled={(installmentAutoChargeEnabled) =>
+          setForm((current) => ({ ...current, installmentAutoChargeEnabled }))
+        }
       />
 
       {/* Invoice Draft QA */}
@@ -601,8 +720,11 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
       {/* Notes */}
       <div className="space-y-1">
-        <label className="text-sm font-medium">Notes</label>
+        <label htmlFor="invoice-notes" className="text-sm font-medium">
+          Notes
+        </label>
         <Textarea
+          id="invoice-notes"
           value={form.notes ?? ""}
           onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
           placeholder="Payment terms, bank details, thank you message…"
@@ -618,7 +740,8 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
             checked={!useCustomReminders}
             onChange={(e) => {
               setUseCustomReminders(!e.target.checked);
-              if (e.target.checked) setForm((p) => ({ ...p, reminderDaysOverride: [] }));
+              if (e.target.checked)
+                setForm((p) => ({ ...p, reminderDaysOverride: [] }));
             }}
             className="rounded"
           />
@@ -627,7 +750,10 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
         {useCustomReminders && (
           <div className="mt-2 flex flex-wrap gap-2 pl-1">
             {REMINDER_DAY_OPTIONS.map((d) => (
-              <label key={d} className="flex items-center gap-1.5 text-sm cursor-pointer">
+              <label
+                key={d}
+                className="flex items-center gap-1.5 text-sm cursor-pointer"
+              >
                 <input
                   type="checkbox"
                   checked={form.reminderDaysOverride.includes(d)}
@@ -658,7 +784,9 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
           {invoiceTotals.discountTotal > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Discount</span>
-              <span className="text-emerald-600">-{fmt(invoiceTotals.discountTotal)}</span>
+              <span className="text-emerald-600">
+                -{fmt(invoiceTotals.discountTotal)}
+              </span>
             </div>
           )}
           {invoiceTotals.taxTotal > 0 && (
@@ -729,14 +857,24 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
           type="button"
           variant="outline"
           onClick={() => handleSave(false)}
-          disabled={isSaving || !form.clientId || !form.currencyId || stripeTaxPreflight?.ok === false}
+          disabled={
+            isSaving ||
+            !form.clientId ||
+            !form.currencyId ||
+            stripeTaxPreflight?.ok === false
+          }
         >
           {isSaving ? "Saving…" : "Save as Draft"}
         </Button>
         <Button
           type="button"
           onClick={() => handleSave(true)}
-          disabled={isSaving || !form.clientId || !form.currencyId || stripeTaxPreflight?.ok === false}
+          disabled={
+            isSaving ||
+            !form.clientId ||
+            !form.currencyId ||
+            stripeTaxPreflight?.ok === false
+          }
         >
           {isSaving ? "Saving…" : "Save & Send"}
         </Button>

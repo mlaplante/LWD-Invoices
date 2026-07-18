@@ -42,7 +42,13 @@ type Props = {
   onSuccess?: () => void;
 };
 
-export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess }: Props) {
+export function ExpenseForm({
+  projectId,
+  taxes,
+  categories,
+  suppliers,
+  onSuccess,
+}: Props) {
   const utils = trpc.useUtils();
   const { data: aiCapabilities } = trpc.organization.aiCapabilities.useQuery();
   const [form, setForm] = useState({
@@ -125,7 +131,8 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
       dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error ?? new Error("Could not read receipt file."));
+        reader.onerror = () =>
+          reject(reader.error ?? new Error("Could not read receipt file."));
         reader.readAsDataURL(file);
       });
     } catch {
@@ -173,16 +180,22 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
       )}
 
       <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-3">
-        <label className="text-sm font-medium">Scan receipt</label>
+        <label htmlFor="expense-receipt" className="text-sm font-medium">
+          Scan receipt
+        </label>
         <p className="mt-1 text-xs text-muted-foreground">
-          Upload a receipt photo or PDF (up to 3 MB) to prefill a draft expense. Review the fields before saving.
+          Upload a receipt photo or PDF (up to 3 MB) to prefill a draft expense.
+          Review the fields before saving.
         </p>
         {aiCapabilities?.aiEnabled === false ? (
           <p className="mt-2 text-xs text-muted-foreground">
-            Receipt scanning is unavailable until an AI provider key is configured. You can still enter the expense and attach the receipt manually.
+            Receipt scanning is unavailable until an AI provider key is
+            configured. You can still enter the expense and attach the receipt
+            manually.
           </p>
         ) : (
           <Input
+            id="expense-receipt"
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
             disabled={scanMutation.isPending}
@@ -191,7 +204,9 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
           />
         )}
         {scanMutation.isPending && (
-          <p className="mt-2 text-xs text-muted-foreground">Scanning receipt…</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Scanning receipt…
+          </p>
         )}
         {scanWarnings.length > 0 && (
           <div className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -206,8 +221,11 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
       </div>
 
       <div>
-        <label className="text-sm font-medium">Name</label>
+        <label htmlFor="expense-name" className="text-sm font-medium">
+          Name
+        </label>
         <Input
+          id="expense-name"
           value={form.name}
           onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
           placeholder="Expense name"
@@ -218,20 +236,28 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium">Qty</label>
+          <label htmlFor="expense-quantity" className="text-sm font-medium">
+            Qty
+          </label>
           <Input
+            id="expense-quantity"
             type="number"
             min="1"
             step="1"
             value={form.qty}
-            onChange={(e) => setForm((p) => ({ ...p, qty: parseInt(e.target.value) || 1 }))}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, qty: parseInt(e.target.value) || 1 }))
+            }
             className="mt-1"
           />
         </div>
 
         <div>
-          <label className="text-sm font-medium">Amount (each)</label>
+          <label htmlFor="expense-rate" className="text-sm font-medium">
+            Amount (each)
+          </label>
           <Input
+            id="expense-rate"
             type="number"
             min="0"
             step="0.01"
@@ -246,12 +272,16 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="text-sm font-medium">Tax</label>
+          <label htmlFor="expense-tax" className="text-sm font-medium">
+            Tax
+          </label>
           <Select
             value={form.taxId || "none"}
-            onValueChange={(v) => setForm((p) => ({ ...p, taxId: v === "none" ? "" : v }))}
+            onValueChange={(v) =>
+              setForm((p) => ({ ...p, taxId: v === "none" ? "" : v }))
+            }
           >
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="expense-tax" className="mt-1">
               <SelectValue placeholder="No tax" />
             </SelectTrigger>
             <SelectContent>
@@ -266,12 +296,16 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
         </div>
 
         <div>
-          <label className="text-sm font-medium">Category</label>
+          <label htmlFor="expense-category" className="text-sm font-medium">
+            Category
+          </label>
           <Select
             value={form.categoryId || "none"}
-            onValueChange={(v) => setForm((p) => ({ ...p, categoryId: v === "none" ? "" : v }))}
+            onValueChange={(v) =>
+              setForm((p) => ({ ...p, categoryId: v === "none" ? "" : v }))
+            }
           >
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="expense-category" className="mt-1">
               <SelectValue placeholder="None" />
             </SelectTrigger>
             <SelectContent>
@@ -286,12 +320,16 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
         </div>
 
         <div>
-          <label className="text-sm font-medium">Supplier</label>
+          <label htmlFor="expense-supplier" className="text-sm font-medium">
+            Supplier
+          </label>
           <Select
             value={form.supplierId || "none"}
-            onValueChange={(v) => setForm((p) => ({ ...p, supplierId: v === "none" ? "" : v }))}
+            onValueChange={(v) =>
+              setForm((p) => ({ ...p, supplierId: v === "none" ? "" : v }))
+            }
           >
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="expense-supplier" className="mt-1">
               <SelectValue placeholder="None" />
             </SelectTrigger>
             <SelectContent>
@@ -308,8 +346,11 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="text-sm font-medium">Paid Date</label>
+          <label htmlFor="expense-paid-date" className="text-sm font-medium">
+            Paid Date
+          </label>
           <Input
+            id="expense-paid-date"
             type="date"
             value={form.paidAt}
             onChange={(e) => setForm((p) => ({ ...p, paidAt: e.target.value }))}
@@ -317,19 +358,32 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
           />
         </div>
         <div>
-          <label className="text-sm font-medium">Due Date</label>
+          <label htmlFor="expense-due-date" className="text-sm font-medium">
+            Due Date
+          </label>
           <Input
+            id="expense-due-date"
             type="date"
             value={form.dueDate}
-            onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, dueDate: e.target.value }))
+            }
             className="mt-1"
           />
         </div>
         <div>
-          <label className="text-sm font-medium">Payment Details</label>
+          <label
+            htmlFor="expense-payment-details"
+            className="text-sm font-medium"
+          >
+            Payment Details
+          </label>
           <Input
+            id="expense-payment-details"
             value={form.paymentDetails}
-            onChange={(e) => setForm((p) => ({ ...p, paymentDetails: e.target.value }))}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, paymentDetails: e.target.value }))
+            }
             placeholder="Optional"
             className="mt-1"
           />
@@ -337,10 +391,15 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
       </div>
 
       <div>
-        <label className="text-sm font-medium">Description</label>
+        <label htmlFor="expense-description" className="text-sm font-medium">
+          Description
+        </label>
         <Textarea
+          id="expense-description"
           value={form.description}
-          onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, description: e.target.value }))
+          }
           placeholder="Optional"
           rows={2}
           className="mt-1"

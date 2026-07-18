@@ -203,7 +203,10 @@ export function MatchPaymentDialog({
             className={`flex justify-between text-sm ${remaining < -0.005 ? "text-destructive" : ""}`}
           >
             <span>Allocated {money(allocated)}</span>
-            <span>Remaining {money(remaining)}</span>
+            <p aria-live="polite">
+              Remaining {money(remaining)}
+              {remaining < -0.005 && " Over-allocated"}
+            </p>
           </div>
         </div>
         <DialogFooter>

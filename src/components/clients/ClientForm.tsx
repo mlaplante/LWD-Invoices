@@ -96,7 +96,9 @@ export function ClientForm({ mode, client }: Props) {
     setError(null);
 
     if (ccInvalid.length > 0) {
-      setError(`Invalid CC email${ccInvalid.length > 1 ? "s" : ""}: ${ccInvalid.join(", ")}`);
+      setError(
+        `Invalid CC email${ccInvalid.length > 1 ? "s" : ""}: ${ccInvalid.join(", ")}`,
+      );
       return;
     }
     if (ccTooMany) {
@@ -139,7 +141,7 @@ export function ClientForm({ mode, client }: Props) {
             startTransition(() => router.refresh());
           },
           onError: (err) => setError(err.message),
-        }
+        },
       );
     }
   }
@@ -156,8 +158,11 @@ export function ClientForm({ mode, client }: Props) {
 
       <div className="space-y-4">
         <div>
-          <label className="text-sm font-medium">Name *</label>
+          <label htmlFor="client-name" className="text-sm font-medium">
+            Name *
+          </label>
           <Input
+            id="client-name"
             value={form.name}
             onChange={(e) => handleChange("name", e.target.value)}
             placeholder="Client or company name"
@@ -168,8 +173,11 @@ export function ClientForm({ mode, client }: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium">Email</label>
+            <label htmlFor="client-email" className="text-sm font-medium">
+              Email
+            </label>
             <Input
+              id="client-email"
               type="email"
               value={form.email}
               onChange={(e) => handleChange("email", e.target.value)}
@@ -178,8 +186,11 @@ export function ClientForm({ mode, client }: Props) {
             />
           </div>
           <div>
-            <label className="text-sm font-medium">Phone</label>
+            <label htmlFor="client-phone" className="text-sm font-medium">
+              Phone
+            </label>
             <Input
+              id="client-phone"
               value={form.phone}
               onChange={(e) => handleChange("phone", e.target.value)}
               placeholder="+1 555 000 0000"
@@ -189,30 +200,53 @@ export function ClientForm({ mode, client }: Props) {
         </div>
 
         <div>
-          <label className="text-sm font-medium">CC Emails</label>
+          <label htmlFor="client-cc-emails" className="text-sm font-medium">
+            CC Emails
+          </label>
           <Input
+            id="client-cc-emails"
             value={form.ccEmails}
             onChange={(e) => handleChange("ccEmails", e.target.value)}
             placeholder="accountant@example.com, ap@example.com"
             className="mt-1"
             aria-invalid={ccInvalid.length > 0 || ccTooMany}
+            aria-describedby={
+              [
+                ccInvalid.length > 0 ? "client-cc-emails-invalid" : undefined,
+                ccTooMany ? "client-cc-emails-limit" : undefined,
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Comma-separated. Copied on invoice and receipt emails to this client. Up to 10 addresses.
+            Comma-separated. Copied on invoice and receipt emails to this
+            client. Up to 10 addresses.
           </p>
           {ccInvalid.length > 0 && (
-            <p className="text-xs text-destructive mt-1">
+            <p
+              id="client-cc-emails-invalid"
+              className="text-xs text-destructive mt-1"
+            >
               Invalid: {ccInvalid.join(", ")}
             </p>
           )}
           {ccTooMany && (
-            <p className="text-xs text-destructive mt-1">Limit is 10 addresses.</p>
+            <p
+              id="client-cc-emails-limit"
+              className="text-xs text-destructive mt-1"
+            >
+              Limit is 10 addresses.
+            </p>
           )}
         </div>
 
         <div>
-          <label className="text-sm font-medium">Address</label>
+          <label htmlFor="client-address" className="text-sm font-medium">
+            Address
+          </label>
           <Input
+            id="client-address"
             value={form.address}
             onChange={(e) => handleChange("address", e.target.value)}
             placeholder="Street address"
@@ -222,24 +256,33 @@ export function ClientForm({ mode, client }: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-sm font-medium">City</label>
+            <label htmlFor="client-city" className="text-sm font-medium">
+              City
+            </label>
             <Input
+              id="client-city"
               value={form.city}
               onChange={(e) => handleChange("city", e.target.value)}
               className="mt-1"
             />
           </div>
           <div>
-            <label className="text-sm font-medium">State / Province</label>
+            <label htmlFor="client-state" className="text-sm font-medium">
+              State / Province
+            </label>
             <Input
+              id="client-state"
               value={form.state}
               onChange={(e) => handleChange("state", e.target.value)}
               className="mt-1"
             />
           </div>
           <div>
-            <label className="text-sm font-medium">Postal Code</label>
+            <label htmlFor="client-postal-code" className="text-sm font-medium">
+              Postal Code
+            </label>
             <Input
+              id="client-postal-code"
               value={form.zip}
               onChange={(e) => handleChange("zip", e.target.value)}
               className="mt-1"
@@ -249,16 +292,22 @@ export function ClientForm({ mode, client }: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium">Country</label>
+            <label htmlFor="client-country" className="text-sm font-medium">
+              Country
+            </label>
             <Input
+              id="client-country"
               value={form.country}
               onChange={(e) => handleChange("country", e.target.value)}
               className="mt-1"
             />
           </div>
           <div>
-            <label className="text-sm font-medium">Tax ID / VAT</label>
+            <label htmlFor="client-tax-id" className="text-sm font-medium">
+              Tax ID / VAT
+            </label>
             <Input
+              id="client-tax-id"
               value={form.taxId}
               onChange={(e) => handleChange("taxId", e.target.value)}
               className="mt-1"
@@ -267,9 +316,15 @@ export function ClientForm({ mode, client }: Props) {
         </div>
 
         <div>
-          <label className="text-sm font-medium">Portal Passphrase</label>
+          <label
+            htmlFor="client-portal-passphrase"
+            className="text-sm font-medium"
+          >
+            Portal Passphrase
+          </label>
           <div className="flex gap-2 mt-1">
             <Input
+              id="client-portal-passphrase"
               type="password"
               value={form.portalPassphrase}
               onChange={(e) => handleChange("portalPassphrase", e.target.value)}
@@ -287,14 +342,18 @@ export function ClientForm({ mode, client }: Props) {
                 size="sm"
                 className="shrink-0 text-destructive hover:text-destructive"
                 onClick={() => {
-                  if (confirm("Remove the portal passphrase? The invoice portal will be accessible without a password.")) {
+                  if (
+                    confirm(
+                      "Remove the portal passphrase? The invoice portal will be accessible without a password.",
+                    )
+                  ) {
                     updateMutation.mutate(
                       { id: client.id, removePassphrase: true },
                       {
                         onSuccess: () => {
                           startTransition(() => router.refresh());
                         },
-                      }
+                      },
                     );
                   }
                 }}
@@ -306,8 +365,11 @@ export function ClientForm({ mode, client }: Props) {
         </div>
 
         <div>
-          <label className="text-sm font-medium">Tags</label>
+          <label htmlFor="client-tags" className="text-sm font-medium">
+            Tags
+          </label>
           <Input
+            id="client-tags"
             value={form.tags}
             onChange={(e) => handleChange("tags", e.target.value)}
             placeholder="retainer, net-60, agency"
@@ -319,8 +381,11 @@ export function ClientForm({ mode, client }: Props) {
         </div>
 
         <div>
-          <label className="text-sm font-medium">Notes</label>
+          <label htmlFor="client-notes" className="text-sm font-medium">
+            Notes
+          </label>
           <Textarea
+            id="client-notes"
             value={form.notes}
             onChange={(e) => handleChange("notes", e.target.value)}
             placeholder="Internal notes about this client"
@@ -330,9 +395,18 @@ export function ClientForm({ mode, client }: Props) {
         </div>
 
         <div>
-          <label className="text-sm font-medium">Default Payment Terms</label>
+          <label
+            htmlFor="client-default-payment-terms"
+            className="text-sm font-medium"
+          >
+            Default Payment Terms
+          </label>
           <Select
-            value={form.defaultPaymentTermsDays === null ? "default" : String(form.defaultPaymentTermsDays)}
+            value={
+              form.defaultPaymentTermsDays === null
+                ? "default"
+                : String(form.defaultPaymentTermsDays)
+            }
             onValueChange={(v) =>
               setForm((p) => ({
                 ...p,
@@ -340,26 +414,37 @@ export function ClientForm({ mode, client }: Props) {
               }))
             }
           >
-            <SelectTrigger className="mt-1 w-full">
+            <SelectTrigger
+              id="client-default-payment-terms"
+              className="mt-1 w-full"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {PAYMENT_TERM_OPTIONS.map((o) => (
-                <SelectItem key={o.days ?? "default"} value={o.days === null ? "default" : String(o.days)}>
+                <SelectItem
+                  key={o.days ?? "default"}
+                  value={o.days === null ? "default" : String(o.days)}
+                >
                   {o.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground mt-1">
-            Overrides the organization default for new invoices with this client.
+            Overrides the organization default for new invoices with this
+            client.
           </p>
         </div>
       </div>
 
       <div className="flex gap-3">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving…" : mode === "create" ? "Create Client" : "Save Changes"}
+          {isPending
+            ? "Saving…"
+            : mode === "create"
+              ? "Create Client"
+              : "Save Changes"}
         </Button>
         <Button
           type="button"
