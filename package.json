@@ -32,7 +32,7 @@
     }
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.112.2",
+    "@anthropic-ai/sdk": "^0.112.3",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -73,7 +73,7 @@
     "sonner": "^2.0.7",
     "stripe": "^22.3.2",
     "superjson": "^2.2.6",
-    "svix": "^1.97.0",
+    "svix": "^1.98.0",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
