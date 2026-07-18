@@ -28,7 +28,7 @@
 
 **Files:** Modify `prisma/schema.prisma`
 
-- [ ] **Step 1:** Add:
+- [x] **Step 1:** Add:
 
 ```prisma
 enum TriageCategory {
@@ -60,8 +60,8 @@ model InboundEmailTriage {
 
 Plus back-relations: `triage InboundEmailTriage?` on `InboundEmail`, `inboundEmailTriages InboundEmailTriage[]` on `Organization`.
 
-- [ ] **Step 2:** Create the migration the same way the payment-reconciliation plan describes (migrate dev if DB available, else `prisma migrate diff --from-migrations ... --script` into a new timestamped folder). Verify SQL is only CREATE TYPE / CREATE TABLE / CREATE INDEX / ALTER TABLE ADD (FK constraint adds are fine).
-- [ ] **Step 3:** `npx prisma generate` → commit.
+- [x] **Step 2:** Create the migration the same way the payment-reconciliation plan describes (migrate dev if DB available, else `prisma migrate diff --from-migrations ... --script` into a new timestamped folder). Verify SQL is only CREATE TYPE / CREATE TABLE / CREATE INDEX / ALTER TABLE ADD (FK constraint adds are fine).
+- [x] **Step 3:** `npx prisma generate` → commit.
 
 ### Task 2: Classifier service (pure logic first)
 
@@ -179,7 +179,7 @@ Fixtures are **raw model outputs + context → expected finalized triage** (grad
 - promisedDate on a QUESTION → stripped to null.
 - Plus 3 more ordinary happy-path cases.
 
-- [ ] Steps: write fixtures + grader → `npm run test:eval` → all suites green (including pre-existing ones) → commit.
+- [x] Steps: write fixtures + grader → `npm run test:eval` → all suites green (including pre-existing ones) → commit.
 
 ### Task 6: Full verification
 
