@@ -25,6 +25,8 @@ import {
   Activity,
   Banknote,
   TrendingUp,
+  GitMerge,
+  MessageSquare,
   Car,
   Plus,
   Send,
@@ -51,13 +53,19 @@ const moreItems = [
   { href: "/contractors", label: "Contractors", icon: Contact },
   { href: "/assistant", label: "Ask AI", icon: Sparkles },
   { href: "/activity", label: "Activity", icon: Activity },
-  { href: "/money-intelligence", label: "Money Intelligence", icon: TrendingUp },
+  {
+    href: "/money-intelligence",
+    label: "Money Intelligence",
+    icon: TrendingUp,
+  },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
   { href: "/disputes", label: "Disputes", icon: ShieldAlert },
   { href: "/invoices/unpaid", label: "Unpaid", icon: Receipt },
   { href: "/proposals", label: "Proposals", icon: FileText },
   { href: "/collections", label: "Collections", icon: Banknote },
+  { href: "/replies", label: "Reply triage", icon: MessageSquare },
+  { href: "/reconciliation", label: "Reconciliation", icon: GitMerge },
   { href: "/tickets", label: "Tickets", icon: LifeBuoy },
   { href: "/settings/team", label: "Team", icon: UsersRound },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -65,7 +73,13 @@ const moreItems = [
 
 type MobileAction = "expense" | "reminder" | "timer" | null;
 
-export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; activeOrgId?: string }) {
+export function MobileNav({
+  orgName,
+  activeOrgId,
+}: {
+  orgName?: string | null;
+  activeOrgId?: string;
+}) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [action, setAction] = useState<MobileAction>(null);
   const pathname = usePathname();
@@ -93,9 +107,11 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
           "lg:hidden fixed inset-x-0 bottom-0 z-40 bg-sidebar rounded-t-[28px]",
           "max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain",
           "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
-          drawerOpen ? "translate-y-0" : "translate-y-full"
+          drawerOpen ? "translate-y-0" : "translate-y-full",
         )}
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}
+        style={{
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+        }}
       >
         {/* Drag handle — tappable close target, pinned while the drawer scrolls */}
         <button
@@ -122,21 +138,30 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
         {/* Quick actions — shared action primitives */}
         <div className="px-4 grid grid-cols-3 gap-2 pb-3">
           <button
-            onClick={() => { setDrawerOpen(false); setAction("expense"); }}
+            onClick={() => {
+              setDrawerOpen(false);
+              setAction("expense");
+            }}
             className="flex flex-col items-center gap-2 py-4 rounded-2xl text-sidebar-foreground/70 active:bg-sidebar-accent/40"
           >
             <Wallet className="w-5 h-5" />
             <span className="text-[11px] font-semibold">Log expense</span>
           </button>
           <button
-            onClick={() => { setDrawerOpen(false); setAction("timer"); }}
+            onClick={() => {
+              setDrawerOpen(false);
+              setAction("timer");
+            }}
             className="flex flex-col items-center gap-2 py-4 rounded-2xl text-sidebar-foreground/70 active:bg-sidebar-accent/40"
           >
             <Clock className="w-5 h-5" />
             <span className="text-[11px] font-semibold">Start timer</span>
           </button>
           <button
-            onClick={() => { setDrawerOpen(false); setAction("reminder"); }}
+            onClick={() => {
+              setDrawerOpen(false);
+              setAction("reminder");
+            }}
             className="flex flex-col items-center gap-2 py-4 rounded-2xl text-sidebar-foreground/70 active:bg-sidebar-accent/40"
           >
             <Send className="w-5 h-5" />
@@ -157,7 +182,7 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
                   "flex flex-col items-center gap-2 py-4 rounded-2xl transition-colors",
                   active
                     ? "bg-sidebar-accent text-sidebar-foreground"
-                    : "text-sidebar-foreground/50 active:bg-sidebar-accent/40"
+                    : "text-sidebar-foreground/50 active:bg-sidebar-accent/40",
                 )}
               >
                 <Icon className={cn("w-5 h-5", active && "text-primary")} />
@@ -190,14 +215,16 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
                 onClick={() => setDrawerOpen(false)}
                 className={cn(
                   "flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors duration-150",
-                  active ? "text-primary" : "text-sidebar-foreground/35"
+                  active ? "text-primary" : "text-sidebar-foreground/35",
                 )}
               >
                 {active && (
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-primary" />
                 )}
                 <Icon className="w-[19px] h-[19px]" />
-                <span className="text-[10px] font-semibold tracking-wide">{label}</span>
+                <span className="text-[10px] font-semibold tracking-wide">
+                  {label}
+                </span>
               </Link>
             );
           })}
@@ -208,22 +235,33 @@ export function MobileNav({ orgName, activeOrgId }: { orgName?: string | null; a
             aria-expanded={drawerOpen}
             className={cn(
               "flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors duration-150",
-              moreActive ? "text-primary" : "text-sidebar-foreground/35"
+              moreActive ? "text-primary" : "text-sidebar-foreground/35",
             )}
           >
             {moreActive && (
               <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-primary" />
             )}
             <MoreHorizontal className="w-[19px] h-[19px]" />
-            <span className="text-[10px] font-semibold tracking-wide">More</span>
+            <span className="text-[10px] font-semibold tracking-wide">
+              More
+            </span>
           </button>
         </nav>
       </div>
 
       {/* Action primitives (shared with command palette) */}
-      <QuickExpenseSheet open={action === "expense"} onOpenChange={(o) => !o && setAction(null)} />
-      <StartTimerFlow open={action === "timer"} onOpenChange={(o) => !o && setAction(null)} />
-      <SendReminderInvoicePicker open={action === "reminder"} onOpenChange={(o) => !o && setAction(null)} />
+      <QuickExpenseSheet
+        open={action === "expense"}
+        onOpenChange={(o) => !o && setAction(null)}
+      />
+      <StartTimerFlow
+        open={action === "timer"}
+        onOpenChange={(o) => !o && setAction(null)}
+      />
+      <SendReminderInvoicePicker
+        open={action === "reminder"}
+        onOpenChange={(o) => !o && setAction(null)}
+      />
     </>
   );
 }
