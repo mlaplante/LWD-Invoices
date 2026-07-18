@@ -1,6 +1,7 @@
 import { api } from "@/trpc/server";
 import Link from "next/link";
 import { FileText, CreditCard, Receipt, ChevronRight, TrendingUp, Clock, Timer, Download, Scale, PieChart, BarChart3, Gauge, Contact, HeartPulse, LineChart, Repeat, AlertTriangle, BellRing, Wallet, Activity, Percent, Users, Landmark } from "lucide-react";
+import { ReportsAskPanel } from "@/components/reports/ReportsAskPanel";
 
 const reports = [
   {
@@ -221,6 +222,8 @@ export default async function ReportsPage() {
           Export Invoices CSV
         </a>
       </div>
+
+      <ReportsAskPanel />
 
       {/* Revenue chart card */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">

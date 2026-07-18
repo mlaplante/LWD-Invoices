@@ -98,7 +98,7 @@ Behavior:
 - Degradation: reuse the same unavailable handling the assistant already has (typed friendly message when keyless — comes free from the backend); when `aiCapabilities.aiEnabled` is false (query added by the ai-graceful-degradation plan), render nothing (the panel is hidden entirely).
 - Empty/error states per house style: "Report builder unavailable" + retry on stream failure.
 
-- [ ] Implement → `npx tsc --noEmit` clean → manually confirm `/assistant` still compiles against the extracted hook → commit.
+- [x] Implement → `npx tsc --noEmit` clean → manually confirm `/assistant` still compiles against the extracted hook → commit.
 
 ### Task 6: Full verification
 
