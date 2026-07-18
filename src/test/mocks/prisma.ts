@@ -39,6 +39,12 @@ export function createMockPrismaClient() {
       aggregate: vi.fn(),
       groupBy: vi.fn(),
     },
+    unmatchedPayment: {
+      create: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+    },
     paymentAttempt: {
       create: vi.fn(),
       findUnique: vi.fn(),

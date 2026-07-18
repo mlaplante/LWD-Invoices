@@ -57,10 +57,12 @@ import { disputesRouter } from "./disputes";
 import { refundsRouter } from "./refunds";
 import { monthEndCloseRouter } from "./monthEndClose";
 import { dashboardLayoutRouter } from "./dashboardLayout";
+import { paymentReconciliationRouter } from "./paymentReconciliation";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
   dashboardLayout: dashboardLayoutRouter,
+  paymentReconciliation: paymentReconciliationRouter,
   analytics: analyticsRouter,
   assistant: assistantRouter,
   contractorPortal: contractorPortalRouter,

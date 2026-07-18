@@ -178,8 +178,8 @@ z.object({
   After the transaction (mirror `markPaid`'s post-transaction block in `src/server/routers/invoices.ts:1343-1413`): per matched invoice, fire `inngest.send({ name: "invoice/payment.received", data: { invoiceId, trigger: "PAYMENT_RECEIVED" } })` and `sendPaymentReceiptEmail(...)`, each `.catch`-guarded exactly like `markPaid` does; `logAudit` per invoice with `action: "PAYMENT_RECEIVED"`-equivalent existing enum value, `.catch(() => {})`-wrapped.
 - `openInvoices` — read helper for the match picker: input `{ search?: string, clientId?: string }`; returns invoices with status `in [SENT, PARTIALLY_PAID, OVERDUE]`, `isArchived: false`, including `client` and computed `balance` (total − paymentsSum − creditApplied), ordered by `dueDate asc`, limit 50. Reuse the query shape from `reportsRouter.unpaidInvoices` (`src/server/routers/reports.ts:39-67`).
 
-- [ ] **Step 1:** Write failing router tests: create → row created with UNMATCHED; match happy path (2 invoices, exact allocation → payments created, invoice statuses PAID, unmatched MATCHED); partial allocation → PARTIALLY_MATCHED + invoice PARTIALLY_PAID when underpaid; over-allocation rejected; matching an IGNORED/MATCHED row rejected; cross-org invoice rejected (invoice lookup returns null → error); ignore/unignore transitions.
-- [ ] **Step 2:** Run → FAIL. **Step 3:** Implement router + register in `_app.ts`. **Step 4:** Run → PASS. **Step 5:** Commit.
+- [x] **Step 1:** Write failing router tests: create → row created with UNMATCHED; match happy path (2 invoices, exact allocation → payments created, invoice statuses PAID, unmatched MATCHED); partial allocation → PARTIALLY_MATCHED + invoice PARTIALLY_PAID when underpaid; over-allocation rejected; matching an IGNORED/MATCHED row rejected; cross-org invoice rejected (invoice lookup returns null → error); ignore/unignore transitions.
+- [x] **Step 2:** Run → FAIL. **Step 3:** Implement router + register in `_app.ts`. **Step 4:** Run → PASS. **Step 5:** Commit.
 
 ### Task 4: Reconciliation page UI
 
