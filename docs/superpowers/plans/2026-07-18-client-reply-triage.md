@@ -136,7 +136,7 @@ Function `id: "triage-inbound-reply"`, trigger `{ event: "inbound-email/received
 4. Create the `InboundEmailTriage` row.
 5. If `source === "ai"` and category is `DISPUTE` or `PROMISE_TO_PAY`: `notifyOrgAdmins(organizationId, { type: <closest existing NotificationType — check the enum; reuse, don't extend>, title: "Client reply: dispute raised" / "Client reply: promise to pay", body: <fromEmail + invoice number + one-line reasoning>, link: "/invoices/<invoiceId>" (or "/replies" when no invoice) })`, `.catch(() => {})`.
 
-- [ ] Steps: failing tests (idempotency; keyless creates nothing; dispute notifies admins; fallback sources don't notify; rate-limit trip exits cleanly) → implement → PASS → commit.
+- [x] Steps: failing tests (idempotency; keyless creates nothing; dispute notifies admins; fallback sources don't notify; rate-limit trip exits cleanly) → implement → PASS → commit.
 
 ### Task 4: tRPC router + panel badges + /replies page
 
@@ -157,7 +157,7 @@ UI:
 - Badge colors by category (use existing badge component; e.g. DISPUTE red/destructive variant, PROMISE_TO_PAY green, QUESTION blue, INFO_UPDATE amber, NEEDS_REVIEW gray). Show `Math.round(confidence * 100)%` next to non-manual badges; tooltip/expand shows `reasoning` + `SUGGESTED_ACTIONS[category]`.
 - `/replies` page: filter chips per category, dismissed toggle, each row links to its invoice; empty state "No replies to triage"; recategorize via a small select menu.
 
-- [ ] Steps: failing router tests (list org-scoping + filters; dismiss role-gating; recategorize sets manual/confidence 1) → implement router → panel/page UI → `npx tsc --noEmit` clean → PASS → commit.
+- [x] Steps: failing router tests (list org-scoping + filters; dismiss role-gating; recategorize sets manual/confidence 1) → implement router → panel/page UI → `npx tsc --noEmit` clean → PASS → commit.
 
 ### Task 5: Eval suite (gated)
 
