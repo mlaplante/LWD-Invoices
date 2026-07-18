@@ -133,6 +133,14 @@ enum UnmatchedPaymentStatus {
   IGNORED
 }
 
+enum TriageCategory {
+  PROMISE_TO_PAY
+  DISPUTE
+  QUESTION
+  INFO_UPDATE
+  NEEDS_REVIEW
+}
+
 enum TicketPriority {
   LOW
   NORMAL
@@ -355,6 +363,7 @@ model Organization {
   savedPaymentMethods     SavedPaymentMethod[]
   emailEvents             EmailEvent[]
   inboundEmails           InboundEmail[]
+  inboundEmailTriages     InboundEmailTriage[]
   invoiceReminders        InvoiceReminder[]
   clientCheckIns          ClientCheckIn[]
   checkInTemplates        CheckInTemplate[]
@@ -1579,12 +1588,31 @@ model InboundEmail {
   client         Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   ticketId       String?
   ticket         Ticket?  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  triage         InboundEmailTriage?
 
   createdAt DateTime @default(now())
 
   @@index([organizationId, receivedAt])
   @@index([invoiceId])
   @@index([messageId])
+}
+
+model InboundEmailTriage {
+  id             String         @id @default(cuid())
+  inboundEmailId String         @unique
+  inboundEmail   InboundEmail   @relation(fields: [inboundEmailId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category       TriageCategory
+  confidence     Float
+  reasoning      String
+  promisedDate   DateTime?
+  source         String
+  isDismissed    Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([organizationId, isDismissed, createdAt])
 }
 
 // ─── Scheduled Reports ───────────────────────────────────────────────────────
