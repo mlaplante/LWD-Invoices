@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import { invoicesRouter, draftFromPromptLimiter } from "@/server/routers/invoices";
-import { extractNaturalLanguageInvoice } from "@/server/services/natural-language-invoice";
+import { extractNaturalLanguageInvoice, resolveInvoiceParserProvider } from "@/server/services/natural-language-invoice";
 import { createMockContext, type MockTRPCContext } from "./mocks/trpc-context";
 import { InvoiceStatus } from "@/generated/prisma";
 import { Decimal } from "@prisma/client-runtime-utils";
@@ -11,6 +11,7 @@ vi.mock("@/server/services/natural-language-invoice", async () => {
   );
   return {
     ...actual,
+    resolveInvoiceParserProvider: vi.fn(() => "gemini"),
     extractNaturalLanguageInvoice: vi.fn().mockResolvedValue({
       clientName: "Acme",
       lines: [
@@ -34,6 +35,8 @@ describe("Invoices Router natural-language draft", () => {
     // tests can't trip (or mask) the rate limit.
     draftFromPromptLimiter.clear();
     vi.mocked(extractNaturalLanguageInvoice).mockClear();
+    vi.mocked(resolveInvoiceParserProvider).mockClear();
+    vi.mocked(resolveInvoiceParserProvider).mockReturnValue("gemini");
     ctx = createMockContext();
     caller = invoicesRouter.createCaller(ctx);
     ctx.db.client.findMany.mockResolvedValue([
@@ -54,6 +57,8 @@ describe("Invoices Router natural-language draft", () => {
       prompt: "Bill Acme 8 hrs design at $120 plus the Figma license",
     });
 
+    expect(draft.unavailable).toBe(false);
+    if (draft.unavailable) throw new Error("Invoice drafting should be available");
     expect(draft.status).toBe(InvoiceStatus.DRAFT);
     expect(draft.requiresReview).toBe(true);
     expect(draft.clientId).toBe("client_acme");
@@ -78,5 +83,15 @@ describe("Invoices Router natural-language draft", () => {
       caller.draftFromPrompt({ prompt: "Bill Acme for design work" }),
     ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
     expect(extractSpy).toHaveBeenCalledTimes(10);
+  });
+
+  it("returns an informational unavailable result without an AI provider", async () => {
+    vi.mocked(resolveInvoiceParserProvider).mockReturnValueOnce(null);
+
+    await expect(caller.draftFromPrompt({ prompt: "Bill Acme for design work" })).resolves.toEqual({
+      unavailable: true,
+      message: "Invoice drafting requires an AI provider key (Settings → AI). Enter the invoice details manually.",
+    });
+    expect(extractNaturalLanguageInvoice).not.toHaveBeenCalled();
   });
 });

@@ -132,7 +132,7 @@ if (!provider) {
 - Modify: `src/components/invoices/InvoiceForm.tsx:385-411` (hide the "create from a prompt" box when `aiCapabilities.aiEnabled` is false; handle typed unavailable as info, not error toast)
 - Test: extend NL-invoice service/router tests
 
-- [ ] Steps mirror Task 4 exactly: failing tests → implement server short-circuit + client gating → PASS → commit.
+- [x] Steps mirror Task 4 exactly: failing tests → implement server short-circuit + client gating → PASS → commit.
 
 ### Task 6: Wire the dead `deterministicOnly` / `aiUnavailable` signal
 

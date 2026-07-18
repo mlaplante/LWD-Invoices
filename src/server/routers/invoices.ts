@@ -24,6 +24,7 @@ import { cookies } from "next/headers";
 import {
   buildNaturalLanguageInvoiceDraft,
   extractNaturalLanguageInvoice,
+  resolveInvoiceParserProvider,
   type NaturalLanguageInvoiceContext,
 } from "../services/natural-language-invoice";
 import { detectInvoiceDuplicate } from "../services/invoice-duplicate";
@@ -356,6 +357,13 @@ export const invoicesRouter = router({
   draftFromPrompt: requireRole("OWNER", "ADMIN")
     .input(z.object({ prompt: z.string().trim().min(5).max(2_000) }))
     .mutation(async ({ ctx, input }) => {
+      if (!resolveInvoiceParserProvider()) {
+        return {
+          unavailable: true as const,
+          message:
+            "Invoice drafting requires an AI provider key (Settings → AI). Enter the invoice details manually.",
+        };
+      }
       // Throttle before any DB work or the OpenAI call — a runaway client or
       // script shouldn't be able to rack up API charges (or DB load) by
       // hammering this endpoint.
@@ -408,7 +416,10 @@ export const invoicesRouter = router({
       };
 
       const extraction = await extractNaturalLanguageInvoice(input.prompt);
-      return buildNaturalLanguageInvoiceDraft({ prompt: input.prompt, extraction, context });
+      return {
+        unavailable: false as const,
+        ...buildNaturalLanguageInvoiceDraft({ prompt: input.prompt, extraction, context }),
+      };
     }),
 
   create: requireRole("OWNER", "ADMIN")

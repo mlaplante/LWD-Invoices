@@ -309,7 +309,7 @@ const EXTRACTION_JSON_SCHEMA = {
  * model-fallback chain). Mirrors the resolveProvider precedence in
  * receipt-ocr.ts.
  */
-export function resolveInvoiceParserProvider(override?: InvoiceParserProvider): InvoiceParserProvider {
+export function resolveInvoiceParserProvider(override?: InvoiceParserProvider): InvoiceParserProvider | null {
   if (override) return override;
   if (env.INVOICE_PARSER_PROVIDER === "openai" || env.INVOICE_PARSER_PROVIDER === "gemini") {
     return env.INVOICE_PARSER_PROVIDER;
@@ -318,7 +318,7 @@ export function resolveInvoiceParserProvider(override?: InvoiceParserProvider): 
   // OpenAI when only its key is configured. Set INVOICE_PARSER_PROVIDER to override.
   if (env.GEMINI_API_KEY) return "gemini";
   if (env.OPENAI_API_KEY) return "openai";
-  return "gemini";
+  return null;
 }
 
 /**
@@ -330,6 +330,9 @@ export async function extractNaturalLanguageInvoice(
   options: ExtractNaturalLanguageInvoiceOptions = {},
 ): Promise<NaturalLanguageInvoiceExtraction> {
   const provider = resolveInvoiceParserProvider(options.provider);
+  if (!provider) {
+    throw new Error("No AI provider is configured for invoice drafting");
+  }
   return provider === "gemini"
     ? extractNaturalLanguageInvoiceWithGemini(prompt)
     : extractNaturalLanguageInvoiceWithOpenAI(prompt);

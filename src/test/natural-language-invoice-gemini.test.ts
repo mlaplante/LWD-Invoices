@@ -66,6 +66,13 @@ describe("natural-language invoice — Gemini provider", () => {
       (env as Record<string, unknown>).OPENAI_API_KEY = "test-openai-key";
       expect(resolveInvoiceParserProvider()).toBe("openai");
     });
+
+    it("returns null when no provider key is configured", () => {
+      (env as Record<string, unknown>).INVOICE_PARSER_PROVIDER = undefined;
+      (env as Record<string, unknown>).GEMINI_API_KEY = undefined;
+      (env as Record<string, unknown>).OPENAI_API_KEY = undefined;
+      expect(resolveInvoiceParserProvider()).toBeNull();
+    });
   });
 
   describe("extractGeminiText", () => {

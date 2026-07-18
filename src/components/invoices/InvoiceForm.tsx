@@ -132,12 +132,14 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
   const createMutation = trpc.invoices.create.useMutation();
   const updateMutation = trpc.invoices.update.useMutation();
   const draftFromPromptMutation = trpc.invoices.draftFromPrompt.useMutation();
+  const { data: aiCapabilities } = trpc.organization.aiCapabilities.useQuery();
   const utils = trpc.useUtils();
   const [naturalPrompt, setNaturalPrompt] = useState("");
   const [naturalDraftReview, setNaturalDraftReview] = useState<{
     ambiguities: { field: string; message: string }[];
     lineWarnings: string[];
   } | null>(null);
+  const [naturalDraftInfo, setNaturalDraftInfo] = useState<string | null>(null);
   const { data: stripeTaxPreflight } = trpc.organization.stripeTaxPreflight.useQuery(
     { clientId: form.clientId || undefined },
     { staleTime: 30_000 },
@@ -181,6 +183,12 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
     try {
       const draft = await draftFromPromptMutation.mutateAsync({ prompt });
+      if (draft.unavailable) {
+        setNaturalDraftReview(null);
+        setNaturalDraftInfo(draft.message);
+        return;
+      }
+      setNaturalDraftInfo(null);
       setForm((current) => ({
         ...current,
         type: InvoiceType.DETAILED,
@@ -381,7 +389,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
 
   return (
     <div className="space-y-6">
-      {mode === "create" && (
+      {mode === "create" && aiCapabilities?.aiEnabled !== false && (
         <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
           <div className="space-y-1">
             <h2 className="text-sm font-semibold">Create from a prompt</h2>
@@ -428,7 +436,15 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
               )}
             </div>
           )}
+          {naturalDraftInfo && (
+            <p className="text-sm text-muted-foreground" role="status">{naturalDraftInfo}</p>
+          )}
         </section>
+      )}
+      {mode === "create" && aiCapabilities?.aiEnabled === false && (
+        <p className="text-sm text-muted-foreground">
+          Create-from-prompt is unavailable until an AI provider key is configured. Enter invoice details manually.
+        </p>
       )}
 
       {/* Header fields */}
