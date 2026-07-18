@@ -95,9 +95,9 @@ aiCapabilities: protectedProcedure.query(() => {
 - Modify: `src/server/routers/reports.ts:945-980`
 - Test: extend the reports router test file (grep `weeklyBriefing` under `src/test/`)
 
-- [ ] **Step 1:** Failing test: with no `GEMINI_API_KEY`, `reports.weeklyBriefing` returns real data from the underlying builder (mock `getWeeklyBriefing`/`buildWeeklyBriefing` to return a non-zero fixture) and no `hasAIError`.
-- [ ] **Step 2:** Remove the `process.env.GEMINI_API_KEY` gate at line 964 and the zeroed-payload branch; call the same builder path `analytics.ts:427,454` uses, unconditionally. Keep the response shape otherwise identical (clients depend on it); `hasAIError` should be absent/undefined keyless.
-- [ ] **Step 3:** PASS → run the FULL reports + analytics test files → all green → commit.
+- [x] **Step 1:** Failing test: with no `GEMINI_API_KEY`, `reports.weeklyBriefing` returns real data from the underlying builder (mock `getWeeklyBriefing`/`buildWeeklyBriefing` to return a non-zero fixture) and no `hasAIError`.
+- [x] **Step 2:** Remove the `process.env.GEMINI_API_KEY` gate at line 964 and the zeroed-payload branch; call the same builder path `analytics.ts:427,454` uses, unconditionally. Keep the response shape otherwise identical (clients depend on it); `hasAIError` should be absent/undefined keyless.
+- [x] **Step 3:** PASS → run the FULL reports + analytics test files → all green → commit.
 
 ### Task 4: Receipt OCR fails soft
 

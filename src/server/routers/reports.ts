@@ -956,26 +956,8 @@ export const reportsRouter = router({
       const weekStart = input?.weekStart ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const weekEnd = input?.weekEnd ?? new Date();
 
-      const aiApiKey = process.env.GEMINI_API_KEY ?? "";
-      const aiModels = process.env.GEMINI_MODELS
-        ? process.env.GEMINI_MODELS.split(",").map((m) => m.trim()).filter(Boolean)
-        : ["gemini-2.0-flash", "gemini-1.5-flash"];
-
-      if (!aiApiKey) {
-        return {
-          weekStart,
-          weekEnd,
-          cashIn: 0,
-          cashOut: 0,
-          overdueInvoiceRisk: { totalAmount: 0, invoiceCount: 0, maxOverdueDays: 0 },
-          expenseAnomalies: { totalAnomalies: 0, items: [] },
-          upcomingRenewals: [],
-          recommendations: [],
-          generatedAt: new Date(),
-          metadata: { aiProvider: "gemini", modelUsed: "", hasAIError: "GEMINI_API_KEY not configured" },
-        };
-      }
-
-      return getWeeklyBriefing(ctx.db, ctx.orgId, aiApiKey, aiModels);
+      void weekStart;
+      void weekEnd;
+      return getWeeklyBriefing(ctx.db, ctx.orgId);
     }),
 });
