@@ -72,7 +72,7 @@ And on `model Organization`, add `unmatchedPayments UnmatchedPayment[]` alongsid
 - Create: `src/server/services/invoice-balance.ts`
 - Test: `src/test/invoice-balance.test.ts`
 
-- [ ] **Step 1:** Write failing tests covering: underpayment → PARTIALLY_PAID; exact → PAID; overpay → PAID; credit-note applications reduce balance; already-paid sum counts prior payments.
+- [x] **Step 1:** Write failing tests covering: underpayment → PARTIALLY_PAID; exact → PAID; overpay → PAID; credit-note applications reduce balance; already-paid sum counts prior payments.
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -107,8 +107,8 @@ describe("resolvePaymentStatus", () => {
 });
 ```
 
-- [ ] **Step 2:** Run test → FAIL (module not found).
-- [ ] **Step 3:** Implement:
+- [x] **Step 2:** Run test → FAIL (module not found).
+- [x] **Step 3:** Implement:
 
 ```ts
 import type { InvoiceStatus } from "@/generated/prisma"; // match the import path other services use for Prisma enums — check e.g. src/server/services/audit.ts and mirror it
@@ -127,7 +127,7 @@ export function resolvePaymentStatus(args: {
 
 (If the generated Prisma enum import path differs, mirror whatever `src/server/routers/invoices.ts` uses for `InvoiceStatus`.)
 
-- [ ] **Step 4:** Run test → PASS. Commit.
+- [x] **Step 4:** Run test → PASS. Commit.
 
 ### Task 3: paymentReconciliation router
 
