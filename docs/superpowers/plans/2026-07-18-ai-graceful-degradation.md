@@ -146,7 +146,7 @@ if (!provider) {
 
 ### Task 7: Full verification
 
-- [ ] `npm test -- --no-file-parallelism` (or targeted files if the sandbox blocks the full run: ai-availability, the modified router/service test files — note it for the coordinator).
-- [ ] `npx tsc --noEmit` → 0 errors.
-- [ ] `npm run lint` → 0 errors.
-- [ ] Commit anything pending; on sandbox `.git` failures leave staged + list exact `git add` commands; continue.
+- [x] `npm test -- --no-file-parallelism` (or targeted files if the sandbox blocks the full run: ai-availability, the modified router/service test files — note it for the coordinator).
+- [x] `npx tsc --noEmit` → 0 errors.
+- [x] `npm run lint` → 0 errors.
+- [x] Commit anything pending; on sandbox `.git` failures leave staged + list exact `git add` commands; continue.
