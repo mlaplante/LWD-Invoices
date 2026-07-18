@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { AddUnmatchedPaymentDialog } from "./AddUnmatchedPaymentDialog";
-import { MatchPaymentDialog } from "./MatchPaymentDialog";
+import { MatchPaymentDialog, type ReconciliationPayment } from "./MatchPaymentDialog";
 
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const number = (value: number | { toString(): string }) => Number(value);
@@ -13,7 +13,7 @@ const number = (value: number | { toString(): string }) => Number(value);
 export function UnmatchedPaymentsList() {
   const [showHistory, setShowHistory] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [matching, setMatching] = useState<any>(null);
+  const [matching, setMatching] = useState<ReconciliationPayment | null>(null);
   const utils = trpc.useUtils();
   const status: ("UNMATCHED" | "PARTIALLY_MATCHED" | "IGNORED" | "MATCHED")[] | undefined = showHistory
     ? ["UNMATCHED", "PARTIALLY_MATCHED", "IGNORED", "MATCHED"]

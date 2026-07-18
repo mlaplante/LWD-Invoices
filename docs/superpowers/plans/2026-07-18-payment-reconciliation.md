@@ -218,7 +218,7 @@ export function prefillAllocation(invoiceBalance: number, unallocated: number): 
 
 ### Task 6: Full verification
 
-- [ ] **Step 1:** `npm test -- --no-file-parallelism` (full suite; if the sandbox blocks it, run the targeted files: `invoice-balance`, `routers-payment-reconciliation`, `reconciliation-allocation`, `routers-invoices-procedures`, and note that the coordinator will run the full suite outside).
-- [ ] **Step 2:** `npx tsc --noEmit` → 0 errors.
-- [ ] **Step 3:** `npm run lint` → 0 errors.
-- [ ] **Step 4:** Commit anything pending. If any commit fails with sandbox `.git` errors, leave files staged and list exact `git add` commands per pending commit; continue regardless.
+- [x] **Step 1:** `npm test -- --no-file-parallelism` (full suite; if the sandbox blocks it, run the targeted files: `invoice-balance`, `routers-payment-reconciliation`, `reconciliation-allocation`, `routers-invoices-procedures`, and note that the coordinator will run the full suite outside).
+- [x] **Step 2:** `npx tsc --noEmit` → 0 errors.
+- [x] **Step 3:** `npm run lint` → 0 errors.
+- [x] **Step 4:** Commit anything pending. If any commit fails with sandbox `.git` errors, leave files staged and list exact `git add` commands per pending commit; continue regardless.

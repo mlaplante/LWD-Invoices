@@ -9,12 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { prefillAllocation } from "./allocation";
 
-type Payment = { id: string; amount: number | { toString(): string }; matchedAmount: number | { toString(): string }; payerName?: string | null };
+export type ReconciliationPayment = { id: string; amount: number | { toString(): string }; matchedAmount: number | { toString(): string }; payerName?: string | null };
 type Allocation = { invoiceId: string; number: string; balance: number; amount: number };
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
-const asNumber = (value: Payment["amount"]) => Number(value);
+const asNumber = (value: ReconciliationPayment["amount"]) => Number(value);
 
-export function MatchPaymentDialog({ payment, open, onOpenChange }: { payment: Payment | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+export function MatchPaymentDialog({ payment, open, onOpenChange }: { payment: ReconciliationPayment | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
   const [allocations, setAllocations] = useState<Allocation[]>([]);
