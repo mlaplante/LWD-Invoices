@@ -21,7 +21,7 @@
 **Files:**
 - Modify: `prisma/schema.prisma`
 
-- [ ] **Step 1:** Add enum + model (place near `Payment`, ~line 848):
+- [x] **Step 1:** Add enum + model (place near `Payment`, ~line 848):
 
 ```prisma
 enum UnmatchedPaymentStatus {
@@ -53,7 +53,7 @@ model UnmatchedPayment {
 }
 ```
 
-- [ ] **Step 2:** On `model Payment`, add the back-relation (nullable FK, additive):
+- [x] **Step 2:** On `model Payment`, add the back-relation (nullable FK, additive):
 
 ```prisma
   unmatchedPaymentId String?
@@ -62,9 +62,9 @@ model UnmatchedPayment {
 
 And on `model Organization`, add `unmatchedPayments UnmatchedPayment[]` alongside its other relation arrays.
 
-- [ ] **Step 3:** Run: `npx prisma migrate dev --name unmatched_payments` (if a live DB is unavailable in the sandbox, run `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma` is NOT equivalent — instead create the migration SQL with `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/$(date +%Y%m%d%H%M%S)_unmatched_payments/migration.sql` after `mkdir -p` of that dir; verify the SQL only contains `CREATE TYPE`, `CREATE TABLE`, `ALTER TABLE "Payment" ADD COLUMN`, and `CREATE INDEX` statements).
-- [ ] **Step 4:** Run: `npx prisma generate` → success.
-- [ ] **Step 5:** Commit schema + migration.
+- [x] **Step 3:** Run: `npx prisma migrate dev --name unmatched_payments` (if a live DB is unavailable in the sandbox, run `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma` is NOT equivalent — instead create the migration SQL with `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/$(date +%Y%m%d%H%M%S)_unmatched_payments/migration.sql` after `mkdir -p` of that dir; verify the SQL only contains `CREATE TYPE`, `CREATE TABLE`, `ALTER TABLE "Payment" ADD COLUMN`, and `CREATE INDEX` statements).
+- [x] **Step 4:** Run: `npx prisma generate` → success.
+- [x] **Step 5:** Commit schema + migration.
 
 ### Task 2: Balance-aware status helper
 
