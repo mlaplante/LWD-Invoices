@@ -8,7 +8,8 @@
  */
 
 import { runSuite, suiteMeetsGate } from "./runner";
-import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview, gradeExpenseCategorization, gradeCollectionsQueue, gradeProposalGenerator, gradeBriefing } from "./graders";
+import { gradeGrounding, gradeMonthEndClose, gradeOcr, gradeReminderGuard, gradeInvoiceReview, gradeExpenseCategorization, gradeCollectionsQueue, gradeProposalGenerator, gradeBriefing, gradeReplyTriage } from "./graders";
+import { replyTriageCases } from "./fixtures/reply-triage.fixtures";
 import { ocrCases } from "./fixtures/ocr.fixtures";
 import { reminderGuardCases } from "./fixtures/reminder-guard.fixtures";
 import { groundingCases } from "./fixtures/assistant-grounding.fixtures";
@@ -42,6 +43,7 @@ export interface EvalSuiteResult {
  */
 export function runAllEvalSuites(): EvalSuiteResult[] {
   const suites: Array<{ report: SuiteReport; gate: SuiteGate }> = [
+    { report: runSuite("reply-triage", replyTriageCases, gradeReplyTriage), gate: { minScore: 1, minPassRate: 1 } },
     {
       report: runSuite("receipt-ocr-parsing", ocrCases, gradeOcr),
       gate: { minScore: 0.95, minPassRate: 1 },

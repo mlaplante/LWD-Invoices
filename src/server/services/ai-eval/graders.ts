@@ -20,6 +20,14 @@ import {
 } from "../month-end-close";
 import { checkAnswerGrounding } from "./grounding";
 import type { Grader } from "./types";
+import { finalizeTriage, type TriageOutput } from "../reply-triage";
+
+export const gradeReplyTriage: Grader<{ raw: unknown }, { category: TriageOutput["category"]; source: string; promisedDate?: boolean }> = (input, expected) => {
+  const result = finalizeTriage(input.raw);
+  const dateOk = expected.promisedDate === undefined || Boolean(result.promisedDate) === expected.promisedDate;
+  const ok = result.category === expected.category && result.source === expected.source && dateOk;
+  return { score: ok ? 1 : 0, detail: ok ? undefined : `got ${result.category}/${result.source}` };
+};
 
 // ─── OCR extraction ────────────────────────────────────────────────────────────
 
