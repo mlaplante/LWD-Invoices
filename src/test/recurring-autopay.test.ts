@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { attemptRecurringInvoiceAutopay } from "@/server/services/recurring-autopay";
+import { attemptOffSessionCharge, attemptRecurringInvoiceAutopay } from "@/server/services/recurring-autopay";
 import { createMockPrismaClient } from "./mocks/prisma";
 
 function decimal(value: number) {
@@ -17,6 +17,7 @@ function buildDb() {
   db.savedPaymentMethod = {
     findFirst: vi.fn(),
   };
+  db.partialPayment = { findUnique: vi.fn(), findMany: vi.fn(), update: vi.fn() };
   db.$transaction = vi.fn(async (cb: any) => cb(db));
   return db;
 }
@@ -269,5 +270,53 @@ describe("attemptRecurringInvoiceAutopay", () => {
       }),
     });
     expect(notifyAdmins).toHaveBeenCalled();
+  });
+});
+
+describe("attemptOffSessionCharge installment option", () => {
+  it("charges and applies one installment without changing the full-invoice default", async () => {
+    const db = buildDb();
+    const stripe: any = { paymentIntents: { create: vi.fn().mockResolvedValue({ id: "pi_installment", status: "succeeded" }) } };
+    db.invoice.findUnique.mockResolvedValue(mockInvoice());
+    db.paymentAttempt.findUnique.mockResolvedValue(null);
+    db.paymentAttempt.findFirst = vi.fn().mockResolvedValue(null);
+    db.paymentAttempt.create.mockResolvedValue({ id: "attempt_installment" });
+    db.paymentAttempt.update.mockResolvedValue({});
+    db.savedPaymentMethod.findFirst.mockResolvedValue(mockSavedMethod());
+    db.partialPayment.findUnique.mockResolvedValue({ id: "pp_1", invoiceId: "inv_1", isPaid: false });
+    db.partialPayment.findMany.mockResolvedValue([{ id: "pp_1", isPaid: true }, { id: "pp_2", isPaid: false }]);
+    db.partialPayment.update.mockResolvedValue({});
+    db.payment.create.mockResolvedValue({});
+    db.invoice.update.mockResolvedValue({});
+
+    const result = await attemptOffSessionCharge({
+      db,
+      invoiceId: "inv_1",
+      kind: "INSTALLMENT_AUTOPAY:pp_1",
+      method: "stripe_installment_autopay",
+      idempotencyKey: "installment-autopay:pp_1",
+      installment: { id: "pp_1", amount: 40 },
+      stripeClient: stripe,
+    });
+
+    expect(result.status).toBe("SUCCEEDED");
+    expect(stripe.paymentIntents.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 4000 }), expect.anything());
+    expect(db.paymentAttempt.create).toHaveBeenCalledWith({ data: expect.objectContaining({ partialPaymentId: "pp_1", amount: 40 }) });
+    expect(db.partialPayment.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "pp_1" }, data: expect.objectContaining({ isPaid: true }) }));
+    expect(db.invoice.update).toHaveBeenCalledWith({ where: { id: "inv_1" }, data: { status: "PARTIALLY_PAID" } });
+  });
+
+  it("skips paid installments and installments with a pending or successful prior attempt", async () => {
+    const db = buildDb();
+    db.invoice.findUnique.mockResolvedValue(mockInvoice());
+    db.partialPayment.findUnique.mockResolvedValue({ id: "pp_1", invoiceId: "inv_1", isPaid: true });
+
+    const paid = await attemptOffSessionCharge({ db, invoiceId: "inv_1", kind: "INSTALLMENT_AUTOPAY:pp_1", method: "stripe_installment_autopay", idempotencyKey: "x", installment: { id: "pp_1", amount: 40 } });
+    expect(paid).toMatchObject({ status: "SKIPPED" });
+
+    db.partialPayment.findUnique.mockResolvedValue({ id: "pp_1", invoiceId: "inv_1", isPaid: false });
+    db.paymentAttempt.findFirst = vi.fn().mockResolvedValue({ id: "pending", status: "PENDING" });
+    const attempted = await attemptOffSessionCharge({ db, invoiceId: "inv_1", kind: "INSTALLMENT_AUTOPAY:pp_1", method: "stripe_installment_autopay", idempotencyKey: "y", installment: { id: "pp_1", amount: 40 } });
+    expect(attempted).toMatchObject({ status: "SKIPPED" });
   });
 });

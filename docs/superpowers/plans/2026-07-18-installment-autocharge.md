@@ -34,12 +34,12 @@
 - Modify: `src/server/services/recurring-autopay.ts`
 - Test: extend its test file (locate `src/test/*autopay*` / `*recurring*`; mirror mocking style)
 
-- [ ] **Step 1:** Failing tests:
+- [x] **Step 1:** Failing tests:
   - `attemptOffSessionCharge` with no new args → identical behavior (amount = invoice.total; PaymentAttempt has `partialPaymentId: null`) — this is the regression lock for recurring + dunning call sites.
   - With `{ installment: { id, amount } }` → Stripe intent amount = installment amount (in the same cents conversion the existing code uses); PaymentAttempt row carries `partialPaymentId`; on success: Payment row created for that amount, PartialPayment marked `isPaid/paidAt`, invoice status via the webhook branch's roll-up rule (`allPaid ? PAID : PARTIALLY_PAID`); receipt email + `invoice/payment.received` event fired (same post-success side effects the full-invoice path has — inspect and mirror; if the full-invoice path's side effects live at the call site, put installment side effects in the new caller in Task 3 instead — keep ONE consistent place and note the choice).
   - Failure path: PaymentAttempt FAILED with processor error captured; PartialPayment untouched; no status change.
   - Skip guards: already-`isPaid` installment → no charge; existing PENDING/SUCCEEDED attempt for that `partialPaymentId` → no charge.
-- [ ] **Step 2:** FAIL → **Step 3:** implement (new optional parameter object; default path byte-for-byte equivalent) → **Step 4:** PASS → commit.
+- [x] **Step 2:** FAIL → **Step 3:** implement (new optional parameter object; default path byte-for-byte equivalent) → **Step 4:** PASS → commit. Deviation: the existing full-invoice off-session service has receipt delivery but no `invoice/payment.received` event; installment success follows that same service-level side-effect contract, with event emission left to its caller if needed.
 
 ### Task 3: Daily Inngest cron `installment-autopay`
 

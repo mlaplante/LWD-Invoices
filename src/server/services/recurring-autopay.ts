@@ -60,6 +60,7 @@ export async function attemptOffSessionCharge(opts: {
   idempotencyKey: string;
   metadata?: Record<string, string>;
   stripeClient?: StripeClient;
+  installment?: { id: string; amount: number };
   sendReceipt?: (input: { invoiceId: string; amountPaid: number; organizationId: string }) => Promise<unknown>;
   notifyAdmins?: (
     organizationId: string,
@@ -89,6 +90,22 @@ export async function attemptOffSessionCharge(opts: {
     return { status: "SKIPPED", reason: "Autopay is disabled" };
   }
 
+  if (opts.installment) {
+    const installment = await db.partialPayment.findUnique({ where: { id: opts.installment.id } });
+    if (!installment || installment.invoiceId !== invoice.id || installment.isPaid) {
+      return { status: "SKIPPED", reason: "Installment is already paid or not found" };
+    }
+    const priorAttempt = await db.paymentAttempt.findFirst({
+      where: {
+        partialPaymentId: opts.installment.id,
+        status: { in: ["PENDING", "SUCCEEDED"] },
+      },
+    });
+    if (priorAttempt) {
+      return { status: "SKIPPED", reason: "Installment autopay attempt already exists", attemptId: priorAttempt.id };
+    }
+  }
+
   const existingAttempt = await db.paymentAttempt.findUnique({
     where: { invoiceId_kind: { invoiceId: invoice.id, kind: opts.kind } },
   });
@@ -100,7 +117,7 @@ export async function attemptOffSessionCharge(opts: {
     };
   }
 
-  const amount = invoice.total.toNumber();
+  const amount = opts.installment?.amount ?? invoice.total.toNumber();
   const idempotencyKey = opts.idempotencyKey;
   let attempt: { id: string };
   try {
@@ -114,6 +131,7 @@ export async function attemptOffSessionCharge(opts: {
         idempotencyKey,
         invoiceId: invoice.id,
         organizationId: invoice.organizationId,
+        partialPaymentId: opts.installment?.id,
       },
     });
   } catch (error) {
@@ -218,10 +236,22 @@ export async function attemptOffSessionCharge(opts: {
           organizationId: invoice.organizationId,
         },
       });
-      await tx.invoice.update({
-        where: { id: invoice.id },
-        data: { status: "PAID" },
-      });
+      if (opts.installment) {
+        await tx.partialPayment.update({
+          where: { id: opts.installment.id },
+          data: { isPaid: true, paidAt: new Date(), paymentMethod: opts.method, transactionId: paymentIntent.id },
+        });
+        const installments = await tx.partialPayment.findMany({ where: { invoiceId: invoice.id } });
+        await tx.invoice.update({
+          where: { id: invoice.id },
+          data: { status: installments.every((installment) => installment.isPaid) ? "PAID" : "PARTIALLY_PAID" },
+        });
+      } else {
+        await tx.invoice.update({
+          where: { id: invoice.id },
+          data: { status: "PAID" },
+        });
+      }
       await tx.paymentAttempt.update({
         where: { id: attempt.id },
         data: {
