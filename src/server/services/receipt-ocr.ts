@@ -77,6 +77,9 @@ export async function parseReceiptWithOCR(
   options: ReceiptOCROptions = {},
 ): Promise<OCRResult> {
   const provider = resolveProvider(options.provider);
+  if (!provider) {
+    throw new Error("No AI provider is configured for receipt scanning");
+  }
   if (provider === "openai") {
     return parseReceiptWithOpenAI(fileData, mimeType, options.fileName);
   }
@@ -86,7 +89,7 @@ export async function parseReceiptWithOCR(
   return parseReceiptWithAnthropic(fileData, mimeType);
 }
 
-function resolveProvider(override?: ReceiptOCRProvider): ReceiptOCRProvider {
+export function resolveProvider(override?: ReceiptOCRProvider): ReceiptOCRProvider | null {
   if (override) return override;
   const configured = env.RECEIPT_OCR_PROVIDER;
   if (configured === "openai" || configured === "anthropic" || configured === "gemini") {
@@ -97,7 +100,8 @@ function resolveProvider(override?: ReceiptOCRProvider): ReceiptOCRProvider {
   // configured. Set RECEIPT_OCR_PROVIDER to override.
   if (env.GEMINI_API_KEY) return "gemini";
   if (env.OPENAI_API_KEY) return "openai";
-  return "anthropic";
+  if (env.ANTHROPIC_API_KEY) return "anthropic";
+  return null;
 }
 
 async function parseReceiptWithOpenAI(fileData: Buffer, mimeType: string, fileName?: string): Promise<OCRResult> {

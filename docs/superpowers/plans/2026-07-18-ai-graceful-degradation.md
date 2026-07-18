@@ -107,8 +107,8 @@ aiCapabilities: protectedProcedure.query(() => {
 - Modify: `src/components/projects/ExpenseForm.tsx` (hide scan affordance when `aiEnabled` is false; friendly message)
 - Test: extend receipt-ocr / expenses router tests
 
-- [ ] **Step 1:** Failing tests: (a) `resolveProvider` returns `null` when zero keys; (b) `scanReceipt` keyless returns typed `{ unavailable: true, message }` (or throws `TRPCError` `PRECONDITION_FAILED` with the friendly message IF the existing client error-toast path is kept — prefer the typed result; pick one and make client+server consistent); (c) with a key present, behavior unchanged.
-- [ ] **Step 2:** Implement: `resolveProvider` checks which keys exist (respect existing provider-preference env var if there is one) and returns `null` when none. `scanReceipt` short-circuits:
+- [x] **Step 1:** Failing tests: (a) `resolveProvider` returns `null` when zero keys; (b) `scanReceipt` keyless returns typed `{ unavailable: true, message }` (or throws `TRPCError` `PRECONDITION_FAILED` with the friendly message IF the existing client error-toast path is kept — prefer the typed result; pick one and make client+server consistent); (c) with a key present, behavior unchanged.
+- [x] **Step 2:** Implement: `resolveProvider` checks which keys exist (respect existing provider-preference env var if there is one) and returns `null` when none. `scanReceipt` short-circuits:
 
 ```ts
 const provider = resolveProvider();
@@ -122,7 +122,7 @@ if (!provider) {
 ```
 
   Update the client: when the mutation result has `unavailable`, show that message as an informational note (not a red error); when `aiCapabilities.aiEnabled` is false, hide/disable the scan-receipt affordance with a short explanatory tooltip/caption. Keep plain file upload (attachment) working.
-- [ ] **Step 3:** PASS → `npx tsc --noEmit` clean → commit.
+- [x] **Step 3:** PASS → `npx tsc --noEmit` clean → commit.
 
 ### Task 5: Natural-language invoicing fails soft
 

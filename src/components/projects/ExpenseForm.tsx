@@ -44,6 +44,7 @@ type Props = {
 
 export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess }: Props) {
   const utils = trpc.useUtils();
+  const { data: aiCapabilities } = trpc.organization.aiCapabilities.useQuery();
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -61,6 +62,10 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
 
   const scanMutation = trpc.expenses.scanReceipt.useMutation({
     onSuccess: (result) => {
+      if (result.unavailable) {
+        setScanWarnings([result.message]);
+        return;
+      }
       const draft = result.draft;
       setForm((prev) => ({
         ...prev,
@@ -172,13 +177,19 @@ export function ExpenseForm({ projectId, taxes, categories, suppliers, onSuccess
         <p className="mt-1 text-xs text-muted-foreground">
           Upload a receipt photo or PDF (up to 3 MB) to prefill a draft expense. Review the fields before saving.
         </p>
-        <Input
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
-          disabled={scanMutation.isPending}
-          onChange={(e) => handleReceiptFile(e.target.files?.[0] ?? null)}
-          className="mt-2"
-        />
+        {aiCapabilities?.aiEnabled === false ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Receipt scanning is unavailable until an AI provider key is configured. You can still enter the expense and attach the receipt manually.
+          </p>
+        ) : (
+          <Input
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
+            disabled={scanMutation.isPending}
+            onChange={(e) => handleReceiptFile(e.target.files?.[0] ?? null)}
+            className="mt-2"
+          />
+        )}
         {scanMutation.isPending && (
           <p className="mt-2 text-xs text-muted-foreground">Scanning receipt…</p>
         )}

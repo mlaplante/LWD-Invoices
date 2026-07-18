@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseReceiptWithOCR } from "@/server/services/receipt-ocr";
+import { parseReceiptWithOCR, resolveProvider } from "@/server/services/receipt-ocr";
 
 // Mock the env module
 vi.mock("@/lib/env", () => ({
@@ -318,15 +318,13 @@ describe("receipt OCR service", () => {
     Object.assign(envMod.env, original);
   });
 
-  it("throws if ANTHROPIC_API_KEY is not set", async () => {
+  it("reports no provider when no AI key is set", async () => {
     // Re-mock env without key
     const envMod = await import("@/lib/env");
     const original = envMod.env.ANTHROPIC_API_KEY;
     (envMod.env as Record<string, unknown>).ANTHROPIC_API_KEY = undefined;
 
-    await expect(parseReceiptWithOCR(fakeImage, "image/png")).rejects.toThrow(
-      "ANTHROPIC_API_KEY is not configured",
-    );
+    expect(resolveProvider()).toBeNull();
 
     (envMod.env as Record<string, unknown>).ANTHROPIC_API_KEY = original;
   });

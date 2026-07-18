@@ -12,6 +12,7 @@ import { logAudit } from "../services/audit";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { suggestCategorization } from "@/server/services/expense-categorization";
 import { assertAiRateLimit } from "@/server/lib/ai-rate-limit";
+import { resolveProvider } from "../services/receipt-ocr";
 
 // Per-org throttle on the paid-LLM receipt scan. In-process (per serverless
 // instance), so the effective limit is this × replicas — enough to stop a
@@ -91,6 +92,13 @@ export const expensesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (!resolveProvider()) {
+        return {
+          unavailable: true as const,
+          message:
+            "Receipt scanning requires an AI provider key (Settings → AI). Enter the expense details manually.",
+        };
+      }
       if (scanReceiptLimiter.isLimited(ctx.orgId)) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
@@ -104,12 +112,15 @@ export const expensesRouter = router({
       if (file.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Receipt file is empty." });
       }
-      return buildExpenseDraftFromReceipt(ctx.db as unknown as PrismaClient, ctx.orgId, {
-        file,
-        mimeType: input.mimeType,
-        fileName: input.fileName,
-        projectId: input.projectId,
-      });
+      return {
+        unavailable: false as const,
+        ...(await buildExpenseDraftFromReceipt(ctx.db as unknown as PrismaClient, ctx.orgId, {
+          file,
+          mimeType: input.mimeType,
+          fileName: input.fileName,
+          projectId: input.projectId,
+        })),
+      };
     }),
 
   getById: protectedProcedure

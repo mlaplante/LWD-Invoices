@@ -7,6 +7,10 @@ vi.mock("@/server/services/expense-receipt-draft", () => ({
   buildExpenseDraftFromReceipt: vi.fn(),
 }));
 
+vi.mock("@/server/services/receipt-ocr", () => ({
+  resolveProvider: vi.fn(() => "anthropic"),
+}));
+
 vi.mock("@/server/services/recurring-expense-generator", () => ({
   generateExpensesForRecurring: vi.fn().mockResolvedValue(undefined),
 }));
@@ -18,6 +22,7 @@ vi.mock("@/server/services/tax-calculator", () => ({
 }));
 
 const { buildExpenseDraftFromReceipt } = await import("@/server/services/expense-receipt-draft");
+const { resolveProvider } = await import("@/server/services/receipt-ocr");
 const mockBuildExpenseDraftFromReceipt = vi.mocked(buildExpenseDraftFromReceipt);
 
 describe("expenses.scanReceipt", () => {
@@ -62,6 +67,8 @@ describe("expenses.scanReceipt", () => {
       dataBase64: `data:image/png;base64,${Buffer.from("fake-image").toString("base64")}`,
     });
 
+    expect(result.unavailable).toBe(false);
+    if (result.unavailable) throw new Error("Receipt scanning should be available");
     expect(result.draft.name).toBe("GitHub");
     expect(ctx.db.expense.create).not.toHaveBeenCalled();
     expect(mockBuildExpenseDraftFromReceipt).toHaveBeenCalledWith(ctx.db, "test-org-123", {
@@ -106,6 +113,20 @@ describe("expenses.scanReceipt", () => {
       fileName: "receipt.pdf",
       projectId: undefined,
     });
+  });
+
+  it("returns an informational unavailable result without an AI provider", async () => {
+    vi.mocked(resolveProvider).mockReturnValueOnce(null);
+
+    await expect(caller.scanReceipt({
+      fileName: "receipt.png",
+      mimeType: "image/png",
+      dataBase64: Buffer.from("fake-image").toString("base64"),
+    })).resolves.toEqual({
+      unavailable: true,
+      message: "Receipt scanning requires an AI provider key (Settings → AI). Enter the expense details manually.",
+    });
+    expect(mockBuildExpenseDraftFromReceipt).not.toHaveBeenCalled();
   });
 
   it("rejects callers without an elevated role", async () => {
