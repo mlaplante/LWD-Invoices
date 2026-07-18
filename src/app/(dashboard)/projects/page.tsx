@@ -8,10 +8,13 @@ import { formatDate } from "@/lib/format";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
-const STATUS_BADGE: Record<ProjectStatus, { label: string; className: string }> = {
-  ACTIVE:    { label: "Active",    className: "bg-emerald-50 text-emerald-600" },
+const STATUS_BADGE: Record<
+  ProjectStatus,
+  { label: string; className: string }
+> = {
+  ACTIVE: { label: "Active", className: "bg-emerald-50 text-emerald-600" },
   COMPLETED: { label: "Completed", className: "bg-primary/10 text-primary" },
-  ARCHIVED:  { label: "Archived",  className: "bg-gray-100 text-gray-500" },
+  ARCHIVED: { label: "Archived", className: "bg-gray-100 text-gray-500" },
 };
 
 // Consistent folder color from project name
@@ -45,8 +48,8 @@ type Project = {
 type Tab = "all" | "active" | "completed";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "all",       label: "All Projects" },
-  { id: "active",    label: "Active" },
+  { id: "all", label: "All Projects" },
+  { id: "active", label: "Active" },
   { id: "completed", label: "Completed" },
 ];
 
@@ -64,9 +67,11 @@ export default async function ProjectsPage({
 
   const PAGE_SIZE = 25;
   const statusFilter =
-    activeTab === "active" ? ("ACTIVE" as const)
-    : activeTab === "completed" ? ("COMPLETED" as const)
-    : undefined;
+    activeTab === "active"
+      ? ("ACTIVE" as const)
+      : activeTab === "completed"
+        ? ("COMPLETED" as const)
+        : undefined;
 
   const { items: paginated, total } = await api.projects.list({
     includeArchived: false,
@@ -100,7 +105,7 @@ export default async function ProjectsPage({
               "px-4 py-2.5 text-sm font-medium transition-colors relative",
               activeTab === t.id
                 ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {t.label}
@@ -118,167 +123,172 @@ export default async function ProjectsPage({
             <FolderOpen className="w-6 h-6 text-primary" />
           </div>
           <p className="font-semibold text-foreground">
-            {activeTab === "all" ? "No projects yet" : `No ${activeTab} projects`}
+            {activeTab === "all"
+              ? "No projects yet"
+              : `No ${activeTab} projects`}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             Create your first project to get started.
           </p>
           {activeTab === "all" && (
             <Button asChild className="mt-5" size="sm">
-              <Link href="/projects/new">Create Project</Link>
+              <Link href="/projects/new">New Project</Link>
             </Button>
           )}
         </div>
       ) : (
         <>
-        {/* Mobile cards */}
-        <div className="sm:hidden space-y-2">
-          {paginated.map((p) => {
-            const badge = STATUS_BADGE[p.status];
-            return (
-              <Link
-                key={p.id}
-                href={`/projects/${p.id}`}
-                className="block rounded-xl border border-border/50 bg-card p-4 space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-sm truncate">{p.name}</p>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold shrink-0 ml-2",
-                      badge.className
-                    )}
-                  >
-                    {badge.label}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">{p.client?.name ?? "No client"}</p>
-              </Link>
-            );
-          })}
-        </div>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-2">
+            {paginated.map((p) => {
+              const badge = STATUS_BADGE[p.status];
+              return (
+                <Link
+                  key={p.id}
+                  href={`/projects/${p.id}`}
+                  className="block rounded-xl border border-border/50 bg-card p-4 space-y-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-sm truncate">{p.name}</p>
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold shrink-0 ml-2",
+                        badge.className,
+                      )}
+                    >
+                      {badge.label}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {p.client?.name ?? "No client"}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
 
-        {/* Desktop table */}
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-2">
-                  Project
-                </th>
-                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Due Date
-                </th>
-                <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Status
-                </th>
-                <th className="pb-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Tasks
-                </th>
-                <th className="pb-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {paginated.map((p) => {
-                const badge = STATUS_BADGE[p.status];
-                return (
-                  <tr
-                    key={p.id}
-                    className="group hover:bg-accent/30 transition-colors"
-                  >
-                    {/* Folder icon + name/client */}
-                    <td className="py-3.5 pl-2">
-                      <div className="flex items-center gap-3">
-                        <div
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-2">
+                    Project
+                  </th>
+                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Due Date
+                  </th>
+                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Status
+                  </th>
+                  <th className="pb-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Tasks
+                  </th>
+                  <th className="pb-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {paginated.map((p) => {
+                  const badge = STATUS_BADGE[p.status];
+                  return (
+                    <tr
+                      key={p.id}
+                      className="group hover:bg-accent/30 transition-colors"
+                    >
+                      {/* Folder icon + name/client */}
+                      <td className="py-3.5 pl-2">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+                              folderColor(p.name),
+                            )}
+                          >
+                            <FolderOpen className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <Link
+                              href={`/projects/${p.id}`}
+                              className="font-semibold text-foreground hover:text-primary transition-colors leading-tight"
+                            >
+                              {p.name}
+                            </Link>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {p.client.name}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Due date */}
+                      <td className="py-3.5 text-muted-foreground">
+                        {formatDate(p.dueDate)}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5">
+                        <span
                           className={cn(
-                            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
-                            folderColor(p.name)
+                            "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold",
+                            badge.className,
                           )}
                         >
-                          <FolderOpen className="w-4 h-4" />
-                        </div>
-                        <div>
+                          {badge.label}
+                        </span>
+                      </td>
+
+                      {/* Task count */}
+                      <td className="py-3.5 text-right text-muted-foreground tabular-nums">
+                        {p._count.tasks}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 pr-2">
+                        <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                           <Link
                             href={`/projects/${p.id}`}
-                            className="font-semibold text-foreground hover:text-primary transition-colors leading-tight"
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
                           >
-                            {p.name}
+                            View
                           </Link>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {p.client.name}
-                          </p>
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Due date */}
-                    <td className="py-3.5 text-muted-foreground">
-                      {formatDate(p.dueDate)}
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-3.5">
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold",
-                          badge.className
-                        )}
-                      >
-                        {badge.label}
-                      </span>
-                    </td>
-
-                    {/* Task count */}
-                    <td className="py-3.5 text-right text-muted-foreground tabular-nums">
-                      {p._count.tasks}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 pr-2">
-                      <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link
-                          href={`/projects/${p.id}`}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-                        >
-                          View
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {/* Pagination footer */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
-              <span>
-                Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of {total}
-              </span>
-              <div className="flex items-center gap-1">
-                {currentPage > 1 && (
-                  <Link
-                    href={`/projects?${tabParam}page=${currentPage - 1}`}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
-                  >
-                    Previous
-                  </Link>
-                )}
-                <span className="px-3 py-1.5 text-xs">
-                  Page {currentPage} of {totalPages}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {/* Pagination footer */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
+                <span>
+                  Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of{" "}
+                  {total}
                 </span>
-                {currentPage < totalPages && (
-                  <Link
-                    href={`/projects?${tabParam}page=${currentPage + 1}`}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
-                  >
-                    Next
-                  </Link>
-                )}
+                <div className="flex items-center gap-1">
+                  {currentPage > 1 && (
+                    <Link
+                      href={`/projects?${tabParam}page=${currentPage - 1}`}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
+                    >
+                      Previous
+                    </Link>
+                  )}
+                  <span className="px-3 py-1.5 text-xs">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  {currentPage < totalPages && (
+                    <Link
+                      href={`/projects?${tabParam}page=${currentPage + 1}`}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent/80 transition-colors"
+                    >
+                      Next
+                    </Link>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         </>
       )}
     </div>

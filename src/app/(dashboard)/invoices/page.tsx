@@ -46,9 +46,21 @@ const PAGE_SIZE = 25;
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; page?: string; search?: string; dateFrom?: string; dateTo?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    page?: string;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }>;
 }) {
-  const { tab: rawTab, page: rawPage, search, dateFrom, dateTo } = await searchParams;
+  const {
+    tab: rawTab,
+    page: rawPage,
+    search,
+    dateFrom,
+    dateTo,
+  } = await searchParams;
   const activeTab: Tab =
     rawTab && Object.keys(TAB_FILTERS).includes(rawTab)
       ? (rawTab as Tab)
@@ -57,7 +69,10 @@ export default async function InvoicesPage({
 
   const filter = TAB_FILTERS[activeTab];
 
-  let result: Awaited<ReturnType<typeof api.invoices.list>> = { items: [], total: 0 };
+  let result: Awaited<ReturnType<typeof api.invoices.list>> = {
+    items: [],
+    total: 0,
+  };
   try {
     result = await api.invoices.list({
       ...filter,
@@ -73,7 +88,9 @@ export default async function InvoicesPage({
   }
 
   const { items: paginatedInvoices, total } = result;
-  const hasFilters = Boolean(search || dateFrom || dateTo || activeTab !== "all");
+  const hasFilters = Boolean(
+    search || dateFrom || dateTo || activeTab !== "all",
+  );
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(totalPages, 1));
   const start = (currentPage - 1) * PAGE_SIZE;
@@ -115,7 +132,10 @@ export default async function InvoicesPage({
 
       {/* Filter tabs */}
       <div className="overflow-x-auto border-b border-border print:hidden">
-        <nav aria-label="Invoice filters" className="flex min-w-max items-center gap-1">
+        <nav
+          aria-label="Invoice filters"
+          className="flex min-w-max items-center gap-1"
+        >
           {TABS.map((t) => (
             <Link
               key={t.id}
@@ -125,7 +145,7 @@ export default async function InvoicesPage({
                 "relative px-4 py-2.5 text-sm font-medium transition-colors",
                 activeTab === t.id
                   ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {t.label}
@@ -147,7 +167,9 @@ export default async function InvoicesPage({
             {hasFilters ? "No invoices match these filters" : "No invoices yet"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {hasFilters ? "Try clearing a filter or changing your search." : "Create your first invoice to get started."}
+            {hasFilters
+              ? "Try clearing a filter or changing your search."
+              : "Create your first invoice to get started."}
           </p>
           {hasFilters ? (
             <Button asChild className="mt-5" size="sm" variant="outline">
@@ -155,7 +177,7 @@ export default async function InvoicesPage({
             </Button>
           ) : (
             <Button asChild className="mt-5" size="sm">
-              <Link href="/invoices/new">Create Invoice</Link>
+              <Link href="/invoices/new">New Invoice</Link>
             </Button>
           )}
         </div>
@@ -173,7 +195,10 @@ export default async function InvoicesPage({
               currency: inv.currency,
               client: { name: inv.client.name },
               recurringInvoice: inv.recurringInvoice
-                ? { isActive: inv.recurringInvoice.isActive, frequency: inv.recurringInvoice.frequency }
+                ? {
+                    isActive: inv.recurringInvoice.isActive,
+                    frequency: inv.recurringInvoice.frequency,
+                  }
                 : null,
             }))}
           />
@@ -204,7 +229,8 @@ export default async function InvoicesPage({
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground print:hidden">
               <span>
-                Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of {total}
+                Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of{" "}
+                {total}
               </span>
               <div className="flex items-center gap-1">
                 {currentPage > 1 && (

@@ -95,7 +95,11 @@ export default async function ClientsPage({
           {usedTags.map(({ tag: t, count }) => (
             <Link
               key={t}
-              href={tag?.toLowerCase() === t.toLowerCase() ? "/clients" : `/clients?tag=${encodeURIComponent(t)}`}
+              href={
+                tag?.toLowerCase() === t.toLowerCase()
+                  ? "/clients"
+                  : `/clients?tag=${encodeURIComponent(t)}`
+              }
               className={cn(
                 "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
                 tag?.toLowerCase() === t.toLowerCase()
@@ -107,7 +111,10 @@ export default async function ClientsPage({
             </Link>
           ))}
           {tag && (
-            <Link href="/clients" className="text-xs text-muted-foreground underline ml-1">
+            <Link
+              href="/clients"
+              className="text-xs text-muted-foreground underline ml-1"
+            >
               Clear
             </Link>
           )}
@@ -123,7 +130,9 @@ export default async function ClientsPage({
             {hasFilters ? "No clients match these filters" : "No clients yet"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {hasFilters ? "Try clearing a filter or changing your search." : "Add your first client to get started."}
+            {hasFilters
+              ? "Try clearing a filter or changing your search."
+              : "Add your first client to get started."}
           </p>
           {hasFilters ? (
             <Button asChild className="mt-5" size="sm" variant="outline">
@@ -131,7 +140,7 @@ export default async function ClientsPage({
             </Button>
           ) : (
             <Button asChild className="mt-5" size="sm">
-              <Link href="/clients/new">Add Client</Link>
+              <Link href="/clients/new">New Client</Link>
             </Button>
           )}
         </div>
@@ -145,18 +154,27 @@ export default async function ClientsPage({
                 href={`/clients/${client.id}`}
                 className="flex items-center gap-3 py-3.5 px-2 hover:bg-accent/30 transition-colors"
               >
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${avatarColor(client.name)}`}>
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${avatarColor(client.name)}`}
+                >
                   {initials(client.name)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm leading-tight truncate">{client.name}</p>
+                  <p className="font-semibold text-sm leading-tight truncate">
+                    {client.name}
+                  </p>
                   {client.email && (
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{client.email}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {client.email}
+                    </p>
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground shrink-0 text-right">
                   {client.phone && <p>{client.phone}</p>}
-                  <p>{[client.city, client.country].filter(Boolean).join(", ") || ""}</p>
+                  <p>
+                    {[client.city, client.country].filter(Boolean).join(", ") ||
+                      ""}
+                  </p>
                 </div>
               </Link>
             ))}
@@ -181,23 +199,36 @@ export default async function ClientsPage({
               </thead>
               <tbody className="divide-y divide-border/50">
                 {paginated.map((client) => (
-                  <tr key={client.id} className="group hover:bg-accent/30 transition-colors">
+                  <tr
+                    key={client.id}
+                    className="group hover:bg-accent/30 transition-colors"
+                  >
                     <td className="py-3.5 pl-2">
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${avatarColor(client.name)}`}>
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${avatarColor(client.name)}`}
+                        >
                           {initials(client.name)}
                         </div>
                         <div>
-                          <Link href={`/clients/${client.id}`} className="font-semibold text-foreground hover:text-primary transition-colors leading-tight">
+                          <Link
+                            href={`/clients/${client.id}`}
+                            className="font-semibold text-foreground hover:text-primary transition-colors leading-tight"
+                          >
                             {client.name}
                           </Link>
                           {client.email && (
-                            <p className="text-xs text-muted-foreground mt-0.5">{client.email}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {client.email}
+                            </p>
                           )}
                           {client.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {client.tags.map((t) => (
-                                <span key={t} className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                <span
+                                  key={t}
+                                  className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                                >
                                   {t}
                                 </span>
                               ))}
@@ -206,13 +237,20 @@ export default async function ClientsPage({
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 text-muted-foreground">{client.phone ?? "—"}</td>
                     <td className="py-3.5 text-muted-foreground">
-                      {[client.city, client.country].filter(Boolean).join(", ") || "—"}
+                      {client.phone ?? "—"}
+                    </td>
+                    <td className="py-3.5 text-muted-foreground">
+                      {[client.city, client.country]
+                        .filter(Boolean)
+                        .join(", ") || "—"}
                     </td>
                     <td className="py-3.5 pr-2">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                        <Link href={`/clients/${client.id}`} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
+                        <Link
+                          href={`/clients/${client.id}`}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                        >
                           View
                         </Link>
                       </div>
@@ -227,7 +265,8 @@ export default async function ClientsPage({
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
               <span>
-                Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of {total}
+                Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of{" "}
+                {total}
               </span>
               <div className="flex items-center gap-1">
                 {currentPage > 1 && (
