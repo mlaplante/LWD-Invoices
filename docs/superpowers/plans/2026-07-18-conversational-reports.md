@@ -102,5 +102,5 @@ Behavior:
 
 ### Task 6: Full verification
 
-- [ ] `npm test -- --no-file-parallelism`, `npm run test:eval`, `npx tsc --noEmit`, `npm run lint` — all clean (or targeted + note if sandbox-blocked).
-- [ ] Commit pending; on sandbox git failure leave staged + exact `git add` lists; continue.
+- [x] `npm test -- --no-file-parallelism`, `npm run test:eval`, `npx tsc --noEmit`, `npm run lint` — all clean (or targeted + note if sandbox-blocked). `npm test` exited 0; eval passed 106 tests; TypeScript passed; lint exited 0 with 62 pre-existing warnings and no errors.
+- [x] Commit pending; on sandbox git failure leave staged + exact `git add` lists; continue.
