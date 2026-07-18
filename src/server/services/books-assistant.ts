@@ -141,6 +141,19 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "get_invoice_stats",
+    description:
+      "Invoice issuance stats for a period: counts by status, total billed, average invoice value, largest invoices. Use for 'how much did I bill' questions (billed differs from collected cash; get_revenue_summary is for collected cash).",
+    input_schema: {
+      type: "object",
+      properties: {
+        period: { type: "string", enum: REPORT_PERIODS, description: "Time window for invoices issued." },
+        limit: { type: "integer", description: "Max largest invoices to return (default 10; maximum 50)." },
+      },
+      required: ["period"],
+    },
+  },
+  {
     name: "get_unbilled_time",
     description:
       "Time entries that have been logged but not yet billed on an invoice (excluding retainer-covered time), grouped by project, with estimated value. Use for 'unbilled time' / 'what can I invoice' questions.",
@@ -392,6 +405,46 @@ async function getExpenseSummary(ctx: BooksAssistantContext, period: string, now
   };
 }
 
+async function getInvoiceStats(ctx: BooksAssistantContext, period: string, now: Date, limit: number) {
+  const { start, end, label } = periodRange(period, now);
+  const invoices = await ctx.db.invoice.findMany({
+    where: {
+      organizationId: ctx.orgId,
+      isArchived: false,
+      type: { not: "CREDIT_NOTE" },
+      date: { gte: start, lt: end },
+    },
+    select: {
+      number: true,
+      total: true,
+      status: true,
+      client: { select: { name: true } },
+    },
+  });
+  const byStatus: Record<string, number> = {};
+  let totalBilled = 0;
+  for (const invoice of invoices) {
+    totalBilled += toNum(invoice.total);
+    byStatus[invoice.status] = (byStatus[invoice.status] ?? 0) + 1;
+  }
+  return {
+    period: label,
+    count: invoices.length,
+    totalBilled: money(totalBilled),
+    averageValue: invoices.length ? money(totalBilled / invoices.length) : 0,
+    byStatus,
+    largest: invoices
+      .map((invoice) => ({
+        number: invoice.number,
+        client: invoice.client.name,
+        total: money(toNum(invoice.total)),
+        status: invoice.status,
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, limit),
+  };
+}
+
 async function getUnbilledTime(ctx: BooksAssistantContext, limit: number) {
   const entries = await ctx.db.timeEntry.findMany({
     where: {
@@ -508,6 +561,8 @@ export async function executeBooksAssistantTool(
       });
     case "get_expense_summary":
       return getExpenseSummary(ctx, String(input.period ?? "last_90_days"), now, limit ?? 25);
+    case "get_invoice_stats":
+      return getInvoiceStats(ctx, String(input.period ?? "last_90_days"), now, limit ?? 10);
     case "get_unbilled_time":
       return getUnbilledTime(ctx, limit ?? 15);
     case "get_client_health":

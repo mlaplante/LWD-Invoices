@@ -72,6 +72,39 @@ describe("report-shaped assistant tools", () => {
       ],
     });
   });
+
+  it("summarizes issued invoices by status and excludes credit notes from billed totals", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      { number: "INV-1", total: 300, status: "SENT", client: { name: "Acme" } },
+      { number: "INV-2", total: 100, status: "DRAFT", client: { name: "Globex" } },
+    ]);
+    const ctx = { db: { invoice: { findMany } } as never, orgId: "org-1" };
+
+    const result = await executeBooksAssistantTool(
+      "get_invoice_stats",
+      { period: "last_90_days" },
+      ctx,
+      new Date("2026-07-18T00:00:00.000Z"),
+    );
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        organizationId: "org-1",
+        isArchived: false,
+        type: { not: "CREDIT_NOTE" },
+      }),
+    }));
+    expect(result).toMatchObject({
+      count: 2,
+      totalBilled: 400,
+      averageValue: 200,
+      byStatus: { SENT: 1, DRAFT: 1 },
+      largest: [
+        { number: "INV-1", client: "Acme", total: 300, status: "SENT" },
+        { number: "INV-2", client: "Globex", total: 100, status: "DRAFT" },
+      ],
+    });
+  });
 });
 
 // Build a fake Gemini SSE Response that emits the given chunks as `data:` lines.

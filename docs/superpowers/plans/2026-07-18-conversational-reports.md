@@ -74,7 +74,7 @@ Implementation:
 //          largest: [{ number, client, total, status } capped] }
 ```
 
-- [ ] Failing test (mixed statuses + a credit note) asserting credit-note handling matches reports.ts convention → implement → PASS → commit.
+- [x] Failing test (mixed statuses + a credit note) asserting credit-note handling matches reports.ts convention → implement → PASS → commit.
 
 ### Task 4: System-prompt + eval coverage
 
