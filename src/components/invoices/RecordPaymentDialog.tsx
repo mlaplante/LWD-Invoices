@@ -26,6 +26,9 @@ import { toast } from "sonner";
 const METHODS = [
   { value: "cash", label: "Cash" },
   { value: "check", label: "Check" },
+  { value: "zelle", label: "Zelle" },
+  { value: "ach", label: "ACH" },
+  { value: "venmo", label: "Venmo" },
   { value: "bank_transfer", label: "Bank Transfer" },
   { value: "credit_card", label: "Credit Card" },
   { value: "money_order", label: "Money Order" },

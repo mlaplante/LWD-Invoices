@@ -3,6 +3,7 @@ import { invoicesRouter } from "@/server/routers/invoices";
 import { createMockContext } from "./mocks/trpc-context";
 import { InvoiceStatus, InvoiceType, LineType } from "@/generated/prisma";
 import { Decimal } from "@prisma/client-runtime-utils";
+import { logAudit } from "@/server/services/audit";
 
 // Mock external services used by procedures
 vi.mock("@/server/services/audit", () => ({
@@ -814,6 +815,11 @@ describe("Invoices Router Procedures", () => {
           organizationId: "test-org-123",
         }),
       });
+      expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({
+        action: "PAYMENT_RECEIVED",
+        entityType: "Invoice",
+        entityId: "inv_123",
+      }));
     });
 
     it("throws NOT_FOUND for nonexistent invoice", async () => {

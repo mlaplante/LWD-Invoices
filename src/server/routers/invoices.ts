@@ -1203,6 +1203,16 @@ export const invoicesRouter = router({
             console.error("[markPaidMany] Failed to send receipt email:", err);
           }
         }
+
+        await Promise.all(successInvoices.map((inv) => logAudit({
+          action: "PAYMENT_RECEIVED",
+          entityType: "Invoice",
+          entityId: inv.id,
+          entityLabel: inv.number,
+          diff: { method: input.method, amount: Number(inv.total) },
+          userId: ctx.userId,
+          organizationId: ctx.orgId,
+        }).catch(() => {})));
       }
 
       return { paid, failed, skipped: input.ids.length - invoices.length, errors };
@@ -1366,7 +1376,7 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.id, organizationId: ctx.orgId },
-        select: { status: true, type: true, clientId: true, total: true },
+        select: { status: true, type: true, clientId: true, total: true, number: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -1419,6 +1429,16 @@ export const invoicesRouter = router({
       } catch (err) {
         console.error("[markPaid] Failed to send payment receipt email:", err);
       }
+
+      await logAudit({
+        action: "PAYMENT_RECEIVED",
+        entityType: "Invoice",
+        entityId: input.id,
+        entityLabel: invoice.number,
+        diff: { method: input.method, amount: input.amount, transactionId: input.transactionId },
+        userId: ctx.userId,
+        organizationId: ctx.orgId,
+      }).catch(() => {});
 
       return result;
     }),

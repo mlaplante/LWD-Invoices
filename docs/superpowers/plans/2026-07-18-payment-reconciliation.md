@@ -214,7 +214,7 @@ export function prefillAllocation(invoiceBalance: number, unallocated: number): 
 - Modify: `src/server/routers/invoices.ts` (`markPaid` ~line 1343-1413 and `markPaidMany` ~line 1095-1200: add a `.catch(() => {})`-wrapped `logAudit` call after the transaction, mirroring `partialPayments.ts:99-110`; do NOT change any other behavior)
 - Test: extend `src/test/routers-invoices-procedures.test.ts` `markPaid` describe with one test asserting `logAudit` is called (mock `@/server/services/audit`).
 
-- [ ] Steps: failing test → implement → pass → commit.
+- [x] Steps: failing test → implement → pass → commit.
 
 ### Task 6: Full verification
 
