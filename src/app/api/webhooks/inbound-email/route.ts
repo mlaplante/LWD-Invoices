@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Webhook } from "svix";
 import { db } from "@/server/db";
+import { inngest } from "@/inngest/client";
 import {
   parseInboundPayload,
   extractInvoiceIdFromRecipients,
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
     ticketId = null;
   }
 
-  await db.inboundEmail.create({
+  const inboundEmail = await db.inboundEmail.create({
     data: {
       organizationId: invoice.organizationId,
       invoiceId: invoice.id,
@@ -129,6 +130,11 @@ export async function POST(req: NextRequest) {
       inReplyTo: parsed.inReplyTo,
     },
   });
+
+  await inngest.send({
+    name: "inbound-email/received",
+    data: { inboundEmailId: inboundEmail.id, organizationId: invoice.organizationId },
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true, threaded: ticketId != null });
 }

@@ -23,6 +23,7 @@ const limiters = {
   proposalGeneration: createRateLimiter({ limit: 15, windowMs: 10 * 60_000 }),
   invoiceReview: createRateLimiter({ limit: 30, windowMs: 10 * 60_000 }),
   expenseCategorization: createRateLimiter({ limit: 60, windowMs: 10 * 60_000 }),
+  replyTriage: createRateLimiter({ limit: 40, windowMs: 10 * 60_000 }),
 } as const;
 
 export type AiFeature = keyof typeof limiters;
