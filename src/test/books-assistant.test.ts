@@ -40,6 +40,38 @@ describe("report-shaped assistant tools", () => {
       payments: [expect.objectContaining({ invoiceNumber: "INV-10" })],
     });
   });
+
+  it("groups period expenses by category and reports the top suppliers", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      { qty: 2, rate: 100, category: { name: "Software" }, supplier: { name: "Linear" } },
+      { qty: 1, rate: 75, category: { name: "Software" }, supplier: { name: "Figma" } },
+      { qty: 1, rate: 50, category: { name: "Travel" }, supplier: { name: "Delta" } },
+    ]);
+    const ctx = { db: { expense: { findMany } } as never, orgId: "org-1" };
+
+    const result = await executeBooksAssistantTool(
+      "get_expense_summary",
+      { period: "last_90_days" },
+      ctx,
+      new Date("2026-07-18T00:00:00.000Z"),
+    );
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: "org-1" }),
+    }));
+    expect(result).toMatchObject({
+      totalSpent: 325,
+      byCategory: [
+        { category: "Software", total: 275, count: 2 },
+        { category: "Travel", total: 50, count: 1 },
+      ],
+      topSuppliers: [
+        { supplier: "Linear", total: 200 },
+        { supplier: "Figma", total: 75 },
+        { supplier: "Delta", total: 50 },
+      ],
+    });
+  });
 });
 
 // Build a fake Gemini SSE Response that emits the given chunks as `data:` lines.

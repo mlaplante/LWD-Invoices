@@ -129,6 +129,18 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "get_expense_summary",
+    description: "Expenses in a period grouped by category, with totals and top suppliers. Use for spending/expense questions.",
+    input_schema: {
+      type: "object",
+      properties: {
+        period: { type: "string", enum: REPORT_PERIODS, description: "Time window for expenses." },
+        limit: { type: "integer", description: "Max categories to return (default 25; maximum 50)." },
+      },
+      required: ["period"],
+    },
+  },
+  {
     name: "get_unbilled_time",
     description:
       "Time entries that have been logged but not yet billed on an invoice (excluding retainer-covered time), grouped by project, with estimated value. Use for 'unbilled time' / 'what can I invoice' questions.",
@@ -341,6 +353,45 @@ async function getPaymentHistory(
   };
 }
 
+async function getExpenseSummary(ctx: BooksAssistantContext, period: string, now: Date, limit: number) {
+  const { start, end, label } = periodRange(period, now);
+  const expenses = await ctx.db.expense.findMany({
+    where: { organizationId: ctx.orgId, createdAt: { gte: start, lt: end } },
+    select: {
+      qty: true,
+      rate: true,
+      category: { select: { name: true } },
+      supplier: { select: { name: true } },
+    },
+  });
+  const byCategory = new Map<string, { total: number; count: number }>();
+  const bySupplier = new Map<string, number>();
+  let totalSpent = 0;
+  for (const expense of expenses) {
+    const total = toNum(expense.rate) * expense.qty;
+    totalSpent += total;
+    const category = expense.category?.name ?? "Uncategorized";
+    const categoryEntry = byCategory.get(category) ?? { total: 0, count: 0 };
+    categoryEntry.total += total;
+    categoryEntry.count++;
+    byCategory.set(category, categoryEntry);
+    const supplier = expense.supplier?.name ?? "Unknown supplier";
+    bySupplier.set(supplier, (bySupplier.get(supplier) ?? 0) + total);
+  }
+  return {
+    period: label,
+    totalSpent: money(totalSpent),
+    byCategory: Array.from(byCategory.entries())
+      .map(([category, value]) => ({ category, total: money(value.total), count: value.count }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, limit),
+    topSuppliers: Array.from(bySupplier.entries())
+      .map(([supplier, total]) => ({ supplier, total: money(total) }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5),
+  };
+}
+
 async function getUnbilledTime(ctx: BooksAssistantContext, limit: number) {
   const entries = await ctx.db.timeEntry.findMany({
     where: {
@@ -455,6 +506,8 @@ export async function executeBooksAssistantTool(
         onlyLate: input.onlyLate === true,
         limit: limit ?? 25,
       });
+    case "get_expense_summary":
+      return getExpenseSummary(ctx, String(input.period ?? "last_90_days"), now, limit ?? 25);
     case "get_unbilled_time":
       return getUnbilledTime(ctx, limit ?? 15);
     case "get_client_health":

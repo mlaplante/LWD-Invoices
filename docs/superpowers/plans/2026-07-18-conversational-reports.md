@@ -59,7 +59,7 @@ Implementation:
 //          topSuppliers: [{ supplier, total } top 5] }
 ```
 
-- [ ] Failing test with 3 expenses across 2 categories → grouping/order/totals correct → implement → PASS → commit.
+- [x] Failing test with 3 expenses across 2 categories → grouping/order/totals correct → implement → PASS → commit.
 
 ### Task 3: `get_invoice_stats` tool
 
