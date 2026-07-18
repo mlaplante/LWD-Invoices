@@ -40,6 +40,28 @@ const REVENUE_RESULT = {
   topClients: [{ clientName: "Acme Corp", collected: 1234.56 }],
 };
 
+const PAYMENT_HISTORY_RESULT = {
+  period: "last quarter",
+  payments: [{ client: "Acme Corp", invoiceNumber: "INV-201", amount: 800, daysLate: 10, paidLate: true }],
+  summary: { count: 2, totalCollected: 1200, lateCount: 1, averageDaysLate: 10 },
+};
+
+const EXPENSE_SUMMARY_RESULT = {
+  period: "this year",
+  totalSpent: 3500,
+  byCategory: [{ category: "Software", total: 2400, count: 8 }],
+  topSuppliers: [{ supplier: "Figma", total: 1200 }],
+};
+
+const INVOICE_STATS_RESULT = {
+  period: "last month",
+  count: 4,
+  totalBilled: 6400,
+  averageValue: 1600,
+  byStatus: { SENT: 3, DRAFT: 1 },
+  largest: [{ number: "INV-301", client: "Globex", total: 3000, status: "SENT" }],
+};
+
 export const groundingCases: ReadonlyArray<EvalCase<GroundingInput, GroundingExpected>> = [
   // ── Grounded (every figure traces to the data) ─────────────────────────────
   {
@@ -79,6 +101,33 @@ export const groundingCases: ReadonlyArray<EvalCase<GroundingInput, GroundingExp
     },
     expected: { grounded: true },
   },
+  {
+    id: "payment-history-grounded",
+    description: "Restates collected payment history and lateness figures from the report tool.",
+    input: {
+      answer: "You collected $1,200 last quarter. Acme Corp paid INV-201 10 days late for $800.",
+      toolResults: [PAYMENT_HISTORY_RESULT],
+    },
+    expected: { grounded: true },
+  },
+  {
+    id: "expense-summary-grounded",
+    description: "Restates the total spend and a category amount from the expense tool.",
+    input: {
+      answer: "You spent $3,500 this year, including $2,400 on Software.",
+      toolResults: [EXPENSE_SUMMARY_RESULT],
+    },
+    expected: { grounded: true },
+  },
+  {
+    id: "invoice-stats-grounded",
+    description: "Restates billed and largest-invoice amounts from the invoice stats tool.",
+    input: {
+      answer: "You billed $6,400 last month; your largest invoice was $3,000 to Globex.",
+      toolResults: [INVOICE_STATS_RESULT],
+    },
+    expected: { grounded: true },
+  },
 
   // ── Ungrounded (a fabricated dollar figure) ────────────────────────────────
   {
@@ -108,6 +157,36 @@ export const groundingCases: ReadonlyArray<EvalCase<GroundingInput, GroundingExp
     input: {
       answer: "Revenue last quarter came in around $50,000.",
       toolResults: [REVENUE_RESULT],
+    },
+    expected: { grounded: false },
+  },
+  {
+    id: "payment-history-fabricated-total",
+    description: "Invents an unsupported collection amount from payment history.",
+    critical: true,
+    input: {
+      answer: "You collected $9,000 last quarter.",
+      toolResults: [PAYMENT_HISTORY_RESULT],
+    },
+    expected: { grounded: false },
+  },
+  {
+    id: "expense-summary-fabricated-total",
+    description: "Invents an unsupported expense amount.",
+    critical: true,
+    input: {
+      answer: "Software spending was $8,000 this year.",
+      toolResults: [EXPENSE_SUMMARY_RESULT],
+    },
+    expected: { grounded: false },
+  },
+  {
+    id: "invoice-stats-fabricated-total",
+    description: "Invents an unsupported billed amount.",
+    critical: true,
+    input: {
+      answer: "You billed $12,000 last month.",
+      toolResults: [INVOICE_STATS_RESULT],
     },
     expected: { grounded: false },
   },

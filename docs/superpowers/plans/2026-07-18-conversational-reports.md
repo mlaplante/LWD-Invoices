@@ -82,8 +82,8 @@ Implementation:
 - Modify: `src/server/services/books-assistant.ts` `SYSTEM_PROMPT` (lines 67-76): add one sentence noting report questions about payment lateness, expenses, and billing stats are answerable via tools; keep the "ONLY the data returned by tools" rule verbatim.
 - Modify: `src/server/services/ai-eval/fixtures/assistant-grounding.fixtures.ts`
 
-- [ ] Add ≥6 grounding fixtures using the three new tool-result shapes: for each tool, one grounded answer (all $ figures present in the tool result) and one `critical: true` fabricated-figure case (`expected: { grounded: false }`). Follow the existing `AR_RESULT` fixture style (`assistant-grounding.fixtures.ts:17-24`).
-- [ ] `npm run test:eval` → all suites green (gate is perfect-score; if a fixture fails the checker rather than the intent, fix the fixture, never loosen `grounding.ts`). Commit.
+- [x] Add ≥6 grounding fixtures using the three new tool-result shapes: for each tool, one grounded answer (all $ figures present in the tool result) and one `critical: true` fabricated-figure case (`expected: { grounded: false }`). Follow the existing `AR_RESULT` fixture style (`assistant-grounding.fixtures.ts:17-24`).
+- [x] `npm run test:eval` → all suites green (gate is perfect-score; if a fixture fails the checker rather than the intent, fix the fixture, never loosen `grounding.ts`). Commit.
 
 ### Task 5: "Ask about your numbers" panel on /reports
 
