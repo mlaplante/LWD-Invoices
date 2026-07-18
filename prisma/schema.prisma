@@ -714,6 +714,7 @@ model Invoice {
 
   notes                String?
   isArchived           Boolean @default(false)
+  installmentAutoChargeEnabled Boolean @default(false)
   reminderDaysOverride Int[]   @default([])
 
   // Optional per-invoice reminder sequence override
@@ -855,6 +856,7 @@ model PartialPayment {
   invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  paymentAttempts PaymentAttempt[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -924,6 +926,8 @@ model PaymentAttempt {
 
   invoiceId            String
   invoice              Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  partialPaymentId     String?
+  partialPayment       PartialPayment?      @relation(fields: [partialPaymentId], references: [id], onDelete: SetNull)
   organizationId       String
   organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   savedPaymentMethodId String?
@@ -935,6 +939,7 @@ model PaymentAttempt {
   @@unique([invoiceId, kind])
   @@index([organizationId, status])
   @@index([invoiceId])
+  @@index([partialPaymentId])
 }
 
 model SavedPaymentMethod {

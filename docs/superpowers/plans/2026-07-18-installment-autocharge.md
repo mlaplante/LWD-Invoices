@@ -25,8 +25,8 @@
 
 ### Task 1: Schema
 
-- [ ] Add `installmentAutoChargeEnabled Boolean @default(false)` to `Invoice`; add `partialPaymentId String?` + relation + `@@index([partialPaymentId])` to `PaymentAttempt` (with back-relation `paymentAttempts PaymentAttempt[]` on `PartialPayment`). FIRST check the PaymentAttempt unique constraint per the note above and record in the plan file what you found + which collision strategy applies.
-- [ ] Create additive migration (same `prisma migrate diff` fallback procedure as the 2026-07-18-payment-reconciliation plan Task 1 Step 3); verify SQL is only ADD COLUMN / CREATE INDEX / ADD CONSTRAINT for the new FK. `npx prisma generate`. Commit.
+- [x] Add `installmentAutoChargeEnabled Boolean @default(false)` to `Invoice`; add `partialPaymentId String?` + relation + `@@index([partialPaymentId])` to `PaymentAttempt` (with back-relation `paymentAttempts PaymentAttempt[]` on `PartialPayment`). FIRST checked: `PaymentAttempt` has `kind String @default("AUTOPAY")` and `@@unique([invoiceId, kind])`. Strategy: each installment attempt uses `kind = "INSTALLMENT_AUTOPAY:<partialPaymentId>"`, avoiding the per-invoice uniqueness collision across multiple installments; existing dunning queries filter `kind: "AUTOPAY"`, so installment attempts are invisible without changing dunning behavior.
+- [x] Created additive migration from the `prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script` shape; verified it contains only two ADD COLUMN statements, the partial-payment index, and its nullable FK. `npx prisma generate` passed. Commit.
 
 ### Task 2: Installment-aware off-session charge
 
