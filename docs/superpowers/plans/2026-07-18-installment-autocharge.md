@@ -53,7 +53,7 @@ Function: cron schedule matching the house daily-cron convention (check `recurri
 2. Per installment: re-check guards (client.autoChargeEnabled, default saved method exists, no prior attempt) then call the Task 2 installment charge.
 3. On failure: `notifyOrgAdmins(orgId, { title: "Auto-charge failed for installment", body: <client, invoice number, installment amount, processor error>, link: "/invoices/<id>" })` `.catch(() => {})`. Do NOT email the client in v1 (existing overdue/reminder machinery covers client nudges).
 
-- [x] Implemented the daily `process-installment-autopay` cron: it queries only opted-in due unpaid installments, rechecks consent/default payment method/prior attempts in each Inngest step, preserves run continuation, and sends the specified admin failure notification. `npx tsc --noEmit` passes. Deviation: no existing Inngest test harness exposes cron step execution without a live function invocation, so focused behavioral coverage is deferred to the full regression sweep.
+- [x] Implemented the daily `process-installment-autopay` cron: it queries only opted-in due unpaid installments, rechecks consent/default payment method/prior attempts in each Inngest step, preserves run continuation, and sends the specified admin failure notification. Focused behavioral coverage uses the established Inngest handler harness pattern, which mocks `createFunction` to return the handler and executes `step.run` callbacks directly.
 
 ### Task 4: UI toggle + /pay disclosure
 
