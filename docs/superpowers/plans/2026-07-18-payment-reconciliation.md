@@ -196,7 +196,7 @@ Behavior:
 - MatchPaymentDialog: shows the payment's remaining amount; searchable open-invoice list from `paymentReconciliation.openInvoices` (search box filters by invoice number/client); selecting invoices adds allocation rows with editable amounts, prefilled to `min(invoice balance, remaining unallocated)`; footer shows allocated vs remaining; Match button disabled while over-allocated; on success invalidate `paymentReconciliation.list` and `invoices` queries.
 - Use existing UI primitives (whatever `RecordPaymentDialog.tsx` imports — dialog, button, input, select components) and existing currency-formatting helpers (grep for how `RecordPaymentDialog` formats amounts).
 
-- [ ] **Step 1:** Build components. **Step 2:** `npx tsc --noEmit` → 0 errors. **Step 3:** Component test for MatchPaymentDialog allocation math if a component-test pattern exists (check `src/test/**/*.test.tsx` for a dialog test to mirror; if none fits, cover the allocation-prefill logic as a pure function in `src/components/reconciliation/allocation.ts` + `src/test/reconciliation-allocation.test.ts`):
+- [x] **Step 1:** Build components. **Step 2:** `npx tsc --noEmit` → 0 errors. **Step 3:** Component test for MatchPaymentDialog allocation math if a component-test pattern exists (check `src/test/**/*.test.tsx` for a dialog test to mirror; if none fits, cover the allocation-prefill logic as a pure function in `src/components/reconciliation/allocation.ts` + `src/test/reconciliation-allocation.test.ts`):
 
 ```ts
 // allocation.ts
@@ -205,7 +205,7 @@ export function prefillAllocation(invoiceBalance: number, unallocated: number): 
 }
 ```
 
-- [ ] **Step 4:** Commit.
+- [x] **Step 4:** Commit.
 
 ### Task 5: Method dropdown parity + audit-log hardening (small, additive)
 
