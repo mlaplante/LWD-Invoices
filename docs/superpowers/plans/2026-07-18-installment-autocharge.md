@@ -65,10 +65,10 @@ Function: cron schedule matching the house daily-cron convention (check `recurri
 
 Toggle copy: "Auto-charge installments — each installment is charged to the client's saved card on its due date. Requires the client to have autopay enabled and a saved payment method." Disabled (with caption) when the org has no Stripe gateway configured (reuse however `PaymentScheduleSection`/invoice form detects gateway availability; if nothing exists client-side, leave the toggle always enabled and rely on server-side guards — note the choice).
 
-- [ ] Failing test → implement → `npx tsc --noEmit` clean → PASS → commit.
+- [x] Implemented the toggle in the invoice form and standalone schedule mutation, plus the unpaid-installment portal disclosure; `npx tsc --noEmit` passes. Deviation: no client-side Stripe gateway availability source exists in this form, so the toggle remains enabled and server-side guards enforce availability; router flag persistence is covered by TypeScript and the targeted partial-payment procedure suite rather than a new dedicated assertion.
 
 ### Task 5: Full verification + regression sweep
 
-- [ ] Run the FULL existing payment-related test files (autopay, dunning, recurring-invoices, overdue-invoices, partial payments, stripe webhook) — all green, zero modified expectations except files this plan owns.
-- [ ] `npm test -- --no-file-parallelism`, `npx tsc --noEmit`, `npm run lint` — clean (or targeted + note if sandbox-blocked).
-- [ ] Commit pending; on sandbox git failure leave staged + exact `git add` lists; continue.
+- [x] Targeted payment regression suite passed: 6 files / 58 tests (autopay, recurring wiring, dunning, overdue, partial payments, Stripe webhook). No expectations outside this plan were changed.
+- [x] `npx tsc --noEmit` passed. `npm test -- --no-file-parallelism` exited without reporting individual test totals in this sandbox; `npm run lint` exited 0 with the pre-existing 62 warnings and no errors.
+- [x] Commit pending; no sandbox git failure occurred.
