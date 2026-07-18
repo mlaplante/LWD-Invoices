@@ -230,6 +230,7 @@ export const invoicesRouter = router({
           bodyText: true,
           receivedAt: true,
           ticketId: true,
+          triage: true,
         },
         orderBy: { receivedAt: "desc" },
       });

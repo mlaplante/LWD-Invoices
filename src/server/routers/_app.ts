@@ -58,11 +58,13 @@ import { refundsRouter } from "./refunds";
 import { monthEndCloseRouter } from "./monthEndClose";
 import { dashboardLayoutRouter } from "./dashboardLayout";
 import { paymentReconciliationRouter } from "./paymentReconciliation";
+import { replyTriageRouter } from "./replyTriage";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
   dashboardLayout: dashboardLayoutRouter,
   paymentReconciliation: paymentReconciliationRouter,
+  replyTriage: replyTriageRouter,
   analytics: analyticsRouter,
   assistant: assistantRouter,
   contractorPortal: contractorPortalRouter,

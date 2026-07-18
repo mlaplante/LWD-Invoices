@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { MessageSquare } from "lucide-react";
+import { SUGGESTED_ACTIONS } from "@/lib/reply-triage-actions";
+
+const triageStyles: Record<string, string> = { DISPUTE: "bg-red-100 text-red-800", PROMISE_TO_PAY: "bg-emerald-100 text-emerald-800", QUESTION: "bg-blue-100 text-blue-800", INFO_UPDATE: "bg-amber-100 text-amber-800", NEEDS_REVIEW: "bg-muted text-muted-foreground" };
 
 function timeAgo(date: Date): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -41,6 +44,7 @@ export function InboundRepliesPanel({ invoiceId }: { invoiceId: string }) {
             {reply.bodyText && (
               <p className="text-sm mt-1 whitespace-pre-wrap line-clamp-4">{reply.bodyText}</p>
             )}
+            {reply.triage && <details className="mt-2 text-xs"><summary className="cursor-pointer list-none"><span className={`rounded px-2 py-1 font-medium ${triageStyles[reply.triage.category]}`}>{reply.triage.category.replaceAll("_", " ")}</span>{reply.triage.source !== "manual" && <span className="ml-2 text-muted-foreground">{Math.round(reply.triage.confidence * 100)}%</span>}</summary><p className="mt-2 text-muted-foreground">{reply.triage.reasoning}</p><p className="mt-1 font-medium">{SUGGESTED_ACTIONS[reply.triage.category]}</p></details>}
             {reply.ticketId && (
               <Link
                 href={`/tickets/${reply.ticketId}`}
