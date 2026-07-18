@@ -41,6 +41,7 @@ export type InvoiceFormData = {
   lines: LineItemValue[];
   reminderDaysOverride: number[];
   partialPayments?: PartialPaymentEntry[];
+  installmentAutoChargeEnabled?: boolean;
   discountType?: "percentage" | "fixed" | null;
   discountAmount?: number;
   discountDescription?: string;
@@ -285,6 +286,7 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
       discountType: form.discountType ?? null,
       discountAmount: form.discountAmount ?? 0,
       discountDescription: form.discountDescription || undefined,
+      installmentAutoChargeEnabled: schedule.length > 0 ? form.installmentAutoChargeEnabled ?? false : false,
       partialPayments: schedule.length > 0
         ? schedule.map((s) => ({
             sortOrder: s.sortOrder,
@@ -581,6 +583,8 @@ export function InvoiceForm({ mode, initialData, orgPaymentTermsDays, orgDefault
         dueDate={form.dueDate}
         currencySymbol={sym}
         currencySymbolPosition={symPos}
+        installmentAutoChargeEnabled={form.installmentAutoChargeEnabled ?? false}
+        setInstallmentAutoChargeEnabled={(installmentAutoChargeEnabled) => setForm((current) => ({ ...current, installmentAutoChargeEnabled }))}
       />
 
       {/* Invoice Draft QA */}

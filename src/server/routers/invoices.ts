@@ -75,6 +75,7 @@ const invoiceWriteSchema = z.object({
   discountType: z.enum(["percentage", "fixed"]).nullable().optional(),
   discountAmount: z.number().min(0).default(0),
   discountDescription: z.string().max(200).optional(),
+  installmentAutoChargeEnabled: z.boolean().optional(),
 });
 
 const partialPaymentInputSchema = z.object({

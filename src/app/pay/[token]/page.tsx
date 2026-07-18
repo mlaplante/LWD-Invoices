@@ -253,6 +253,9 @@ export default async function PayPage({
                                 Due {formatDateLong(inst.dueDate)}
                               </p>
                             )}
+                            {invoice.installmentAutoChargeEnabled && inst.dueDate && (
+                              <p className="mt-1 text-xs text-muted-foreground">Scheduled to be charged automatically on {formatDateLong(inst.dueDate)} to your saved card.</p>
+                            )}
                           </div>
                           <p className="text-lg font-bold text-foreground">
                             {f(inst.amount)}

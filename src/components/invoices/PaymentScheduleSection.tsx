@@ -21,6 +21,8 @@ type Props = {
   dueDate: string | null | undefined;
   currencySymbol: string;
   currencySymbolPosition: string;
+  installmentAutoChargeEnabled: boolean;
+  setInstallmentAutoChargeEnabled: (enabled: boolean) => void;
 };
 
 export function PaymentScheduleSection({
@@ -37,6 +39,8 @@ export function PaymentScheduleSection({
   dueDate,
   currencySymbol,
   currencySymbolPosition,
+  installmentAutoChargeEnabled,
+  setInstallmentAutoChargeEnabled,
 }: Props) {
   return (
     <div className="space-y-2">
@@ -89,6 +93,12 @@ export function PaymentScheduleSection({
         <CalendarRange className="w-3.5 h-3.5 mr-1.5" />
         {schedule.length > 0 ? "Edit Schedule" : "Set Up Payment Schedule"}
       </Button>
+      {schedule.length > 0 && (
+        <label className="flex items-start gap-3 rounded-lg border border-border/50 p-3">
+          <Switch checked={installmentAutoChargeEnabled} onCheckedChange={setInstallmentAutoChargeEnabled} />
+          <span className="text-sm">Auto-charge installments <span className="block text-xs text-muted-foreground">Each installment is charged to the client&apos;s saved card on its due date. Requires autopay and a saved payment method.</span></span>
+        </label>
+      )}
       <PaymentScheduleDialog
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}

@@ -33,6 +33,7 @@ export const partialPaymentsRouter = router({
       z.object({
         invoiceId: z.string(),
         schedule: z.array(partialPaymentSchema),
+        installmentAutoChargeEnabled: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -43,6 +44,9 @@ export const partialPaymentsRouter = router({
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
       return ctx.db.$transaction(async (tx) => {
+        if (input.installmentAutoChargeEnabled !== undefined) {
+          await tx.invoice.update({ where: { id: input.invoiceId }, data: { installmentAutoChargeEnabled: input.installmentAutoChargeEnabled } });
+        }
         // Delete unpaid partial payments, replace with new schedule
         await tx.partialPayment.deleteMany({
           where: { invoiceId: input.invoiceId, isPaid: false, organizationId: ctx.orgId },
