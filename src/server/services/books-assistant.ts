@@ -39,6 +39,7 @@ const DEFAULT_GEMINI_AGENT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "ge
 const MAX_ITERATIONS = 6;
 const MAX_TOKENS = 1500;
 const DAY_MS = 86_400_000;
+const REPORT_PERIODS = ["this_month", "last_month", "this_quarter", "last_quarter", "this_year", "last_30_days", "last_90_days"];
 
 export type BooksAssistantProvider = "gemini" | "anthropic";
 
@@ -105,9 +106,24 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         period: {
           type: "string",
-          enum: ["this_month", "last_month", "this_quarter", "last_quarter", "this_year", "last_30_days", "last_90_days"],
+          enum: REPORT_PERIODS,
           description: "Time window for collected revenue.",
         },
+      },
+      required: ["period"],
+    },
+  },
+  {
+    name: "get_payment_history",
+    description:
+      "Payments received in a period, with lateness vs the invoice due date. Use for questions about who paid late/on time, average days-to-pay, or payment history.",
+    input_schema: {
+      type: "object",
+      properties: {
+        period: { type: "string", enum: REPORT_PERIODS, description: "Time window for received payments." },
+        clientId: { type: "string", description: "Optional client ID to limit payment history." },
+        onlyLate: { type: "boolean", description: "Return only payments made after their due date." },
+        limit: { type: "integer", description: "Max payments to return (default 25; maximum 50)." },
       },
       required: ["period"],
     },
@@ -274,6 +290,57 @@ async function getRevenueSummary(ctx: BooksAssistantContext, period: string, now
   return { period: label, collected: money(collected), paymentCount: payments.length, topClients };
 }
 
+async function getPaymentHistory(
+  ctx: BooksAssistantContext,
+  period: string,
+  now: Date,
+  options: { clientId?: string; onlyLate?: boolean; limit: number },
+) {
+  const { start, end, label } = periodRange(period, now);
+  const payments = await ctx.db.payment.findMany({
+    where: {
+      organizationId: ctx.orgId,
+      paidAt: { gte: start, lt: end },
+      ...(options.clientId ? { invoice: { clientId: options.clientId } } : {}),
+    },
+    select: {
+      amount: true,
+      paidAt: true,
+      invoice: { select: { number: true, dueDate: true, clientId: true, client: { select: { name: true } } } },
+    },
+    orderBy: { paidAt: "desc" },
+  });
+  const rows = payments
+    .map((payment) => {
+      const dueDate = payment.invoice?.dueDate ?? null;
+      const daysLate = dueDate ? Math.ceil((payment.paidAt.getTime() - dueDate.getTime()) / DAY_MS) : null;
+      return {
+        client: payment.invoice?.client?.name ?? "Unknown client",
+        invoiceNumber: payment.invoice?.number ?? null,
+        amount: money(toNum(payment.amount)),
+        paidAt: payment.paidAt.toISOString(),
+        dueDate: dueDate?.toISOString().slice(0, 10) ?? null,
+        daysLate,
+        paidLate: daysLate !== null && daysLate > 0,
+      };
+    })
+    .filter((payment) => !options.onlyLate || payment.paidLate)
+    .slice(0, options.limit);
+  const latePayments = rows.filter((payment) => payment.paidLate && payment.daysLate !== null);
+  return {
+    period: label,
+    payments: rows,
+    summary: {
+      count: rows.length,
+      totalCollected: money(rows.reduce((sum, payment) => sum + payment.amount, 0)),
+      lateCount: latePayments.length,
+      averageDaysLate: latePayments.length
+        ? Math.round((latePayments.reduce((sum, payment) => sum + (payment.daysLate ?? 0), 0) / latePayments.length) * 10) / 10
+        : 0,
+    },
+  };
+}
+
 async function getUnbilledTime(ctx: BooksAssistantContext, limit: number) {
   const entries = await ctx.db.timeEntry.findMany({
     where: {
@@ -368,7 +435,7 @@ async function getCollectionsRecommendations(ctx: BooksAssistantContext, now: Da
   return { actionDueCount: ranked.length, invoices: ranked };
 }
 
-async function executeTool(
+export async function executeBooksAssistantTool(
   name: string,
   input: Record<string, unknown>,
   ctx: BooksAssistantContext,
@@ -382,6 +449,12 @@ async function executeTool(
       return getOverdueInvoices(ctx, limit ?? 15, now);
     case "get_revenue_summary":
       return getRevenueSummary(ctx, String(input.period ?? "last_90_days"), now);
+    case "get_payment_history":
+      return getPaymentHistory(ctx, String(input.period ?? "last_90_days"), now, {
+        clientId: typeof input.clientId === "string" ? input.clientId : undefined,
+        onlyLate: input.onlyLate === true,
+        limit: limit ?? 25,
+      });
     case "get_unbilled_time":
       return getUnbilledTime(ctx, limit ?? 15);
     case "get_client_health":
@@ -487,7 +560,7 @@ async function runAnthropicAssistant(
       toolCalls.push({ tool: block.name, input: inputObj });
       let result: unknown;
       try {
-        result = await executeTool(block.name, inputObj, ctx, now);
+        result = await executeBooksAssistantTool(block.name, inputObj, ctx, now);
       } catch (err) {
         result = { error: err instanceof Error ? err.message : "Tool execution failed." };
       }
@@ -584,7 +657,7 @@ async function runGeminiAssistant(
       toolCalls.push({ tool: functionCall.name, input: args });
       let result: unknown;
       try {
-        result = await executeTool(functionCall.name, args, ctx, now);
+        result = await executeBooksAssistantTool(functionCall.name, args, ctx, now);
       } catch (err) {
         result = { error: err instanceof Error ? err.message : "Tool execution failed." };
       }
@@ -728,7 +801,7 @@ async function* streamGeminiAssistant(
       toolCalls.push({ tool: fc.name, input: args });
       let result: unknown;
       try {
-        result = await executeTool(fc.name, args, ctx, now);
+        result = await executeBooksAssistantTool(fc.name, args, ctx, now);
       } catch (err) {
         result = { error: err instanceof Error ? err.message : "Tool execution failed." };
       }

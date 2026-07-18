@@ -43,7 +43,7 @@ Implementation:
 //          summary: { count, totalCollected, lateCount, averageDaysLate (over late ones, 1dp) } }
 ```
 
-- [ ] Failing test: two payments (one 10 days late, one on time) → summary lateCount 1, averageDaysLate 10, onlyLate filters; org-scoping asserted. → FAIL → implement → PASS → commit.
+- [x] Failing test: two payments (one 10 days late, one on time) → summary lateCount 1, averageDaysLate 10, onlyLate filters; org-scoping asserted. → FAIL → implement → PASS → commit.
 
 ### Task 2: `get_expense_summary` tool
 

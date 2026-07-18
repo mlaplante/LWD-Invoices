@@ -1,11 +1,46 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { env } from "@/lib/env";
 import {
+  executeBooksAssistantTool,
   geminiFunctionDeclarations,
   resolveAssistantProvider,
   streamBooksAssistant,
   type BooksAssistantStreamEvent,
 } from "@/server/services/books-assistant";
+
+describe("report-shaped assistant tools", () => {
+  it("returns org-scoped payment lateness history and filters to late payments", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        amount: 100,
+        paidAt: new Date("2026-06-20T00:00:00.000Z"),
+        invoice: { number: "INV-10", dueDate: new Date("2026-06-10T00:00:00.000Z"), clientId: "client-1", client: { name: "Acme" } },
+      },
+      {
+        amount: 50,
+        paidAt: new Date("2026-06-15T00:00:00.000Z"),
+        invoice: { number: "INV-11", dueDate: new Date("2026-06-15T00:00:00.000Z"), clientId: "client-2", client: { name: "Globex" } },
+      },
+    ]);
+    const ctx = { db: { payment: { findMany } } as never, orgId: "org-1" };
+    const now = new Date("2026-07-18T00:00:00.000Z");
+
+    const all = await executeBooksAssistantTool("get_payment_history", { period: "last_90_days" }, ctx, now);
+    const late = await executeBooksAssistantTool("get_payment_history", { period: "last_90_days", onlyLate: true }, ctx, now);
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: "org-1" }),
+    }));
+    expect(all).toMatchObject({
+      summary: { count: 2, totalCollected: 150, lateCount: 1, averageDaysLate: 10 },
+      payments: expect.arrayContaining([expect.objectContaining({ invoiceNumber: "INV-10", daysLate: 10, paidLate: true })]),
+    });
+    expect(late).toMatchObject({
+      summary: { count: 1, totalCollected: 100, lateCount: 1, averageDaysLate: 10 },
+      payments: [expect.objectContaining({ invoiceNumber: "INV-10" })],
+    });
+  });
+});
 
 // Build a fake Gemini SSE Response that emits the given chunks as `data:` lines.
 function sseResponse(chunks: object[]): Response {
