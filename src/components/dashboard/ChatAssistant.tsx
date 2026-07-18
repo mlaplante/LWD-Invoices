@@ -29,12 +29,19 @@ export function ChatAssistant() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   }, [messages, busy]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div
+        ref={scrollRef}
+        aria-live="polite"
+        className="flex-1 overflow-y-auto p-5 space-y-4"
+      >
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -43,8 +50,8 @@ export function ChatAssistant() {
             <div>
               <p className="font-semibold">Ask your books</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                Ask about receivables, revenue, cash flow, client health, or collections. I read
-                your data live and never change anything.
+                Ask about receivables, revenue, cash flow, client health, or
+                collections. I read your data live and never change anything.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-2 max-w-lg">
@@ -62,9 +69,15 @@ export function ChatAssistant() {
         )}
 
         {messages.map((m, i) => {
-          const showThinking = m.role === "assistant" && m.streaming && m.content === "";
+          const showThinking =
+            m.role === "assistant" && m.streaming && m.content === "";
           return (
-            <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+            <div
+              key={i}
+              className={
+                m.role === "user" ? "flex justify-end" : "flex justify-start"
+              }
+            >
               <div
                 className={
                   m.role === "user"
@@ -73,7 +86,9 @@ export function ChatAssistant() {
                 }
               >
                 {showThinking ? (
-                  <span className="text-muted-foreground">Looking through your books…</span>
+                  <span className="text-muted-foreground">
+                    Looking through your books…
+                  </span>
                 ) : (
                   m.content
                 )}
@@ -111,12 +126,13 @@ export function ChatAssistant() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about your books…"
-          className="flex-1 bg-transparent px-3 py-2 text-sm outline-none"
+          className="flex-1 bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           disabled={busy}
         />
         <button
           type="submit"
           disabled={busy || !input.trim()}
+          aria-label="Send message"
           className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-primary-foreground disabled:opacity-40 transition-opacity"
         >
           <Send className="w-4 h-4" />

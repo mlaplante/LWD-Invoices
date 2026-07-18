@@ -65,7 +65,9 @@ export function CommandPalette() {
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setDebouncedQuery(query), 300);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [query]);
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
@@ -78,7 +80,7 @@ export function CommandPalette() {
 
   const { data } = trpc.search.global.useQuery(
     { query: debouncedQuery },
-    { enabled: debouncedQuery.length >= 2 }
+    { enabled: debouncedQuery.length >= 2 },
   );
 
   const navigate = useCallback(
@@ -87,7 +89,7 @@ export function CommandPalette() {
       setOpen(false);
       router.push(href);
     },
-    [router]
+    [router],
   );
 
   const hasResults =
@@ -102,214 +104,243 @@ export function CommandPalette() {
 
   return (
     <>
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="p-0 overflow-hidden max-w-lg"
-      >
-        <VisuallyHidden.Root>
-          <DialogTitle>Search</DialogTitle>
-        </VisuallyHidden.Root>
-        <Command shouldFilter={false} className="flex flex-col">
-          <div className="flex items-center border-b px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-            <Command.Input
-              value={query}
-              onValueChange={setQuery}
-              placeholder="Search or jump to..."
-              className="flex h-11 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
-            />
-            <kbd className="pointer-events-none ml-2 inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-              ESC
-            </kbd>
-          </div>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent
+          showCloseButton={false}
+          className="p-0 overflow-hidden max-w-lg"
+        >
+          <VisuallyHidden.Root>
+            <DialogTitle>Search</DialogTitle>
+          </VisuallyHidden.Root>
+          <Command shouldFilter={false} className="flex flex-col">
+            <div className="flex items-center border-b px-3">
+              <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              <Command.Input
+                value={query}
+                onValueChange={setQuery}
+                placeholder="Search or jump to..."
+                className="flex h-11 w-full bg-transparent py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+              />
+              <kbd className="pointer-events-none ml-2 inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                ESC
+              </kbd>
+            </div>
 
-          <Command.List className="max-h-80 overflow-y-auto p-2">
-            {/* Empty state */}
-            {showResults && !hasResults && (
-              <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
-                No results found.
-              </Command.Empty>
-            )}
-            {!showResults && query.length > 0 && query.length < 2 && (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                Type to search…
-              </div>
-            )}
+            <Command.List className="max-h-80 overflow-y-auto p-2">
+              {/* Empty state */}
+              {showResults && !hasResults && (
+                <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
+                  No results found.
+                </Command.Empty>
+              )}
+              {!showResults && query.length > 0 && query.length < 2 && (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Type to search…
+                </div>
+              )}
 
-            {/* Quick Actions (when no query) */}
-            {!showResults && (
-              <Command.Group heading="Quick Actions">
-                {QUICK_ACTIONS.map((action) => (
+              {/* Quick Actions (when no query) */}
+              {!showResults && (
+                <Command.Group heading="Quick Actions">
+                  {QUICK_ACTIONS.map((action) => (
+                    <Command.Item
+                      key={action.href}
+                      value={action.label}
+                      onSelect={() => navigate(action.href)}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                    >
+                      <action.icon className="h-4 w-4 text-muted-foreground" />
+                      {action.label}
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              )}
+
+              {/* Actions — run in-place via the shared action primitives (when no query) */}
+              {!showResults && (
+                <Command.Group heading="Actions">
                   <Command.Item
-                    key={action.href}
-                    value={action.label}
-                    onSelect={() => navigate(action.href)}
+                    value="action-create-invoice"
+                    onSelect={() => navigate("/invoices/new")}
                     className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
                   >
-                    <action.icon className="h-4 w-4 text-muted-foreground" />
-                    {action.label}
+                    <Plus className="h-4 w-4 text-muted-foreground" /> Create
+                    invoice
                   </Command.Item>
-                ))}
-              </Command.Group>
-            )}
+                  <Command.Item
+                    value="action-send-reminder"
+                    onSelect={() => {
+                      setOpen(false);
+                      setActiveAction("reminder");
+                    }}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                  >
+                    <Send className="h-4 w-4 text-muted-foreground" /> Send
+                    reminder
+                  </Command.Item>
+                  <Command.Item
+                    value="action-log-expense"
+                    onSelect={() => {
+                      setOpen(false);
+                      setActiveAction("expense");
+                    }}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                  >
+                    <Receipt className="h-4 w-4 text-muted-foreground" /> Log
+                    expense
+                  </Command.Item>
+                  <Command.Item
+                    value="action-start-timer"
+                    onSelect={() => {
+                      setOpen(false);
+                      setActiveAction("timer");
+                    }}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                  >
+                    <Clock className="h-4 w-4 text-muted-foreground" /> Start
+                    timer
+                  </Command.Item>
+                  <Command.Item
+                    value="action-generate-report"
+                    onSelect={() => {
+                      setOpen(false);
+                      setActiveAction("report");
+                    }}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                  >
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />{" "}
+                    Generate report
+                  </Command.Item>
+                </Command.Group>
+              )}
 
-            {/* Actions — run in-place via the shared action primitives (when no query) */}
-            {!showResults && (
-              <Command.Group heading="Actions">
-                <Command.Item
-                  value="action-create-invoice"
-                  onSelect={() => navigate("/invoices/new")}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                >
-                  <Plus className="h-4 w-4 text-muted-foreground" /> Create invoice
-                </Command.Item>
-                <Command.Item
-                  value="action-send-reminder"
-                  onSelect={() => { setOpen(false); setActiveAction("reminder"); }}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                >
-                  <Send className="h-4 w-4 text-muted-foreground" /> Send reminder
-                </Command.Item>
-                <Command.Item
-                  value="action-log-expense"
-                  onSelect={() => { setOpen(false); setActiveAction("expense"); }}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                >
-                  <Receipt className="h-4 w-4 text-muted-foreground" /> Log expense
-                </Command.Item>
-                <Command.Item
-                  value="action-start-timer"
-                  onSelect={() => { setOpen(false); setActiveAction("timer"); }}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                >
-                  <Clock className="h-4 w-4 text-muted-foreground" /> Start timer
-                </Command.Item>
-                <Command.Item
-                  value="action-generate-report"
-                  onSelect={() => { setOpen(false); setActiveAction("report"); }}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                >
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" /> Generate report
-                </Command.Item>
-              </Command.Group>
-            )}
-
-            {/* Search Results */}
-            {showResults && data && (
-              <>
-                {data.invoices.length > 0 && (
-                  <Command.Group heading="Invoices">
-                    {data.invoices.map((inv) => (
-                      <Command.Item
-                        key={inv.id}
-                        value={`invoice-${inv.id}`}
-                        onSelect={() => navigate(`/invoices/${inv.id}`)}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                      >
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1 truncate">
-                          {inv.number} — {inv.client.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground capitalize">
-                          {inv.status.toLowerCase()}
-                        </span>
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
-
-                {data.clients.length > 0 && (
-                  <Command.Group heading="Clients">
-                    {data.clients.map((client) => (
-                      <Command.Item
-                        key={client.id}
-                        value={`client-${client.id}`}
-                        onSelect={() => navigate(`/clients/${client.id}`)}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                      >
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1 truncate">{client.name}</span>
-                        {client.email && (
-                          <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                            {client.email}
+              {/* Search Results */}
+              {showResults && data && (
+                <>
+                  {data.invoices.length > 0 && (
+                    <Command.Group heading="Invoices">
+                      {data.invoices.map((inv) => (
+                        <Command.Item
+                          key={inv.id}
+                          value={`invoice-${inv.id}`}
+                          onSelect={() => navigate(`/invoices/${inv.id}`)}
+                          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                        >
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="flex-1 truncate">
+                            {inv.number} — {inv.client.name}
                           </span>
-                        )}
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
+                          <span className="text-xs text-muted-foreground capitalize">
+                            {inv.status.toLowerCase()}
+                          </span>
+                        </Command.Item>
+                      ))}
+                    </Command.Group>
+                  )}
 
-                {data.projects.length > 0 && (
-                  <Command.Group heading="Projects">
-                    {data.projects.map((proj) => (
-                      <Command.Item
-                        key={proj.id}
-                        value={`project-${proj.id}`}
-                        onSelect={() => navigate(`/projects/${proj.id}`)}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                      >
-                        <FolderKanban className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1 truncate">{proj.name}</span>
-                        <span className="text-xs text-muted-foreground capitalize">
-                          {proj.status.toLowerCase()}
-                        </span>
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
+                  {data.clients.length > 0 && (
+                    <Command.Group heading="Clients">
+                      {data.clients.map((client) => (
+                        <Command.Item
+                          key={client.id}
+                          value={`client-${client.id}`}
+                          onSelect={() => navigate(`/clients/${client.id}`)}
+                          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                        >
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="flex-1 truncate">{client.name}</span>
+                          {client.email && (
+                            <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                              {client.email}
+                            </span>
+                          )}
+                        </Command.Item>
+                      ))}
+                    </Command.Group>
+                  )}
 
-                {data.expenses.length > 0 && (
-                  <Command.Group heading="Expenses">
-                    {data.expenses.map((exp) => (
-                      <Command.Item
-                        key={exp.id}
-                        value={`expense-${exp.id}`}
-                        onSelect={() => navigate(`/expenses/${exp.id}`)}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                      >
-                        <Receipt className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1 truncate">
-                          {exp.name}
-                          {exp.supplier ? ` — ${exp.supplier.name}` : ""}
-                        </span>
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
+                  {data.projects.length > 0 && (
+                    <Command.Group heading="Projects">
+                      {data.projects.map((proj) => (
+                        <Command.Item
+                          key={proj.id}
+                          value={`project-${proj.id}`}
+                          onSelect={() => navigate(`/projects/${proj.id}`)}
+                          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                        >
+                          <FolderKanban className="h-4 w-4 text-muted-foreground" />
+                          <span className="flex-1 truncate">{proj.name}</span>
+                          <span className="text-xs text-muted-foreground capitalize">
+                            {proj.status.toLowerCase()}
+                          </span>
+                        </Command.Item>
+                      ))}
+                    </Command.Group>
+                  )}
 
-                {data.tickets.length > 0 && (
-                  <Command.Group heading="Tickets">
-                    {data.tickets.map((ticket) => (
-                      <Command.Item
-                        key={ticket.id}
-                        value={`ticket-${ticket.id}`}
-                        onSelect={() => navigate(`/tickets/${ticket.id}`)}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
-                      >
-                        <Ticket className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1 truncate">
-                          #{ticket.number} {ticket.subject}
-                        </span>
-                        <span className="text-xs text-muted-foreground capitalize">
-                          {ticket.status.toLowerCase()}
-                        </span>
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
-              </>
-            )}
-          </Command.List>
-        </Command>
-      </DialogContent>
-    </Dialog>
+                  {data.expenses.length > 0 && (
+                    <Command.Group heading="Expenses">
+                      {data.expenses.map((exp) => (
+                        <Command.Item
+                          key={exp.id}
+                          value={`expense-${exp.id}`}
+                          onSelect={() => navigate(`/expenses/${exp.id}`)}
+                          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                        >
+                          <Receipt className="h-4 w-4 text-muted-foreground" />
+                          <span className="flex-1 truncate">
+                            {exp.name}
+                            {exp.supplier ? ` — ${exp.supplier.name}` : ""}
+                          </span>
+                        </Command.Item>
+                      ))}
+                    </Command.Group>
+                  )}
 
-    {/* In-place action primitives (shared with mobile) */}
-    <QuickExpenseSheet open={activeAction === "expense"} onOpenChange={(o) => !o && setActiveAction(null)} />
-    <SendReminderInvoicePicker open={activeAction === "reminder"} onOpenChange={(o) => !o && setActiveAction(null)} />
-    <StartTimerFlow open={activeAction === "timer"} onOpenChange={(o) => !o && setActiveAction(null)} />
-    <GenerateReportMenu open={activeAction === "report"} onOpenChange={(o) => !o && setActiveAction(null)} />
+                  {data.tickets.length > 0 && (
+                    <Command.Group heading="Tickets">
+                      {data.tickets.map((ticket) => (
+                        <Command.Item
+                          key={ticket.id}
+                          value={`ticket-${ticket.id}`}
+                          onSelect={() => navigate(`/tickets/${ticket.id}`)}
+                          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                        >
+                          <Ticket className="h-4 w-4 text-muted-foreground" />
+                          <span className="flex-1 truncate">
+                            #{ticket.number} {ticket.subject}
+                          </span>
+                          <span className="text-xs text-muted-foreground capitalize">
+                            {ticket.status.toLowerCase()}
+                          </span>
+                        </Command.Item>
+                      ))}
+                    </Command.Group>
+                  )}
+                </>
+              )}
+            </Command.List>
+          </Command>
+        </DialogContent>
+      </Dialog>
+
+      {/* In-place action primitives (shared with mobile) */}
+      <QuickExpenseSheet
+        open={activeAction === "expense"}
+        onOpenChange={(o) => !o && setActiveAction(null)}
+      />
+      <SendReminderInvoicePicker
+        open={activeAction === "reminder"}
+        onOpenChange={(o) => !o && setActiveAction(null)}
+      />
+      <StartTimerFlow
+        open={activeAction === "timer"}
+        onOpenChange={(o) => !o && setActiveAction(null)}
+      />
+      <GenerateReportMenu
+        open={activeAction === "report"}
+        onOpenChange={(o) => !o && setActiveAction(null)}
+      />
     </>
   );
 }
