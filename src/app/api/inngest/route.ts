@@ -22,8 +22,9 @@ import { processForecastSnapshots } from "@/inngest/functions/forecast-snapshots
 import { processEstimatedTaxReminders } from "@/inngest/functions/estimated-tax-reminders";
 import { processYearEndExport } from "@/inngest/functions/year-end-export";
 import { triageInboundReply } from "@/inngest/functions/client-reply-triage";
+import { processInstallmentAutopay } from "@/inngest/functions/installment-autopay";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, processRecurringExpenses, processEmailAutomations, handleAutomationEvent, processLateFees, processScheduledReports, processReminderSequences, recalculateInvoiceTotals, processRetentionCheckIns, processProposalNudges, processWeeklyBriefing, processCreditHoldEvaluation, handleAutomationRuleEvent, processAutomationRules, processScheduledInvoiceSends, processDunningRetries, processProjectBudgetAlerts, processForecastSnapshots, processEstimatedTaxReminders, processYearEndExport, triageInboundReply],
+  functions: [processRecurringInvoices, processOverdueInvoices, processPaymentReminders, processRecurringExpenses, processEmailAutomations, handleAutomationEvent, processLateFees, processScheduledReports, processReminderSequences, recalculateInvoiceTotals, processRetentionCheckIns, processProposalNudges, processWeeklyBriefing, processCreditHoldEvaluation, handleAutomationRuleEvent, processAutomationRules, processScheduledInvoiceSends, processDunningRetries, processProjectBudgetAlerts, processForecastSnapshots, processEstimatedTaxReminders, processYearEndExport, triageInboundReply, processInstallmentAutopay],
 });
