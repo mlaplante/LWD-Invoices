@@ -140,9 +140,9 @@ if (!provider) {
 - Modify: `src/server/services/invoice-draft-qa.ts` (~lines 420-590)
 - Test: extend `src/test/**/invoice-draft-qa*` tests
 
-- [ ] **Step 1:** Failing test: keyless (no `GEMINI_API_KEY`), `scanDraft`'s summary has `deterministicOnly: true` and `guardrails.aiUnavailable: true`; with a key and a successful AI check, both false.
-- [ ] **Step 2:** Replace the hardcoded `hasPartial = false` (line 548): `checkUnclearDescriptions` (line ~430) should report whether the AI check actually ran (e.g. return `{ findings, ran: boolean }` or set a flag when it gates on the missing key / catches an error at lines 480-485); thread that into the summary/guardrails computation at lines 548-581. The client (`InvoiceDraftQA.tsx:97`) already renders the flag — verify no client change is needed.
-- [ ] **Step 3:** PASS → run the full invoice-draft-qa + invoiceReview test files → green → commit.
+- [x] **Step 1:** Failing test: keyless (no `GEMINI_API_KEY`), `scanDraft`'s summary has `deterministicOnly: true` and `guardrails.aiUnavailable: true`; with a key and a successful AI check, both false.
+- [x] **Step 2:** Replace the hardcoded `hasPartial = false` (line 548): `checkUnclearDescriptions` (line ~430) should report whether the AI check actually ran (e.g. return `{ findings, ran: boolean }` or set a flag when it gates on the missing key / catches an error at lines 480-485); thread that into the summary/guardrails computation at lines 548-581. The client (`InvoiceDraftQA.tsx:97`) already renders the flag — verify no client change is needed.
+- [x] **Step 3:** PASS → run the full invoice-draft-qa + invoiceReview test files → green → commit.
 
 ### Task 7: Full verification
 

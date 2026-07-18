@@ -85,7 +85,9 @@ describe("invoiceReview.scanDraft — basic validation", () => {
 
     expect(result.scanId).toBeDefined();
     expect(result.scanId).toContain("scan_");
-    expect(result.status).toBe("completed");
+    expect(result.status).toBe("partial");
+    expect(result.summary.deterministicOnly).toBe(true);
+    expect(result.guardrails.aiUnavailable).toBe(true);
     expect(result.summary.findingCount).toBeGreaterThan(0);
     expect(result.findings.some((f: { code: string }) => f.code === "empty_invoice_lines")).toBe(true);
   });

@@ -3,7 +3,9 @@ import { scanInvoiceDraft, type ScanInvoiceDraftRequest } from "@/server/service
 
 // Mock the AI call
 vi.mock("@/server/services/gemini-fallback", () => ({
-  callGeminiWithModelFallback: vi.fn(() => Promise.resolve({})),
+  callGeminiWithModelFallback: vi.fn(({ onOk }) => Promise.resolve(onOk({
+    candidates: [{ content: { parts: [{ text: '{"flags":[]}' }] } }],
+  }))),
   resolveGeminiModels: vi.fn(() => ["gemini-2.0-flash"]),
 }));
 
@@ -70,6 +72,8 @@ describe("invoice-draft-qa", () => {
       expect(result.findings).toHaveLength(1);
       expect(result.findings[0].code).toBe("missing_client");
       expect(result.findings[0].severity).toBe("warning");
+      expect(result.summary.deterministicOnly).toBe(false);
+      expect(result.guardrails.aiUnavailable).toBe(false);
     });
     
     it("should detect empty lines", async () => {

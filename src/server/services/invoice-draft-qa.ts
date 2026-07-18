@@ -426,8 +426,10 @@ const UNCLEAR_SYSTEM_PROMPT =
   "Flag a line only when its name+description are too vague for a client to know what they're paying for " +
   "(e.g. \"work\", \"services\", \"misc\"). Use only clientLineIds from the input. Never invent lines. Empty flags array if all are clear.";
 
-async function checkUnclearDescriptions(req: ScanInvoiceDraftRequest): Promise<InvoiceQaFinding[]> {
-  if (!env.GEMINI_API_KEY) return [];
+async function checkUnclearDescriptions(
+  req: ScanInvoiceDraftRequest,
+): Promise<{ findings: InvoiceQaFinding[]; ran: boolean }> {
+  if (!env.GEMINI_API_KEY) return { findings: [], ran: false };
   
   const linePayload = JSON.stringify(
     req.draft.lines.map((l) => ({
@@ -457,7 +459,7 @@ async function checkUnclearDescriptions(req: ScanInvoiceDraftRequest): Promise<I
     const validClientLineIds = new Set(req.draft.lines.map((l) => l.clientLineId));
     const groundedFlags = flags.filter((f) => validClientLineIds.has(f.clientLineId));
     
-    return groundedFlags.map((flag) => {
+    return { findings: groundedFlags.map((flag) => {
       const line = req.draft.lines.find((l) => l.clientLineId === flag.clientLineId)!;
       return makeFinding(
         "unclear_line_description",
@@ -476,12 +478,12 @@ async function checkUnclearDescriptions(req: ScanInvoiceDraftRequest): Promise<I
         false, // Not directly applicable — requires user judgment
         "ai",
       );
-    });
+    }), ran: true };
   } catch (err) {
     // A provider/network failure should never block — degrade to no AI
     // findings — but log it so outages don't masquerade as clean scans.
     console.error("[invoice-draft-qa] AI scan failed:", err);
-    return [];
+    return { findings: [], ran: false };
   }
 }
 
@@ -540,12 +542,12 @@ export async function scanInvoiceDraft(
   findings.push(...checkDuplicateRisk());
   
   // Run AI unclear-description pass (best-effort)
-  const aiFindings = await checkUnclearDescriptions(req);
-  findings.push(...aiFindings);
+  const aiCheck = await checkUnclearDescriptions(req);
+  findings.push(...aiCheck.findings);
   
   // Determine status
   const hasAiFindings = findings.some((f) => f.source === "ai");
-  const hasPartial = false; // Could check if AI was unavailable
+  const hasPartial = !aiCheck.ran;
   const status = hasPartial && !hasAiFindings ? "partial" : "completed";
   
   // Calculate summary
@@ -571,14 +573,14 @@ export async function scanInvoiceDraft(
       findingCount: findings.length,
       directlyApplicableFixCount,
       modelUsed: env.GEMINI_API_KEY ? "gemini" : undefined,
-      deterministicOnly: !hasAiFindings,
+      deterministicOnly: !aiCheck.ran,
     },
     findings,
     guardrails: {
       groundedOnly: true,
       tenantScoped: true,
       autoAppliedChanges: false,
-      aiUnavailable: hasPartial && !hasAiFindings,
+      aiUnavailable: hasPartial,
       droppedUngroundedFindingCount: droppedUngroundedCount > 0 ? droppedUngroundedCount : undefined,
     },
   };
