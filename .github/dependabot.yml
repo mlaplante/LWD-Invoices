@@ -12,6 +12,11 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # ESLint 10 is incompatible with eslint-config-next 16 (nested
+      # eslint-plugin-react crash). Remove once eslint-config-next supports it.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

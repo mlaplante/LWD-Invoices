@@ -16,6 +16,9 @@ const eslintConfig = defineConfig([
     "src/generated/**",
     ".netlify/**",
     ".worktrees/**",
+    // Repo tooling, not app code
+    ".claude/**",
+    "docs/**",
   ]),
   {
     // React Compiler advisories (eslint-plugin-react-hooks v6). These flag

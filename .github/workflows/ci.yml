@@ -26,9 +26,11 @@ jobs:
       - run: npx prisma generate
       - name: Type check
         run: npx tsc --noEmit
-      # Lint is disabled until eslint-config-next is compatible with ESLint 10
-      # (eslint-plugin-react crashes: contextOrFilename.getFilename is not a function).
-      # next.config.ts also has ignoreDuringBuilds: true for the same reason.
+      # ESLint is pinned to v9: eslint-config-next 16's nested eslint-plugin-react
+      # crashes under ESLint 10 (context.getFilename removed). Revisit when
+      # eslint-config-next supports ESLint 10.
+      - name: Lint
+        run: npm run lint
       - name: Test
         run: npm run test:coverage
       - name: Coverage report
