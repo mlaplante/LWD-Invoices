@@ -4,6 +4,7 @@ vi.mock("@/server/db", () => ({
   db: {
     gatewaySetting: { findUnique: vi.fn() },
     invoice: { findUnique: vi.fn() },
+    payment: { findFirst: vi.fn() },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     webhookDelivery: {
       findUnique: vi.fn().mockResolvedValue(null),
@@ -159,5 +160,167 @@ describe("Stripe webhook", () => {
     expect(res.status).toBe(200);
     expect(vi.mocked(db.$transaction)).toHaveBeenCalled();
     expect(mockTx.payment.create).toHaveBeenCalled();
+  });
+});
+
+describe("Stripe webhook — payment_intent.succeeded backstop", () => {
+  const UNPAID_INVOICE = {
+    id: "inv1",
+    number: "2026-0001",
+    total: { toNumber: () => 100 },
+    status: "SENT",
+    partialPayments: [],
+    payments: [],
+  };
+
+  // Distinct event id per call: the route's in-memory dedup map is module-level
+  // and outlives individual tests, so a shared id would make every test after
+  // the first short-circuit as "already processed".
+  let eventSeq = 0;
+  function intentEvent(metadata: Record<string, string>, amount = 10000) {
+    return {
+      id: `evt_pi_${++eventSeq}`,
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: "pi_backstop",
+          amount,
+          amount_received: amount,
+          metadata,
+        },
+      },
+    } as any;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTx.payment.create.mockResolvedValue({});
+    mockTx.invoice.update.mockResolvedValue({});
+    mockTx.partialPayment.updateMany.mockResolvedValue({ count: 0 });
+    vi.mocked(db.gatewaySetting.findUnique).mockResolvedValue(GATEWAY as any);
+    vi.mocked(db.payment.findFirst).mockResolvedValue(null as any);
+    vi.mocked(db.invoice.findUnique).mockResolvedValue(UNPAID_INVOICE as any);
+    vi.mocked(db.$transaction).mockImplementation((fn: any) => fn(mockTx));
+  });
+
+  // The checkout.session handler does strictly more than a PaymentIntent event
+  // can reconstruct (early-pay discount, deposit credit, card save, tax
+  // promotion). If the backstop won the race it would mark the invoice PAID and
+  // make the session handler short-circuit, silently dropping all of it.
+  it("ignores checkout-originated intents", async () => {
+    vi.mocked(constructStripeEvent).mockReturnValue(
+      intentEvent({ orgId: "org1", invoiceId: "inv1", source: "checkout" }),
+    );
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(vi.mocked(db.$transaction)).not.toHaveBeenCalled();
+  });
+
+  it("ignores intents with no source marker", async () => {
+    vi.mocked(constructStripeEvent).mockReturnValue(
+      intentEvent({ orgId: "org1", invoiceId: "inv1" }),
+    );
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(vi.mocked(db.$transaction)).not.toHaveBeenCalled();
+  });
+
+  it("skips when the inline path already recorded the payment", async () => {
+    vi.mocked(db.payment.findFirst).mockResolvedValue({ id: "pay1" } as any);
+    vi.mocked(constructStripeEvent).mockReturnValue(
+      intentEvent({ orgId: "org1", invoiceId: "inv1", source: "charge_saved" }),
+    );
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(vi.mocked(db.$transaction)).not.toHaveBeenCalled();
+  });
+
+  it("records the payment when an off-session charge was never recorded", async () => {
+    vi.mocked(constructStripeEvent).mockReturnValue(
+      intentEvent({ orgId: "org1", invoiceId: "inv1", source: "charge_saved" }),
+    );
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(mockTx.payment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ amount: 100, transactionId: "pi_backstop" }),
+      }),
+    );
+    expect(mockTx.invoice.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "PAID" }) }),
+    );
+  });
+
+  // A charge smaller than the outstanding balance (e.g. an early-pay discount
+  // the Intent doesn't carry) must credit only what Stripe actually captured.
+  it("never credits more than Stripe captured", async () => {
+    vi.mocked(constructStripeEvent).mockReturnValue(
+      intentEvent({ orgId: "org1", invoiceId: "inv1", source: "off_session" }, 9000),
+    );
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(mockTx.payment.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ amount: 90 }) }),
+    );
+    expect(mockTx.invoice.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "PARTIALLY_PAID" }),
+      }),
+    );
+  });
+
+  it("marks the targeted installment paid", async () => {
+    vi.mocked(db.invoice.findUnique).mockResolvedValue({
+      ...UNPAID_INVOICE,
+      partialPayments: [
+        { id: "pp1", isPaid: false, isPercentage: false, amount: { toNumber: () => 40 } },
+        { id: "pp2", isPaid: false, isPercentage: false, amount: { toNumber: () => 60 } },
+      ],
+    } as any);
+    mockTx.partialPayment.findMany.mockResolvedValue([
+      { id: "pp1", isPaid: true },
+      { id: "pp2", isPaid: false },
+    ]);
+    vi.mocked(constructStripeEvent).mockReturnValue(
+      intentEvent(
+        { orgId: "org1", invoiceId: "inv1", source: "off_session", partialPaymentId: "pp1" },
+        4000,
+      ),
+    );
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(mockTx.partialPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "pp1" } }),
+    );
+    expect(mockTx.invoice.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "PARTIALLY_PAID" }),
+      }),
+    );
+  });
+
+  it("does not re-record an installment that is already paid", async () => {
+    vi.mocked(db.invoice.findUnique).mockResolvedValue({
+      ...UNPAID_INVOICE,
+      partialPayments: [
+        { id: "pp1", isPaid: true, isPercentage: false, amount: { toNumber: () => 40 } },
+      ],
+    } as any);
+    vi.mocked(constructStripeEvent).mockReturnValue(
+      intentEvent(
+        { orgId: "org1", invoiceId: "inv1", source: "off_session", partialPaymentId: "pp1" },
+        4000,
+      ),
+    );
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(mockTx.payment.create).not.toHaveBeenCalled();
   });
 });

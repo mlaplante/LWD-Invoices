@@ -208,6 +208,11 @@ export async function attemptOffSessionCharge(opts: {
           invoiceId: invoice.id,
           orgId: invoice.organizationId,
           clientId: invoice.clientId,
+          // Marks this Intent as eligible for the payment_intent.succeeded
+          // backstop: the payment is recorded inline below, so if that write
+          // fails the webhook is the only thing left to record it.
+          source: "off_session",
+          ...(opts.installment ? { partialPaymentId: opts.installment.id } : {}),
           ...(opts.metadata ?? {}),
         },
       },

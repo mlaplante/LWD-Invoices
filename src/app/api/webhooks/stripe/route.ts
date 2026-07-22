@@ -22,6 +22,14 @@ import {
 const processedEvents = new Map<string, number>();
 const EVENT_TTL_MS = 24 * 60 * 60_000;
 
+// PaymentIntent metadata marker written at every creation site (see
+// createCheckoutSession, charge-saved, attemptOffSessionCharge). Only
+// off-session sources are eligible for the payment_intent.succeeded backstop
+// below. An absent or unrecognised marker is skipped rather than recorded:
+// failing to record leaves a visible, recoverable gap, whereas wrongly
+// recording a checkout intent is silent data corruption.
+const BACKSTOP_SOURCES = new Set(["charge_saved", "off_session"]);
+
 function cleanExpiredEvents() {
   const now = Date.now();
   for (const [id, ts] of processedEvents) {
@@ -170,6 +178,179 @@ export async function POST(req: NextRequest) {
         });
       }
     }
+    return ackProcessed(event.id);
+  }
+
+  // Off-session charges (saved card on the portal, installment autopay, dunning
+  // retries) record the payment inline, immediately after Stripe confirms the
+  // charge. If that inline write fails — a DB blip, a timed-out Lambda — Stripe
+  // has the money and nothing in the app will ever record it. This is the
+  // backstop for that gap.
+  //
+  // It deliberately ignores checkout-originated intents. The
+  // checkout.session.completed handler does strictly more than a PaymentIntent
+  // event can reconstruct (early-pay discount redemption, deposit credit
+  // balance, card save, Stripe Tax promotion) because the discount amount and
+  // portal token live on the Session, not the Intent. Stripe does not guarantee
+  // event ordering, so if this branch won the race it would mark the invoice
+  // PAID and make the session handler short-circuit at its already-PAID check,
+  // silently dropping all of that.
+  if (event.type === "payment_intent.succeeded") {
+    const intent = event.data.object as Stripe.PaymentIntent;
+    const invoiceId = intent.metadata?.invoiceId;
+    const source = intent.metadata?.source;
+
+    if (!invoiceId || !BACKSTOP_SOURCES.has(source ?? "")) {
+      return ackProcessed(event.id);
+    }
+
+    // The inline path writes transactionId = the PaymentIntent id, so this is
+    // the authoritative "already handled" check regardless of arrival order.
+    const alreadyRecorded = await db.payment.findFirst({
+      where: { transactionId: intent.id, organizationId: orgId },
+      select: { id: true },
+    });
+    if (alreadyRecorded) {
+      return ackProcessed(event.id);
+    }
+
+    const invoice = await db.invoice.findUnique({
+      where: { id: invoiceId, organizationId: orgId },
+      include: { partialPayments: true, payments: true },
+    });
+    if (!invoice) {
+      return webhookJson({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    const chargedAmount = (intent.amount_received ?? intent.amount ?? 0) / 100;
+    const invoiceTotal = invoice.total.toNumber();
+    const existingTotal = invoice.payments.reduce(
+      (sum, p) => sum + p.amount.toNumber(),
+      0,
+    );
+    const partialPaymentId = intent.metadata?.partialPaymentId;
+
+    let paymentAmount: number;
+    let surchargeAmount: number;
+    if (partialPaymentId) {
+      const installment = invoice.partialPayments.find(
+        (pp) => pp.id === partialPaymentId,
+      );
+      if (!installment || installment.isPaid) {
+        return ackProcessed(event.id);
+      }
+      const installmentAmount = installment.isPercentage
+        ? (installment.amount.toNumber() / 100) * invoiceTotal
+        : installment.amount.toNumber();
+      paymentAmount = Math.min(installmentAmount, chargedAmount);
+      surchargeAmount = Math.max(0, chargedAmount - paymentAmount);
+    } else {
+      // Never credit more than Stripe actually captured. A charge smaller than
+      // the outstanding balance means something the Intent doesn't carry shrank
+      // it (an early-pay discount, booked by the inline path that failed), so
+      // the invoice lands PARTIALLY_PAID and the notification below asks a human
+      // to reconcile rather than this guessing at the discount.
+      const remaining = invoiceTotal - existingTotal;
+      paymentAmount = remaining > 0 ? Math.min(remaining, chargedAmount) : chargedAmount;
+      surchargeAmount = Math.max(0, chargedAmount - paymentAmount);
+    }
+
+    try {
+      await db.$transaction(async (tx) => {
+        await tx.payment.create({
+          data: {
+            amount: paymentAmount,
+            surchargeAmount,
+            method: "stripe",
+            transactionId: intent.id,
+            invoiceId,
+            organizationId: orgId,
+          },
+        });
+
+        if (partialPaymentId) {
+          await tx.partialPayment.update({
+            where: { id: partialPaymentId },
+            data: {
+              isPaid: true,
+              paidAt: new Date(),
+              paymentMethod: "stripe",
+              transactionId: intent.id,
+            },
+          });
+          const allPartials = await tx.partialPayment.findMany({ where: { invoiceId } });
+          await tx.invoice.update({
+            where: { id: invoiceId, organizationId: orgId },
+            data: {
+              status: allPartials.every((pp) => pp.isPaid)
+                ? InvoiceStatus.PAID
+                : InvoiceStatus.PARTIALLY_PAID,
+            },
+          });
+        } else {
+          await tx.invoice.update({
+            where: { id: invoiceId, organizationId: orgId },
+            data: {
+              status: existingTotal + paymentAmount >= invoiceTotal
+                ? InvoiceStatus.PAID
+                : InvoiceStatus.PARTIALLY_PAID,
+            },
+          });
+        }
+      });
+    } catch (err) {
+      // Lost the race with the inline path between the existence check above and
+      // the insert: the (organizationId, transactionId) unique index rejected the
+      // duplicate, which means the payment IS recorded. Ack so Stripe stops
+      // retrying an event that has nothing left to do.
+      if ((err as { code?: string })?.code === "P2002") {
+        return ackProcessed(event.id);
+      }
+      throw err;
+    }
+
+    await logAudit({
+      action: "PAYMENT_RECEIVED",
+      entityType: "Invoice",
+      entityId: invoiceId,
+      entityLabel: `Invoice #${invoice.number}`,
+      diff: {
+        method: "stripe",
+        amount: paymentAmount,
+        surchargeAmount,
+        transactionId: intent.id,
+        recoveredBy: "payment_intent_backstop",
+        source,
+        ...(partialPaymentId ? { partialPaymentId } : {}),
+      },
+      organizationId: orgId,
+    }).catch(() => {});
+
+    // Always tell a human: reaching this branch means an inline write failed,
+    // which is worth investigating even though the money is now recorded.
+    try {
+      const { notifyOrgAdmins } = await import("@/server/services/notifications");
+      await notifyOrgAdmins(orgId, {
+        type: "INVOICE_PAID",
+        title: `Recovered an unrecorded payment on Invoice #${invoice.number}`,
+        body: `A ${chargedAmount.toFixed(2)} charge succeeded in Stripe but was never recorded by the app. It has been recorded now — please confirm the invoice balance is correct.`,
+        link: `/invoices/${invoiceId}`,
+      });
+    } catch (err) {
+      console.error("[stripe-webhook] Backstop notify failed:", err);
+    }
+
+    try {
+      await sendPaymentReceiptEmail({
+        invoiceId,
+        amountPaid: chargedAmount,
+        organizationId: orgId,
+        partialPaymentId: partialPaymentId ?? undefined,
+      });
+    } catch (err) {
+      console.error("[stripe-webhook] Backstop receipt email failed:", err);
+    }
+
     return ackProcessed(event.id);
   }
 

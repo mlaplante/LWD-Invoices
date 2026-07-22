@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Logs an error server-side with a short request id and returns a JSON
@@ -24,5 +25,18 @@ export function safeErrorResponse(
       ? { name: context.cause.name, message: context.cause.message, stack: context.cause.stack }
       : context.cause,
   });
+  // Also raise a Sentry *issue*. The console line above already ships as a
+  // Sentry log (consoleLoggingIntegration captures warn/error), but logs are
+  // neither grouped nor alertable — so a payment gateway silently failing to
+  // decrypt or verify signatures for weeks looks like nothing at all. These
+  // boundaries guard money movement; they deserve an issue you can alert on.
+  Sentry.captureException(
+    context.cause instanceof Error ? context.cause : new Error(`${context.route}: ${message}`),
+    {
+      level: status >= 500 ? "error" : "warning",
+      tags: { route: context.route, status: String(status), errorId: id },
+      extra: { ...context.meta, message },
+    },
+  );
   return NextResponse.json({ error: message, errorId: id }, { status });
 }

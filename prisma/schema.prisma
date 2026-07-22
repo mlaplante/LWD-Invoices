@@ -885,6 +885,12 @@ model Payment {
 
   createdAt DateTime @default(now())
 
+  // One payment row per processor transaction. Every Stripe path writes the
+  // PaymentIntent id here, so this makes double-recording impossible no matter
+  // how the inline charge path and the payment_intent.succeeded webhook backstop
+  // interleave. Postgres treats NULLs as distinct, so manually recorded payments
+  // (cash, bank transfer) with no transaction id are unaffected.
+  @@unique([organizationId, transactionId])
   @@index([organizationId, paidAt])
   @@index([organizationId, invoiceId])
   @@index([invoiceId])

@@ -125,6 +125,20 @@ export async function POST(
   const finalAmount = chargeAmount * (1 + surcharge / 100);
   const amountCents = Math.round(finalAmount * 100);
 
+  // Idempotency key, same protection the off-session autopay path already has:
+  // if the DB write below fails after Stripe captured the money, the client sees
+  // an error and retries — without this, that retry creates a SECOND
+  // PaymentIntent and charges the card twice. Keyed on what makes a charge
+  // distinct, so a genuinely different payment (other installment, changed
+  // balance, different card) still goes through.
+  const idempotencyKey = [
+    "charge-saved",
+    invoice.id,
+    partialPaymentId ?? "balance",
+    paymentMethodId,
+    amountCents,
+  ].join(":");
+
   try {
     const paymentIntent = await stripeClient.paymentIntents.create({
       amount: amountCents,
@@ -138,9 +152,13 @@ export async function POST(
         orgId: invoice.organizationId,
         portalToken: invoice.portalToken,
         clientId: invoice.clientId,
+        // Marks this Intent as eligible for the payment_intent.succeeded
+        // backstop: the payment is recorded inline below, so if that write
+        // fails the webhook is the only thing left to record it.
+        source: "charge_saved",
         ...(partialPaymentId ? { partialPaymentId } : {}),
       },
-    });
+    }, { idempotencyKey });
 
     if (paymentIntent.status !== "succeeded") {
       return NextResponse.json({ error: "Payment failed" }, { status: 402 });
@@ -228,6 +246,16 @@ export async function POST(
       303
     );
   } catch (err: unknown) {
+    // The (organizationId, transactionId) unique index rejected the insert, so
+    // the payment_intent.succeeded backstop recorded this charge first. The
+    // money is captured AND recorded — showing "Payment failed" here would push
+    // the client into a retry, so treat it as the success it is.
+    if ((err as { code?: string })?.code === "P2002") {
+      return NextResponse.redirect(
+        `${resolveAppUrlFromHeaders(req.headers)}/portal/${invoice.portalToken}/payment-success`,
+        303
+      );
+    }
     const stripeError = err as { type?: string; message?: string };
     // StripeCardError messages are user-safe by design (e.g. "Your card was declined").
     if (stripeError.type === "StripeCardError") {

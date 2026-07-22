@@ -99,10 +99,15 @@ export async function createCheckoutSession(opts: {
       setup_future_usage: "off_session",
       // Carry attribution onto the PaymentIntent + Charge so dispute/refund
       // webhooks (whose objects lack our metadata) can be traced back to the org.
+      // `source` tells the payment_intent.succeeded backstop to keep its hands
+      // off: this Intent's payment is recorded by the checkout.session handler,
+      // which also books the early-pay discount, deposit credit, saved card and
+      // tax promotion that only the Session carries.
       metadata: {
         invoiceId: invoice.id,
         orgId: invoice.organizationId,
         clientId: invoice.clientId,
+        source: "checkout",
         ...(partialPaymentId ? { partialPaymentId } : {}),
       },
     },
