@@ -14,14 +14,19 @@ requests on real workerd. But three things fail, and two of them are structural:
 |---|---|
 | Build under `@opennextjs/cloudflare` | ✅ works, after 4 changes |
 | Worker boots, middleware/auth runs on workerd | ✅ verified |
-| Bundle size vs 10 MB Workers Paid ceiling | ❌ **13.5 MB gzip** |
-| `@react-pdf/renderer` at runtime | ❌ **WASM blocked by workerd** |
-| Prisma at runtime | ❌ WASM blocked; fix path exists but doesn't build yet |
+| Bundle size vs 10 MB Workers Paid ceiling | ❌ **13.5 MB gzip** (measured *with* react-pdf still in) |
+| `@react-pdf/renderer` at runtime | ❌ **WASM blocked by workerd — no fix** |
+| Prisma at runtime | ⚠️ WASM prohibition cleared; blocked on asset bundling |
 | Inngest background jobs | ⚠️ untested |
 
-So: yes there's a path, but it's a project, not a port. The honest read is that
-PDF generation cannot run on Workers as currently written, and that alone forces
-an architecture change.
+So: yes there's a path, but it's a project, not a port. The one genuinely
+unfixable item is `@react-pdf/renderer` — PDF generation cannot run on Workers
+as currently written, and that alone forces an architecture change.
+
+The other two are softer than the table suggests, and they're coupled: the
+13.5 MB was measured with react-pdf and `fontkit` still in the bundle, so the
+mandatory PDF offload plus the Sentry→`@sentry/cloudflare` swap are attacking
+the size number too. Size is not a standalone wall.
 
 ## Adapter choice
 
@@ -32,35 +37,32 @@ Workers under `nodejs_compat`.
 
 Confirmed: Next 16.2.11 builds under OpenNext 1.20.2.
 
-## The two runtime blockers
+## Runtime findings
 
-Both surfaced from a smoke route (`src/app/api/cf-smoke/route.ts` in the spike)
-run against real workerd via `wrangler dev`:
+All from a smoke route (`src/app/api/cf-smoke/route.ts` in the spike) run against
+real workerd via `wrangler dev`. Workers forbid compiling WebAssembly from bytes
+at runtime — WASM must be a static module import resolved at build time.
 
-```json
-{
-  "reactPdf": "FAILED: RuntimeError: Aborted(CompileError: WebAssembly.instantiate(): Wasm code generation disallowed by embedder)",
-  "prisma":   "FAILED: CompileError: WebAssembly.Module(): Wasm code generation disallowed by embedder"
-}
+### `@react-pdf/renderer` — hard blocker, no fix
+
+```
+RuntimeError: Aborted(CompileError: WebAssembly.instantiate():
+Wasm code generation disallowed by embedder)
 ```
 
-Workers forbid compiling WebAssembly from bytes at runtime. WASM has to be a
-static module import resolved at build time. Both libraries do the former.
-
-### `@react-pdf/renderer` — hard blocker
-
-This backs ten files: `invoice-pdf`, `proposal-pdf`, `year-end-pdf`,
+Reproduced on every build variant tried. It bundles fine and dies on first
+render. This backs ten files: `invoice-pdf`, `proposal-pdf`, `year-end-pdf`,
 `client-statement-pdf`, `contractor-1099-pdf`, the four `pdf-templates/*`, and
-`/api/reports/tax-liability/pdf`. It bundles fine and then dies on first render.
+`/api/reports/tax-liability/pdf`.
 
 There is no config flag for this. **PDF generation has to move off the Worker** —
 a separate Node service, a container, or keeping just those routes on Netlify.
-Note this is a stronger reason to offload than bundle size alone.
 
-### Prisma — fixable in principle, not working yet
+### Prisma — the platform prohibition is cleared; bundling isn't
 
-The current `prisma-client-js` generator ships a WASM query engine instantiated
-from bytes. Prisma's documented answer is the newer generator:
+With the stock `prisma-client-js` generator, Prisma failed the same way as
+react-pdf (`Wasm code generation disallowed by embedder`). Switching to the
+generator Prisma documents for Workers fixes that:
 
 ```prisma
 generator client {
@@ -71,21 +73,44 @@ generator client {
 }
 ```
 
-That emits `wasm-worker-loader.mjs` — the correct static-import path. But getting
-it through the build didn't land:
+After that switch the runtime error changes to:
 
-- It changes the entry point, so all **158 files** importing `@/generated/prisma`
-  need `@/generated/prisma/client`. (Mechanical — a one-line sed did it.)
-- **Turbopack** compiles the static `.wasm` import fine, but leaves
-  `process.env.NODE_ENV` dynamic, and the Worker then crashes at init inside
-  Next's dev-only file logger: `Dynamic require of "fs" is not supported`.
-- **webpack** inlines NODE_ENV correctly (Worker boots), but needs
-  `experiments.asyncWebAssembly`, and even with that set the build ends with
-  `ENOENT: .next/server/static/wasm/7834c5609f074b64.wasm` — the emitted WASM
-  never makes it into the OpenNext bundle.
+```
+no such file or directory, readAll '/bundle/static/wasm/7834c5609f074b64.wasm'
+```
 
-So each builder solves what the other breaks. Resolving this is a prerequisite,
-and I'd treat it as unknown-effort until someone gets one of the two paths green.
+That is the important result: **the engine loads and runs under workerd — it just
+can't find its `.wasm` inside the OpenNext bundle.** Categorically different from
+react-pdf, and an asset-plumbing problem rather than a platform limit.
+
+What it costs, and what's still open:
+
+- The generator changes the entry point, so all **158 files** importing
+  `@/generated/prisma` need `@/generated/prisma/client`. Mechanical — a one-line
+  sed did it.
+- webpack emits the file at `.next/server/chunks/static/wasm/…` but the runtime
+  looks for `/bundle/static/wasm/…`. Copying it into `.next/server/static/wasm/`
+  before OpenNext's bundling step clears the build-time ENOENT, but the file
+  still doesn't land where the worker's FS shim looks. `outputFileTracingIncludes`
+  didn't help either. **Unresolved — but the remaining gap is one path, not a
+  redesign.** Someone should finish this before any go/no-go call.
+- Note the query-compiler WASM is 3.5 MB uncompressed, which counts against the
+  size budget.
+
+### Turbopack doesn't boot on workerd (independent of Prisma)
+
+With the Turbopack builder, `process.env.NODE_ENV` is left dynamic and the Worker
+crashes at init inside Next's dev-only file logger:
+
+```
+Error: Dynamic require of "fs" is not supported
+  at next/dist/server/dev/browser-logs/file-logger.js
+```
+
+This kills *every* route, not just Prisma. webpack inlines NODE_ENV and boots
+fine. So webpack is the required builder for a second reason beyond size — and
+Turbopack is the only builder that natively compiles Prisma's static `.wasm`
+import, which is exactly the tension above.
 
 ## Size
 
@@ -122,9 +147,11 @@ Next 16 renamed middleware to `proxy.ts` and pinned it to the Node runtime
 **deprecated** `middleware.ts` convention, which still defaults to edge. Next
 warns on every build.
 
-The body (`@supabase/ssr` auth + `@upstash/ratelimit`) needed no changes and
-**was verified running on workerd** — it correctly 307'd an unauthenticated
-request. But we'd be depending on a convention Next has already deprecated.
+The body (`@supabase/ssr` auth + `@upstash/ratelimit`) needed no changes and ran
+on workerd — **partially verified**: it correctly 307'd an unauthenticated
+request, which proves the middleware executes and Supabase SSR initializes. A
+full authed pass-through and the Upstash limiter were not exercised. Either way
+we'd be depending on a convention Next has already deprecated.
 
 ### 2. Drop `@sentry/profiling-node`
 
@@ -231,12 +258,15 @@ If we adopt Hyperdrive, `DATABASE_URL` becomes Hyperdrive config, not a secret.
 
 ## Open decisions
 
-1. **Is this worth doing?** The PDF offload is mandatory and the Prisma/WASM
-   build path is unresolved. That's meaningfully more than a redeploy.
-2. **Which Cloudflare account**, and is it Workers Paid? Two are visible:
+1. **Is this worth doing?** The PDF offload is mandatory. That plus the Sentry
+   swap is meaningfully more than a redeploy — but it's bounded work, and it
+   also brings the size number down.
+2. **Finish the Prisma WASM bundling first** before any go/no-go. It's the data
+   layer, and it's one unresolved path away from working.
+3. **Which Cloudflare account**, and is it Workers Paid? Two are visible:
    `Accounting@bespokeandcofl.com` and `Michael@michaellaplante.com`. Free is
    3 MB — nowhere near enough; Paid still needs the size work.
-3. **Where does PDF generation live** after the move?
-4. **Accept the deprecated-middleware dependency?**
-5. **Sentry server profiling goes away** — confirm that's acceptable.
-6. **DNS cutover timing** off Netlify.
+4. **Where does PDF generation live** after the move?
+5. **Accept the deprecated-middleware dependency?**
+6. **Sentry server profiling goes away** — confirm that's acceptable.
+7. **DNS cutover timing** off Netlify.
