@@ -11,7 +11,9 @@ export type AuthResult =
  * Uses the same org-resolution logic as the tRPC context:
  *   1. activeOrgId cookie  +  UserOrganization membership
  *   2. First membership fallback
- * Returns a Response(401) if unauthorized, otherwise returns { user, orgId }.
+ * Returns a Response(401) if unauthorized, a Response(403) if the user's
+ * account has been suspended (isActive === false), otherwise returns
+ * { user, orgId }.
  */
 export async function getAuthenticatedOrg(): Promise<AuthResult> {
   const { data: { user } } = await getUser();
@@ -24,8 +26,12 @@ export async function getAuthenticatedOrg(): Promise<AuthResult> {
 
   const dbUser = await db.user.findFirst({
     where: { supabaseId: user.id },
-    select: { id: true },
+    select: { id: true, isActive: true },
   });
+
+  if (dbUser?.isActive === false) {
+    return new Response("Your account has been suspended", { status: 403 });
+  }
 
   if (dbUser) {
     const cookieStore = await cookies();
