@@ -4,7 +4,7 @@ import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
 import { LineType } from "@/generated/prisma";
 import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
-import { getForOrg } from "../lib/get-for-org";
+import { getForOrg, assertInOrg } from "../lib/get-for-org";
 import { getOrgTaxList } from "../lib/tax-helpers";
 
 export const tasksRouter = router({
@@ -56,6 +56,26 @@ export const tasksRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Every client-supplied foreign key must be verified to belong to the
+      // caller's org before create — organizationId on the new row only
+      // scopes the row itself, not the records it references.
+      await assertInOrg(ctx.db.project, input.projectId, ctx.orgId, { entityName: "Project" });
+      if (input.milestoneId) {
+        await assertInOrg(ctx.db.milestone, input.milestoneId, ctx.orgId, { entityName: "Milestone" });
+      }
+      if (input.taskStatusId) {
+        await assertInOrg(ctx.db.taskStatus, input.taskStatusId, ctx.orgId, { entityName: "Task status" });
+      }
+      if (input.parentId) {
+        await assertInOrg(ctx.db.projectTask, input.parentId, ctx.orgId, { entityName: "Parent task" });
+      }
+      if (input.assignedUserId) {
+        await assertInOrg(ctx.db.userOrganization, input.assignedUserId, ctx.orgId, {
+          idField: "userId",
+          entityName: "Assigned user",
+        });
+      }
+
       return ctx.db.projectTask.create({
         data: { ...input, organizationId: ctx.orgId },
         include: { taskStatus: true, milestone: true },

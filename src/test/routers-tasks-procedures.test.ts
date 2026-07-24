@@ -200,6 +200,7 @@ describe("Tasks Router Procedures", () => {
         milestone: null,
       };
 
+      ctx.db.project.findFirst.mockResolvedValue({ id: "proj_123" });
       ctx.db.projectTask.create.mockResolvedValue(mockTask);
 
       const result = await caller.create({
@@ -267,6 +268,11 @@ describe("Tasks Router Procedures", () => {
         },
       };
 
+      ctx.db.project.findFirst.mockResolvedValue({ id: "proj_123" });
+      ctx.db.milestone.findFirst.mockResolvedValue({ id: "milestone_1" });
+      ctx.db.taskStatus.findFirst.mockResolvedValue({ id: "status_1" });
+      ctx.db.projectTask.findFirst.mockResolvedValue({ id: "task_1" });
+      ctx.db.userOrganization.findFirst.mockResolvedValue({ id: "membership_1" });
       ctx.db.projectTask.create.mockResolvedValue(mockTask);
 
       const result = await caller.create({
