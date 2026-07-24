@@ -104,6 +104,27 @@ export const tasksRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       await getForOrg(ctx.db.projectTask, id, ctx.orgId, { entityName: "Task" });
+
+      // Every foreign key in `data` is client-supplied; scoping `id` above only
+      // protects the row being updated, not the rows it's being pointed at.
+      // Skip validation when a field is absent (undefined) or being cleared
+      // (null) — only a real referenced id needs to be checked.
+      if (data.milestoneId) {
+        await assertInOrg(ctx.db.milestone, data.milestoneId, ctx.orgId, { entityName: "Milestone" });
+      }
+      if (data.taskStatusId) {
+        await assertInOrg(ctx.db.taskStatus, data.taskStatusId, ctx.orgId, { entityName: "Task status" });
+      }
+      if (data.parentId) {
+        await assertInOrg(ctx.db.projectTask, data.parentId, ctx.orgId, { entityName: "Parent task" });
+      }
+      if (data.assignedUserId) {
+        await assertInOrg(ctx.db.userOrganization, data.assignedUserId, ctx.orgId, {
+          idField: "userId",
+          entityName: "User",
+        });
+      }
+
       return ctx.db.projectTask.update({
         where: { id, organizationId: ctx.orgId },
         data,
