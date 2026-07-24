@@ -109,10 +109,14 @@ export async function POST(req: Request) {
     },
   });
 
-  // Store organizationId in Supabase app_metadata
+  // Store organizationId in Supabase app_metadata. require2FA must be included
+  // too — proxy.ts's MFA gate reads it straight from this JWT claim. A newly
+  // created org always starts with require2FA=false (schema default), but we
+  // source it from the created record rather than hardcoding to stay correct
+  // if that default ever changes.
   const admin = createAdminClient();
   const { error: metaError } = await admin.auth.admin.updateUserById(user.id, {
-    app_metadata: { organizationId: org.id, orgName: name, userRole: "OWNER" },
+    app_metadata: { organizationId: org.id, orgName: name, userRole: "OWNER", require2FA: org.require2FA },
   });
 
   if (metaError) {

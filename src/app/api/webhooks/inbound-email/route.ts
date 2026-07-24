@@ -8,11 +8,32 @@ import {
 } from "@/server/services/inbound-email";
 
 /**
+ * Extract the bare address from a From header value, which may already be a
+ * bare address ("client@acme.com") or a display-name form
+ * ("Name <client@acme.com>") depending on how the provider formats it.
+ * Returns null for an empty/missing value.
+ */
+function normalizeSenderEmail(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const angleMatch = trimmed.match(/<([^>]+)>\s*$/);
+  const bare = (angleMatch ? angleMatch[1] : trimmed).trim().toLowerCase();
+  return bare || null;
+}
+
+/**
  * Inbound email webhook. Client replies to invoice emails (Reply-To
  * reply+<invoiceId>@<inbound-domain>) are posted here. We verify the Svix
  * signature, resolve the invoice from the recipient address, record the reply
  * as an InboundEmail, and thread it onto a support ticket (reusing the invoice's
  * existing thread or opening a new one) so the conversation lives in one place.
+ *
+ * The Svix signature only proves the payload came from Resend — it does not
+ * prove the email's From header is genuine (Resend does not authenticate
+ * arbitrary inbound mail). Before attributing the message to the client we
+ * additionally verify the sender's address matches the invoice's client
+ * email; an unverified sender is still recorded as an InboundEmail audit row
+ * but is never threaded onto the ticket or used to trigger notifications.
  */
 export async function POST(req: NextRequest) {
   const secret = process.env.RESEND_INBOUND_WEBHOOK_SECRET;
@@ -54,67 +75,90 @@ export async function POST(req: NextRequest) {
 
   const invoice = await db.invoice.findUnique({
     where: { id: invoiceId },
-    select: { id: true, number: true, organizationId: true, clientId: true },
+    select: {
+      id: true,
+      number: true,
+      organizationId: true,
+      clientId: true,
+      client: { select: { email: true } },
+    },
   });
   if (!invoice) {
     return NextResponse.json({ ok: true, threaded: false });
   }
 
-  // Thread onto a ticket: reuse the invoice's existing inbound thread if one
-  // exists, otherwise open a new ticket for the client.
-  const priorThread = await db.inboundEmail.findFirst({
-    where: { invoiceId: invoice.id, ticketId: { not: null } },
-    orderBy: { receivedAt: "desc" },
-    select: { ticketId: true },
-  });
+  // The From header is fully attacker-controlled content of an inbound
+  // message; only treat the sender as the invoice's client if it matches the
+  // client's known email (case-insensitive, trimmed). Fail closed if either
+  // side is missing.
+  const senderEmail = normalizeSenderEmail(parsed.fromEmail);
+  const clientEmail = invoice.client?.email?.trim().toLowerCase() || null;
+  const senderVerified = !!senderEmail && !!clientEmail && senderEmail === clientEmail;
 
-  let ticketId = priorThread?.ticketId ?? null;
   const messageBody =
     parsed.bodyText?.trim() ||
     parsed.subject?.trim() ||
     "(empty reply)";
 
-  try {
-    if (ticketId) {
-      await db.ticketMessage.create({
-        data: {
-          ticketId,
-          body: messageBody,
-          isStaff: false,
-          authorName: parsed.fromEmail,
-        },
-      });
-      await db.ticket.update({ where: { id: ticketId }, data: { status: "OPEN" } });
-    } else {
-      const last = await db.ticket.findFirst({
-        where: { organizationId: invoice.organizationId },
-        orderBy: { number: "desc" },
-        select: { number: true },
-      });
-      const ticket = await db.ticket.create({
-        data: {
-          number: (last?.number ?? 0) + 1,
-          subject: parsed.subject?.trim() || `Reply re: invoice #${invoice.number}`,
-          status: "OPEN",
-          organizationId: invoice.organizationId,
-          clientId: invoice.clientId,
-          messages: {
-            create: {
-              body: messageBody,
-              isStaff: false,
-              authorName: parsed.fromEmail,
+  let ticketId: string | null = null;
+
+  if (senderVerified) {
+    // Thread onto a ticket: reuse the invoice's existing inbound thread if one
+    // exists, otherwise open a new ticket for the client.
+    const priorThread = await db.inboundEmail.findFirst({
+      where: { invoiceId: invoice.id, ticketId: { not: null } },
+      orderBy: { receivedAt: "desc" },
+      select: { ticketId: true },
+    });
+    ticketId = priorThread?.ticketId ?? null;
+
+    try {
+      if (ticketId) {
+        await db.ticketMessage.create({
+          data: {
+            ticketId,
+            body: messageBody,
+            isStaff: false,
+            authorName: parsed.fromEmail,
+          },
+        });
+        await db.ticket.update({ where: { id: ticketId }, data: { status: "OPEN" } });
+      } else {
+        const last = await db.ticket.findFirst({
+          where: { organizationId: invoice.organizationId },
+          orderBy: { number: "desc" },
+          select: { number: true },
+        });
+        const ticket = await db.ticket.create({
+          data: {
+            number: (last?.number ?? 0) + 1,
+            subject: parsed.subject?.trim() || `Reply re: invoice #${invoice.number}`,
+            status: "OPEN",
+            organizationId: invoice.organizationId,
+            clientId: invoice.clientId,
+            messages: {
+              create: {
+                body: messageBody,
+                isStaff: false,
+                authorName: parsed.fromEmail,
+              },
             },
           },
-        },
-        select: { id: true },
-      });
-      ticketId = ticket.id;
+          select: { id: true },
+        });
+        ticketId = ticket.id;
+      }
+    } catch (err) {
+      // Threading is best-effort; we still record the InboundEmail below so the
+      // reply is never lost. A ticket-number race just means no ticket this time.
+      console.error("[inbound-email] Failed to thread onto ticket:", err);
+      ticketId = null;
     }
-  } catch (err) {
-    // Threading is best-effort; we still record the InboundEmail below so the
-    // reply is never lost. A ticket-number race just means no ticket this time.
-    console.error("[inbound-email] Failed to thread onto ticket:", err);
-    ticketId = null;
+  } else {
+    console.warn(
+      "[inbound-email] Sender does not match invoice client; recording audit row without threading",
+      { invoiceId: invoice.id },
+    );
   }
 
   const inboundEmail = await db.inboundEmail.create({
@@ -131,10 +175,12 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  await inngest.send({
-    name: "inbound-email/received",
-    data: { inboundEmailId: inboundEmail.id, organizationId: invoice.organizationId },
-  }).catch(() => {});
+  if (senderVerified) {
+    await inngest.send({
+      name: "inbound-email/received",
+      data: { inboundEmailId: inboundEmail.id, organizationId: invoice.organizationId },
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true, threaded: ticketId != null });
 }

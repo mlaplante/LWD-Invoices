@@ -19,6 +19,7 @@ import {
   validateSignatureData,
   encryptSignature,
 } from "../services/signature";
+import { getPortalSessionSecret, verifyPortalSession } from "@/lib/portal-session";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.SENT,
@@ -52,11 +53,22 @@ const portalOrgSelect = {
   country: true,
 } as const;
 
+// Client fields the portal-token flows (getInvoice, createStripeCheckout)
+// actually use. This endpoint is unauthenticated (invoice-scoped token
+// only), so it must never expose portalToken, portalPassphraseHash,
+// portalPassphraseResetTokenHash, emailPreferencesToken, stripeCustomerId,
+// or other client PII/settings beyond the invoice "bill to" display.
+const portalClientSelect = {
+  id: true,
+  name: true,
+  email: true,
+} as const;
+
 async function getInvoiceByToken(db: typeof import("../db").db, token: string) {
   const invoice = await db.invoice.findUnique({
     where: { portalToken: token },
     include: {
-      client: true,
+      client: { select: portalClientSelect },
       currency: true,
       organization: { select: portalOrgSelect },
       lines: {
@@ -142,11 +154,11 @@ export const portalRouter = router({
       // Use the portal token to find the invoice and determine the client
       const invoice = await ctx.db.invoice.findUnique({
         where: { portalToken: input.token },
-        select: { clientId: true, organizationId: true },
+        select: { id: true, clientId: true, organizationId: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return ctx.db.invoice.findMany({
+      const invoices = await ctx.db.invoice.findMany({
         where: { clientId: invoice.clientId, organizationId: invoice.organizationId, isArchived: false },
         select: {
           id: true,
@@ -155,11 +167,20 @@ export const portalRouter = router({
           date: true,
           dueDate: true,
           total: true,
-          portalToken: true,
           currency: { select: { code: true, symbol: true, symbolPosition: true } },
         },
         orderBy: { date: "desc" },
       });
+
+      // A single invoice token only proves ownership of that one invoice --
+      // never hand back the portalToken of a sibling invoice/estimate (that
+      // would let a holder of one token harvest bearer tokens for every
+      // other invoice belonging to the same client). Only the invoice the
+      // caller actually authenticated with may carry its own token back.
+      return invoices.map((inv) => ({
+        ...inv,
+        portalToken: inv.id === invoice.id ? input.token : null,
+      }));
     }),
 
   createStripeCheckout: publicProcedure
@@ -237,6 +258,15 @@ export const portalRouter = router({
       const config = decryptJson<StripeConfig>(gateway.configJson);
       const stripeClient = getStripeClient(config.secretKey);
 
+      // stripeCustomerId is deliberately not part of portalClientSelect
+      // (it must never be serialized back to an unauthenticated portal
+      // caller via getInvoice) — fetch it separately for server-side use
+      // when creating the Stripe checkout session.
+      const clientStripeInfo = await ctx.db.client.findUnique({
+        where: { id: invoice.clientId },
+        select: { stripeCustomerId: true },
+      });
+
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       const { url } = await createCheckoutSession({
         stripeClient,
@@ -258,7 +288,7 @@ export const portalRouter = router({
         amountOverride,
         clientEmail: invoice.client.email,
         clientName: invoice.client.name,
-        stripeCustomerId: invoice.client.stripeCustomerId,
+        stripeCustomerId: clientStripeInfo?.stripeCustomerId ?? null,
         paymentMethod: input.paymentMethod,
         achDebitEnabled: config.achDebitEnabled,
         sepaDebitEnabled: config.sepaDebitEnabled,
@@ -439,7 +469,7 @@ export const portalRouter = router({
         where: { portalToken: input.token },
         include: {
           proposalContent: true,
-          client: { select: { name: true } },
+          client: { select: { name: true, portalPassphraseHash: true } },
           organization: {
             select: {
               name: true,
@@ -459,6 +489,21 @@ export const portalRouter = router({
           code: "BAD_REQUEST",
           message: "Only estimates/proposals can be signed",
         });
+      }
+
+      // If the client's portal is passphrase-protected, require a valid
+      // portal-auth session for this token before recording a legally
+      // binding signature (mirrors /api/portal/[token]/estimate/route.ts).
+      const storedPassphraseHash = invoice.client?.portalPassphraseHash ?? null;
+      if (storedPassphraseHash) {
+        const cookieStore = await cookies();
+        const authCookie = cookieStore.get(`portal_auth_${input.token}`);
+        if (
+          !authCookie ||
+          !verifyPortalSession(authCookie.value, input.token, getPortalSessionSecret())
+        ) {
+          throw new TRPCError({ code: "UNAUTHORIZED" });
+        }
       }
 
       // Must not already be signed

@@ -101,6 +101,22 @@ export const clientsRouter = router({
           orderBy: { name: "asc" },
           skip: (input.page - 1) * input.pageSize,
           take: input.pageSize,
+          // Explicit allowlist: this list is fetched by any authenticated org
+          // member (bare protectedProcedure), so secret/token fields
+          // (portalPassphraseHash, portalPassphraseResetTokenHash,
+          // portalToken, emailPreferencesToken) must never appear here even
+          // though they exist on the Client model. Only include what the
+          // list UI actually renders/consumes.
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            city: true,
+            country: true,
+            tags: true,
+            defaultPaymentTermsDays: true,
+          },
         }),
         ctx.db.client.count({ where }),
       ]);
@@ -111,7 +127,19 @@ export const clientsRouter = router({
   get: protectedProcedure
     .input(idInput)
     .query(async ({ ctx, input }) => {
-      return getForOrg(ctx.db.client, input.id, ctx.orgId, { entityName: "Client" });
+      const client = await getForOrg(ctx.db.client, input.id, ctx.orgId, { entityName: "Client" });
+      // Never let secret token/hash fields leave the server for this
+      // non-privileged read path. `hasPortalPassphrase` preserves the one
+      // bit of signal the detail-view edit form needs (whether a passphrase
+      // is currently set) without exposing the crackable bcrypt hash itself.
+      const {
+        portalPassphraseHash,
+        portalPassphraseResetTokenHash,
+        portalPassphraseResetExpiresAt,
+        emailPreferencesToken,
+        ...rest
+      } = client;
+      return { ...rest, hasPortalPassphrase: portalPassphraseHash != null };
     }),
 
   // Combined reminder history across all of a client's invoices: ad-hoc manual

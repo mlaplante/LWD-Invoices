@@ -12,7 +12,25 @@ export async function POST(req: Request) {
   try {
     const auth = await getAuthenticatedOrg();
     if (isAuthError(auth)) return auth;
-    const { orgId } = auth;
+    const { orgId, user } = auth;
+
+    // Changing org branding is an organization.update-class action, which the
+    // tRPC layer restricts to OWNER/ADMIN (see requireRole("OWNER", "ADMIN")
+    // on the `update` mutation in src/server/routers/organization.ts). Mirror
+    // that gate here since this REST route performs the same effective write.
+    const dbUser = await db.user.findFirst({
+      where: { supabaseId: user.id },
+      select: { id: true },
+    });
+    const membership = dbUser
+      ? await db.userOrganization.findUnique({
+          where: { userId_organizationId: { userId: dbUser.id, organizationId: orgId } },
+          select: { role: true },
+        })
+      : null;
+    if (!membership || !["OWNER", "ADMIN"].includes(membership.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

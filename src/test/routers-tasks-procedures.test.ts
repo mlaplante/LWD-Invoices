@@ -200,6 +200,7 @@ describe("Tasks Router Procedures", () => {
         milestone: null,
       };
 
+      ctx.db.project.findFirst.mockResolvedValue({ id: "proj_123" });
       ctx.db.projectTask.create.mockResolvedValue(mockTask);
 
       const result = await caller.create({
@@ -267,6 +268,11 @@ describe("Tasks Router Procedures", () => {
         },
       };
 
+      ctx.db.project.findFirst.mockResolvedValue({ id: "proj_123" });
+      ctx.db.milestone.findFirst.mockResolvedValue({ id: "milestone_1" });
+      ctx.db.taskStatus.findFirst.mockResolvedValue({ id: "status_1" });
+      ctx.db.projectTask.findFirst.mockResolvedValue({ id: "task_1" });
+      ctx.db.userOrganization.findFirst.mockResolvedValue({ id: "membership_1" });
       ctx.db.projectTask.create.mockResolvedValue(mockTask);
 
       const result = await caller.create({
@@ -439,6 +445,61 @@ describe("Tasks Router Procedures", () => {
         data: {
           dueDate: new Date("2026-03-20"),
         },
+        include: { taskStatus: true, milestone: true },
+      });
+    });
+
+    it("rejects a milestoneId belonging to another organization", async () => {
+      const existingTask = {
+        id: "task_1",
+        projectId: "proj_123",
+        organizationId: "test-org-123",
+        milestoneId: null,
+      };
+
+      ctx.db.projectTask.findFirst.mockResolvedValue(existingTask);
+      ctx.db.milestone.findFirst.mockResolvedValue(null);
+
+      await expect(
+        caller.update({
+          id: "task_1",
+          milestoneId: "milestone_from_other_org",
+        })
+      ).rejects.toThrow("Milestone not found");
+
+      expect(ctx.db.milestone.findFirst).toHaveBeenCalledWith({
+        where: { id: "milestone_from_other_org", organizationId: "test-org-123" },
+        select: { id: true },
+      });
+      expect(ctx.db.projectTask.update).not.toHaveBeenCalled();
+    });
+
+    it("allows clearing milestoneId to null without validating it as a foreign reference", async () => {
+      const existingTask = {
+        id: "task_1",
+        projectId: "proj_123",
+        organizationId: "test-org-123",
+        milestoneId: "milestone_1",
+      };
+
+      ctx.db.projectTask.findFirst.mockResolvedValue(existingTask);
+      ctx.db.projectTask.update.mockResolvedValue({
+        ...existingTask,
+        milestoneId: null,
+        taskStatus: null,
+        milestone: null,
+      });
+
+      const result = await caller.update({
+        id: "task_1",
+        milestoneId: null,
+      });
+
+      expect(result.milestoneId).toBeNull();
+      expect(ctx.db.milestone.findFirst).not.toHaveBeenCalled();
+      expect(ctx.db.projectTask.update).toHaveBeenCalledWith({
+        where: { id: "task_1", organizationId: "test-org-123" },
+        data: { milestoneId: null },
         include: { taskStatus: true, milestone: true },
       });
     });

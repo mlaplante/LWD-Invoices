@@ -40,7 +40,7 @@ type Client = {
   taxId: string | null;
   notes: string | null;
   tags: string[];
-  portalPassphraseHash: string | null;
+  hasPortalPassphrase: boolean;
   defaultPaymentTermsDays: number | null;
 };
 
@@ -329,13 +329,13 @@ export function ClientForm({ mode, client }: Props) {
               value={form.portalPassphrase}
               onChange={(e) => handleChange("portalPassphrase", e.target.value)}
               placeholder={
-                mode === "edit" && client?.portalPassphraseHash
+                mode === "edit" && client?.hasPortalPassphrase
                   ? "Leave blank to keep existing passphrase"
                   : "Optional password for client portal"
               }
               autoComplete="new-password"
             />
-            {mode === "edit" && client?.portalPassphraseHash && (
+            {mode === "edit" && client?.hasPortalPassphrase && (
               <Button
                 type="button"
                 variant="outline"

@@ -68,10 +68,13 @@ export async function GET(request: NextRequest) {
           console.warn("[auth/callback] Could not set supabaseId:", err);
         }
 
-        // Store org info in app_metadata to avoid DB lookups on every request
+        // Store org info in app_metadata to avoid DB lookups on every request.
+        // require2FA must be included too — proxy.ts's MFA gate reads it
+        // straight from this JWT claim, and omitting it lets a migrated user
+        // into a require2FA org skip enrollment.
         const membership = await db.userOrganization.findFirst({
           where: { userId: existingUser.id },
-          include: { organization: { select: { id: true, name: true } } },
+          include: { organization: { select: { id: true, name: true, require2FA: true } } },
           orderBy: { createdAt: "asc" },
         });
         const admin = createAdminClient();
@@ -80,6 +83,7 @@ export async function GET(request: NextRequest) {
             organizationId: membership?.organization.id ?? null,
             orgName: membership?.organization.name ?? null,
             userRole: membership?.role ?? null,
+            require2FA: membership?.organization.require2FA ?? false,
           },
         });
 

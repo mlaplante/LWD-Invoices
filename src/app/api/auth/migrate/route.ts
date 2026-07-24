@@ -49,18 +49,21 @@ export async function POST() {
   // Look up primary org from UserOrganization join table
   const membership = await db.userOrganization.findFirst({
     where: { userId: existingUser.id },
-    include: { organization: { select: { id: true, name: true } } },
+    include: { organization: { select: { id: true, name: true, require2FA: true } } },
     orderBy: { createdAt: "asc" },
   });
   const organizationId = membership?.organization.id ?? null;
 
-  // Store organizationId in Supabase app_metadata
+  // Store organizationId in Supabase app_metadata. require2FA must be included
+  // here too — proxy.ts's MFA gate reads it straight from this JWT claim, and
+  // omitting it lets a migrated user into a require2FA org skip enrollment.
   const admin = createAdminClient();
   const { error: metaError } = await admin.auth.admin.updateUserById(user.id, {
     app_metadata: {
       organizationId,
       orgName: membership?.organization.name ?? null,
       userRole: membership?.role ?? null,
+      require2FA: membership?.organization.require2FA ?? false,
     },
   });
 
