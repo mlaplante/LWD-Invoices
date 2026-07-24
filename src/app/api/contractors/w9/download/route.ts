@@ -11,7 +11,19 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const auth = await getAuthenticatedOrg();
   if (isAuthError(auth)) return auth;
-  const { orgId } = auth;
+  const { orgId, user } = auth;
+
+  // W-9s carry unredacted SSN/EIN — same admin-only bar as
+  // contractors.revealTin (requireRole("OWNER", "ADMIN")). Org membership
+  // alone (proven above) is not sufficient; VIEWER/ACCOUNTANT must not mint
+  // a signed URL to the document.
+  const membership = await db.userOrganization.findFirst({
+    where: { organizationId: orgId, user: { supabaseId: user.id } },
+    select: { role: true },
+  });
+  if (!membership || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
