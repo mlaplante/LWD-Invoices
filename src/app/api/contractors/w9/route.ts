@@ -1,7 +1,14 @@
 import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { uploadW9 } from "@/lib/supabase-storage";
 import { db } from "@/server/db";
+import { findDbUserBySupabaseId } from "@/server/user-context";
+import type { UserRole } from "@/generated/prisma";
 import { NextResponse } from "next/server";
+
+// Same role gate as contractors.create / contractors.update in the tRPC
+// layer (requireRole("OWNER", "ADMIN", "ACCOUNTANT")) — this REST route
+// performs an equivalent contractor write.
+const CONTRACTOR_WRITE_ROLES: UserRole[] = ["OWNER", "ADMIN", "ACCOUNTANT"];
 
 /**
  * Upload a signed W-9 PDF for a contractor. The file lands in a private bucket;
@@ -13,6 +20,17 @@ export async function POST(req: Request) {
     const auth = await getAuthenticatedOrg();
     if (isAuthError(auth)) return auth;
     const { orgId } = auth;
+
+    const dbUser = await findDbUserBySupabaseId(auth.user.id);
+    const membership = dbUser
+      ? await db.userOrganization.findUnique({
+          where: { userId_organizationId: { userId: dbUser.id, organizationId: orgId } },
+          select: { role: true },
+        })
+      : null;
+    if (!membership || !CONTRACTOR_WRITE_ROLES.includes(membership.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
