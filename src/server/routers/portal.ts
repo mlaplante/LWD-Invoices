@@ -52,11 +52,22 @@ const portalOrgSelect = {
   country: true,
 } as const;
 
+// Client fields the portal-token flows (getInvoice, createStripeCheckout)
+// actually use. This endpoint is unauthenticated (invoice-scoped token
+// only), so it must never expose portalToken, portalPassphraseHash,
+// portalPassphraseResetTokenHash, emailPreferencesToken, stripeCustomerId,
+// or other client PII/settings beyond the invoice "bill to" display.
+const portalClientSelect = {
+  id: true,
+  name: true,
+  email: true,
+} as const;
+
 async function getInvoiceByToken(db: typeof import("../db").db, token: string) {
   const invoice = await db.invoice.findUnique({
     where: { portalToken: token },
     include: {
-      client: true,
+      client: { select: portalClientSelect },
       currency: true,
       organization: { select: portalOrgSelect },
       lines: {
@@ -246,6 +257,15 @@ export const portalRouter = router({
       const config = decryptJson<StripeConfig>(gateway.configJson);
       const stripeClient = getStripeClient(config.secretKey);
 
+      // stripeCustomerId is deliberately not part of portalClientSelect
+      // (it must never be serialized back to an unauthenticated portal
+      // caller via getInvoice) — fetch it separately for server-side use
+      // when creating the Stripe checkout session.
+      const clientStripeInfo = await ctx.db.client.findUnique({
+        where: { id: invoice.clientId },
+        select: { stripeCustomerId: true },
+      });
+
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       const { url } = await createCheckoutSession({
         stripeClient,
@@ -267,7 +287,7 @@ export const portalRouter = router({
         amountOverride,
         clientEmail: invoice.client.email,
         clientName: invoice.client.name,
-        stripeCustomerId: invoice.client.stripeCustomerId,
+        stripeCustomerId: clientStripeInfo?.stripeCustomerId ?? null,
         paymentMethod: input.paymentMethod,
         achDebitEnabled: config.achDebitEnabled,
         sepaDebitEnabled: config.sepaDebitEnabled,
