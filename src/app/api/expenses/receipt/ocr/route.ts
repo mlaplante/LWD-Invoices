@@ -4,10 +4,17 @@ import { parseReceiptWithOCR } from "@/server/services/receipt-ocr";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { readValidatedFile, SAFE_IMAGE_MIME_TYPES } from "@/lib/file-validation";
+import type { UserRole } from "@/generated/prisma";
 
 // OCR runs an LLM per receipt — cap per-org usage so a misbehaving client or
 // compromised session can't run up the bill.
 const ocrLimiter = createRateLimiter({ limit: 30, windowMs: 10 * 60_000 });
+
+// Mirrors the requireRole("OWNER", "ADMIN", "ACCOUNTANT") gate on the
+// equivalent expenses.scanReceipt tRPC mutation — this REST route triggers
+// the same paid OCR call and must not be reachable by lower-privileged
+// roles (e.g. VIEWER) just because org membership checks pass.
+const SCAN_RECEIPT_ROLES: UserRole[] = ["OWNER", "ADMIN", "ACCOUNTANT"];
 
 const ALLOWED_MIME_TYPES = SAFE_IMAGE_MIME_TYPES;
 const ALLOWED_MIME_TYPE_SET = new Set<string>(ALLOWED_MIME_TYPES);
@@ -18,7 +25,30 @@ export async function POST(req: Request) {
   try {
     const auth = await getAuthenticatedOrg();
     if (isAuthError(auth)) return auth;
-    const { orgId } = auth;
+    const { orgId, user } = auth;
+
+    // Same supabaseId -> User -> UserOrganization lookup getAuthenticatedOrg()
+    // performs internally, extended to fetch the caller's role for this org
+    // so we can enforce the ACCOUNTANT+ gate before any spend happens.
+    const dbUser = await db.user.findFirst({
+      where: { supabaseId: user.id },
+      select: { id: true },
+    });
+    const membership = dbUser
+      ? await db.userOrganization.findUnique({
+          where: {
+            userId_organizationId: { userId: dbUser.id, organizationId: orgId },
+          },
+          select: { role: true },
+        })
+      : null;
+
+    if (!membership || !SCAN_RECEIPT_ROLES.includes(membership.role)) {
+      return NextResponse.json(
+        { error: "Insufficient permissions" },
+        { status: 403 },
+      );
+    }
 
     if (ocrLimiter.isLimited(orgId)) {
       return NextResponse.json(
