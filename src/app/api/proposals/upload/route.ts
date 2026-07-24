@@ -2,11 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { uploadProposalFile, deleteProposalFile } from "@/lib/supabase/storage";
+import type { UserRole } from "@/generated/prisma";
+
+// Must match the requireRole gate on proposals.create/update in
+// src/server/routers/proposals.ts — this route performs the same write.
+const PROPOSAL_WRITE_ROLES: UserRole[] = ["OWNER", "ADMIN", "ACCOUNTANT"];
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthenticatedOrg();
   if (isAuthError(auth)) return auth;
   const { orgId } = auth;
+
+  // Mirrors the supabaseId -> User -> UserOrganization membership lookup
+  // getAuthenticatedOrg() already performs, extended to check role: only
+  // ACCOUNTANT+ may create/replace proposal content (see proposals.ts).
+  const dbUser = await db.user.findFirst({
+    where: { supabaseId: auth.user.id },
+    select: { id: true },
+  });
+  const membership = dbUser
+    ? await db.userOrganization.findUnique({
+        where: { userId_organizationId: { userId: dbUser.id, organizationId: orgId } },
+        select: { role: true },
+      })
+    : null;
+  if (!membership || !PROPOSAL_WRITE_ROLES.includes(membership.role)) {
+    return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
