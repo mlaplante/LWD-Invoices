@@ -19,6 +19,7 @@ import {
   validateSignatureData,
   encryptSignature,
 } from "../services/signature";
+import { getPortalSessionSecret, verifyPortalSession } from "@/lib/portal-session";
 
 const PAYABLE_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.SENT,
@@ -468,7 +469,7 @@ export const portalRouter = router({
         where: { portalToken: input.token },
         include: {
           proposalContent: true,
-          client: { select: { name: true } },
+          client: { select: { name: true, portalPassphraseHash: true } },
           organization: {
             select: {
               name: true,
@@ -488,6 +489,21 @@ export const portalRouter = router({
           code: "BAD_REQUEST",
           message: "Only estimates/proposals can be signed",
         });
+      }
+
+      // If the client's portal is passphrase-protected, require a valid
+      // portal-auth session for this token before recording a legally
+      // binding signature (mirrors /api/portal/[token]/estimate/route.ts).
+      const storedPassphraseHash = invoice.client?.portalPassphraseHash ?? null;
+      if (storedPassphraseHash) {
+        const cookieStore = await cookies();
+        const authCookie = cookieStore.get(`portal_auth_${input.token}`);
+        if (
+          !authCookie ||
+          !verifyPortalSession(authCookie.value, input.token, getPortalSessionSecret())
+        ) {
+          throw new TRPCError({ code: "UNAUTHORIZED" });
+        }
       }
 
       // Must not already be signed
