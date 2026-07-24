@@ -8,7 +8,6 @@ import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-cal
 import { generateExpensesForRecurring } from "../services/recurring-expense-generator";
 import { buildExpenseDraftFromReceipt } from "../services/expense-receipt-draft";
 import { detailExpenseInclude } from "@/server/lib/expense-includes";
-import { assertInOrg } from "@/server/lib/get-for-org";
 import { getOrgTaxList } from "@/server/lib/tax-helpers";
 import { logAudit } from "../services/audit";
 import { createRateLimiter } from "@/lib/rate-limit";
