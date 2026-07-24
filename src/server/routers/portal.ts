@@ -142,11 +142,11 @@ export const portalRouter = router({
       // Use the portal token to find the invoice and determine the client
       const invoice = await ctx.db.invoice.findUnique({
         where: { portalToken: input.token },
-        select: { clientId: true, organizationId: true },
+        select: { id: true, clientId: true, organizationId: true },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return ctx.db.invoice.findMany({
+      const invoices = await ctx.db.invoice.findMany({
         where: { clientId: invoice.clientId, organizationId: invoice.organizationId, isArchived: false },
         select: {
           id: true,
@@ -155,11 +155,20 @@ export const portalRouter = router({
           date: true,
           dueDate: true,
           total: true,
-          portalToken: true,
           currency: { select: { code: true, symbol: true, symbolPosition: true } },
         },
         orderBy: { date: "desc" },
       });
+
+      // A single invoice token only proves ownership of that one invoice --
+      // never hand back the portalToken of a sibling invoice/estimate (that
+      // would let a holder of one token harvest bearer tokens for every
+      // other invoice belonging to the same client). Only the invoice the
+      // caller actually authenticated with may carry its own token back.
+      return invoices.map((inv) => ({
+        ...inv,
+        portalToken: inv.id === invoice.id ? input.token : null,
+      }));
     }),
 
   createStripeCheckout: publicProcedure
