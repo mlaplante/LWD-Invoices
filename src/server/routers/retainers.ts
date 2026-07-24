@@ -4,6 +4,7 @@ import { router, requireRole, protectedProcedure } from "../trpc";
 import { validateDeposit, validateDrawdown } from "../services/retainers";
 import { Prisma } from "@/generated/prisma";
 import { computeMoneyBurndown } from "@/server/services/retainer-burndown";
+import { assertInOrg } from "../lib/get-for-org";
 
 export const retainersRouter = router({
   /**
@@ -57,6 +58,12 @@ export const retainersRouter = router({
         method: input.method,
       });
       if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error });
+
+      // Retainer.clientId is globally unique (not scoped to organizationId),
+      // so the upsert below would otherwise let a caller "claim" another
+      // org's client's retainer by id. Verify the client belongs to this
+      // org before touching the retainer.
+      await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
 
       return ctx.db.$transaction(async (tx) => {
         // Upsert retainer
