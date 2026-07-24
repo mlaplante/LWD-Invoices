@@ -167,6 +167,25 @@ describe("Clients Router Procedures", () => {
       expect(ctx.db.client.findFirst).toHaveBeenCalledWith({
         where: { id: "c_1", organizationId: "test-org-123" },
       });
+      // The bcrypt hash must never leave the server for this
+      // non-privileged read path; only a boolean signal is exposed.
+      expect(result).not.toHaveProperty("portalPassphraseHash");
+      expect(result.hasPortalPassphrase).toBe(false);
+    });
+
+    it("signals hasPortalPassphrase without exposing the hash when a passphrase is set", async () => {
+      const mockClient = {
+        id: "c_2",
+        name: "Client With Passphrase",
+        organizationId: "test-org-123",
+        portalPassphraseHash: "$2a$12$existinghash",
+      };
+      ctx.db.client.findFirst.mockResolvedValue(mockClient);
+
+      const result = await caller.get({ id: "c_2" });
+
+      expect(result).not.toHaveProperty("portalPassphraseHash");
+      expect(result.hasPortalPassphrase).toBe(true);
     });
 
     it("throws NOT_FOUND when client doesn't exist", async () => {
