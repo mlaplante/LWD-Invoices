@@ -101,6 +101,22 @@ export const clientsRouter = router({
           orderBy: { name: "asc" },
           skip: (input.page - 1) * input.pageSize,
           take: input.pageSize,
+          // Explicit allowlist: this list is fetched by any authenticated org
+          // member (bare protectedProcedure), so secret/token fields
+          // (portalPassphraseHash, portalPassphraseResetTokenHash,
+          // portalToken, emailPreferencesToken) must never appear here even
+          // though they exist on the Client model. Only include what the
+          // list UI actually renders/consumes.
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            city: true,
+            country: true,
+            tags: true,
+            defaultPaymentTermsDays: true,
+          },
         }),
         ctx.db.client.count({ where }),
       ]);
