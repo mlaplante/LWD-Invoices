@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
+import { assertInOrg } from "../lib/get-for-org";
 import { PrismaClient, LineType, Prisma } from "@/generated/prisma";
 import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
 import { generateExpensesForRecurring } from "../services/recurring-expense-generator";
@@ -217,6 +218,24 @@ export const expensesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // `rest` can re-point this expense at another org's tax/category/
+      // supplier/project by id. Confirm each supplied FK resolves inside the
+      // caller's own org before writing it — `null` (clear) and `undefined`
+      // (unchanged) are left alone.
+      if (rest.taxId) {
+        await assertInOrg(ctx.db.tax, rest.taxId, ctx.orgId, { entityName: "Tax" });
+      }
+      if (rest.categoryId) {
+        await assertInOrg(ctx.db.expenseCategory, rest.categoryId, ctx.orgId, { entityName: "Category" });
+      }
+      if (rest.supplierId) {
+        await assertInOrg(ctx.db.expenseSupplier, rest.supplierId, ctx.orgId, { entityName: "Supplier" });
+      }
+      if (rest.projectId) {
+        await assertInOrg(ctx.db.project, rest.projectId, ctx.orgId, { entityName: "Project" });
+      }
+
       const updated = await ctx.db.expense.update({
         where: { id, organizationId: ctx.orgId },
         data: {

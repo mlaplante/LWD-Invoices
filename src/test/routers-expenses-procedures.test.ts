@@ -353,6 +353,10 @@ describe("Expenses Router Procedures", () => {
       ctx.db.expense.update.mockResolvedValue(
         makeExpense({ name: "Updated Expense", qty: 10, rate: new Decimal("300") }),
       );
+      ctx.db.tax.findFirst.mockResolvedValue({ id: "tax_2" });
+      ctx.db.expenseCategory.findFirst.mockResolvedValue({ id: "cat_2" });
+      ctx.db.expenseSupplier.findFirst.mockResolvedValue({ id: "sup_2" });
+      ctx.db.project.findFirst.mockResolvedValue({ id: "p_2" });
 
       const result = await caller.update({
         id: "e_1",
@@ -426,6 +430,19 @@ describe("Expenses Router Procedures", () => {
           data: expect.objectContaining({ ocrRawResult: ocrData, ocrConfidence: 0.8 }),
         }),
       );
+    });
+
+    it("rejects a categoryId from another org", async () => {
+      ctx.db.expense.findUnique.mockResolvedValue(makeExpense());
+      ctx.db.expenseCategory.findFirst.mockResolvedValue(null); // not in this org → assertInOrg throws
+
+      try {
+        await caller.update({ id: "e_1", categoryId: "cat_other_org" });
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.code).toBe("NOT_FOUND");
+      }
+      expect(ctx.db.expense.update).not.toHaveBeenCalled();
     });
 
     it("clears OCR fields when set to null", async () => {
