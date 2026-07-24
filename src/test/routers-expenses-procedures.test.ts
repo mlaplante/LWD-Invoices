@@ -226,6 +226,10 @@ describe("Expenses Router Procedures", () => {
     });
 
     it("creates expense with all optional fields", async () => {
+      ctx.db.project.findFirst.mockResolvedValue({ id: "p_1" });
+      ctx.db.tax.findFirst.mockResolvedValue({ id: "tax_1" });
+      ctx.db.expenseCategory.findFirst.mockResolvedValue({ id: "cat_1" });
+      ctx.db.expenseSupplier.findFirst.mockResolvedValue({ id: "sup_1" });
       ctx.db.expense.create.mockResolvedValue(
         makeExpense({
           id: "e_full",
@@ -327,6 +331,18 @@ describe("Expenses Router Procedures", () => {
           },
         }),
       );
+    });
+
+    it("rejects a supplierId that belongs to another organization", async () => {
+      // Supplier exists, but not in this org: the org-scoped lookup returns null.
+      ctx.db.expenseSupplier.findFirst.mockResolvedValue(null);
+
+      await expect(
+        caller.create({ name: "Test", rate: 10, supplierId: "sup_from_other_org" }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+      // The cross-tenant expense must never be written.
+      expect(ctx.db.expense.create).not.toHaveBeenCalled();
     });
   });
 

@@ -7,6 +7,7 @@ import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-cal
 import { generateExpensesForRecurring } from "../services/recurring-expense-generator";
 import { buildExpenseDraftFromReceipt } from "../services/expense-receipt-draft";
 import { detailExpenseInclude } from "@/server/lib/expense-includes";
+import { assertInOrg } from "@/server/lib/get-for-org";
 import { getOrgTaxList } from "@/server/lib/tax-helpers";
 import { logAudit } from "../services/audit";
 import { createRateLimiter } from "@/lib/rate-limit";
@@ -156,6 +157,18 @@ export const expensesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { ocrRawResult, ...rest } = input;
+      if (input.projectId) {
+        await assertInOrg(ctx.db.project, input.projectId, ctx.orgId, { entityName: "Project" });
+      }
+      if (input.taxId) {
+        await assertInOrg(ctx.db.tax, input.taxId, ctx.orgId, { entityName: "Tax" });
+      }
+      if (input.categoryId) {
+        await assertInOrg(ctx.db.expenseCategory, input.categoryId, ctx.orgId, { entityName: "Category" });
+      }
+      if (input.supplierId) {
+        await assertInOrg(ctx.db.expenseSupplier, input.supplierId, ctx.orgId, { entityName: "Supplier" });
+      }
       const created = await ctx.db.expense.create({
         data: {
           ...rest,
