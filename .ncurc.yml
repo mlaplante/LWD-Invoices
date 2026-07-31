@@ -1,0 +1,19 @@
+# Read by .github/workflows/weekly-dependency-update.yml, which runs
+# `npx npm-check-updates -u`. ncu does NOT honour .github/dependabot.yml's
+# ignore list, so every deliberately-held major must be repeated here — or the
+# weekly PR bumps it unreviewed and lands a red CI.
+#
+# Keep this list in sync with the `ignore:` block in .github/dependabot.yml.
+reject:
+  # Pinned to 9.x. eslint-plugin-react@7.37.5 (newest published, vendored inside
+  # eslint-config-next) still peer-caps eslint at "^3 || ... || ^9.7", and the
+  # lint step in ci.yml is an active merge gate. Historically this pin has been
+  # flipped to 10 and reverted several times — see commit a9cd7d5.
+  # Drop this entry once eslint-plugin-react publishes an ESLint 10 peer range.
+  - eslint
+
+  # Pinned to 6.x. typescript-eslint@8.65.0 (newest published) declares
+  # peerDependencies.typescript ">=4.8.4 <6.1.0", so TypeScript 7 — the Go-native
+  # rewrite, currently npm `latest` — breaks the whole lint toolchain.
+  # Drop this entry once typescript-eslint widens that range.
+  - typescript
