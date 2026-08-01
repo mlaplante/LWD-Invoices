@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { NAV_SECTIONS } from "@/lib/nav-items";
 import { trpc } from "@/trpc/client";
 import { VisuallyHidden } from "radix-ui";
 import {
@@ -153,6 +154,25 @@ export function CommandPalette() {
                       {action.label}
                     </Command.Item>
                   ))}
+                </Command.Group>
+              )}
+
+              {!showResults && (
+                <Command.Group heading="Go to">
+                  {NAV_SECTIONS.flatMap((section) => section.items).map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Command.Item
+                        key={item.href}
+                        value={item.label}
+                        onSelect={() => navigate(item.href)}
+                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent"
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        {item.label}
+                      </Command.Item>
+                    );
+                  })}
                 </Command.Group>
               )}
 

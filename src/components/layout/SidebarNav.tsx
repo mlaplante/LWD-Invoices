@@ -1,75 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment } from "react";
 import { usePathname } from "next/navigation";
+import { NAV_SECTIONS, isNavItemActive, type NavItem } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
-import {
-  LayoutDashboard,
-  Receipt,
-  FileText,
-  Users,
-  FolderOpen,
-  Clock,
-  Package,
-  Wallet,
-  BarChart2,
-  LifeBuoy,
-  Settings,
-  UsersRound,
-  Contact,
-  Sparkles,
-  ShieldAlert,
-  CalendarCheck,
-  Activity,
-  Banknote,
-  GitMerge,
-  MessageSquare,
-  TrendingUp,
-  Car,
-  type LucideIcon,
-} from "lucide-react";
-
-type NavItem = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-};
-
-const primaryNav: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/invoices", label: "Invoices", icon: Receipt },
-  { href: "/proposals", label: "Proposals", icon: FileText },
-  { href: "/clients", label: "Clients", icon: Users },
-  { href: "/projects", label: "Projects", icon: FolderOpen },
-  { href: "/timesheets", label: "Timesheets", icon: Clock },
-  { href: "/items", label: "Items", icon: Package },
-  { href: "/expenses", label: "Expenses", icon: Wallet },
-  { href: "/mileage", label: "Mileage", icon: Car },
-  { href: "/contractors", label: "Contractors", icon: Contact },
-];
-
-const secondaryNav: NavItem[] = [
-  { href: "/assistant", label: "Ask AI", icon: Sparkles },
-  { href: "/activity", label: "Activity", icon: Activity },
-  {
-    href: "/money-intelligence",
-    label: "Money Intelligence",
-    icon: TrendingUp,
-  },
-  { href: "/reports", label: "Reports", icon: BarChart2 },
-  { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
-  { href: "/collections", label: "Collections", icon: Banknote },
-  { href: "/replies", label: "Reply triage", icon: MessageSquare },
-  { href: "/reconciliation", label: "Reconciliation", icon: GitMerge },
-  { href: "/disputes", label: "Disputes", icon: ShieldAlert },
-  { href: "/tickets", label: "Tickets", icon: LifeBuoy },
-  { href: "/settings/team", label: "Team", icon: UsersRound },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
 
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const active =
-    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+  const active = isNavItemActive(item.href, pathname);
   const Icon = item.icon;
 
   return (
@@ -104,22 +42,15 @@ export function SidebarNav() {
       aria-label="Primary navigation"
       className="flex min-h-0 flex-1 flex-col gap-0.5"
     >
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30 px-2 mb-1">
-        Main
-      </p>
-
-      {primaryNav.map((item) => (
-        <NavLink key={item.href} item={item} pathname={pathname} />
-      ))}
-
-      <div className="h-px bg-sidebar-border my-2" />
-
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30 px-2 mb-1">
-        Operations
-      </p>
-
-      {secondaryNav.map((item) => (
-        <NavLink key={item.href} item={item} pathname={pathname} />
+      {NAV_SECTIONS.map((section) => (
+        <Fragment key={section.title}>
+          <p className="px-3 pt-4 pb-1 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/30">
+            {section.title}
+          </p>
+          {section.items.map((item) => (
+            <NavLink key={item.href} item={item} pathname={pathname} />
+          ))}
+        </Fragment>
       ))}
     </nav>
   );

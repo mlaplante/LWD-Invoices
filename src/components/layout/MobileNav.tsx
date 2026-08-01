@@ -5,32 +5,13 @@ import Link from "next/link";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Receipt,
-  FileText,
-  Users,
-  UsersRound,
   Wallet,
   MoreHorizontal,
-  FolderOpen,
   Clock,
-  Package,
-  Contact,
-  BarChart2,
-  LifeBuoy,
-  Settings,
-  Sparkles,
-  ShieldAlert,
-  CalendarCheck,
-  Activity,
-  Banknote,
-  TrendingUp,
-  GitMerge,
-  MessageSquare,
-  Car,
   Plus,
   Send,
 } from "lucide-react";
+import { MOBILE_TABS, NAV_SECTIONS, isNavItemActive } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
 import {
   QuickExpenseSheet,
@@ -38,38 +19,11 @@ import {
   StartTimerFlow,
 } from "@/components/actions";
 
-const tabs = [
-  { href: "/", label: "Home", icon: LayoutDashboard },
-  { href: "/invoices", label: "Invoices", icon: Receipt },
-  { href: "/clients", label: "Clients", icon: Users },
-  { href: "/expenses", label: "Expenses", icon: Wallet },
-];
-
-const moreItems = [
-  { href: "/projects", label: "Projects", icon: FolderOpen },
-  { href: "/timesheets", label: "Timesheets", icon: Clock },
-  { href: "/items", label: "Items", icon: Package },
-  { href: "/mileage", label: "Mileage", icon: Car },
-  { href: "/contractors", label: "Contractors", icon: Contact },
-  { href: "/invoices/unpaid", label: "Unpaid", icon: Receipt },
-  { href: "/proposals", label: "Proposals", icon: FileText },
-  { href: "/assistant", label: "Ask AI", icon: Sparkles },
-  { href: "/activity", label: "Activity", icon: Activity },
-  {
-    href: "/money-intelligence",
-    label: "Money Intelligence",
-    icon: TrendingUp,
-  },
-  { href: "/reports", label: "Reports", icon: BarChart2 },
-  { href: "/month-end-close", label: "Month-end close", icon: CalendarCheck },
-  { href: "/collections", label: "Collections", icon: Banknote },
-  { href: "/replies", label: "Reply triage", icon: MessageSquare },
-  { href: "/reconciliation", label: "Reconciliation", icon: GitMerge },
-  { href: "/disputes", label: "Disputes", icon: ShieldAlert },
-  { href: "/tickets", label: "Tickets", icon: LifeBuoy },
-  { href: "/settings/team", label: "Team", icon: UsersRound },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+const mobileTabHrefs = new Set(MOBILE_TABS.map((item) => item.href));
+const moreNavSections = NAV_SECTIONS.map((section) => ({
+  ...section,
+  items: section.items.filter((item) => !mobileTabHrefs.has(item.href)),
+})).filter((section) => section.items.length > 0);
 
 type MobileAction = "expense" | "reminder" | "timer" | null;
 
@@ -85,10 +39,12 @@ export function MobileNav({
   const pathname = usePathname();
 
   function isActive(href: string) {
-    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+    return isNavItemActive(href, pathname);
   }
 
-  const moreActive = moreItems.some((item) => isActive(item.href));
+  const moreActive = moreNavSections.some((section) =>
+    section.items.some((item) => isActive(item.href)),
+  );
 
   return (
     <>
@@ -169,27 +125,38 @@ export function MobileNav({
           </button>
         </div>
 
-        {/* Secondary nav grid */}
-        <div className="px-4 grid grid-cols-3 gap-2 pb-5">
-          {moreItems.map(({ href, label, icon: Icon }) => {
-            const active = isActive(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setDrawerOpen(false)}
-                className={cn(
-                  "flex flex-col items-center gap-2 py-4 rounded-2xl transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-foreground"
-                    : "text-sidebar-foreground/50 active:bg-sidebar-accent/40",
-                )}
-              >
-                <Icon className={cn("w-5 h-5", active && "text-primary")} />
-                <span className="text-[11px] font-semibold">{label}</span>
-              </Link>
-            );
-          })}
+        {/* Secondary navigation, grouped to match desktop navigation */}
+        <div className="space-y-4 px-4 pb-5">
+          {moreNavSections.map((section) => (
+            <section key={section.title}>
+              <p className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">
+                {section.title}
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {section.items.map(({ href, label, icon: Icon }) => {
+                  const active = isActive(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setDrawerOpen(false)}
+                      className={cn(
+                        "flex flex-col items-center gap-2 py-4 rounded-2xl transition-colors",
+                        active
+                          ? "bg-sidebar-accent text-sidebar-foreground"
+                          : "text-sidebar-foreground/50 active:bg-sidebar-accent/40",
+                      )}
+                    >
+                      <Icon
+                        className={cn("w-5 h-5", active && "text-primary")}
+                      />
+                      <span className="text-[11px] font-semibold">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
 
         {/* Org switcher */}
@@ -206,7 +173,7 @@ export function MobileNav({
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <nav aria-label="Mobile navigation" className="flex items-stretch h-16">
-          {tabs.map(({ href, label, icon: Icon }) => {
+          {MOBILE_TABS.map(({ href, label, icon: Icon }) => {
             const active = isActive(href);
             return (
               <Link
