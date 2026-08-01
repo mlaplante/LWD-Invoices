@@ -148,6 +148,13 @@
   }
 }
 
+/* Thin, sidebar-tinted scrollbar for the nav's internal scroll region */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--sidebar-foreground) 22%, transparent)
+    transparent;
+}
+
 .font-display {
   font-family: var(--font-instrument-serif), serif;
 }

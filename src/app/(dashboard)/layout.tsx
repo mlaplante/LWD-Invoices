@@ -73,8 +73,8 @@ export default async function DashboardLayout({
       </a>
 
       {/* ── Desktop sidebar (static shell, pre-rendered) ──── */}
-      <aside className="hidden lg:flex w-56 shrink-0 flex-col gap-0 overflow-y-auto bg-sidebar p-4 print:hidden">
-        <div className="flex items-center px-2 mb-6">
+      <aside className="hidden lg:flex w-56 shrink-0 flex-col gap-0 overflow-hidden bg-sidebar p-4 print:hidden lg:sticky lg:top-0 lg:h-screen">
+        <div className="flex items-center px-2 mb-5">
           <Image src="/logo-horizontal.png" alt="LWD Invoices" width={180} height={40} className="h-9 w-auto" priority />
         </div>
 

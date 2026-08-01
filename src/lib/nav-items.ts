@@ -8,6 +8,7 @@ import {
   Clock,
   Contact,
   FileText,
+  HandCoins,
   FolderOpen,
   GitMerge,
   LayoutDashboard,
@@ -65,7 +66,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/replies", label: "Reply triage", icon: MessageSquare },
       { href: "/activity", label: "Activity", icon: Activity },
       { href: "/tickets", label: "Tickets", icon: LifeBuoy },
-      { href: "/invoices/unpaid", label: "Unpaid", icon: Receipt },
+      { href: "/invoices/unpaid", label: "Unpaid", icon: HandCoins },
     ],
   },
   {
