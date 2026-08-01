@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   canAutosave,
   nextAutosaveAction,
+  resolveHasId,
 } from "@/components/invoices/canvas/autosave-core";
 
 describe("canAutosave", () => {
@@ -40,5 +41,20 @@ describe("nextAutosaveAction", () => {
   });
   it("does nothing when clean", () => {
     expect(nextAutosaveAction({ hasId: true, inFlight: false, dirty: false })).toBe("none");
+  });
+});
+
+describe("resolveHasId", () => {
+  it("is false when neither the parent id nor a pending created id exist", () => {
+    expect(resolveHasId(undefined, undefined)).toBe(false);
+  });
+  it("is true once parent state has the invoice id", () => {
+    expect(resolveHasId("inv1", undefined)).toBe(true);
+  });
+  it("is true from a pending created id even before parent state catches up (the queued-after-create race)", () => {
+    expect(resolveHasId(undefined, "inv1")).toBe(true);
+  });
+  it("is true when both are present", () => {
+    expect(resolveHasId("inv1", "inv1")).toBe(true);
   });
 });

@@ -5,6 +5,7 @@ import {
   AUTOSAVE_DEBOUNCE_MS,
   canAutosave,
   nextAutosaveAction,
+  resolveHasId,
   type AutosaveStatus,
 } from "./autosave-core";
 
@@ -30,6 +31,11 @@ export function useInvoiceAutosave(opts: {
   const queuedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedSnapshotRef = useRef<string | null>(null);
+  // Set the moment a create resolves, before onCreated's parent-state update
+  // has committed. Covers the queued-re-run-after-create race (Critical 1):
+  // a queued save firing in that gap must see "has an id" and update,
+  // not create a second invoice.
+  const createdIdRef = useRef<string | undefined>(undefined);
 
   const optsRef = useRef(opts);
   // "Latest ref" sync pattern (brief's Step 4 code, verbatim): the ref is
@@ -47,9 +53,28 @@ export function useInvoiceAutosave(opts: {
   // eslint-disable-next-line react-hooks/preserve-manual-memoization -- see comment above
   const runSave = useCallback(async () => {
     const o = optsRef.current;
+    // Important fix: re-check the gate here, not just in the scheduling
+    // effect. retry() calls runSave() directly (bypassing the effect's
+    // gate check entirely), and the queued re-run below also re-enters
+    // here — if clientId was cleared, status flipped to SENT, or preflight
+    // now blocks, either path must bail instead of writing.
+    if (
+      !canAutosave({
+        invoiceStatus: o.invoiceStatus,
+        clientId: o.clientId,
+        currencyId: o.currencyId,
+        preflightBlocked: o.preflightBlocked,
+      })
+    ) {
+      return;
+    }
+
     const dirty = lastSavedSnapshotRef.current !== o.snapshot;
+    // Critical 1 fix: OR in createdIdRef so a queued re-run that fires
+    // before the parent has committed the newly-created id still resolves
+    // to "update", not a second "create".
     const action = nextAutosaveAction({
-      hasId: Boolean(o.invoiceId),
+      hasId: resolveHasId(o.invoiceId, createdIdRef.current),
       inFlight: inFlightRef.current,
       dirty,
     });
@@ -65,6 +90,14 @@ export function useInvoiceAutosave(opts: {
     try {
       if (action === "create") {
         const created = await o.doCreate();
+        // Set before onCreated: onCreated triggers the parent state update
+        // that eventually propagates into o.invoiceId, but that commit
+        // hasn't happened yet — createdIdRef is what a same-tick queued
+        // re-run (or doUpdate below, on the next runSave call) sees in the
+        // meantime. The caller's doUpdate still closes over its own form
+        // state for the actual id it sends to the server; wiring that up
+        // to not race is a Task 8 concern for the real caller.
+        createdIdRef.current = created.id;
         o.onCreated(created.id);
       } else {
         await o.doUpdate();
@@ -85,6 +118,20 @@ export function useInvoiceAutosave(opts: {
 
   useEffect(() => {
     const o = optsRef.current;
+    if (lastSavedSnapshotRef.current === null) {
+      // Critical 2 fix: latch the baseline unconditionally on this first
+      // effect run, BEFORE the gate check — even if the gate is currently
+      // closed (e.g. no client selected yet on a fresh create page). If we
+      // gated this latch, the edit that later OPENS the gate (picking a
+      // client) would itself get folded into the "already saved" baseline
+      // on the render where the gate turns on, and be silently dropped —
+      // "pick a client, walk away" would never persist. Latching here
+      // unconditionally still achieves the original goal (opening an
+      // existing draft, or an empty create page, never fires a write by
+      // itself), because nothing has changed yet on this very first run.
+      lastSavedSnapshotRef.current = opts.snapshot;
+      return;
+    }
     if (
       !canAutosave({
         invoiceStatus: o.invoiceStatus,
@@ -95,12 +142,6 @@ export function useInvoiceAutosave(opts: {
     ) {
       return;
     }
-    if (lastSavedSnapshotRef.current === null) {
-      // First render: treat the initial state as already-saved so opening an
-      // existing draft (or an empty create page) never fires a write by itself.
-      lastSavedSnapshotRef.current = opts.snapshot;
-      return;
-    }
     if (lastSavedSnapshotRef.current === opts.snapshot) return;
 
     setStatus("pending");
@@ -109,7 +150,22 @@ export function useInvoiceAutosave(opts: {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [opts.snapshot, runSave]);
+    // Deps include every canAutosave input, not just snapshot: preflightBlocked
+    // (a tRPC query result — trpc.organization.stripeTaxPreflight.useQuery in
+    // InvoiceForm.tsx) and invoiceStatus can each flip independently of any
+    // form edit. Without these, a gate that opens on a preflight resolving
+    // (with no accompanying snapshot change) would never re-run this effect,
+    // leaving a pending edit unsaved indefinitely. The
+    // `lastSavedSnapshotRef.current === opts.snapshot` guard above already
+    // makes extra re-runs on unrelated dep changes a no-op, so this is safe.
+  }, [
+    opts.snapshot,
+    opts.preflightBlocked,
+    opts.invoiceStatus,
+    opts.clientId,
+    opts.currencyId,
+    runSave,
+  ]);
 
   const retry = useCallback(() => void runSave(), [runSave]);
 

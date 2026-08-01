@@ -33,3 +33,20 @@ export function nextAutosaveAction(args: {
   if (args.inFlight) return "wait";
   return args.hasId ? "update" : "create";
 }
+
+/**
+ * Resolves whether the invoice already has a persisted id for scheduler
+ * purposes. Prefers the caller's current `invoiceId` (parent state), but
+ * falls back to `pendingCreatedId` — a create that has already resolved but
+ * whose id hasn't propagated back into parent state yet (React state
+ * updates are async, and a queued re-run can fire in the same tick as
+ * `onCreated`). Without this fallback, a queued re-run right after a create
+ * would see `hasId: false` and fire a second `create`, producing a
+ * duplicate invoice.
+ */
+export function resolveHasId(
+  invoiceId: string | undefined,
+  pendingCreatedId: string | undefined,
+): boolean {
+  return Boolean(invoiceId || pendingCreatedId);
+}
