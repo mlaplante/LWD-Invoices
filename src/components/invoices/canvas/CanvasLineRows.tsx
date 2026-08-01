@@ -107,7 +107,11 @@ function CanvasLineRowImpl({
 }: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: line.sort });
-  const [descriptionVisible, setDescriptionVisible] = useState(Boolean(line.description));
+  // Description editor is shown once the row has description text, or once the
+  // user explicitly reveals it from the popover — computed each render so a
+  // description arriving from outside (e.g. a duplicated row) also shows it.
+  const [descriptionForced, setDescriptionForced] = useState(false);
+  const descriptionVisible = descriptionForced || Boolean(line.description);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -136,17 +140,21 @@ function CanvasLineRowImpl({
 
   return (
     <div ref={setNodeRef} style={style} className="group relative flex items-start gap-1 py-1">
-      {!readOnly && (
-        <button
-          type="button"
-          className="mt-1.5 h-4 w-4 shrink-0 cursor-grab touch-none text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-          title="Drag to reorder"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-      )}
+      {/* Leading slot always reserved (interactive only when editable) so
+          rows stay column-aligned with the header and with readOnly rows. */}
+      <div className="mt-1.5 h-4 w-4 shrink-0">
+        {!readOnly && (
+          <button
+            type="button"
+            className="cursor-grab touch-none text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+            title="Drag to reorder"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
       <div className="grid flex-1 grid-cols-[1fr_90px_110px_110px_32px] items-start gap-2">
         {/* Description */}
@@ -202,7 +210,9 @@ function CanvasLineRowImpl({
           )}
         </div>
 
-        {/* Rate */}
+        {/* Rate — stays editable for discount line types: rate carries the
+            discount magnitude there (see calculateLineTotals), matching
+            LineItemEditor which disables qty/discount but not rate. */}
         <div>
           {readOnly ? (
             <div className="text-right text-sm tabular-nums">{fmt(line.rate)}</div>
@@ -213,7 +223,6 @@ function CanvasLineRowImpl({
               format={fmt}
               ariaLabel={`Line ${index + 1} rate`}
               className="w-full text-sm"
-              disabled={discount}
             />
           )}
         </div>
@@ -223,12 +232,12 @@ function CanvasLineRowImpl({
 
         {/* Row actions */}
         {!readOnly && (
-          <div className="flex justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <div className="flex justify-end">
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100 group-focus-within:opacity-100 data-[state=open]:opacity-100"
                   aria-label={`More options for line ${index + 1}`}
                 >
                   <MoreHorizontal className="h-4 w-4" />
@@ -323,7 +332,7 @@ function CanvasLineRowImpl({
                 {!descriptionVisible && (
                   <button
                     type="button"
-                    onClick={() => setDescriptionVisible(true)}
+                    onClick={() => setDescriptionForced(true)}
                     className="text-xs text-muted-foreground hover:text-foreground hover:underline"
                   >
                     + Add description
@@ -387,13 +396,22 @@ export function CanvasLineRows({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // Each mutator writes linesRef.current through *before* publishing via
+  // onChange. EditableText defers its commit to blur/Enter, so a commit and a
+  // dependent action (e.g. Enter's row-append) can land in the same
+  // synchronous event, before the reconcile-from-props effect below has had a
+  // chance to run. Writing through keeps `linesRef.current` authoritative
+  // across such same-event sequences instead of racing on stale reads.
   const updateLine = useCallback((index: number, patch: Partial<LineItemValue>) => {
-    const current = linesRef.current;
-    onChangeRef.current(current.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+    const next = linesRef.current.map((l, i) => (i === index ? { ...l, ...patch } : l));
+    linesRef.current = next;
+    onChangeRef.current(next);
   }, []);
 
   const removeLine = useCallback((index: number) => {
-    onChangeRef.current(linesRef.current.filter((_, i) => i !== index));
+    const next = linesRef.current.filter((_, i) => i !== index);
+    linesRef.current = next;
+    onChangeRef.current(next);
   }, []);
 
   const toggleTax = useCallback((index: number, taxId: string) => {
@@ -401,7 +419,9 @@ export function CanvasLineRows({
     const taxIds = line.taxIds.includes(taxId)
       ? line.taxIds.filter((id) => id !== taxId)
       : [...line.taxIds, taxId];
-    onChangeRef.current(linesRef.current.map((l, i) => (i === index ? { ...l, taxIds } : l)));
+    const next = linesRef.current.map((l, i) => (i === index ? { ...l, taxIds } : l));
+    linesRef.current = next;
+    onChangeRef.current(next);
   }, []);
 
   const registerFirstInput = useCallback((index: number, el: HTMLDivElement | null) => {
@@ -411,14 +431,18 @@ export function CanvasLineRows({
   const handleEnter = useCallback((index: number) => {
     const decision = nextFocusOnEnter({ rowCount: linesRef.current.length, rowIndex: index });
     if (decision.action === "append") {
-      onChangeRef.current([...linesRef.current, newLine(sortCounter.current++)]);
+      const next = [...linesRef.current, newLine(sortCounter.current++)];
+      linesRef.current = next;
+      onChangeRef.current(next);
     }
     pendingFocusRow.current = decision.focusRow;
     setFocusTick((t) => t + 1);
   }, []);
 
   const handleDuplicate = useCallback((index: number) => {
-    onChangeRef.current(duplicateRowAt(linesRef.current, index));
+    const next = duplicateRowAt(linesRef.current, index);
+    linesRef.current = next;
+    onChangeRef.current(next);
     pendingFocusRow.current = index + 1;
     setFocusTick((t) => t + 1);
   }, []);
@@ -452,14 +476,18 @@ export function CanvasLineRows({
   }
 
   return (
-    <div className="space-y-0.5">
-      {/* Header */}
-      <div className="hidden gap-2 px-1 pl-5 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1fr_90px_110px_110px_32px]">
-        <span>Description</span>
-        <span className="text-right">Qty</span>
-        <span className="text-right">Rate</span>
-        <span className="text-right">Amount</span>
-        <span />
+    <div className="space-y-0.5 overflow-x-auto">
+      {/* Header — leading spacer mirrors each row's drag-handle slot so
+          columns line up regardless of readOnly. */}
+      <div className="hidden items-start gap-1 px-1 text-xs font-medium text-muted-foreground sm:flex">
+        <span className="h-4 w-4 shrink-0" />
+        <div className="grid flex-1 grid-cols-[1fr_90px_110px_110px_32px] gap-2">
+          <span>Description</span>
+          <span className="text-right">Qty</span>
+          <span className="text-right">Rate</span>
+          <span className="text-right">Amount</span>
+          <span />
+        </div>
       </div>
 
       <DndContext
