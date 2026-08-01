@@ -1,7 +1,7 @@
 # WYSIWYG Invoice Canvas (Live-Edit Invoice Editor)
 
 **Date**: 2026-08-01
-**Status**: Draft — pending user review
+**Status**: Approved (design)
 
 ---
 
