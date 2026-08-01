@@ -30,7 +30,7 @@ export type InvoiceCanvasProps = {
   taxes: TaxOption[];
   totals: InvoiceTotalsWithDiscount; // computed by InvoiceForm, single source
   fmt: (n: number) => string;
-  org: { name: string; logoUrl: string | null };
+  org: { name: string; logoUrl: string | null }; // caller passes logoUrl: null when templateConfig.showLogo is false
   theme: CanvasTheme;
   footerText: string | null;
 };
@@ -47,11 +47,12 @@ const DOC_TYPE_LABELS: Record<InvoiceType, string> = {
 
 // Labels for the header's type switcher — distinct from DOC_TYPE_LABELS since
 // SIMPLE/DETAILED/DEPOSIT all share the "INVOICE" document label but need to
-// stay individually selectable.
+// stay individually selectable. Wording matches InvoiceMetadata's TYPE_LABELS
+// (not exported there, so mirrored here) to keep the two surfaces consistent.
 const TYPE_SELECT_LABELS: Record<InvoiceType, string> = {
-  [InvoiceType.SIMPLE]: "Simple Invoice",
-  [InvoiceType.DETAILED]: "Detailed Invoice",
-  [InvoiceType.DEPOSIT]: "Deposit Invoice",
+  [InvoiceType.SIMPLE]: "Invoice (Simple)",
+  [InvoiceType.DETAILED]: "Invoice (Detailed)",
+  [InvoiceType.DEPOSIT]: "Deposit",
   [InvoiceType.ESTIMATE]: "Estimate",
   [InvoiceType.CREDIT_NOTE]: "Credit Note",
 };
@@ -371,7 +372,7 @@ export function InvoiceCanvas({
             </div>
           )}
 
-          <div className="flex justify-between border-t pt-1.5 text-base font-bold text-[var(--canvas-accent)]">
+          <div className="flex justify-between border-t border-neutral-200 pt-1.5 text-base font-bold text-[var(--canvas-accent)]">
             <span>Total</span>
             <span>{fmt(totals.total)}</span>
           </div>
@@ -398,7 +399,7 @@ export function InvoiceCanvas({
 
       {/* 7. Footer */}
       {footerText && (
-        <div className="border-t px-8 py-4 text-center text-xs text-neutral-400">
+        <div className="border-t border-neutral-200 px-8 py-4 text-center text-xs text-neutral-400">
           {footerText}
         </div>
       )}
