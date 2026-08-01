@@ -62,7 +62,7 @@ const PERIOD_TYPES: LineType[] = [
   LineType.PERIOD_YEAR,
 ];
 
-const LINE_TYPE_LABELS: Record<LineType, string> = {
+export const LINE_TYPE_LABELS: Record<LineType, string> = {
   [LineType.STANDARD]: "Standard",
   [LineType.TIME_ENTRY]: "Time Entry",
   [LineType.FLAT_RATE]: "Flat Rate",
