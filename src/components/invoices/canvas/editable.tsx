@@ -123,7 +123,7 @@ export function EditableNumber({
           revertedRef.current = false;
           setEditing(true);
         }}
-        className={`tabular-nums ${className ?? ""}`}
+        className={`tabular-nums !text-right ${className ?? ""}`}
         ariaLabel={ariaLabel}
       >
         {format(value)}
@@ -133,6 +133,7 @@ export function EditableNumber({
   function commit() {
     setEditing(false);
     if (revertedRef.current) return;
+    if (draft.trim() === "") return;
     const parsed = Number(draft);
     if (!Number.isNaN(parsed) && parsed !== value) onCommit(parsed);
   }
@@ -164,16 +165,39 @@ export function EditableDate({
   value,
   onCommit,
   ariaLabel,
+  displayFormat,
 }: {
   value: string; // YYYY-MM-DD or ""
   onCommit: (next: string) => void;
   ariaLabel: string;
+  displayFormat?: (v: string) => string;
 }) {
   const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const revertedRef = useRef(false);
+
+  function start() {
+    setDraft(value);
+    revertedRef.current = false;
+    setEditing(true);
+  }
+  function commit() {
+    setEditing(false);
+    if (!revertedRef.current && draft !== value) onCommit(draft);
+  }
+
   if (!editing) {
     return (
-      <DisplayButton onActivate={() => setEditing(true)} ariaLabel={ariaLabel}>
-        {value !== "" ? value : <span className="text-muted-foreground">Set date</span>}
+      <DisplayButton onActivate={start} ariaLabel={ariaLabel}>
+        {value !== "" ? (
+          displayFormat ? (
+            displayFormat(value)
+          ) : (
+            value
+          )
+        ) : (
+          <span className="text-muted-foreground">Set date</span>
+        )}
       </DisplayButton>
     );
   }
@@ -181,11 +205,17 @@ export function EditableDate({
     <Input
       autoFocus
       type="date"
-      value={value}
-      onChange={(e) => onCommit(e.target.value)}
-      onBlur={() => setEditing(false)}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
       onKeyDown={(e) => {
-        if (e.key === "Escape" || e.key === "Enter") setEditing(false);
+        if (e.key === "Escape") {
+          revertedRef.current = true;
+          setEditing(false);
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+        }
       }}
       aria-label={ariaLabel}
       className="h-auto w-40 px-1 py-0.5"
