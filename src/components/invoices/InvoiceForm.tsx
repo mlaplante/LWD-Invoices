@@ -37,6 +37,12 @@ import {
 import { trpc } from "@/trpc/client";
 import { type PartialPaymentEntry } from "./PaymentScheduleDialog";
 import { InvoiceDraftQA } from "./InvoiceDraftQA";
+import { CreateFromPromptPanel } from "./CreateFromPromptPanel";
+import { ReminderOverrideBlock } from "./ReminderOverrideBlock";
+import { InvoiceCanvasView } from "./canvas/InvoiceCanvasView";
+import { useInvoiceAutosave } from "./canvas/useInvoiceAutosave";
+import { buildCanvasTheme } from "./canvas/canvas-theme";
+import type { InvoiceTemplateConfig } from "@/server/services/invoice-template-config";
 
 export type InvoiceFormData = {
   id?: string;
@@ -73,9 +79,10 @@ type Props = {
     symbolPosition: string;
   }[];
   taxes: { id: string; name: string; rate: number; isCompound: boolean }[];
+  invoiceStatus: "DRAFT" | "SENT";
+  templateConfig: InvoiceTemplateConfig;
+  orgDisplay: { name: string; logoUrl: string | null };
 };
-
-const REMINDER_DAY_OPTIONS = [1, 2, 3, 5, 7, 14, 30];
 
 export function InvoiceForm({
   mode,
@@ -85,10 +92,23 @@ export function InvoiceForm({
   clients,
   currencies,
   taxes,
+  invoiceStatus,
+  templateConfig,
+  orgDisplay,
 }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const savingRef = useRef(false);
+
+  const [view, setView] = useState<"form" | "canvas">("form");
+  useEffect(() => {
+    const stored = window.localStorage.getItem("invoice-editor-view");
+    if (stored === "canvas") setView("canvas");
+  }, []);
+  function switchView(v: "form" | "canvas") {
+    setView(v);
+    window.localStorage.setItem("invoice-editor-view", v);
+  }
 
   const defaultCurrency = currencies[0];
 
@@ -419,6 +439,50 @@ export function InvoiceForm({
     });
   }
 
+  // The autosave hook can invoke doUpdate immediately after a create resolves
+  // (a queued re-run), before React has committed the setForm from onCreated
+  // — so doUpdate must not rely on form.id alone. invoiceIdRef is set
+  // synchronously in onCreated (before setForm) and kept in sync whenever
+  // form.id changes, so doUpdate always has the freshest id available.
+  const invoiceIdRef = useRef(form.id);
+  useEffect(() => {
+    invoiceIdRef.current = form.id;
+  }, [form.id]);
+
+  const autosave = useInvoiceAutosave({
+    invoiceStatus,
+    clientId: form.clientId,
+    currencyId: form.currencyId,
+    preflightBlocked: stripeTaxPreflight?.ok === false,
+    invoiceId: form.id,
+    // form.id is excluded: it's not part of the write payload (buildInput()
+    // never includes it — doUpdate passes it separately), and including it
+    // here would make the id assigned by onCreated itself look like a new
+    // edit, firing a spurious update right after every autosave create.
+    snapshot: JSON.stringify({ form: { ...form, id: undefined }, schedule }),
+    doCreate: async () => {
+      // handleSave and autosave share the create/update mutations. Without
+      // this guard, an explicit Save click in flight and a debounced
+      // autosave firing in the same window can both see "no id yet" and
+      // both call create, producing a duplicate invoice.
+      if (savingRef.current) throw new Error("explicit save in progress");
+      const inv = await createMutation.mutateAsync(buildInput());
+      return { id: inv.id };
+    },
+    doUpdate: async () => {
+      if (savingRef.current) throw new Error("explicit save in progress");
+      const id = invoiceIdRef.current ?? form.id;
+      if (!id) throw new Error("no invoice id");
+      const inv = await updateMutation.mutateAsync({ id, ...buildInput() });
+      return { id: inv.id };
+    },
+    onCreated: (id) => {
+      invoiceIdRef.current = id;
+      setForm((f) => ({ ...f, id }));
+      window.history.replaceState(null, "", `/invoices/${id}/edit`);
+    },
+  });
+
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const isDraftingFromPrompt = draftFromPromptMutation.isPending;
   const activeClient = clients.find((client) => client.id === form.clientId);
@@ -461,346 +525,378 @@ export function InvoiceForm({
     [form, schedule],
   );
 
+  // Extracted so the identical JSX can be reused verbatim in both the form
+  // branch (unchanged position) and the canvas view's side rail — no
+  // behavior or markup difference, just avoiding duplication.
+  const createFromPromptSection = (
+    <CreateFromPromptPanel
+      mode={mode}
+      aiEnabled={aiCapabilities?.aiEnabled}
+      naturalPrompt={naturalPrompt}
+      setNaturalPrompt={setNaturalPrompt}
+      onDraft={handleNaturalDraft}
+      isDrafting={isDraftingFromPrompt}
+      review={naturalDraftReview}
+      info={naturalDraftInfo}
+    />
+  );
+
+  const paymentScheduleSection = (
+    <PaymentScheduleSection
+      schedule={schedule}
+      setSchedule={setSchedule}
+      depositEnabled={depositEnabled}
+      setDepositEnabled={setDepositEnabled}
+      depositPercent={depositPercent}
+      onDepositToggle={handleDepositToggle}
+      onDepositPercentChange={handleDepositPercentChange}
+      scheduleOpen={scheduleOpen}
+      setScheduleOpen={setScheduleOpen}
+      invoiceTotal={invoiceTotals.total}
+      dueDate={form.dueDate}
+      currencySymbol={sym}
+      currencySymbolPosition={symPos}
+      installmentAutoChargeEnabled={form.installmentAutoChargeEnabled ?? false}
+      setInstallmentAutoChargeEnabled={(installmentAutoChargeEnabled) =>
+        setForm((current) => ({ ...current, installmentAutoChargeEnabled }))
+      }
+    />
+  );
+
+  const draftQASection = (
+    <InvoiceDraftQA
+      mode={mode}
+      draft={qaDraft}
+      calculatedTotals={invoiceTotals}
+      invoiceId={form.id}
+      clientId={form.clientId}
+      currencyId={form.currencyId}
+      clientName={activeClient?.name}
+      currencyCode={activeCurrency?.code}
+    />
+  );
+
+  const reminderOverrideSection = (
+    <ReminderOverrideBlock
+      useCustomReminders={useCustomReminders}
+      setUseCustomReminders={setUseCustomReminders}
+      reminderDaysOverride={form.reminderDaysOverride}
+      setReminderDaysOverride={(reminderDaysOverride) =>
+        setForm((p) => ({ ...p, reminderDaysOverride }))
+      }
+    />
+  );
+
+  const duplicateWarningSection = duplicateMatch && (
+    <div
+      className={`rounded-md border p-3 text-sm ${
+        duplicateMatch.severity === "danger"
+          ? "border-red-300 bg-red-50 text-red-900"
+          : "border-amber-300 bg-amber-50 text-amber-900"
+      }`}
+    >
+      <p className="font-semibold">Possible duplicate invoice</p>
+      <p className="mt-1">{duplicateMatch.message}</p>
+      <Link
+        href={`/invoices/${duplicateMatch.invoiceId}`}
+        target="_blank"
+        className="mt-1 inline-block font-medium underline underline-offset-2"
+      >
+        View {duplicateMatch.invoiceNumber}
+      </Link>
+    </div>
+  );
+
+  const stripeTaxWarningSection = stripeTaxPreflight && !stripeTaxPreflight.ok && (
+    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+      <p className="font-semibold">Stripe Tax can&apos;t calculate yet</p>
+      <p className="mt-1">Saving will fail until the following are filled in:</p>
+      <ul className="mt-1 list-disc pl-5">
+        {stripeTaxPreflight.missing.map((m) => (
+          <li key={m}>{m}</li>
+        ))}
+      </ul>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      {mode === "create" && aiCapabilities?.aiEnabled !== false && (
-        <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-          <div className="space-y-1">
-            <h2 className="text-sm font-semibold">Create from a prompt</h2>
-            <p className="text-sm text-muted-foreground">
-              Describe the invoice in plain English. We’ll draft it only —
-              review all matches before saving or sending.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-            <label className="sr-only" htmlFor="natural-invoice-prompt">
-              Natural-language invoice prompt
-            </label>
-            <Textarea
-              id="natural-invoice-prompt"
-              value={naturalPrompt}
-              onChange={(event) => setNaturalPrompt(event.target.value)}
-              placeholder="Bill Acme 8 hrs design at $120 plus the Figma license"
-              className="min-h-20 flex-1 bg-background"
-            />
-            <Button
+      {/* View toggle + autosave status */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-md border p-0.5">
+          <Button
+            type="button"
+            size="sm"
+            variant={view === "form" ? "default" : "ghost"}
+            className="h-7 px-3 text-xs"
+            onClick={() => switchView("form")}
+          >
+            Form
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={view === "canvas" ? "default" : "ghost"}
+            className="h-7 px-3 text-xs"
+            onClick={() => switchView("canvas")}
+          >
+            Preview edit
+          </Button>
+        </div>
+        <span aria-live="polite" className="text-xs text-muted-foreground">
+          {autosave.status === "saving" && "Saving…"}
+          {autosave.status === "pending" && "Unsaved changes"}
+          {autosave.status === "saved" && "Saved"}
+          {autosave.status === "error" && (
+            <button
               type="button"
-              onClick={handleNaturalDraft}
-              disabled={isDraftingFromPrompt || naturalPrompt.trim().length < 5}
-              className="sm:mt-0"
+              onClick={autosave.retry}
+              className="text-destructive underline"
             >
-              {isDraftingFromPrompt ? "Drafting…" : "Draft invoice"}
-            </Button>
+              Save failed — retry
+            </button>
+          )}
+        </span>
+      </div>
+
+      {view === "form" ? (
+        <>
+          {createFromPromptSection}
+
+          {/* Header fields */}
+          <InvoiceMetadata
+            form={form}
+            setForm={setForm}
+            clients={clients}
+            currencies={currencies}
+            onClientChange={handleClientChange}
+            onDateChange={handleDateChange}
+          />
+
+          {/* Line Items */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold">Line Items</h3>
+              {mode === "create" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={copyPrevious}
+                  disabled={!form.clientId}
+                  className="h-7 text-xs"
+                >
+                  Copy from previous
+                </Button>
+              )}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground"
+                    aria-label="Keyboard shortcuts"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64">
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium">Keyboard shortcuts</p>
+                    <ul className="space-y-1 text-muted-foreground">
+                      <li>
+                        <kbd className="rounded border px-1 text-xs font-mono">
+                          Enter
+                        </kbd>{" "}
+                        — new row
+                      </li>
+                      <li>
+                        <kbd className="rounded border px-1 text-xs font-mono">
+                          ⌘/Ctrl+D
+                        </kbd>{" "}
+                        — duplicate row
+                      </li>
+                      <li>Drag handle or arrow keys — reorder</li>
+                    </ul>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <LineItemEditor
+              lines={form.lines}
+              taxes={taxOptions}
+              currencySymbol={sym}
+              onChange={(lines) => setForm((f) => ({ ...f, lines }))}
+            />
           </div>
-          {naturalDraftReview && (
-            <div
-              className="rounded-lg border bg-background p-3 text-sm"
-              role="status"
-              aria-live="polite"
-            >
-              <p className="font-medium">
-                Review required before saving or sending
-              </p>
-              {naturalDraftReview.ambiguities.length === 0 &&
-              naturalDraftReview.lineWarnings.length === 0 ? (
-                <p className="mt-1 text-muted-foreground">
-                  Draft fields were filled from your prompt. Confirm the client,
-                  line items, taxes, and due date.
-                </p>
-              ) : (
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-                  {naturalDraftReview.ambiguities.map((ambiguity, index) => (
-                    <li key={`ambiguity-${index}`}>{ambiguity.message}</li>
-                  ))}
-                  {naturalDraftReview.lineWarnings.map((warning, index) => (
-                    <li key={`warning-${index}`}>{warning}</li>
-                  ))}
-                </ul>
+
+          {/* Invoice-Level Discount */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Invoice Discount</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <label
+                  htmlFor="invoice-discount-type"
+                  className="text-xs text-muted-foreground"
+                >
+                  Discount Type
+                </label>
+                <Select
+                  value={form.discountType ?? "none"}
+                  onValueChange={(v: string) =>
+                    setForm((f) => ({
+                      ...f,
+                      discountType:
+                        v === "none" ? null : (v as "percentage" | "fixed"),
+                      discountAmount: v === "none" ? 0 : (f.discountAmount ?? 0),
+                    }))
+                  }
+                >
+                  <SelectTrigger id="invoice-discount-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Discount</SelectItem>
+                    <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.discountType && (
+                <>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="invoice-discount-amount"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {form.discountType === "percentage"
+                        ? "Percentage"
+                        : "Amount"}
+                    </label>
+                    <Input
+                      id="invoice-discount-amount"
+                      type="number"
+                      min={0}
+                      max={form.discountType === "percentage" ? 100 : undefined}
+                      step="0.01"
+                      value={form.discountAmount ?? 0}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          discountAmount: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                      placeholder={
+                        form.discountType === "percentage" ? "0-100" : "0.00"
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="invoice-discount-description"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Description (optional)
+                    </label>
+                    <Input
+                      id="invoice-discount-description"
+                      value={form.discountDescription ?? ""}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          discountDescription: e.target.value,
+                        }))
+                      }
+                      placeholder="e.g. Early payment discount"
+                      maxLength={200}
+                    />
+                  </div>
+                </>
               )}
             </div>
-          )}
-          {naturalDraftInfo && (
-            <p className="text-sm text-muted-foreground" role="status">
-              {naturalDraftInfo}
-            </p>
-          )}
-        </section>
-      )}
-      {mode === "create" && aiCapabilities?.aiEnabled === false && (
-        <p className="text-sm text-muted-foreground">
-          Create-from-prompt is unavailable until an AI provider key is
-          configured. Enter invoice details manually.
-        </p>
-      )}
+          </div>
 
-      {/* Header fields */}
-      <InvoiceMetadata
-        form={form}
-        setForm={setForm}
-        clients={clients}
-        currencies={currencies}
-        onClientChange={handleClientChange}
-        onDateChange={handleDateChange}
-      />
+          {/* Payment Schedule */}
+          {paymentScheduleSection}
 
-      {/* Line Items */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold">Line Items</h3>
-          {mode === "create" && (
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={copyPrevious}
-              disabled={!form.clientId}
-              className="h-7 text-xs"
-            >
-              Copy from previous
-            </Button>
-          )}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground"
-                aria-label="Keyboard shortcuts"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64">
-              <div className="space-y-2 text-sm">
-                <p className="font-medium">Keyboard shortcuts</p>
-                <ul className="space-y-1 text-muted-foreground">
-                  <li>
-                    <kbd className="rounded border px-1 text-xs font-mono">
-                      Enter
-                    </kbd>{" "}
-                    — new row
-                  </li>
-                  <li>
-                    <kbd className="rounded border px-1 text-xs font-mono">
-                      ⌘/Ctrl+D
-                    </kbd>{" "}
-                    — duplicate row
-                  </li>
-                  <li>Drag handle or arrow keys — reorder</li>
-                </ul>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-        <LineItemEditor
-          lines={form.lines}
-          taxes={taxOptions}
-          currencySymbol={sym}
-          onChange={(lines) => setForm((f) => ({ ...f, lines }))}
-        />
-      </div>
+          {/* Invoice Draft QA */}
+          {draftQASection}
 
-      {/* Invoice-Level Discount */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Invoice Discount</h3>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Notes */}
           <div className="space-y-1">
-            <label
-              htmlFor="invoice-discount-type"
-              className="text-xs text-muted-foreground"
-            >
-              Discount Type
+            <label htmlFor="invoice-notes" className="text-sm font-medium">
+              Notes
             </label>
-            <Select
-              value={form.discountType ?? "none"}
-              onValueChange={(v: string) =>
-                setForm((f) => ({
-                  ...f,
-                  discountType:
-                    v === "none" ? null : (v as "percentage" | "fixed"),
-                  discountAmount: v === "none" ? 0 : (f.discountAmount ?? 0),
-                }))
+            <Textarea
+              id="invoice-notes"
+              value={form.notes ?? ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, notes: e.target.value }))
               }
-            >
-              <SelectTrigger id="invoice-discount-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No Discount</SelectItem>
-                <SelectItem value="percentage">Percentage (%)</SelectItem>
-                <SelectItem value="fixed">Fixed Amount</SelectItem>
-              </SelectContent>
-            </Select>
+              placeholder="Payment terms, bank details, thank you message…"
+              rows={3}
+            />
           </div>
-          {form.discountType && (
+
+          {reminderOverrideSection}
+
+          {/* Totals panel */}
+          <div className="flex justify-end">
+            <div className="w-72 space-y-1.5 rounded-lg border p-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span>{fmt(invoiceTotals.subtotal)}</span>
+              </div>
+              {invoiceTotals.discountTotal > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Discount</span>
+                  <span className="text-emerald-600">
+                    -{fmt(invoiceTotals.discountTotal)}
+                  </span>
+                </div>
+              )}
+              {invoiceTotals.taxTotal > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span>{fmt(invoiceTotals.taxTotal)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t pt-1.5 text-base font-bold">
+                <span>Total</span>
+                <span>{fmt(invoiceTotals.total)}</span>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <InvoiceCanvasView
+          value={form}
+          onChange={setForm}
+          onClientChange={handleClientChange}
+          onDateChange={handleDateChange}
+          clients={clients}
+          currencies={currencies}
+          taxes={taxOptions}
+          totals={invoiceTotals}
+          fmt={fmt}
+          org={
+            templateConfig.showLogo
+              ? orgDisplay
+              : { ...orgDisplay, logoUrl: null }
+          }
+          theme={buildCanvasTheme(templateConfig)}
+          footerText={templateConfig.footerText}
+          sideRail={
             <>
-              <div className="space-y-1">
-                <label
-                  htmlFor="invoice-discount-amount"
-                  className="text-xs text-muted-foreground"
-                >
-                  {form.discountType === "percentage" ? "Percentage" : "Amount"}
-                </label>
-                <Input
-                  id="invoice-discount-amount"
-                  type="number"
-                  min={0}
-                  max={form.discountType === "percentage" ? 100 : undefined}
-                  step="0.01"
-                  value={form.discountAmount ?? 0}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      discountAmount: parseFloat(e.target.value) || 0,
-                    }))
-                  }
-                  placeholder={
-                    form.discountType === "percentage" ? "0-100" : "0.00"
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <label
-                  htmlFor="invoice-discount-description"
-                  className="text-xs text-muted-foreground"
-                >
-                  Description (optional)
-                </label>
-                <Input
-                  id="invoice-discount-description"
-                  value={form.discountDescription ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      discountDescription: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g. Early payment discount"
-                  maxLength={200}
-                />
-              </div>
+              {createFromPromptSection}
+              {paymentScheduleSection}
+              {draftQASection}
+              {reminderOverrideSection}
+              {duplicateWarningSection}
+              {stripeTaxWarningSection}
             </>
-          )}
-        </div>
-      </div>
-
-      {/* Payment Schedule */}
-      <PaymentScheduleSection
-        schedule={schedule}
-        setSchedule={setSchedule}
-        depositEnabled={depositEnabled}
-        setDepositEnabled={setDepositEnabled}
-        depositPercent={depositPercent}
-        onDepositToggle={handleDepositToggle}
-        onDepositPercentChange={handleDepositPercentChange}
-        scheduleOpen={scheduleOpen}
-        setScheduleOpen={setScheduleOpen}
-        invoiceTotal={invoiceTotals.total}
-        dueDate={form.dueDate}
-        currencySymbol={sym}
-        currencySymbolPosition={symPos}
-        installmentAutoChargeEnabled={
-          form.installmentAutoChargeEnabled ?? false
-        }
-        setInstallmentAutoChargeEnabled={(installmentAutoChargeEnabled) =>
-          setForm((current) => ({ ...current, installmentAutoChargeEnabled }))
-        }
-      />
-
-      {/* Invoice Draft QA */}
-      <InvoiceDraftQA
-        mode={mode}
-        draft={qaDraft}
-        calculatedTotals={invoiceTotals}
-        invoiceId={form.id}
-        clientId={form.clientId}
-        currencyId={form.currencyId}
-        clientName={activeClient?.name}
-        currencyCode={activeCurrency?.code}
-      />
-
-      {/* Notes */}
-      <div className="space-y-1">
-        <label htmlFor="invoice-notes" className="text-sm font-medium">
-          Notes
-        </label>
-        <Textarea
-          id="invoice-notes"
-          value={form.notes ?? ""}
-          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-          placeholder="Payment terms, bank details, thank you message…"
-          rows={3}
+          }
         />
-      </div>
-
-      {/* Reminder override */}
-      <div>
-        <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-          <input
-            type="checkbox"
-            checked={!useCustomReminders}
-            onChange={(e) => {
-              setUseCustomReminders(!e.target.checked);
-              if (e.target.checked)
-                setForm((p) => ({ ...p, reminderDaysOverride: [] }));
-            }}
-            className="rounded"
-          />
-          Use org default reminder schedule
-        </label>
-        {useCustomReminders && (
-          <div className="mt-2 flex flex-wrap gap-2 pl-1">
-            {REMINDER_DAY_OPTIONS.map((d) => (
-              <label
-                key={d}
-                className="flex items-center gap-1.5 text-sm cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={form.reminderDaysOverride.includes(d)}
-                  onChange={(e) => {
-                    setForm((p) => ({
-                      ...p,
-                      reminderDaysOverride: e.target.checked
-                        ? [...p.reminderDaysOverride, d].sort((a, b) => a - b)
-                        : p.reminderDaysOverride.filter((x) => x !== d),
-                    }));
-                  }}
-                  className="rounded"
-                />
-                {d === 1 ? "1 day" : `${d} days`}
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Totals panel */}
-      <div className="flex justify-end">
-        <div className="w-72 space-y-1.5 rounded-lg border p-4">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span>{fmt(invoiceTotals.subtotal)}</span>
-          </div>
-          {invoiceTotals.discountTotal > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Discount</span>
-              <span className="text-emerald-600">
-                -{fmt(invoiceTotals.discountTotal)}
-              </span>
-            </div>
-          )}
-          {invoiceTotals.taxTotal > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Tax</span>
-              <span>{fmt(invoiceTotals.taxTotal)}</span>
-            </div>
-          )}
-          <div className="flex justify-between border-t pt-1.5 text-base font-bold">
-            <span>Total</span>
-            <span>{fmt(invoiceTotals.total)}</span>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Actions */}
       {currencies.length === 0 && (
@@ -812,38 +908,8 @@ export function InvoiceForm({
           before creating invoices.
         </p>
       )}
-      {duplicateMatch && (
-        <div
-          className={`rounded-md border p-3 text-sm ${
-            duplicateMatch.severity === "danger"
-              ? "border-red-300 bg-red-50 text-red-900"
-              : "border-amber-300 bg-amber-50 text-amber-900"
-          }`}
-        >
-          <p className="font-semibold">Possible duplicate invoice</p>
-          <p className="mt-1">{duplicateMatch.message}</p>
-          <Link
-            href={`/invoices/${duplicateMatch.invoiceId}`}
-            target="_blank"
-            className="mt-1 inline-block font-medium underline underline-offset-2"
-          >
-            View {duplicateMatch.invoiceNumber}
-          </Link>
-        </div>
-      )}
-      {stripeTaxPreflight && !stripeTaxPreflight.ok && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <p className="font-semibold">Stripe Tax can&apos;t calculate yet</p>
-          <p className="mt-1">
-            Saving will fail until the following are filled in:
-          </p>
-          <ul className="mt-1 list-disc pl-5">
-            {stripeTaxPreflight.missing.map((m) => (
-              <li key={m}>{m}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {view === "form" && duplicateWarningSection}
+      {view === "form" && stripeTaxWarningSection}
       <div className="flex gap-2">
         <Button
           type="button"
@@ -853,19 +919,21 @@ export function InvoiceForm({
         >
           Cancel
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => handleSave(false)}
-          disabled={
-            isSaving ||
-            !form.clientId ||
-            !form.currencyId ||
-            stripeTaxPreflight?.ok === false
-          }
-        >
-          {isSaving ? "Saving…" : "Save as Draft"}
-        </Button>
+        {!(view === "canvas" && invoiceStatus === "DRAFT") && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSave(false)}
+            disabled={
+              isSaving ||
+              !form.clientId ||
+              !form.currencyId ||
+              stripeTaxPreflight?.ok === false
+            }
+          >
+            {isSaving ? "Saving…" : "Save as Draft"}
+          </Button>
+        )}
         <Button
           type="button"
           onClick={() => handleSave(true)}

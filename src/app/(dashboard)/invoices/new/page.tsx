@@ -2,6 +2,7 @@ import { api } from "@/trpc/server";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
+import { getInvoiceTemplateConfig } from "@/server/services/invoice-template-config";
 
 export default async function NewInvoicePage() {
   const [{ items: clients }, currencies, taxes, org] = await Promise.all([
@@ -10,6 +11,8 @@ export default async function NewInvoicePage() {
     api.taxes.list(),
     api.organization.get(),
   ]);
+
+  const templateConfig = getInvoiceTemplateConfig(org);
 
   return (
     <div className="space-y-5">
@@ -31,6 +34,9 @@ export default async function NewInvoicePage() {
         clients={clients.map((c) => ({ id: c.id, name: c.name, defaultPaymentTermsDays: c.defaultPaymentTermsDays }))}
         currencies={currencies.map((c) => ({ id: c.id, code: c.code, symbol: c.symbol, symbolPosition: c.symbolPosition }))}
         taxes={taxes.map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate), isCompound: t.isCompound }))}
+        invoiceStatus="DRAFT"
+        templateConfig={templateConfig}
+        orgDisplay={{ name: org.name, logoUrl: org.logoUrl }}
       />
     </div>
   );

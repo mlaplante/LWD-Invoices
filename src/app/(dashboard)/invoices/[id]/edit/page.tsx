@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
+import { getInvoiceTemplateConfig } from "@/server/services/invoice-template-config";
 
 export default async function EditInvoicePage({
   params,
@@ -23,6 +24,8 @@ export default async function EditInvoicePage({
 
   // The update mutation only allows DRAFT and SENT — redirect others to detail
   if (invoice.status !== "DRAFT" && invoice.status !== "SENT") notFound();
+
+  const templateConfig = getInvoiceTemplateConfig(org);
 
   const initialData = {
     id: invoice.id,
@@ -77,6 +80,9 @@ export default async function EditInvoicePage({
         clients={clients.map((c) => ({ id: c.id, name: c.name, defaultPaymentTermsDays: c.defaultPaymentTermsDays }))}
         currencies={currencies.map((c) => ({ id: c.id, code: c.code, symbol: c.symbol, symbolPosition: c.symbolPosition }))}
         taxes={taxes.map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate), isCompound: t.isCompound }))}
+        invoiceStatus={invoice.status === "SENT" ? "SENT" : "DRAFT"}
+        templateConfig={templateConfig}
+        orgDisplay={{ name: org.name, logoUrl: org.logoUrl }}
       />
     </div>
   );
