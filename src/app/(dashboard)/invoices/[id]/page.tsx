@@ -32,7 +32,7 @@ import { PaymentScheduleButton } from "@/components/invoices/PaymentScheduleButt
 import { InvoiceRefundsPanel } from "@/components/invoices/InvoiceRefundsPanel";
 import { ClientCreditHoldBanner } from "@/components/clients/ClientCreditHoldBanner";
 import { CopyPaymentLinkButton } from "@/components/invoices/CopyPaymentLinkButton";
-import { MoreActions } from "@/components/invoices/MoreActions";
+import { MoreActions, MoreActionsSection } from "@/components/invoices/MoreActions";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { ArrowLeft, Download, Pencil } from "lucide-react";
 import { PortalPreviewButton } from "@/components/portal/PortalPreviewButton";
@@ -165,14 +165,11 @@ export default async function InvoiceDetailPage({
             <ConvertEstimateButton invoiceId={invoice.id} />
           )}
           <MoreActions>
-            {invoice.type !== "CREDIT_NOTE" && (
-              <ReminderOverrideSelect
-                invoiceId={invoice.id}
-                currentSequenceId={invoice.reminderSequenceId}
-              />
-            )}
-            <PortalPreviewButton target="invoice" id={invoice.id} fallbackUrl={portalLink} />
-            {isPayable && <CopyPaymentLinkButton payLink={payLink} />}
+            <MoreActionsSection title="Share">
+              <PortalPreviewButton target="invoice" id={invoice.id} fallbackUrl={portalLink} />
+              {isPayable && <CopyPaymentLinkButton payLink={payLink} />}
+            </MoreActionsSection>
+            <MoreActionsSection title="Billing">
             <RecurringInvoiceDialog invoiceId={invoice.id} />
             {invoice.type !== "CREDIT_NOTE" && (
               <PaymentScheduleButton
@@ -225,10 +222,26 @@ export default async function InvoiceDetailPage({
                 retainerAlreadyApplied={Number(invoice.retainerApplied)}
               />
             )}
-            <DuplicateInvoiceButton invoiceId={invoice.id} />
-            <ArchiveInvoiceButton invoiceId={invoice.id} isArchived={invoice.isArchived} />
-            {!["PAID", "PARTIALLY_PAID", "OVERDUE"].includes(invoice.status) && (
-              <DeleteInvoiceButton invoiceId={invoice.id} />
+            </MoreActionsSection>
+            <MoreActionsSection title="Manage">
+              <DuplicateInvoiceButton invoiceId={invoice.id} />
+              <ArchiveInvoiceButton invoiceId={invoice.id} isArchived={invoice.isArchived} />
+              <DeleteInvoiceButton
+                invoiceId={invoice.id}
+                disabledReason={
+                  ["PAID", "PARTIALLY_PAID", "OVERDUE"].includes(invoice.status)
+                    ? "Paid, partially paid, and overdue invoices can't be deleted. Archive it instead."
+                    : undefined
+                }
+              />
+            </MoreActionsSection>
+            {invoice.type !== "CREDIT_NOTE" && (
+              <div className="border-t border-border/60 pt-3 sm:pt-2">
+                <ReminderOverrideSelect
+                  invoiceId={invoice.id}
+                  currentSequenceId={invoice.reminderSequenceId}
+                />
+              </div>
             )}
           </MoreActions>
         </div>

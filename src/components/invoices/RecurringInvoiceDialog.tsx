@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Repeat } from "lucide-react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,6 +104,7 @@ export function RecurringInvoiceDialog({ invoiceId }: Props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
+          <Repeat className="w-3.5 h-3.5 mr-1.5" />
           {isActive ? "Edit Recurring" : "Set Recurring"}
         </Button>
       </DialogTrigger>

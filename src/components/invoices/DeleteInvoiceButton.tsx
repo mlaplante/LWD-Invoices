@@ -7,8 +7,16 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function DeleteInvoiceButton({ invoiceId }: { invoiceId: string }) {
+export function DeleteInvoiceButton({
+  invoiceId,
+  disabledReason,
+}: {
+  invoiceId: string;
+  /** When set, the button stays visible but explains why deletion is blocked. */
+  disabledReason?: string;
+}) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const del = trpc.invoices.delete.useMutation({
@@ -24,8 +32,15 @@ export function DeleteInvoiceButton({ invoiceId }: { invoiceId: string }) {
       <Button
         variant="outline"
         size="sm"
-        className="text-destructive hover:text-destructive"
-        onClick={() => setOpen(true)}
+        className={cn(
+          "text-destructive hover:text-destructive",
+          disabledReason && "opacity-50",
+        )}
+        title={disabledReason}
+        aria-disabled={disabledReason ? true : undefined}
+        onClick={() =>
+          disabledReason ? toast.info(disabledReason) : setOpen(true)
+        }
       >
         <Trash2 className="w-3.5 h-3.5 mr-1.5" />
         Delete

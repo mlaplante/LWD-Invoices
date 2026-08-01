@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { FileMinus } from "lucide-react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +64,7 @@ export function ApplyCreditNoteDialog({ invoiceId, clientId }: Props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
+          <FileMinus className="w-3.5 h-3.5 mr-1.5" />
           Apply Credit Note
         </Button>
       </DialogTrigger>
