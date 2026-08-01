@@ -32,8 +32,19 @@ export function useInvoiceAutosave(opts: {
   const lastSavedSnapshotRef = useRef<string | null>(null);
 
   const optsRef = useRef(opts);
+  // "Latest ref" sync pattern (brief's Step 4 code, verbatim): the ref is
+  // only ever read from async callbacks/effects, never during render, so
+  // this write is render-pure in practice. React Compiler's static
+  // analysis can't see that and flags it categorically.
+  // eslint-disable-next-line react-hooks/refs -- see comment above
   optsRef.current = opts;
 
+  // React Compiler bails on optimizing this component (the ref write above,
+  // plus runSave's self-recursive call below), so it can't verify this
+  // useCallback's memoization survives compilation. The `[]` deps are
+  // intentional and correct — runSave only ever reads via optsRef/refs, never
+  // closes over opts/props directly — so the manual memoization is safe.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- see comment above
   const runSave = useCallback(async () => {
     const o = optsRef.current;
     const dirty = lastSavedSnapshotRef.current !== o.snapshot;
