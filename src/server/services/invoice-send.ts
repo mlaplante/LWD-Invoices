@@ -4,6 +4,13 @@ import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
 import { logAudit } from "./audit";
 import { notifyOrgAdmins } from "./notifications";
 import { getAppUrl } from "@/lib/app-url";
+import { TRPCError } from "@trpc/server";
+
+/** True when every line has a non-blank name. Empty invoices pass (unchanged
+ * from today's behavior — this guard only covers unnamed rows). */
+export function invoiceLinesAllNamed(lines: { name: string }[]): boolean {
+  return lines.every((l) => l.name.trim() !== "");
+}
 
 export interface DeliverInvoiceOptions {
   /** One-off CC override; when omitted the client's saved ccEmails are used. */
@@ -34,6 +41,13 @@ export async function deliverInvoice(
     include: fullInvoiceInclude,
   });
   if (!invoice) return null;
+
+  if (!invoiceLinesAllNamed(invoice.lines)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This invoice has unnamed line items. Name every line before sending.",
+    });
+  }
 
   const newStatus =
     invoice.type === InvoiceType.ESTIMATE ? invoice.status : InvoiceStatus.SENT;

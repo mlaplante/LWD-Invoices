@@ -59,6 +59,12 @@ const lineSchema = z.object({
   taxIds: z.array(z.string()).default([]),
 });
 
+// Draft-lenient variant: while an invoice is in DRAFT, autosave snapshots may
+// legitimately contain rows the user is mid-typing. Non-DRAFT writes and
+// send-time re-enforce non-empty names (see update's status guard and
+// deliverInvoice's invoiceLinesAllNamed check).
+const draftLineSchema = lineSchema.extend({ name: z.string().default("") });
+
 const invoiceWriteSchema = z.object({
   type: z.nativeEnum(InvoiceType).default(InvoiceType.DETAILED),
   date: z.coerce.date().default(() => new Date()),
@@ -69,7 +75,7 @@ const invoiceWriteSchema = z.object({
   notes: z.string().optional(),
   clientId: z.string().min(1),
   projectId: z.string().nullable().optional(),
-  lines: z.array(lineSchema).default([]),
+  lines: z.array(draftLineSchema).default([]),
   reminderDaysOverride: z.array(z.number().int().min(1)).optional(),
   reminderSequenceId: z.string().nullable().optional(),
   discountType: z.enum(["percentage", "fixed"]).nullable().optional(),
@@ -723,6 +729,18 @@ export const invoicesRouter = router({
         });
       }
 
+      // DRAFT invoices may hold unnamed mid-typing rows (autosave); a SENT
+      // invoice is client-visible, so unnamed lines must never land on one.
+      if (
+        existing.status === InvoiceStatus.SENT &&
+        input.lines?.some((l) => l.name.trim() === "")
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "All line items need a name before a sent invoice can be updated.",
+        });
+      }
+
       // Re-pointing an invoice at a client from another tenant would leak that
       // client into tax resolution and the persisted row; verify ownership.
       if (input.clientId !== undefined) {
@@ -1052,6 +1070,17 @@ export const invoicesRouter = router({
       const errors: string[] = [];
       const results = await Promise.allSettled(
         invoices.map(async (invoice) => {
+          // Unnamed lines can only reach here via a DRAFT autosave snapshot
+          // (see draftLineSchema); a bulk send must still refuse to expose
+          // one to a client, same as the single-invoice `send` path.
+          const { invoiceLinesAllNamed } = await import("@/server/services/invoice-send");
+          if (!invoiceLinesAllNamed(invoice.lines)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Invoice #${invoice.number} has unnamed line items. Name every line before sending.`,
+            });
+          }
+
           // Update status
           await ctx.db.invoice.update({
             where: { id: invoice.id, organizationId: ctx.orgId },

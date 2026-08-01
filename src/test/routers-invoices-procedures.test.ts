@@ -973,6 +973,9 @@ describe("Invoices Router Procedures", () => {
         symbolPosition: "LEFT",
       },
       partialPayments: [],
+      // fullInvoiceInclude always resolves `lines`; deliverInvoice's
+      // send-time name guard reads it, so the fixture must mirror that shape.
+      lines: [{ name: "Design work" }],
     };
 
     it("sends an invoice and updates status to SENT", async () => {
