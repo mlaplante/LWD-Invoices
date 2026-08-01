@@ -13,8 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
-import { calculateLineTotals, type TaxInput } from "@/server/services/tax-calculator";
 import { nextFocusOnEnter, duplicateRowAt } from "./line-item-keyboard";
+import { newLine, computeLineResult, type TaxOption } from "./line-item-utils";
 import {
   DndContext,
   closestCenter,
@@ -48,13 +48,6 @@ export type LineItemValue = {
   sourceId?: string;
 };
 
-type TaxOption = {
-  id: string;
-  name: string;
-  rate: number;
-  isCompound: boolean;
-};
-
 type Props = {
   lines: LineItemValue[];
   taxes: TaxOption[];
@@ -84,37 +77,6 @@ const LINE_TYPE_LABELS: Record<LineType, string> = {
 
 function fmt(n: number, symbol: string): string {
   return `${symbol}${n.toFixed(2)}`;
-}
-
-function computeLineResult(line: LineItemValue, taxes: TaxOption[]) {
-  const taxInputs: TaxInput[] = taxes
-    .filter((t) => line.taxIds.includes(t.id))
-    .map((t) => ({ id: t.id, rate: t.rate, isCompound: t.isCompound }));
-  return calculateLineTotals(
-    {
-      qty: line.qty,
-      rate: line.rate,
-      period: line.period,
-      lineType: line.lineType,
-      discount: line.discount,
-      discountIsPercentage: line.discountIsPercentage,
-      taxIds: line.taxIds,
-    },
-    taxInputs
-  );
-}
-
-function newLine(sort: number): LineItemValue {
-  return {
-    sort,
-    lineType: LineType.STANDARD,
-    name: "",
-    qty: 1,
-    rate: 0,
-    discount: 0,
-    discountIsPercentage: false,
-    taxIds: [],
-  };
 }
 
 // ── Sortable line item ────────────────────────────────────────────────────────
