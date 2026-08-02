@@ -22,6 +22,15 @@ describe("safeRedirectPath (open-redirect guard)", () => {
     expect(safeRedirectPath("/\\evil.com")).toBe("/");
   });
 
+  it("rejects tab/newline URL-stripping bypasses", () => {
+    // Browsers strip \t \n \r before parsing, so "/\t/evil.com" collapses to
+    // "//evil.com". Reject any C0 control character so this can't slip through.
+    expect(safeRedirectPath("/\t/evil.com")).toBe("/");
+    expect(safeRedirectPath("/\n/evil.com")).toBe("/");
+    expect(safeRedirectPath("/\r/evil.com")).toBe("/");
+    expect(safeRedirectPath("/\tevil.com")).toBe("/");
+  });
+
   it("rejects javascript: and other schemes", () => {
     expect(safeRedirectPath("javascript:alert(1)")).toBe("/");
   });

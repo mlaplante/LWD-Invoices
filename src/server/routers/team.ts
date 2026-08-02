@@ -225,6 +225,14 @@ export const teamRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot change your own role" });
     }
 
+    // Only an OWNER may change another OWNER's role. Without this, an ADMIN
+    // could demote an OWNER to VIEWER (the last-owner check below still passes
+    // while other owners remain) and then remove/suspend them — an ADMIN-to-
+    // OWNER privilege escalation. removeMember/suspend already guard this way.
+    if (targetMembership.role === "OWNER" && ctx.userRole !== "OWNER") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Only owners can change another owner's role" });
+    }
+
     if (targetMembership.role === "OWNER" && input.role !== "OWNER") {
       const ownerCount = await ctx.db.userOrganization.count({
         where: { organizationId: ctx.orgId, role: "OWNER" },

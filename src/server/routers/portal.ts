@@ -126,10 +126,44 @@ async function requireDashboardSession(
   return client;
 }
 
+/**
+ * Conditional passphrase gate for invoice-token portal procedures. If the
+ * invoice's client has set a portal passphrase, the caller must present a
+ * valid portal_auth_<token> session cookie (the same cookie the page-level
+ * layout checks). Clients with no passphrase leave the link as the sole
+ * credential, exactly as the portal page layout does.
+ *
+ * These procedures are separate HTTP endpoints from the page tree, so the
+ * layout's redirect() is not a security boundary for them — this must run
+ * server-side here. Mirrors the hand-rolled checks in the estimate/pdf/
+ * signProposal routes.
+ */
+async function requireInvoicePortalSession(
+  db: typeof import("../db").db,
+  token: string,
+) {
+  const invoice = await db.invoice.findUnique({
+    where: { portalToken: token },
+    select: { client: { select: { portalPassphraseHash: true } } },
+  });
+  const storedHash = invoice?.client?.portalPassphraseHash ?? null;
+  if (!storedHash) return;
+
+  const cookieStore = await cookies();
+  const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
+  if (
+    !cookieVal ||
+    !verifyPortalSession(cookieVal, token, getPortalSessionSecret())
+  ) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+}
+
 export const portalRouter = router({
   getInvoice: publicProcedure
     .input(z.object({ token: z.string() }))
     .query(async ({ ctx, input }) => {
+      await requireInvoicePortalSession(ctx.db, input.token);
       const invoice = await getInvoiceByToken(ctx.db, input.token);
 
       // Load enabled gateways (safe — no secrets)
@@ -151,6 +185,7 @@ export const portalRouter = router({
   listInvoices: publicProcedure
     .input(z.object({ token: z.string() }))
     .query(async ({ ctx, input }) => {
+      await requireInvoicePortalSession(ctx.db, input.token);
       // Use the portal token to find the invoice and determine the client
       const invoice = await ctx.db.invoice.findUnique({
         where: { portalToken: input.token },
@@ -194,6 +229,7 @@ export const portalRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await requireInvoicePortalSession(ctx.db, input.token);
       const invoice = await getInvoiceByToken(ctx.db, input.token);
 
       if (!PAYABLE_STATUSES.includes(invoice.status)) {
@@ -307,6 +343,7 @@ export const portalRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await requireInvoicePortalSession(ctx.db, input.token);
       const invoice = await ctx.db.invoice.findUnique({
         where: { portalToken: input.token },
         select: {

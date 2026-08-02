@@ -10,6 +10,14 @@ import {
   resolveEarlyPayOffer,
 } from "@/server/services/early-payment-discount";
 import { resolveAppUrlFromHeaders } from "@/lib/app-url";
+import { cookies } from "next/headers";
+import { getPortalSessionSecret, verifyPortalSession } from "@/lib/portal-session";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+// 10 charge attempts per token per 5 minutes — in-process backstop so this
+// off-session card-charge route is never fail-open if the edge (Upstash)
+// limiter is unconfigured, mirroring the sibling /stripe checkout route.
+const chargeLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60_000 });
 
 const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
 
@@ -18,6 +26,14 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
+
+  if (chargeLimiter.isLimited(token)) {
+    return NextResponse.json(
+      { error: "Too many payment attempts. Please try again later." },
+      { status: 429 },
+    );
+  }
+
   const formData = await req.formData();
   const paymentMethodId = formData.get("paymentMethodId") as string | null;
   const partialPaymentId = formData.get("partialPaymentId") as string | null;
@@ -39,6 +55,18 @@ export async function POST(
 
   if (!invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+  }
+
+  // If the client set a portal passphrase, this off-session charge must not be
+  // reachable with the bare link — require the same portal session cookie the
+  // page layout checks. No passphrase → the link is the credential (unchanged).
+  const storedHash = invoice.client?.portalPassphraseHash ?? null;
+  if (storedHash) {
+    const cookieStore = await cookies();
+    const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
+    if (!cookieVal || !verifyPortalSession(cookieVal, token, getPortalSessionSecret())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   if (!PAYABLE_STATUSES.includes(invoice.status)) {

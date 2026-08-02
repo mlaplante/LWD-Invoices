@@ -11,6 +11,8 @@ import { createRateLimiter } from "@/lib/rate-limit";
 import { safeErrorResponse } from "@/lib/api-errors";
 import { resolveEarlyPayOffer } from "@/server/services/early-payment-discount";
 import { resolveAppUrlFromHeaders } from "@/lib/app-url";
+import { cookies } from "next/headers";
+import { getPortalSessionSecret, verifyPortalSession } from "@/lib/portal-session";
 
 // 10 payment attempts per token per 5 minutes
 const payLimiter = createRateLimiter({ limit: 10, windowMs: 5 * 60_000 });
@@ -49,7 +51,7 @@ export async function GET(
       currency: true,
       payments: { select: { amount: true } },
       partialPayments: true,
-      client: { select: { email: true, name: true, stripeCustomerId: true } },
+      client: { select: { email: true, name: true, stripeCustomerId: true, portalPassphraseHash: true } },
     },
   });
 
@@ -58,6 +60,18 @@ export async function GET(
       { error: "Invoice not found or not payable" },
       { status: 404 },
     );
+  }
+
+  // If the client set a portal passphrase, starting a checkout session must
+  // require the portal session cookie the page layout checks; no passphrase
+  // leaves the link as the sole credential (unchanged behaviour).
+  const storedHash = invoice.client?.portalPassphraseHash ?? null;
+  if (storedHash) {
+    const cookieStore = await cookies();
+    const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
+    if (!cookieVal || !verifyPortalSession(cookieVal, token, getPortalSessionSecret())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   const gatewaySetting = await db.gatewaySetting.findFirst({

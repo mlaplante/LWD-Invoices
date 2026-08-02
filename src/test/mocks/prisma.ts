@@ -416,6 +416,7 @@ export interface MockTRPCContext {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userRole: any;
   isActive: boolean | null;
+  mfaSatisfied: boolean;
 }
 
 /**
@@ -431,6 +432,7 @@ export function createMockContext(
     userId: "test-user-456",
     userRole: "OWNER",
     isActive: true,
+    mfaSatisfied: true,
     ...overrides,
   };
 }
