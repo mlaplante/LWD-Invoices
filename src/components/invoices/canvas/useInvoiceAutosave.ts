@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import * as Sentry from "@sentry/nextjs";
 import {
   AUTOSAVE_DEBOUNCE_MS,
   canAutosave,
@@ -104,7 +105,16 @@ export function useInvoiceAutosave(opts: {
       }
       lastSavedSnapshotRef.current = snapshotAtSave;
       setStatus("saved");
-    } catch {
+    } catch (err) {
+      // Non-blocking UX is unchanged (status flips to "error", the user can
+      // retry) — but a silent `catch {}` here means an autosave that keeps
+      // failing (e.g. a server-side regression) produces no signal anywhere
+      // except a small "Save failed" pill the user may not notice. Report it
+      // so failures are visible in Sentry instead of invisible.
+      Sentry.captureException(err, {
+        tags: { feature: "invoice-autosave", action },
+        extra: { invoiceId: o.invoiceId ?? createdIdRef.current },
+      });
       setStatus("error");
     } finally {
       inFlightRef.current = false;

@@ -50,3 +50,27 @@ export function resolveHasId(
 ): boolean {
   return Boolean(invoiceId || pendingCreatedId);
 }
+
+/**
+ * Explicit-save (handleSave) target resolution. `mode` is a static page
+ * prop that never changes after mount, so it cannot be used alone to decide
+ * create-vs-update once autosave has already created the DRAFT out from
+ * under it (autosave sets invoiceIdRef.current / form.id via
+ * window.history.replaceState without remounting). Prefer `refId` — set
+ * synchronously by onCreated before the corresponding setForm commits — and
+ * fall back to `formId`. Only fall through to `mode === "create"` when
+ * neither id source has resolved yet.
+ *
+ * "none" mirrors the previous behavior for `mode === "edit"` with no id at
+ * all (an edit page that somehow never got an id): handleSave did nothing.
+ */
+export function resolveSaveTarget(args: {
+  mode: "create" | "edit";
+  refId: string | undefined | null;
+  formId: string | undefined;
+}): { action: "create" } | { action: "update"; id: string } | { action: "none" } {
+  const id = args.refId ?? args.formId;
+  if (id) return { action: "update", id };
+  if (args.mode === "create") return { action: "create" };
+  return { action: "none" };
+}

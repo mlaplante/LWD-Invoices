@@ -42,6 +42,7 @@ import { ReminderOverrideBlock } from "./ReminderOverrideBlock";
 import { InvoiceCanvasView } from "./canvas/InvoiceCanvasView";
 import { useInvoiceAutosave } from "./canvas/useInvoiceAutosave";
 import { buildCanvasTheme } from "./canvas/canvas-theme";
+import { resolveSaveTarget } from "./canvas/autosave-core";
 import type { InvoiceTemplateConfig } from "@/server/services/invoice-template-config";
 
 export type InvoiceFormData = {
@@ -415,14 +416,30 @@ export function InvoiceForm({
     savingRef.current = true;
     startTransition(async () => {
       try {
-        if (mode === "create") {
+        // mode is a static page prop that never changes, but autosave can
+        // have already created the DRAFT out from under it (it sets
+        // invoiceIdRef.current / form.id via window.history.replaceState
+        // without remounting). Resolve the target via the ref-first id
+        // source so an explicit Save after an autosave-create updates the
+        // existing draft instead of creating a duplicate invoice.
+        const target = resolveSaveTarget({
+          mode,
+          refId: invoiceIdRef.current,
+          formId: form.id,
+        });
+        if (target.action === "create") {
           const inv = await createMutation.mutateAsync(buildInput());
+          // Set synchronously so a subsequent explicit Save click (or a
+          // queued autosave re-run) sees "has an id" before the setForm
+          // below has committed — same race autosave's onCreated guards
+          // against.
+          invoiceIdRef.current = inv.id;
           router.push(
             andSend ? `/invoices/${inv.id}?send=1` : `/invoices/${inv.id}`,
           );
-        } else if (form.id) {
+        } else if (target.action === "update") {
           const inv = await updateMutation.mutateAsync({
-            id: form.id,
+            id: target.id,
             ...buildInput(),
           });
           router.push(
@@ -444,6 +461,8 @@ export function InvoiceForm({
   // — so doUpdate must not rely on form.id alone. invoiceIdRef is set
   // synchronously in onCreated (before setForm) and kept in sync whenever
   // form.id changes, so doUpdate always has the freshest id available.
+  // handleSave (above) shares this ref for the same reason: it's also the
+  // ref-first id source for the duplicate-create fix (Critical 1).
   const invoiceIdRef = useRef(form.id);
   useEffect(() => {
     invoiceIdRef.current = form.id;
