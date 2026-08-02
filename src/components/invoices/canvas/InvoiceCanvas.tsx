@@ -78,7 +78,10 @@ export function InvoiceCanvas({
   const activeCurrency = currencies.find((c) => c.id === value.currencyId) ?? currencies[0];
   const currencySymbol = activeCurrency?.symbol ?? "$";
   const compact = theme.density === "compact";
-  const sectionPad = compact ? "px-8 py-2" : "px-8 py-4";
+  // px-4 on mobile keeps the paper's edge margins from eating into the line
+  // grid's available width (see CanvasLineRows' mobile column tracks); sm:px-8
+  // restores the wider desktop margins.
+  const sectionPad = compact ? "px-4 py-2 sm:px-8" : "px-4 py-4 sm:px-8";
 
   return (
     <div
@@ -89,10 +92,10 @@ export function InvoiceCanvas({
       <div
         className={
           theme.headerStyle === "banded"
-            ? `flex items-center justify-between rounded-t-md bg-[var(--canvas-accent)] px-8 ${compact ? "py-4" : "py-6"} text-white`
+            ? `flex items-center justify-between rounded-t-md bg-[var(--canvas-accent)] px-4 sm:px-8 ${compact ? "py-4" : "py-6"} text-white`
             : theme.headerStyle === "ruled"
-              ? `flex items-center justify-between border-t-4 border-[var(--canvas-accent)] px-8 ${compact ? "py-4" : "py-6"}`
-              : `flex items-center justify-between px-8 ${compact ? "py-6" : "py-10"}`
+              ? `flex items-center justify-between border-t-4 border-[var(--canvas-accent)] px-4 sm:px-8 ${compact ? "py-4" : "py-6"}`
+              : `flex items-center justify-between px-4 sm:px-8 ${compact ? "py-6" : "py-10"}`
         }
       >
         <div>
@@ -399,7 +402,7 @@ export function InvoiceCanvas({
 
       {/* 7. Footer */}
       {footerText && (
-        <div className="border-t border-neutral-200 px-8 py-4 text-center text-xs text-neutral-400">
+        <div className="border-t border-neutral-200 px-4 py-4 text-center text-xs text-neutral-400 sm:px-8">
           {footerText}
         </div>
       )}

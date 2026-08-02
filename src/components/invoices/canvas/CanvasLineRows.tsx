@@ -156,9 +156,9 @@ function CanvasLineRowImpl({
         )}
       </div>
 
-      <div className="grid flex-1 grid-cols-[1fr_90px_110px_110px_32px] items-start gap-2">
+      <div className="grid flex-1 grid-cols-[1fr_44px_64px_64px_24px] items-start gap-1 sm:grid-cols-[1fr_90px_110px_110px_32px] sm:gap-2">
         {/* Description */}
-        <div className="min-w-0">
+        <div className="min-w-0 break-words">
           {readOnly ? (
             <div className="text-sm">
               {line.name || <span className="text-muted-foreground">—</span>}
@@ -491,6 +491,7 @@ export function CanvasLineRows({
       </div>
 
       <DndContext
+        id="invoice-canvas-lines"
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
