@@ -6,7 +6,7 @@ export default defineConfig({
     environment: "node",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
-    exclude: ["**/node_modules/**", "**/.worktrees/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/.worktrees/**", "**/.claude/worktrees/**", "**/dist/**"],
     coverage: {
       provider: "v8",
       // json-summary + json are required by vitest-coverage-report-action in CI
