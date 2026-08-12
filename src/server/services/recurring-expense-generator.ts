@@ -15,6 +15,13 @@ export async function generateExpensesForRecurring(
   let count = rec.occurrenceCount;
   let generated = 0;
 
+  // The notification recipient is the same for every occurrence — look the
+  // org owner up once instead of inside each per-occurrence transaction.
+  const ownerMembership = await db.userOrganization.findFirst({
+    where: { organizationId: rec.organizationId, role: "OWNER" },
+    include: { user: { select: { id: true } } },
+  });
+
   while (nextRun <= now) {
     if (rec.maxOccurrences !== null && count >= rec.maxOccurrences) break;
     if (rec.endDate !== null && nextRun > rec.endDate) break;
@@ -65,11 +72,6 @@ export async function generateExpensesForRecurring(
       });
 
       // Create notification for org owner
-      const ownerMembership = await tx.userOrganization.findFirst({
-        where: { organizationId: rec.organizationId, role: "OWNER" },
-        include: { user: { select: { id: true } } },
-      });
-
       if (ownerMembership) {
         await tx.notification.create({
           data: {

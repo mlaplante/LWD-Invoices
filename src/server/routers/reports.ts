@@ -35,6 +35,21 @@ const dateRangeSchema = z.object({
   to: z.coerce.date().optional(),
 });
 
+// These reports scan every open invoice in the org (uncapped by design — they
+// aggregate the full set), so keep the per-row payload to the fields the report
+// pages actually render instead of shipping all ~45 Invoice columns (incl.
+// signatureData/portalToken) over the wire.
+const openInvoiceReportSelect = {
+  id: true,
+  number: true,
+  status: true,
+  date: true,
+  dueDate: true,
+  total: true,
+  client: { select: { id: true, name: true } },
+  currency: { select: { id: true, code: true, symbol: true, symbolPosition: true } },
+} as const;
+
 export const reportsRouter = router({
   unpaidInvoices: protectedProcedure
     .input(dateRangeSchema)
@@ -59,10 +74,7 @@ export const reportsRouter = router({
               }
             : {}),
         },
-        include: {
-          client: { select: { id: true, name: true } },
-          currency: { select: { id: true, code: true, symbol: true, symbolPosition: true } },
-        },
+        select: openInvoiceReportSelect,
         orderBy: { dueDate: "asc" },
       });
     }),
@@ -75,10 +87,7 @@ export const reportsRouter = router({
           isArchived: false,
           status: InvoiceStatus.OVERDUE,
         },
-        include: {
-          client: { select: { id: true, name: true } },
-          currency: { select: { id: true, code: true, symbol: true, symbolPosition: true } },
-        },
+        select: openInvoiceReportSelect,
         orderBy: { dueDate: "asc" },
       });
     }),
@@ -484,7 +493,7 @@ export const reportsRouter = router({
         isArchived: false,
         status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
       },
-      include: { client: { select: { name: true } }, currency: { select: { id: true, code: true, symbol: true, symbolPosition: true } } },
+      select: openInvoiceReportSelect,
       orderBy: { dueDate: "asc" },
     });
 
@@ -822,19 +831,38 @@ export const reportsRouter = router({
       const horizon = new Date(now);
       horizon.setUTCMonth(horizon.getUTCMonth() + input.months);
 
-      // Step 1: Outstanding invoices (SENT + PARTIALLY_PAID + OVERDUE)
-      const openInvoices = await ctx.db.invoice.findMany({
-        where: {
-          organizationId: ctx.orgId,
-          status: { in: ["SENT", "PARTIALLY_PAID", "OVERDUE"] },
-          isArchived: false,
-        },
-        select: {
-          total: true,
-          dueDate: true,
-          payments: { select: { amount: true } },
-        },
-      });
+      // Steps 1 & 2 read independent tables — fetch them concurrently.
+      const [openInvoices, recurringInvoices] = await Promise.all([
+        // Outstanding invoices (SENT + PARTIALLY_PAID + OVERDUE)
+        ctx.db.invoice.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            status: { in: ["SENT", "PARTIALLY_PAID", "OVERDUE"] },
+            isArchived: false,
+          },
+          select: {
+            total: true,
+            dueDate: true,
+            payments: { select: { amount: true } },
+          },
+        }),
+        // Recurring invoice projections
+        ctx.db.recurringInvoice.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            isActive: true,
+          },
+          select: {
+            nextRunAt: true,
+            frequency: true,
+            interval: true,
+            endDate: true,
+            maxOccurrences: true,
+            occurrenceCount: true,
+            invoice: { select: { total: true } },
+          },
+        }),
+      ]);
 
       const outstandingByMonth: Record<string, number> = {};
       let overdueAmount = 0;
@@ -855,23 +883,6 @@ export const reportsRouter = router({
           }
         }
       }
-
-      // Step 2: Recurring invoice projections
-      const recurringInvoices = await ctx.db.recurringInvoice.findMany({
-        where: {
-          organizationId: ctx.orgId,
-          isActive: true,
-        },
-        select: {
-          nextRunAt: true,
-          frequency: true,
-          interval: true,
-          endDate: true,
-          maxOccurrences: true,
-          occurrenceCount: true,
-          invoice: { select: { total: true } },
-        },
-      });
 
       const recurringByMonth: Record<string, number> = {};
 

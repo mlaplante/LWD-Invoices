@@ -60,14 +60,38 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
   }
 
   const recipients = Array.isArray(opts.to) ? opts.to : [opts.to];
-  const flagged = await db.client.findFirst({
-    where: {
-      organizationId: opts.organizationId,
-      email: { in: recipients },
-      OR: [{ emailBouncedAt: { not: null } }, { emailComplainedAt: { not: null } }],
-    },
-    select: { emailBouncedAt: true, emailComplainedAt: true },
-  });
+  const ccIn = opts.cc && opts.cc.length > 0 ? opts.cc : undefined;
+
+  // The recipient/CC suppression checks, owner BCC, and preferences-token
+  // lookups are independent reads — run them concurrently.
+  const [flagged, flaggedCcs, bcc, prefClient] = await Promise.all([
+    db.client.findFirst({
+      where: {
+        organizationId: opts.organizationId,
+        email: { in: recipients },
+        OR: [{ emailBouncedAt: { not: null } }, { emailComplainedAt: { not: null } }],
+      },
+      select: { emailBouncedAt: true, emailComplainedAt: true },
+    }),
+    ccIn
+      ? db.client.findMany({
+          where: {
+            organizationId: opts.organizationId,
+            email: { in: ccIn },
+            OR: [{ emailBouncedAt: { not: null } }, { emailComplainedAt: { not: null } }],
+          },
+          select: { email: true },
+        })
+      : Promise.resolve([]),
+    getOwnerBcc(opts.organizationId),
+    opts.clientId && opts.emailKind
+      ? db.client.findUnique({
+          where: { id: opts.clientId },
+          select: { emailPreferencesToken: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
   if (flagged) {
     const reason = flagged.emailBouncedAt ? "bounced" : "complained";
     console.error(`[email-sender] Suppressed send to ${reason} recipient`);
@@ -77,16 +101,8 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
   // Drop CC addresses that belong to a bounced/complained client in this org.
   // The primary recipient is the hard block above — CCs are best-effort, so
   // we silently filter rather than aborting the whole send.
-  let cc = opts.cc && opts.cc.length > 0 ? opts.cc : undefined;
+  let cc = ccIn;
   if (cc) {
-    const flaggedCcs = await db.client.findMany({
-      where: {
-        organizationId: opts.organizationId,
-        email: { in: cc },
-        OR: [{ emailBouncedAt: { not: null } }, { emailComplainedAt: { not: null } }],
-      },
-      select: { email: true },
-    });
     if (flaggedCcs.length > 0) {
       const flaggedSet = new Set(flaggedCcs.map((c) => c.email).filter(Boolean) as string[]);
       cc = cc.filter((addr) => !flaggedSet.has(addr));
@@ -97,26 +113,18 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY);
 
-  const bcc = await getOwnerBcc(opts.organizationId);
-
   // Non-transactional mail gets a manage-preferences footer plus RFC 8058
   // one-click List-Unsubscribe headers (mailbox providers require these for
   // bulk-ish senders and surface their own unsubscribe button from them).
   let html = opts.html;
   let unsubscribeHeaders: Record<string, string> | undefined;
-  if (opts.clientId && opts.emailKind) {
-    const client = await db.client.findUnique({
-      where: { id: opts.clientId },
-      select: { emailPreferencesToken: true },
-    });
-    if (client) {
-      const url = buildEmailPreferencesUrl(client.emailPreferencesToken);
-      html = appendEmailPreferencesFooter(html, url);
-      unsubscribeHeaders = {
-        "List-Unsubscribe": `<${url}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      };
-    }
+  if (prefClient) {
+    const url = buildEmailPreferencesUrl(prefClient.emailPreferencesToken);
+    html = appendEmailPreferencesFooter(html, url);
+    unsubscribeHeaders = {
+      "List-Unsubscribe": `<${url}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    };
   }
 
   // Inbound threading: when an inbound domain is configured and the email

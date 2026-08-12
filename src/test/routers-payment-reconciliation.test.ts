@@ -3,7 +3,10 @@ import { createMockContext } from "./mocks/trpc-context";
 import { InvoiceStatus } from "@/generated/prisma";
 import { paymentReconciliationRouter } from "@/server/routers/paymentReconciliation";
 
-vi.mock("@/server/services/audit", () => ({ logAudit: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/server/services/audit", () => ({
+  logAudit: vi.fn().mockResolvedValue(undefined),
+  logAuditMany: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@/server/services/payment-receipt-email", () => ({
   sendPaymentReceiptEmail: vi.fn().mockResolvedValue(undefined),
 }));

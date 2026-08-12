@@ -8,10 +8,12 @@ import { logAudit } from "@/server/services/audit";
 // Mock external services used by procedures
 vi.mock("@/server/services/audit", () => ({
   logAudit: vi.fn().mockResolvedValue(undefined),
+  logAuditMany: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/server/services/notifications", () => ({
   notifyOrgAdmins: vi.fn().mockResolvedValue(undefined),
+  notifyOrgAdminsMany: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/server/services/invoice-numbering", () => ({

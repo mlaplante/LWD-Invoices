@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { clientEmailPreference, client } = vi.hoisted(() => ({
+const { clientEmailPreference, client, organization } = vi.hoisted(() => ({
   clientEmailPreference: { findUnique: vi.fn(), upsert: vi.fn() },
   client: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
+  // sendEmail fetches the owner-BCC setting concurrently with the
+  // suppression checks, so the org lookup runs even for suppressed sends.
+  organization: { findUnique: vi.fn().mockResolvedValue(null) },
 }));
-vi.mock("@/server/db", () => ({ db: { clientEmailPreference, client } }));
+vi.mock("@/server/db", () => ({ db: { clientEmailPreference, client, organization } }));
 
 import {
   ALL_EMAIL_PREFERENCE_KINDS,

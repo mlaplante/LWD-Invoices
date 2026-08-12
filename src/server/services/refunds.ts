@@ -260,27 +260,23 @@ export async function reconcileChargeRefunds(
   let reconciled = 0;
   for (const r of refunds) {
     const status = mapStripeRefundStatus(r.status);
-    const existing = await db.refund.findUnique({
+    // stripeRefundId is @unique — upsert does the exists-check and the write
+    // in one round-trip, and is race-safe against concurrent webhook retries.
+    await db.refund.upsert({
       where: { stripeRefundId: r.id },
-      select: { id: true },
+      update: { status },
+      create: {
+        stripeRefundId: r.id,
+        amount: new Prisma.Decimal((r.amount ?? 0) / 100),
+        currency: (r.currency ?? charge.currency ?? "usd").toUpperCase(),
+        reason: r.reason ?? null,
+        status,
+        method: "stripe",
+        paymentId: payment.id,
+        invoiceId: payment.invoiceId,
+        organizationId: orgId,
+      },
     });
-    if (existing) {
-      await db.refund.update({ where: { id: existing.id }, data: { status } });
-    } else {
-      await db.refund.create({
-        data: {
-          stripeRefundId: r.id,
-          amount: new Prisma.Decimal((r.amount ?? 0) / 100),
-          currency: (r.currency ?? charge.currency ?? "usd").toUpperCase(),
-          reason: r.reason ?? null,
-          status,
-          method: "stripe",
-          paymentId: payment.id,
-          invoiceId: payment.invoiceId,
-          organizationId: orgId,
-        },
-      });
-    }
     reconciled++;
   }
   return { reconciled };

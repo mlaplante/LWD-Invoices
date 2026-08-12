@@ -88,16 +88,12 @@ export async function generateDueCheckInsForOrg(params: {
     select: { id: true, clientId: true, updatedAt: true },
   });
 
-  for (const project of recentlyCompleted) {
-    const created = await upsertCheckIn({
-      organizationId: params.organizationId,
-      clientId: project.clientId,
-      projectId: project.id,
-      touchType: ClientCheckInTouchType.THIRTY_DAY,
-      dueAt: now,
-    });
-    if (created) counts.thirtyDay++;
-  }
+  counts.thirtyDay = await bulkUpsertProjectCheckIns({
+    organizationId: params.organizationId,
+    touchType: ClientCheckInTouchType.THIRTY_DAY,
+    projects: recentlyCompleted,
+    dueAt: now,
+  });
 
   // ── Quarterly: clients with last touch > 90d ago, capped one per client ─
   const ninetyDaysAgo = new Date(now.getTime() - 90 * DAY_MS);
@@ -126,23 +122,26 @@ export async function generateDueCheckInsForOrg(params: {
     },
   });
 
-  for (const client of candidateClients) {
+  const quarterlyDue = candidateClients.filter((client) => {
     const last = client.checkIns[0];
     if (last) {
       // Skip if there's an open one already or the last one was < 90d ago.
-      if (last.status === ClientCheckInStatus.PENDING) continue;
-      if (last.dueAt.getTime() > ninetyDaysAgo.getTime()) continue;
+      if (last.status === ClientCheckInStatus.PENDING) return false;
+      if (last.dueAt.getTime() > ninetyDaysAgo.getTime()) return false;
     }
-    await db.clientCheckIn.create({
-      data: {
+    return true;
+  });
+  if (quarterlyDue.length > 0) {
+    await db.clientCheckIn.createMany({
+      data: quarterlyDue.map((client) => ({
         organizationId: params.organizationId,
         clientId: client.id,
         touchType: ClientCheckInTouchType.QUARTERLY,
         dueAt: now,
-      },
+      })),
     });
-    counts.quarterly++;
   }
+  counts.quarterly = quarterlyDue.length;
 
   // ── Annual: project anniversaries (within ±7d window) ──────────────────
   const yearStart = new Date(now.getTime() - (365 + 7) * DAY_MS);
@@ -159,48 +158,51 @@ export async function generateDueCheckInsForOrg(params: {
     select: { id: true, clientId: true },
   });
 
-  for (const project of anniversaryProjects) {
-    const created = await upsertCheckIn({
-      organizationId: params.organizationId,
-      clientId: project.clientId,
-      projectId: project.id,
-      touchType: ClientCheckInTouchType.ANNUAL,
-      dueAt: now,
-    });
-    if (created) counts.annual++;
-  }
+  counts.annual = await bulkUpsertProjectCheckIns({
+    organizationId: params.organizationId,
+    touchType: ClientCheckInTouchType.ANNUAL,
+    projects: anniversaryProjects,
+    dueAt: now,
+  });
 
   return counts;
 }
 
-async function upsertCheckIn(params: {
+/**
+ * Idempotent bulk insert of one check-in per project: one findMany to learn
+ * which projects already have a check-in of this touch type, one createMany
+ * for the rest — instead of a find + create pair per project.
+ */
+async function bulkUpsertProjectCheckIns(params: {
   organizationId: string;
-  clientId: string;
-  projectId: string | null;
   touchType: ClientCheckInTouchType;
+  projects: { id: string; clientId: string }[];
   dueAt: Date;
-}): Promise<boolean> {
-  const existing = await db.clientCheckIn.findFirst({
+}): Promise<number> {
+  if (params.projects.length === 0) return 0;
+
+  const existing = await db.clientCheckIn.findMany({
     where: {
       organizationId: params.organizationId,
-      clientId: params.clientId,
-      projectId: params.projectId ?? undefined,
       touchType: params.touchType,
+      projectId: { in: params.projects.map((p) => p.id) },
     },
-    select: { id: true },
+    select: { projectId: true },
   });
-  if (existing) return false;
+  const alreadyQueued = new Set(existing.map((c) => c.projectId));
+  const fresh = params.projects.filter((p) => !alreadyQueued.has(p.id));
+  if (fresh.length === 0) return 0;
 
-  await db.clientCheckIn.create({
-    data: {
+  await db.clientCheckIn.createMany({
+    data: fresh.map((p) => ({
       organizationId: params.organizationId,
-      clientId: params.clientId,
-      projectId: params.projectId ?? undefined,
+      clientId: p.clientId,
+      projectId: p.id,
       touchType: params.touchType,
       dueAt: params.dueAt,
-    },
+    })),
   });
-  return true;
+  return fresh.length;
 }
 
 export function totalNewCheckIns(counts: CheckInCounts): number {

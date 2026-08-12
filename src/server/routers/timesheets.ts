@@ -13,41 +13,42 @@ export const timesheetsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({
-        where: { id: ctx.orgId },
-        select: { taskTimeInterval: true },
-      });
-      const interval = org?.taskTimeInterval ?? 0;
-
-      const entries = await ctx.db.timeEntry.findMany({
-        where: {
-          organizationId: ctx.orgId,
-          ...(input.projectId ? { projectId: input.projectId } : {}),
-          ...(input.userId ? { userId: input.userId } : {}),
-          ...(input.dateFrom || input.dateTo
-            ? {
-                date: {
-                  ...(input.dateFrom ? { gte: input.dateFrom } : {}),
-                  ...(input.dateTo ? { lte: input.dateTo } : {}),
+      const [org, entries] = await Promise.all([
+        ctx.db.organization.findFirst({
+          where: { id: ctx.orgId },
+          select: { taskTimeInterval: true },
+        }),
+        ctx.db.timeEntry.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            ...(input.projectId ? { projectId: input.projectId } : {}),
+            ...(input.userId ? { userId: input.userId } : {}),
+            ...(input.dateFrom || input.dateTo
+              ? {
+                  date: {
+                    ...(input.dateFrom ? { gte: input.dateFrom } : {}),
+                    ...(input.dateTo ? { lte: input.dateTo } : {}),
+                  },
+                }
+              : {}),
+          },
+          include: {
+            task: { select: { id: true, name: true } },
+            project: {
+              select: {
+                id: true,
+                name: true,
+                rate: true,
+                currency: {
+                  select: { code: true, symbol: true, symbolPosition: true },
                 },
-              }
-            : {}),
-        },
-        include: {
-          task: { select: { id: true, name: true } },
-          project: {
-            select: {
-              id: true,
-              name: true,
-              rate: true,
-              currency: {
-                select: { code: true, symbol: true, symbolPosition: true },
               },
             },
           },
-        },
-        orderBy: { date: "desc" },
-      });
+          orderBy: { date: "desc" },
+        }),
+      ]);
+      const interval = org?.taskTimeInterval ?? 0;
 
       return entries.map((e) => ({
         ...e,
@@ -67,37 +68,38 @@ export const timesheetsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const org = await ctx.db.organization.findFirst({
-        where: { id: ctx.orgId },
-        select: { taskTimeInterval: true },
-      });
-      const interval = org?.taskTimeInterval ?? 0;
-
-      const entries = await ctx.db.timeEntry.findMany({
-        where: {
-          organizationId: ctx.orgId,
-          ...(input.projectId ? { projectId: input.projectId } : {}),
-          ...(input.userId ? { userId: input.userId } : {}),
-          ...(input.dateFrom || input.dateTo
-            ? {
-                date: {
-                  ...(input.dateFrom ? { gte: input.dateFrom } : {}),
-                  ...(input.dateTo ? { lte: input.dateTo } : {}),
-                },
-              }
-            : {}),
-        },
-        include: {
-          project: {
-            select: {
-              id: true,
-              name: true,
-              rate: true,
-              currency: { select: { code: true, symbol: true, symbolPosition: true } },
+      const [org, entries] = await Promise.all([
+        ctx.db.organization.findFirst({
+          where: { id: ctx.orgId },
+          select: { taskTimeInterval: true },
+        }),
+        ctx.db.timeEntry.findMany({
+          where: {
+            organizationId: ctx.orgId,
+            ...(input.projectId ? { projectId: input.projectId } : {}),
+            ...(input.userId ? { userId: input.userId } : {}),
+            ...(input.dateFrom || input.dateTo
+              ? {
+                  date: {
+                    ...(input.dateFrom ? { gte: input.dateFrom } : {}),
+                    ...(input.dateTo ? { lte: input.dateTo } : {}),
+                  },
+                }
+              : {}),
+          },
+          include: {
+            project: {
+              select: {
+                id: true,
+                name: true,
+                rate: true,
+                currency: { select: { code: true, symbol: true, symbolPosition: true } },
+              },
             },
           },
-        },
-      });
+        }),
+      ]);
+      const interval = org?.taskTimeInterval ?? 0;
 
       const groups = new Map<
         string,

@@ -8,8 +8,8 @@ import { assertInOrg } from "../lib/get-for-org";
 import { resolvePartialPaymentAmount } from "../services/partial-payments";
 import { idInput, paginationInput } from "../lib/schemas";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
-import { logAudit } from "../services/audit";
-import { notifyOrgAdmins } from "../services/notifications";
+import { logAudit, logAuditMany } from "../services/audit";
+import { notifyOrgAdminsMany } from "../services/notifications";
 import { getAppUrl } from "@/lib/app-url";
 import { sendPaymentReceiptEmail } from "../services/payment-receipt-email";
 import {
@@ -1067,13 +1067,18 @@ export const invoicesRouter = router({
 
       const appUrl = await getAppUrl();
 
+      // Load the shared helpers once, not once per invoice in the loop below.
+      const [{ invoiceLinesAllNamed }, { sendInvoiceSentEmail }] = await Promise.all([
+        import("@/server/services/invoice-send"),
+        import("@/server/services/invoice-sent-email"),
+      ]);
+
       const errors: string[] = [];
       const results = await Promise.allSettled(
         invoices.map(async (invoice) => {
           // Unnamed lines can only reach here via a DRAFT autosave snapshot
           // (see draftLineSchema); a bulk send must still refuse to expose
           // one to a client, same as the single-invoice `send` path.
-          const { invoiceLinesAllNamed } = await import("@/server/services/invoice-send");
           if (!invoiceLinesAllNamed(invoice.lines)) {
             throw new TRPCError({
               code: "BAD_REQUEST",
@@ -1092,29 +1097,10 @@ export const invoicesRouter = router({
 
           // Send email if client has email
           try {
-            const { sendInvoiceSentEmail } = await import("@/server/services/invoice-sent-email");
             await sendInvoiceSentEmail(invoice, appUrl);
           } catch (err) {
             console.error(`[invoices.sendMany] Failed to email invoice ${invoice.number}:`, err);
           }
-
-          // Audit + notification (non-blocking)
-          await Promise.all([
-            logAudit({
-              action: "SENT",
-              entityType: "Invoice",
-              entityId: invoice.id,
-              entityLabel: invoice.number,
-              organizationId: invoice.organization.id,
-              userId: ctx.userId,
-            }).catch(() => {}),
-            notifyOrgAdmins(invoice.organization.id, {
-              type: "INVOICE_SENT",
-              title: "Invoice sent",
-              body: `Invoice #${invoice.number} sent to ${invoice.client.name}`,
-              link: `/invoices/${invoice.id}`,
-            }).catch(() => {}),
-          ]);
         })
       );
 
@@ -1125,6 +1111,33 @@ export const invoicesRouter = router({
           errors.push(r.reason?.message ?? "Unknown error");
         }
       });
+
+      // Audit + notification (non-blocking): one createMany each for the
+      // whole batch instead of per-invoice writes and admin lookups.
+      const sentInvoices = invoices.filter((_, i) => results[i]!.status === "fulfilled");
+      if (sentInvoices.length > 0) {
+        await Promise.all([
+          logAuditMany(
+            sentInvoices.map((invoice) => ({
+              action: "SENT" as const,
+              entityType: "Invoice",
+              entityId: invoice.id,
+              entityLabel: invoice.number,
+              organizationId: ctx.orgId,
+              userId: ctx.userId,
+            }))
+          ).catch(() => {}),
+          notifyOrgAdminsMany(
+            ctx.orgId,
+            sentInvoices.map((invoice) => ({
+              type: "INVOICE_SENT" as const,
+              title: "Invoice sent",
+              body: `Invoice #${invoice.number} sent to ${invoice.client.name}`,
+              link: `/invoices/${invoice.id}`,
+            }))
+          ).catch(() => {}),
+        ]);
+      }
 
       return {
         sent,
@@ -1222,28 +1235,31 @@ export const invoicesRouter = router({
           // Non-fatal
         }
 
-        // Send receipt emails directly (with BCC to owner)
-        for (const inv of successInvoices) {
-          try {
-            await sendPaymentReceiptEmail({
-              invoiceId: inv.id,
-              amountPaid: inv.total.toNumber(),
-              organizationId: ctx.orgId,
-            });
-          } catch (err) {
-            console.error("[markPaidMany] Failed to send receipt email:", err);
-          }
-        }
+        // Send receipt emails directly (with BCC to owner). Each send is
+        // independent — run them concurrently instead of one at a time.
+        await Promise.all(
+          successInvoices.map(async (inv) => {
+            try {
+              await sendPaymentReceiptEmail({
+                invoiceId: inv.id,
+                amountPaid: inv.total.toNumber(),
+                organizationId: ctx.orgId,
+              });
+            } catch (err) {
+              console.error("[markPaidMany] Failed to send receipt email:", err);
+            }
+          })
+        );
 
-        await Promise.all(successInvoices.map((inv) => logAudit({
-          action: "PAYMENT_RECEIVED",
+        await logAuditMany(successInvoices.map((inv) => ({
+          action: "PAYMENT_RECEIVED" as const,
           entityType: "Invoice",
           entityId: inv.id,
           entityLabel: inv.number,
           diff: { method: input.method, amount: Number(inv.total) },
           userId: ctx.userId,
           organizationId: ctx.orgId,
-        }).catch(() => {})));
+        }))).catch(() => {});
       }
 
       return { paid, failed, skipped: input.ids.length - invoices.length, errors };

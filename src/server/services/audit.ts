@@ -22,3 +22,15 @@ export async function logAudit(input: AuditInput): Promise<void> {
     },
   });
 }
+
+export async function logAuditMany(inputs: AuditInput[]): Promise<void> {
+  if (inputs.length === 0) return;
+  await db.auditLog.createMany({
+    data: inputs.map((input) => ({
+      ...input,
+      diff: input.diff !== undefined
+        ? (input.diff as Prisma.InputJsonValue)
+        : undefined,
+    })),
+  });
+}
