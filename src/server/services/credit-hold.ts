@@ -68,24 +68,25 @@ export async function getClientCreditStatus(
   clientId: string,
   healthScore?: number | null,
 ): Promise<ClientCreditStatus> {
-  const client = await db.client.findFirst({
-    where: { id: clientId, organizationId: orgId },
-    select: {
-      id: true,
-      creditLimit: true,
-      creditHold: true,
-      creditHoldAuto: true,
-      creditHoldReason: true,
-      creditHoldSetAt: true,
-      autoCreditHoldEnabled: true,
-      autoCreditHoldThreshold: true,
-    },
-  });
+  const [client, exposure] = await Promise.all([
+    db.client.findFirst({
+      where: { id: clientId, organizationId: orgId },
+      select: {
+        id: true,
+        creditLimit: true,
+        creditHold: true,
+        creditHoldAuto: true,
+        creditHoldReason: true,
+        creditHoldSetAt: true,
+        autoCreditHoldEnabled: true,
+        autoCreditHoldThreshold: true,
+      },
+    }),
+    computeExposure(db, orgId, clientId),
+  ]);
   if (!client) {
     throw new Error("Client not found");
   }
-
-  const exposure = await computeExposure(db, orgId, clientId);
   const creditLimit = client.creditLimit !== null ? toNum(client.creditLimit) : null;
   const overLimitBy =
     creditLimit !== null && exposure > creditLimit

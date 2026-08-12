@@ -104,14 +104,14 @@ describe("Reports Router Procedures", () => {
       );
     });
 
-    it("includes client and currency relations", async () => {
+    it("selects client and currency relations", async () => {
       ctx.db.invoice.findMany.mockResolvedValue([]);
 
       await caller.unpaidInvoices({});
 
       expect(ctx.db.invoice.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          include: expect.objectContaining({
+          select: expect.objectContaining({
             client: { select: { id: true, name: true } },
             currency: { select: { id: true, code: true, symbol: true, symbolPosition: true } },
           }),
@@ -1522,14 +1522,14 @@ describe("Reports Router Procedures", () => {
       );
     });
 
-    it("includes client and currency relations", async () => {
+    it("selects client and currency relations", async () => {
       ctx.db.invoice.findMany.mockResolvedValue([]);
 
       await caller.overdueInvoices();
 
       expect(ctx.db.invoice.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          include: expect.objectContaining({
+          select: expect.objectContaining({
             client: { select: { id: true, name: true } },
             currency: { select: { id: true, code: true, symbol: true, symbolPosition: true } },
           }),

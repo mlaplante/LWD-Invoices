@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { InvoiceStatus, UnmatchedPaymentStatus } from "@/generated/prisma";
 import { z } from "zod";
 import { protectedProcedure, requireRole, router } from "../trpc";
-import { logAudit } from "../services/audit";
+import { logAudit, logAuditMany } from "../services/audit";
 import { resolvePaymentStatus } from "../services/invoice-balance";
 import { sendPaymentReceiptEmail } from "../services/payment-receipt-email";
 
@@ -180,27 +180,32 @@ export const paymentReconciliationRouter = router({
         return applications;
       });
 
-      await Promise.all(matched.map(async (application) => {
-        const { inngest } = await import("@/inngest/client");
-        await inngest.send({
-          name: "invoice/payment.received",
-          data: { invoiceId: application.invoiceId, trigger: "PAYMENT_RECEIVED" },
-        }).catch(() => {});
-        await sendPaymentReceiptEmail({
-          invoiceId: application.invoiceId,
-          amountPaid: application.amount,
-          organizationId: ctx.orgId,
-        }).catch(() => {});
-        await logAudit({
-          action: "PAYMENT_RECEIVED",
+      // Post-transaction side effects are independent of each other — fire the
+      // automation events and receipt emails concurrently, and write all the
+      // audit rows in one createMany.
+      const { inngest } = await import("@/inngest/client");
+      await Promise.all([
+        ...matched.map((application) =>
+          inngest.send({
+            name: "invoice/payment.received",
+            data: { invoiceId: application.invoiceId, trigger: "PAYMENT_RECEIVED" },
+          }).catch(() => {})),
+        ...matched.map((application) =>
+          sendPaymentReceiptEmail({
+            invoiceId: application.invoiceId,
+            amountPaid: application.amount,
+            organizationId: ctx.orgId,
+          }).catch(() => {})),
+        logAuditMany(matched.map((application) => ({
+          action: "PAYMENT_RECEIVED" as const,
           entityType: "Invoice",
           entityId: application.invoiceId,
           entityLabel: application.invoiceNumber,
           diff: { amount: application.amount, source: "UnmatchedPayment" },
           userId: ctx.userId,
           organizationId: ctx.orgId,
-        }).catch(() => {});
-      }));
+        }))).catch(() => {}),
+      ]);
 
       return { matched: matched.length };
     }),

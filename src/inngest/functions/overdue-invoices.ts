@@ -15,30 +15,41 @@ export const processOverdueInvoices = inngest.createFunction(
     const now = new Date();
 
     // Self-healing: revert OVERDUE → PARTIALLY_PAID for installment invoices
-    // whose next installment isn't due yet (fixes incorrectly marked invoices)
+    // whose next installment isn't due yet (fixes incorrectly marked invoices).
+    // Only invoices with at least one unpaid, future-due installment can
+    // qualify, so filter to those in SQL instead of scanning every OVERDUE
+    // invoice across all orgs; the exact "is the NEXT unpaid installment
+    // future-due" check still happens below.
     const wronglyOverdue = await db.invoice.findMany({
       where: {
         status: "OVERDUE",
         type: { in: ["SIMPLE", "DETAILED"] },
         isArchived: false,
+        partialPayments: { some: { isPaid: false, dueDate: { gt: now } } },
       },
-      include: { partialPayments: true },
+      select: {
+        id: true,
+        partialPayments: { select: { sortOrder: true, isPaid: true, dueDate: true } },
+      },
     });
 
-    let reverted = 0;
+    const revertIds: string[] = [];
     for (const invoice of wronglyOverdue) {
       if (invoice.partialPayments.length > 0) {
         const sorted = [...invoice.partialPayments].sort((a, b) => a.sortOrder - b.sortOrder);
         const nextUnpaid = sorted.find((pp) => !pp.isPaid);
         if (nextUnpaid?.dueDate && nextUnpaid.dueDate > now) {
-          await db.invoice.update({
-            where: { id: invoice.id },
-            data: { status: "PARTIALLY_PAID" },
-          });
-          reverted++;
+          revertIds.push(invoice.id);
         }
       }
     }
+    if (revertIds.length > 0) {
+      await db.invoice.updateMany({
+        where: { id: { in: revertIds } },
+        data: { status: "PARTIALLY_PAID" },
+      });
+    }
+    const reverted = revertIds.length;
 
     const invoices = await db.invoice.findMany({
       where: {
