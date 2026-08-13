@@ -258,23 +258,26 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      {/* Greeting — renders immediately */}
-      <div className="flex items-start justify-between">
+      {/* Greeting — renders immediately. Date sits above the name as a
+          mono eyebrow, so the greeting itself carries the display weight. */}
+      <div className="flex flex-col gap-4 pb-1.5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="font-display text-3xl tracking-tight">
+          <p className="mb-1.5 font-mono text-[11px] tracking-[1px] text-muted-foreground">
+            {dateLabel}
+          </p>
+          <h1 className="font-display text-[28px] leading-[1.1] lg:text-[32px]">
             {greeting}
             {user?.user_metadata?.firstName
               ? `, ${user.user_metadata.firstName}`
               : ""}
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{dateLabel}</p>
         </div>
-        {/* Edit layout button — client island */}
-        <DashboardLayoutEditor />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <QuickActions />
+          {/* Edit layout button — client island */}
+          <DashboardLayoutEditor />
+        </div>
       </div>
-
-      {/* Quick Actions — static, renders immediately */}
-      <QuickActions />
 
       {/* Widget sections — in saved order, hidden ones skipped */}
       {layout

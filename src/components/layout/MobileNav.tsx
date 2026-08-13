@@ -4,14 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { usePathname } from "next/navigation";
-import {
-  Wallet,
-  MoreHorizontal,
-  Clock,
-  Plus,
-  Send,
-} from "lucide-react";
-import { MOBILE_TABS, NAV_SECTIONS, isNavItemActive } from "@/lib/nav-items";
+import { Wallet, Clock, Plus, Send } from "lucide-react";
+import { MOBILE_TABS, NAV_HUBS, isNavItemActive } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
 import {
   QuickExpenseSheet,
@@ -20,137 +14,123 @@ import {
 } from "@/components/actions";
 
 const mobileTabHrefs = new Set(MOBILE_TABS.map((item) => item.href));
-const moreNavSections = NAV_SECTIONS.map((section) => ({
-  ...section,
-  items: section.items.filter((item) => !mobileTabHrefs.has(item.href)),
-})).filter((section) => section.items.length > 0);
+
+// Everything the four tabs don't already reach, grouped by hub. The sheet
+// is the only way to these routes on mobile, so nothing may be dropped.
+const sheetHubs = NAV_HUBS.map((hub) => ({
+  ...hub,
+  items: (hub.items.length
+    ? hub.items
+    : [{ href: hub.href, label: hub.label, icon: hub.icon }]
+  ).filter((item) => !mobileTabHrefs.has(item.href)),
+})).filter((hub) => hub.items.length > 0);
 
 type MobileAction = "expense" | "reminder" | "timer" | null;
 
-export function MobileNav({
-  orgName,
-  activeOrgId,
-}: {
-  orgName?: string | null;
-  activeOrgId?: string;
-}) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+/**
+ * Bottom tab bar per the repo's MOBILE_TABS, split by a 52px indigo FAB
+ * that overlaps the bar by 30px. The FAB opens the New Invoice sheet —
+ * New Invoice is its headline action, with the other quick actions and
+ * the full hub nav below it, since the sheet is mobile's only route to
+ * the destinations the four tabs don't cover.
+ *
+ * Every tap target is at least 44px tall.
+ */
+export function MobileNav({ activeOrgId }: { activeOrgId?: string }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [action, setAction] = useState<MobileAction>(null);
   const pathname = usePathname();
 
-  function isActive(href: string) {
-    return isNavItemActive(href, pathname);
-  }
-
-  const moreActive = moreNavSections.some((section) =>
-    section.items.some((item) => isActive(item.href)),
-  );
+  const isActive = (href: string) => isNavItemActive(href, pathname);
+  const [leftTabs, rightTabs] = [MOBILE_TABS.slice(0, 2), MOBILE_TABS.slice(2)];
 
   return (
     <>
-      {/* Backdrop */}
-      {drawerOpen && (
+      {sheetOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-30 bg-black/50 backdrop-blur-sm"
-          onClick={() => setDrawerOpen(false)}
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSheetOpen(false)}
         />
       )}
 
-      {/* Slide-up drawer */}
+      {/* New Invoice sheet */}
       <div
         id="mobile-navigation-menu"
         className={cn(
-          "lg:hidden fixed inset-x-0 bottom-0 z-40 bg-sidebar rounded-t-[28px]",
+          "fixed inset-x-0 bottom-0 z-40 rounded-t-[24px] bg-card lg:hidden",
           "max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain",
           "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
-          drawerOpen ? "translate-y-0" : "translate-y-full",
+          sheetOpen ? "translate-y-0" : "translate-y-full",
         )}
-        style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
-        }}
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)" }}
       >
-        {/* Drag handle — tappable close target, pinned while the drawer scrolls */}
         <button
           type="button"
-          onClick={() => setDrawerOpen(false)}
+          onClick={() => setSheetOpen(false)}
           aria-label="Close menu"
-          className="sticky top-0 z-10 w-full flex justify-center pt-3 pb-2 bg-sidebar rounded-t-[28px]"
+          className="sticky top-0 z-10 flex w-full justify-center rounded-t-[24px] bg-card pb-2 pt-3"
         >
-          <div className="w-9 h-1 rounded-full bg-sidebar-foreground/20" />
+          <div className="h-1 w-9 rounded-full bg-foreground/15" />
         </button>
 
-        {/* New Invoice CTA */}
-        <div className="px-5 pt-2 pb-5">
+        <div className="px-5 pb-5 pt-2">
           <Link
             href="/invoices/new"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl py-3.5 text-sm font-semibold shadow-lg shadow-primary/25 active:opacity-90 transition-opacity"
+            onClick={() => setSheetOpen(false)}
+            className="flex items-center justify-center gap-2 rounded-[6px] bg-primary py-3.5 text-[11px] font-semibold uppercase tracking-[2px] text-primary-foreground shadow-[0_4px_15px_rgba(63,81,181,0.4)]"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="size-4" />
             New Invoice
           </Link>
         </div>
 
-        {/* Quick actions — shared action primitives */}
-        <div className="px-4 grid grid-cols-3 gap-2 pb-3">
-          <button
-            onClick={() => {
-              setDrawerOpen(false);
-              setAction("expense");
-            }}
-            className="flex flex-col items-center gap-2 py-4 rounded-2xl text-sidebar-foreground/70 active:bg-sidebar-accent/40"
-          >
-            <Wallet className="w-5 h-5" />
-            <span className="text-[11px] font-semibold">Log expense</span>
-          </button>
-          <button
-            onClick={() => {
-              setDrawerOpen(false);
-              setAction("timer");
-            }}
-            className="flex flex-col items-center gap-2 py-4 rounded-2xl text-sidebar-foreground/70 active:bg-sidebar-accent/40"
-          >
-            <Clock className="w-5 h-5" />
-            <span className="text-[11px] font-semibold">Start timer</span>
-          </button>
-          <button
-            onClick={() => {
-              setDrawerOpen(false);
-              setAction("reminder");
-            }}
-            className="flex flex-col items-center gap-2 py-4 rounded-2xl text-sidebar-foreground/70 active:bg-sidebar-accent/40"
-          >
-            <Send className="w-5 h-5" />
-            <span className="text-[11px] font-semibold">Send reminder</span>
-          </button>
+        <div className="grid grid-cols-3 gap-2 px-4 pb-3">
+          {(
+            [
+              { key: "expense", icon: Wallet, label: "Log expense" },
+              { key: "timer", icon: Clock, label: "Start timer" },
+              { key: "reminder", icon: Send, label: "Send reminder" },
+            ] as const
+          ).map(({ key, icon: Icon, label }) => (
+            <button
+              key={key}
+              onClick={() => {
+                setSheetOpen(false);
+                setAction(key);
+              }}
+              className="flex min-h-[44px] flex-col items-center gap-2 rounded-[10px] py-4 text-muted-foreground active:bg-accent"
+            >
+              <Icon className="size-5" />
+              <span className="text-[11px] font-medium">{label}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Secondary navigation, grouped to match desktop navigation */}
         <div className="space-y-4 px-4 pb-5">
-          {moreNavSections.map((section) => (
-            <section key={section.title}>
-              <p className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">
-                {section.title}
+          {sheetHubs.map((hub) => (
+            <section key={hub.id}>
+              <p className="px-1 pb-2 font-mono text-[9.5px] uppercase tracking-[1.5px] text-muted-foreground">
+                {hub.label}
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {section.items.map(({ href, label, icon: Icon }) => {
+                {hub.items.map(({ href, label, icon: Icon }) => {
                   const active = isActive(href);
                   return (
                     <Link
                       key={href}
                       href={href}
-                      onClick={() => setDrawerOpen(false)}
+                      onClick={() => setSheetOpen(false)}
                       className={cn(
-                        "flex flex-col items-center gap-2 py-4 rounded-2xl transition-colors",
+                        "flex min-h-[44px] flex-col items-center gap-2 rounded-[10px] px-1 py-4 text-center transition-colors",
                         active
-                          ? "bg-sidebar-accent text-sidebar-foreground"
-                          : "text-sidebar-foreground/50 active:bg-sidebar-accent/40",
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground active:bg-accent",
                       )}
                     >
-                      <Icon
-                        className={cn("w-5 h-5", active && "text-primary")}
-                      />
-                      <span className="text-[11px] font-semibold">{label}</span>
+                      <Icon className="size-5" />
+                      <span className="text-[11px] font-medium leading-tight">
+                        {label}
+                      </span>
                     </Link>
                   );
                 })}
@@ -159,7 +139,6 @@ export function MobileNav({
           ))}
         </div>
 
-        {/* Org switcher */}
         {activeOrgId && (
           <div className="mx-4">
             <OrgSwitcher currentOrgId={activeOrgId} />
@@ -167,56 +146,36 @@ export function MobileNav({
         )}
       </div>
 
-      {/* Bottom tab bar */}
+      {/* Tab bar */}
       <div
-        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-sidebar/95 backdrop-blur-xl border-t border-sidebar-border"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <nav aria-label="Mobile navigation" className="flex items-stretch h-16">
-          {MOBILE_TABS.map(({ href, label, icon: Icon }) => {
-            const active = isActive(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setDrawerOpen(false)}
-                className={cn(
-                  "flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors duration-150",
-                  active ? "text-primary" : "text-sidebar-foreground/35",
-                )}
-              >
-                {active && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-primary" />
-                )}
-                <Icon className="w-[19px] h-[19px]" />
-                <span className="text-[10px] font-semibold tracking-wide">
-                  {label}
-                </span>
-              </Link>
-            );
-          })}
+        <nav
+          aria-label="Mobile navigation"
+          className="flex items-center justify-around px-2 pb-2 pt-2.5"
+        >
+          {leftTabs.map((tab) => (
+            <Tab key={tab.href} {...tab} active={isActive(tab.href)} />
+          ))}
+
           <button
             type="button"
-            onClick={() => setDrawerOpen((o) => !o)}
+            onClick={() => setSheetOpen((open) => !open)}
             aria-controls="mobile-navigation-menu"
-            aria-expanded={drawerOpen}
-            className={cn(
-              "flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors duration-150",
-              moreActive ? "text-primary" : "text-sidebar-foreground/35",
-            )}
+            aria-expanded={sheetOpen}
+            aria-label="New invoice"
+            className="-mt-[30px] flex size-[52px] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_15px_rgba(63,81,181,0.4)] transition-transform duration-200 ease-[ease] active:scale-95"
           >
-            {moreActive && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-primary" />
-            )}
-            <MoreHorizontal className="w-[19px] h-[19px]" />
-            <span className="text-[10px] font-semibold tracking-wide">
-              More
-            </span>
+            <Plus className="size-6" />
           </button>
+
+          {rightTabs.map((tab) => (
+            <Tab key={tab.href} {...tab} active={isActive(tab.href)} />
+          ))}
         </nav>
       </div>
 
-      {/* Action primitives (shared with command palette) */}
       <QuickExpenseSheet
         open={action === "expense"}
         onOpenChange={(o) => !o && setAction(null)}
@@ -230,5 +189,33 @@ export function MobileNav({
         onOpenChange={(o) => !o && setAction(null)}
       />
     </>
+  );
+}
+
+function Tab({
+  href,
+  label,
+  icon: Icon,
+  active,
+}: {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex min-h-[44px] min-w-[56px] flex-col items-center justify-center gap-1 transition-colors duration-200 ease-[ease]",
+        active ? "text-primary" : "text-muted-foreground",
+      )}
+    >
+      <Icon className="size-[17px]" />
+      <span className={cn("text-[9px]", active ? "font-medium" : "font-normal")}>
+        {label}
+      </span>
+    </Link>
   );
 }
