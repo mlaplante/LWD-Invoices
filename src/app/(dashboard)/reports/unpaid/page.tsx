@@ -66,7 +66,7 @@ export default async function UnpaidReportPage() {
       {/* Table */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Unpaid
           </p>
           <p className="text-base font-semibold mt-0.5">Outstanding Invoices</p>

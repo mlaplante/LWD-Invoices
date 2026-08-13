@@ -39,7 +39,7 @@ export function CashFlowInsights({ data }: Props) {
               <Sparkles className="h-4 w-4" />
             </span>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">AI cash-flow insights</p>
+              <p className="eyebrow lowercase text-[11px]">AI cash-flow insights</p>
               <h2 className="text-base font-semibold">Narrative and action cards</h2>
             </div>
           </div>

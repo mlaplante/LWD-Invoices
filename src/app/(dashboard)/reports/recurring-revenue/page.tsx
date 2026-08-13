@@ -64,7 +64,7 @@ export default function RecurringRevenuePage() {
           </div>
 
           <div className="rounded-[10px] border border-border bg-card p-5">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+            <p className="eyebrow lowercase text-[11px] mb-3">
               MRR by source
             </p>
             <div className="space-y-2 text-sm">

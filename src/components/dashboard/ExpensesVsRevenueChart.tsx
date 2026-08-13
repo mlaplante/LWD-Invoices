@@ -24,7 +24,7 @@ export function ExpensesVsRevenueChart({ data }: Props) {
   return (
     <div className="rounded-[10px] border border-border bg-card overflow-hidden">
       <div className="px-5 py-4 border-b border-border">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+        <p className="eyebrow lowercase text-[11px]">
           Comparison
         </p>
         <p className="text-sm font-semibold mt-0.5">Revenue vs Expenses</p>
@@ -57,8 +57,8 @@ export function ExpensesVsRevenueChart({ data }: Props) {
             <Tooltip
               contentStyle={{
                 borderRadius: "0.75rem",
-                border: "1px solid hsl(var(--border))",
-                backgroundColor: "hsl(var(--card))",
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--card)",
                 fontSize: "0.8125rem",
                 boxShadow:
                   "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
@@ -74,7 +74,7 @@ export function ExpensesVsRevenueChart({ data }: Props) {
             <Bar
               dataKey="revenue"
               name="Revenue"
-              fill="hsl(var(--primary))"
+              fill="var(--primary)"
               radius={[4, 4, 0, 0]}
             />
             <Bar

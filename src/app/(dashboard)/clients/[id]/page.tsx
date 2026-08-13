@@ -239,7 +239,7 @@ export default async function ClientDetailPage({
 
         {/* Edit form */}
         <div className="px-8 py-6">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-5">
+          <p className="eyebrow lowercase text-[11px] mb-5">
             Edit Details
           </p>
           <ClientForm mode="edit" client={client} />

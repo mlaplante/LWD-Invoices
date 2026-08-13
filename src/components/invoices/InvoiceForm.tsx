@@ -679,8 +679,12 @@ export function InvoiceForm({
       </div>
 
       {view === "form" ? (
-        <>
-          {createFromPromptSection}
+        /* Draft on the left, review rail on the right — Pre-Send QA sits
+           beside the draft rather than behind a button, so problems are
+           visible while you're still editing. Single column under lg. */
+        <div className="grid items-start gap-5 lg:grid-cols-[1.55fr_1fr]">
+          <div className="min-w-0 space-y-6">
+            {createFromPromptSection}
 
           {/* Header fields */}
           <InvoiceMetadata
@@ -834,12 +838,6 @@ export function InvoiceForm({
             </div>
           </div>
 
-          {/* Payment Schedule */}
-          {paymentScheduleSection}
-
-          {/* Invoice Draft QA */}
-          {draftQASection}
-
           {/* Notes */}
           <div className="space-y-1">
             <label htmlFor="invoice-notes" className="text-sm font-medium">
@@ -855,8 +853,6 @@ export function InvoiceForm({
               rows={3}
             />
           </div>
-
-          {reminderOverrideSection}
 
           {/* Totals panel */}
           <div className="flex justify-end">
@@ -885,7 +881,15 @@ export function InvoiceForm({
               </div>
             </div>
           </div>
-        </>
+          </div>
+
+          {/* Review rail — sticky so QA stays in view down a long draft */}
+          <aside className="space-y-3.5 lg:sticky lg:top-5">
+            {draftQASection}
+            {paymentScheduleSection}
+            {reminderOverrideSection}
+          </aside>
+        </div>
       ) : (
         <InvoiceCanvasView
           value={form}

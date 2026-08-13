@@ -50,7 +50,7 @@ export function InvoiceComments({ invoiceId }: Props) {
           {comments.map((c) => (
             <div
               key={c.id}
-              className={`rounded-lg border p-4 ${c.isPrivate ? "border-warning/30 bg-warning/12/50" : "bg-card"}`}
+              className={`rounded-lg border p-4 ${c.isPrivate ? "border-warning/30 bg-warning/50" : "bg-card"}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">

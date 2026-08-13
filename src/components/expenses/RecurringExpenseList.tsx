@@ -58,7 +58,7 @@ export function RecurringExpenseList() {
 
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             All Recurring Expenses
           </p>
         </div>

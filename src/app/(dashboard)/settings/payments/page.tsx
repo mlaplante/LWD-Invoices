@@ -26,7 +26,7 @@ export default function PaymentsSettingsPage() {
       {/* Content card */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Payment Settings
           </p>
           <p className="text-base font-semibold mt-1">Payment Gateways</p>
@@ -42,7 +42,7 @@ export default function PaymentsSettingsPage() {
       {/* Stripe Tax — adjacent because it depends on the Stripe gateway above */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Tax Computation
           </p>
           <p className="text-base font-semibold mt-1">Stripe Tax</p>
@@ -59,7 +59,7 @@ export default function PaymentsSettingsPage() {
       {/* Dunning — lives here because it acts on the Stripe auto-charge flow */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Payment Recovery
           </p>
           <p className="text-base font-semibold mt-1">Failed-Payment Recovery</p>
@@ -76,7 +76,7 @@ export default function PaymentsSettingsPage() {
       {/* Early-payment discount — incentive lever on the same pay flow */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Payment Incentives
           </p>
           <p className="text-base font-semibold mt-1">Early-Payment Discount</p>

@@ -95,7 +95,7 @@ export default async function TaxDashboardPage({
       {/* Income by category */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Income</p>
+          <p className="eyebrow lowercase text-[11px]">Income</p>
           <p className="text-base font-semibold mt-0.5">By Service (ex-tax, cash collected)</p>
         </div>
         {data.incomeByCategory.length === 0 ? (
@@ -144,7 +144,7 @@ export default async function TaxDashboardPage({
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="eyebrow lowercase text-[11px]">
               Expenses
             </p>
             <p className="text-base font-semibold mt-0.5">Deductible by Category</p>

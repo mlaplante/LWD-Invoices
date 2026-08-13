@@ -224,7 +224,7 @@ export function ExpenseList() {
       {/* Table */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             All Expenses
           </p>
         </div>
@@ -387,7 +387,7 @@ export function ExpenseList() {
                 {recurringExpenses.length > 0 && expenses.length > 0 && (
                   <tr>
                     <td colSpan={9} className="px-6 py-1.5 bg-muted/30">
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      <p className="eyebrow lowercase text-[11px]">
                         One-Time Expenses
                       </p>
                     </td>

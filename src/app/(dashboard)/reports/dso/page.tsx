@@ -65,7 +65,7 @@ export default async function DsoDashboardPage() {
       {/* Headline metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-[10px] border border-border bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Days Sales Outstanding</p>
+          <p className="eyebrow lowercase text-[11px]">Days Sales Outstanding</p>
           <div className="flex items-baseline gap-2 mt-1">
             <p className="text-3xl font-bold tabular-nums">{currentDso.toFixed(1)}</p>
             <span className="text-sm text-muted-foreground">days</span>
@@ -81,12 +81,12 @@ export default async function DsoDashboardPage() {
           </p>
         </div>
         <div className="rounded-[10px] border border-border bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Receivable</p>
+          <p className="eyebrow lowercase text-[11px]">Total Receivable</p>
           <p className="text-3xl font-bold tabular-nums mt-1">${fmtMoney(aging.totalAR)}</p>
           <p className="text-xs text-muted-foreground mt-0.5">Outstanding balance, net of payments</p>
         </div>
         <div className="rounded-[10px] border border-border bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Open Invoices</p>
+          <p className="eyebrow lowercase text-[11px]">Open Invoices</p>
           <p className="text-3xl font-bold tabular-nums mt-1">{openCount}</p>
           <p className="text-xs text-muted-foreground mt-0.5">With a balance due</p>
         </div>
@@ -98,7 +98,7 @@ export default async function DsoDashboardPage() {
       {/* DSO trend chart */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 pt-5 pb-4 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">DSO Trend</p>
+          <p className="eyebrow lowercase text-[11px]">DSO Trend</p>
           <p className="text-base font-semibold mt-0.5">Last {trend.length} Months</p>
         </div>
         <div className="px-6 py-5">
@@ -115,12 +115,12 @@ export default async function DsoDashboardPage() {
                 style={{ display: "block", minWidth: "100%" }}
                 preserveAspectRatio="none"
               >
-                <path d={areaPath} fill="hsl(var(--primary) / 0.10)" />
-                <path d={linePath} fill="none" stroke="hsl(var(--primary))" strokeWidth={2} strokeLinejoin="round" />
+                <path d={areaPath} fill="color-mix(in srgb, var(--primary) 10%, transparent)" />
+                <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinejoin="round" />
                 {trend.map((p, i) => (
                   <g key={p.month}>
-                    <circle cx={xFor(i)} cy={yFor(p.dso)} r={i === trend.length - 1 ? 4 : 2.5} fill="hsl(var(--primary))" />
-                    <text x={xFor(i)} y={CHART_H + 16} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">
+                    <circle cx={xFor(i)} cy={yFor(p.dso)} r={i === trend.length - 1 ? 4 : 2.5} fill="var(--primary)" />
+                    <text x={xFor(i)} y={CHART_H + 16} textAnchor="middle" fontSize={9} fill="var(--muted-foreground)">
                       {p.label}
                     </text>
                   </g>
@@ -139,7 +139,7 @@ export default async function DsoDashboardPage() {
           const pct = aging.totalAR > 0 ? (bucket.total / aging.totalAR) * 100 : 0;
           return (
             <div key={b.key} className="rounded-[10px] border border-border bg-card px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{b.label}</p>
+              <p className="eyebrow lowercase text-[11px]">{b.label}</p>
               <p className={`text-xl font-bold tabular-nums mt-1 ${style.color}`}>${fmtMoney(bucket.total)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {bucket.count} invoice{bucket.count !== 1 ? "s" : ""} · {pct.toFixed(0)}%
@@ -164,7 +164,7 @@ export default async function DsoDashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-border">
-                  <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  <tr className="eyebrow lowercase text-[11px]">
                     <th className="px-5 py-2 text-left">Invoice</th>
                     <th className="px-5 py-2 text-left">Client</th>
                     <th className="px-5 py-2 text-right">Due Date</th>

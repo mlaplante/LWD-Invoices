@@ -28,7 +28,7 @@ export default async function ExpenseSettingsPage() {
       {/* Categories */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Categories
           </p>
           <p className="text-base font-semibold mt-1">Expense Categories</p>
@@ -44,7 +44,7 @@ export default async function ExpenseSettingsPage() {
       {/* Suppliers */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Suppliers
           </p>
           <p className="text-base font-semibold mt-1">Expense Suppliers</p>

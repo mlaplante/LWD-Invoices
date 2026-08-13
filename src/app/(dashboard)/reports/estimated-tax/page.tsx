@@ -145,7 +145,7 @@ export default async function EstimatedTaxReportPage({
       {/* Quarterly breakdown */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Quarters</p>
+          <p className="eyebrow lowercase text-[11px]">Quarters</p>
           <p className="text-base font-semibold mt-0.5">Net income &amp; set-aside by IRS period</p>
         </div>
         <table className="w-full text-sm">
@@ -167,7 +167,7 @@ export default async function EstimatedTaxReportPage({
               return (
                 <tr
                   key={q.quarter}
-                  className={`transition-colors ${isNext ? "bg-warning/12/60" : "hover:bg-accent/20"}`}
+                  className={`transition-colors ${isNext ? "bg-warning/60" : "hover:bg-accent/20"}`}
                 >
                   <td className="px-6 py-3.5 font-medium">
                     {q.label}

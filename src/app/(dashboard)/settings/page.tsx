@@ -79,7 +79,7 @@ const subPages = [
     label: "Automation Rules",
     description: "No-code trigger → conditions → actions rules over your invoices.",
     icon: <Workflow className="w-4 h-4" />,
-    color: "bg-fuchsia-50 text-fuchsia-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/settings/policies",
@@ -168,7 +168,7 @@ export default async function SettingsPage() {
       {/* Organization */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Organization
           </p>
           <p className="text-base font-semibold mt-1">General Settings</p>
@@ -184,7 +184,7 @@ export default async function SettingsPage() {
       {/* Security Enforcement */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Security
           </p>
           <p className="text-base font-semibold mt-1">Team Security</p>
@@ -200,7 +200,7 @@ export default async function SettingsPage() {
       {/* Branding */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Branding
           </p>
           <p className="text-base font-semibold mt-1">Brand &amp; Appearance</p>
@@ -216,7 +216,7 @@ export default async function SettingsPage() {
       {/* Portal Branding */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Portal
           </p>
           <p className="text-base font-semibold mt-1">Portal Branding</p>
@@ -232,7 +232,7 @@ export default async function SettingsPage() {
       {/* Currencies */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Currencies
           </p>
           <p className="text-base font-semibold mt-1">Currency Management</p>
@@ -248,7 +248,7 @@ export default async function SettingsPage() {
       {/* Taxes */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="eyebrow lowercase text-[11px]">
             Taxes
           </p>
           <p className="text-base font-semibold mt-1">Tax Rates</p>

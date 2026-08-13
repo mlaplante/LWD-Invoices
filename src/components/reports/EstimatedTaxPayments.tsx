@@ -68,7 +68,7 @@ export function EstimatedTaxPayments({ year, currencySymbol }: Props) {
   return (
     <div className="rounded-[10px] border border-border bg-card overflow-hidden print:hidden">
       <div className="px-6 py-4 border-b border-border">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payments</p>
+        <p className="eyebrow lowercase text-[11px]">Payments</p>
         <p className="text-base font-semibold mt-0.5">Record what you&apos;ve paid in {year}</p>
       </div>
 

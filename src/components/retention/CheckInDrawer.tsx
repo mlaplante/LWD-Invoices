@@ -160,7 +160,7 @@ export function CheckInDrawer({ checkInId, onClose }: Props) {
             <div className="px-4 space-y-5 pb-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  <p className="eyebrow lowercase text-[11px]">
                     Draft Message
                   </p>
                   {data.usingDefault && (
@@ -213,7 +213,7 @@ export function CheckInDrawer({ checkInId, onClose }: Props) {
 
               {isPending ? (
                 <div className="space-y-4 rounded-xl border border-border p-4 bg-muted/20">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  <p className="eyebrow lowercase text-[11px]">
                     Close Out
                   </p>
                   <div className="space-y-2">
@@ -280,7 +280,7 @@ export function CheckInDrawer({ checkInId, onClose }: Props) {
               ) : (
                 <div className="rounded-xl border border-border p-4 bg-muted/20 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    <p className="eyebrow lowercase text-[11px]">
                       {data.checkIn.status === "COMPLETED" ? "Completed" : "Dismissed"}
                     </p>
                     <Button

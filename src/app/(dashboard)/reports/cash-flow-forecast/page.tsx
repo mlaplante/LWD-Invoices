@@ -60,7 +60,7 @@ export default function CashFlowForecastPage() {
               const scen = data.scenario?.horizons.find((s) => s.horizonDays === h.horizonDays);
               return (
                 <div key={h.horizonDays} className="rounded-[10px] border border-border bg-card p-4">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  <p className="eyebrow lowercase text-[11px]">
                     {h.horizonDays} days
                   </p>
                   <p className="font-display text-2xl mt-1 tabular-nums">{usd(h.projectedPosition)}</p>

@@ -121,7 +121,7 @@ const reports = [
     label: "AR Aging & DSO",
     description: "Receivables by balance due with a Days-Sales-Outstanding trend.",
     icon: <Gauge className="w-4 h-4" />,
-    color: "bg-fuchsia-50 text-fuchsia-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/retainers",
@@ -163,7 +163,7 @@ const reports = [
     label: "1099 / Contractor Tax Pack",
     description: "1099-NEC forms and a filing summary for contractors paid $600+.",
     icon: <Contact className="w-4 h-4" />,
-    color: "bg-lime-50 text-lime-600",
+    color: "bg-success/10 text-success-foreground",
   },
 ];
 
@@ -212,14 +212,14 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-[28px]">Reports</h1>
         <a
           href="/api/reports/invoices/export"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-[6px] border border-primary bg-card px-4 py-2 text-[11px] font-semibold uppercase tracking-[2px] text-primary transition-colors duration-200 ease-[ease] hover:bg-primary hover:text-primary-foreground"
         >
-          <Download className="w-3.5 h-3.5" />
-          Export Invoices CSV
+          <Download className="size-3.5" />
+          Year-end export pack
         </a>
       </div>
 
@@ -229,7 +229,7 @@ export default async function ReportsPage() {
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 pt-5 pb-4 border-b border-border flex items-start justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="eyebrow lowercase text-[11px]">
               Revenue
             </p>
             <p className="text-base font-semibold mt-0.5">Last 12 Months</p>
@@ -268,7 +268,7 @@ export default async function ReportsPage() {
                         y1={CHART_H - (avgRevenue / max) * CHART_H}
                         x2={totalW}
                         y2={CHART_H - (avgRevenue / max) * CHART_H}
-                        stroke="hsl(var(--border))"
+                        stroke="var(--border)"
                         strokeWidth="1"
                         strokeDasharray="3 3"
                       />
@@ -286,14 +286,14 @@ export default async function ReportsPage() {
                             width={BAR_W}
                             height={barH}
                             rx={3}
-                            fill={isCurrentMonth ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.35)"}
+                            fill={isCurrentMonth ? "var(--primary)" : "color-mix(in srgb, var(--primary) 35%, transparent)"}
                           />
                           <text
                             x={x + BAR_W / 2}
                             y={CHART_H + 18}
                             textAnchor="middle"
                             fontSize={9}
-                            fill="hsl(var(--muted-foreground))"
+                            fill="var(--muted-foreground)"
                           >
                             {shortMonth(m)}
                           </text>
@@ -311,28 +311,33 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      {/* Nav cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {reports.map((r) => (
-          <Link
-            key={r.href}
-            href={r.href}
-            className="group rounded-[10px] border border-border bg-card p-4 hover:border-primary/30 hover:bg-accent/30 transition-colors flex items-start gap-3"
-          >
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${r.color}`}>
-              {r.icon}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                {r.label}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                {r.description}
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5 group-hover:text-primary transition-colors" />
-          </Link>
-        ))}
+      {/* Report launcher — one clipped card divided into cells rather than
+          a field of separate cards, so the grid reads as a single index. */}
+      <div className="overflow-hidden rounded-[10px] border border-border bg-card">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3">
+          {reports.map((r) => (
+            <Link
+              key={r.href}
+              href={r.href}
+              className="group flex items-start gap-3 border-b border-r border-divider px-[22px] py-[18px] transition-colors duration-200 ease-[ease] last:border-b-0 hover:bg-primary/[0.03]"
+            >
+              <span
+                className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${r.color}`}
+              >
+                {r.icon}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-medium text-foreground transition-colors group-hover:text-primary">
+                  {r.label}
+                </span>
+                <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">
+                  {r.description}
+                </span>
+              </span>
+              <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

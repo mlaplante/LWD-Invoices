@@ -49,7 +49,7 @@ export default function ClientHealthPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-border">
-                <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <tr className="eyebrow lowercase text-[11px]">
                   <th className="px-5 py-2 text-left">Client</th>
                   <th className="px-5 py-2 text-left">Health</th>
                   <th className="px-5 py-2 text-right">Score</th>

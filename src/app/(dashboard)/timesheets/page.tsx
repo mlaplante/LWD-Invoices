@@ -19,7 +19,7 @@ export default async function TimesheetsPage() {
         {/* Table card */}
         <div className="rounded-[10px] border border-border bg-card overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="eyebrow lowercase text-[11px]">
               Time Tracking
             </p>
             <p className="text-base font-semibold mt-0.5">All Time Entries</p>

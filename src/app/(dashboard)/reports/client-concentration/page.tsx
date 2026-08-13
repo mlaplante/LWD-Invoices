@@ -94,7 +94,7 @@ export default async function ClientConcentrationReportPage({
 
           <div className="rounded-[10px] border border-border bg-card overflow-hidden">
             <div className="px-6 py-4 border-b border-border">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Detail</p>
+              <p className="eyebrow lowercase text-[11px]">Detail</p>
               <p className="text-base font-semibold mt-0.5">Revenue Share by Client</p>
             </div>
             <div className="overflow-x-auto">

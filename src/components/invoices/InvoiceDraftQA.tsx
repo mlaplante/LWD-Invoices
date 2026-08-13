@@ -240,10 +240,10 @@ export function InvoiceDraftQA({
   // Render based on scan state
   if (scanState === "idle") {
     return (
-      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-        <div className="space-y-1">
-          <h2 className="text-sm font-semibold">Invoice Draft QA</h2>
-          <p className="text-sm text-muted-foreground">
+      <div className="rounded-[10px] border border-primary/35 bg-card p-5 space-y-3">
+        <div className="space-y-1.5">
+          <span className="eyebrow">✦ pre-send qa</span>
+          <p className="text-xs leading-relaxed text-muted-foreground">
             Scan this draft for missing info, duplicate risk, unclear lines, and possible revenue leakage.
           </p>
         </div>
@@ -260,7 +260,7 @@ export function InvoiceDraftQA({
   
   if (scanState === "loading") {
     return (
-      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+      <div className="rounded-[10px] border border-primary/35 bg-card p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           <p className="text-sm text-muted-foreground">Reviewing draft…</p>
@@ -271,7 +271,7 @@ export function InvoiceDraftQA({
   
   if (scanState === "clean") {
     return (
-      <div className="rounded-xl border border-success/30/20 bg-success/5 p-4 space-y-3">
+      <div className="rounded-[10px] border border-primary/35 bg-card p-5 space-y-3">
         <div className="flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-success-foreground" />
           <p className="text-sm text-muted-foreground">No issues found in this scan.</p>
@@ -296,7 +296,7 @@ export function InvoiceDraftQA({
   
   if (scanState === "partial") {
     return (
-      <div className="rounded-xl border border-warning/30/20 bg-warning/5 p-4 space-y-3">
+      <div className="rounded-[10px] border border-primary/35 bg-card p-5 space-y-3">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-warning-foreground" />
           <p className="text-sm text-muted-foreground">
@@ -319,7 +319,7 @@ export function InvoiceDraftQA({
   
   if (scanState === "error") {
     return (
-      <div className="rounded-xl border border-danger/30/20 bg-danger/5 p-4 space-y-3">
+      <div className="rounded-[10px] border border-primary/35 bg-card p-5 space-y-3">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-danger-foreground" />
           <p className="text-sm text-muted-foreground">
@@ -342,9 +342,9 @@ export function InvoiceDraftQA({
   // Findings state
   if (scanState === "findings") {
     return (
-      <div className="rounded-xl border border-warning/30/20 bg-warning/5 p-4 space-y-3">
+      <div className="rounded-[10px] border border-primary/35 bg-card p-5 space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Draft Review Findings</h2>
+          <span className="eyebrow">✦ pre-send qa</span>
           <Button
             type="button"
             variant="outline"

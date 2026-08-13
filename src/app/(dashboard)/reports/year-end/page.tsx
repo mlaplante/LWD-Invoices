@@ -49,7 +49,7 @@ const reports = [
     label: "AR Aging Snapshot",
     description: "Outstanding receivables by aging bucket as of December 31.",
     icon: Gauge,
-    color: "bg-fuchsia-50 text-fuchsia-600",
+    color: "bg-accent text-accent-foreground",
   },
 ];
 

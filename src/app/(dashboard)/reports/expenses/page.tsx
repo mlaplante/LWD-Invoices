@@ -98,7 +98,7 @@ export default async function ExpensesReportPage({
       {/* Expenses table */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expenses</p>
+          <p className="eyebrow lowercase text-[11px]">Expenses</p>
           <p className="text-base font-semibold mt-0.5">All Expenses</p>
         </div>
 

@@ -306,13 +306,13 @@ export default async function InvoiceDetailPage({
         {/* Issue From / Issue For */}
         <div className="grid grid-cols-1 gap-4 px-4 sm:px-8 py-5 border-b border-border bg-muted/20 sm:grid-cols-2 sm:gap-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
+            <p className="eyebrow lowercase text-[11px] mb-2">
               Issue From
             </p>
             <p className="font-semibold text-foreground">{invoice.organization.name}</p>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
+            <p className="eyebrow lowercase text-[11px] mb-2">
               Issue For
             </p>
             <p className="font-semibold text-foreground">{invoice.client.name}</p>
@@ -438,7 +438,7 @@ export default async function InvoiceDetailPage({
         {/* Notes */}
         {invoice.notes && (
           <div className="mx-4 sm:mx-8 mb-6 sm:mb-8 rounded-xl border border-border bg-muted/40 p-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+            <p className="eyebrow lowercase text-[11px] mb-1.5">
               Notes
             </p>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">

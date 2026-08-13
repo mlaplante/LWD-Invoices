@@ -195,7 +195,7 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
       <div className="grid gap-5 lg:grid-cols-3">
         {/* W-9 / identity card */}
         <div className="rounded-[10px] border border-border bg-card p-5 space-y-4 lg:col-span-1">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">W-9 Details</p>
+          <p className="eyebrow lowercase text-[11px]">W-9 Details</p>
 
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between gap-2">
@@ -291,7 +291,7 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
         <div className="rounded-[10px] border border-border bg-card p-5 lg:col-span-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Self-Service Portal</p>
+              <p className="eyebrow lowercase text-[11px]">Self-Service Portal</p>
               <p className="text-sm mt-1 text-muted-foreground">
                 Let this contractor view their payment history, submit a W-9, and download their
                 1099-NEC from a private link — no account needed.
@@ -334,7 +334,7 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
         <div className="rounded-[10px] border border-border bg-card overflow-hidden lg:col-span-2">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payments</p>
+              <p className="eyebrow lowercase text-[11px]">Payments</p>
               <p className="text-sm mt-0.5">
                 <span className="font-semibold tabular-nums">${reportableTotal.toFixed(2)}</span>
                 <span className="text-muted-foreground"> reportable this year</span>

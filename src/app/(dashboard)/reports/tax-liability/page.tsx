@@ -103,7 +103,7 @@ export default async function TaxLiabilityReportPage({
       {/* Detail table */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Details</p>
+          <p className="eyebrow lowercase text-[11px]">Details</p>
           <p className="text-base font-semibold mt-0.5">Tax by Invoice</p>
         </div>
 

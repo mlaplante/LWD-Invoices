@@ -23,7 +23,7 @@ export function RevenueChart({ data }: Props) {
   return (
     <div className="rounded-[10px] border border-border bg-card overflow-hidden">
       <div className="px-5 py-4 border-b border-border">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+        <p className="eyebrow lowercase text-[11px]">
           Revenue
         </p>
         <p className="text-sm font-semibold mt-0.5">12-Month Trend</p>
@@ -56,8 +56,8 @@ export function RevenueChart({ data }: Props) {
             <Tooltip
               contentStyle={{
                 borderRadius: "0.75rem",
-                border: "1px solid hsl(var(--border))",
-                backgroundColor: "hsl(var(--card))",
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--card)",
                 fontSize: "0.8125rem",
                 boxShadow:
                   "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
@@ -70,9 +70,9 @@ export function RevenueChart({ data }: Props) {
             <Line
               type="monotone"
               dataKey="revenue"
-              stroke="hsl(var(--primary))"
+              stroke="var(--primary)"
               strokeWidth={2}
-              dot={{ r: 3, fill: "hsl(var(--primary))" }}
+              dot={{ r: 3, fill: "var(--primary)" }}
               activeDot={{ r: 5 }}
             />
           </LineChart>

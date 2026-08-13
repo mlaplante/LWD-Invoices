@@ -71,13 +71,13 @@ export default async function ProjectHealthReportPage() {
       {scores.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-[10px] border border-border bg-card px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="eyebrow lowercase text-[11px]">
               Projects Scored
             </p>
             <p className="text-2xl font-bold mt-1">{scores.length}</p>
           </div>
           <div className="rounded-[10px] border border-border bg-card px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="eyebrow lowercase text-[11px]">
               At Risk / Critical
             </p>
             <p className={`text-2xl font-bold mt-1 ${atRiskCount > 0 ? "text-danger-foreground" : "text-success-foreground"}`}>
@@ -96,7 +96,7 @@ export default async function ProjectHealthReportPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-border">
-                <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <tr className="eyebrow lowercase text-[11px]">
                   <th className="px-5 py-3 text-left">Project</th>
                   <th className="px-5 py-3 text-left">Client</th>
                   <th className="px-5 py-3 text-right">Score</th>

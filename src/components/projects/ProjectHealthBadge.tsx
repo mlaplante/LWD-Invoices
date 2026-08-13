@@ -53,7 +53,7 @@ export function ProjectHealthBadge({ projectId }: { projectId: string }) {
 
       {/* Hover popover */}
       <span className="pointer-events-none absolute right-0 top-full mt-1.5 z-50 hidden group-hover:flex flex-col w-64 rounded-xl border border-border bg-popover p-3 shadow-lg text-foreground text-left">
-        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
+        <span className="eyebrow lowercase text-[11px] mb-2">
           Component Scores
         </span>
         {Object.entries(components).map(([key, comp]) => (
@@ -67,7 +67,7 @@ export function ProjectHealthBadge({ projectId }: { projectId: string }) {
         ))}
         {score.signals.length > 0 && (
           <span className="flex flex-col mt-2 pt-2 border-t border-border/30">
-            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
+            <span className="eyebrow lowercase text-[11px] mb-1">
               Signals
             </span>
             {score.signals.map((sig, i) => (

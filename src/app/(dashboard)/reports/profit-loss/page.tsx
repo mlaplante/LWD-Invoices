@@ -66,7 +66,7 @@ export default async function ProfitLossPage({
           { label: "Net Income", value: data.netIncome, color: data.netIncome >= 0 ? "text-primary" : "text-danger-foreground" },
         ].map((s) => (
           <div key={s.label} className="rounded-[10px] border border-border bg-card px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{s.label}</p>
+            <p className="eyebrow lowercase text-[11px]">{s.label}</p>
             <p className={`text-2xl font-bold tabular-nums mt-1 ${s.color}`}>${s.value.toFixed(2)}</p>
           </div>
         ))}
@@ -85,9 +85,9 @@ export default async function ProfitLossPage({
               const expH = Math.max((exp / maxVal) * CHART_H, exp > 0 ? 2 : 0);
               return (
                 <g key={m}>
-                  <rect x={x} y={CHART_H - revH} width={BAR_W} height={revH} rx={2} fill="hsl(var(--primary) / 0.7)" />
+                  <rect x={x} y={CHART_H - revH} width={BAR_W} height={revH} rx={2} fill="color-mix(in srgb, var(--primary) 70%, transparent)" />
                   <rect x={x + BAR_W + BAR_GAP} y={CHART_H - expH} width={BAR_W} height={expH} rx={2} fill="hsl(0 72% 51% / 0.5)" />
-                  <text x={x + BAR_W} y={CHART_H + 18} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">{shortMonth(m)}</text>
+                  <text x={x + BAR_W} y={CHART_H + 18} textAnchor="middle" fontSize={9} fill="var(--muted-foreground)">{shortMonth(m)}</text>
                 </g>
               );
             })}
@@ -103,7 +103,7 @@ export default async function ProfitLossPage({
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b border-border">
-            <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <tr className="eyebrow lowercase text-[11px]">
               <th className="px-5 py-3 text-left">Month</th>
               <th className="px-5 py-3 text-right">Revenue</th>
               <th className="px-5 py-3 text-right">Expenses</th>

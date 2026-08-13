@@ -43,7 +43,7 @@ export default async function AgingPage() {
           const total = items.reduce((s, i) => s + Number(i.total), 0);
           return (
             <div key={b.key} className="rounded-[10px] border border-border bg-card px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{b.label}</p>
+              <p className="eyebrow lowercase text-[11px]">{b.label}</p>
               <p className={`text-xl font-bold tabular-nums mt-1 ${b.color}`}>${total.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{items.length} invoice{items.length !== 1 ? "s" : ""}</p>
             </div>
@@ -64,7 +64,7 @@ export default async function AgingPage() {
             <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-border">
-                <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <tr className="eyebrow lowercase text-[11px]">
                   <th className="px-5 py-2 text-left">Invoice</th>
                   <th className="px-5 py-2 text-left">Client</th>
                   <th className="px-5 py-2 text-right">Due Date</th>

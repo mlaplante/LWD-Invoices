@@ -81,7 +81,7 @@ export default async function ForecastPage({
           { label: "Overdue", value: data.summary.overdueAmount, color: "text-danger-foreground" },
         ].map((s) => (
           <div key={s.label} className="rounded-[10px] border border-border bg-card px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="eyebrow lowercase text-[11px]">
               {s.label}
             </p>
             <p className={`text-2xl font-bold tabular-nums mt-1 ${s.color}`}>
@@ -119,7 +119,7 @@ export default async function ForecastPage({
                         width={BAR_W}
                         height={outH}
                         rx={2}
-                        fill="hsl(var(--primary) / 0.7)"
+                        fill="color-mix(in srgb, var(--primary) 70%, transparent)"
                       />
                       <rect
                         x={x + BAR_W + BAR_GAP}
@@ -134,7 +134,7 @@ export default async function ForecastPage({
                         y={CHART_H + 18}
                         textAnchor="middle"
                         fontSize={9}
-                        fill="hsl(var(--muted-foreground))"
+                        fill="var(--muted-foreground)"
                       >
                         {shortMonth(m.month)}
                       </text>
@@ -162,7 +162,7 @@ export default async function ForecastPage({
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-border">
-            <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <tr className="eyebrow lowercase text-[11px]">
               <th className="px-5 py-3 text-left">Month</th>
               <th className="px-5 py-3 text-right">Outstanding</th>
               <th className="px-5 py-3 text-right">Recurring</th>
