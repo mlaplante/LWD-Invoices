@@ -74,12 +74,31 @@ export const analyticsRouter = router({
   }),
 
   // Composite per-client health scores (payment, engagement, revenue, overdue).
+  //
+  // Also returns the open-AR and trailing-revenue figures the scores were
+  // built from, keyed by client, so the client list can render health, AR and
+  // revenue in one pass instead of issuing a second aggregate query. The
+  // revenue window is the scorer's own 180 days — not a calendar year.
   clientHealth: protectedProcedure.query(({ ctx }) =>
     unstable_cache(
       async () => {
         const now = new Date();
         const inputs = await buildClientHealthInputs(ctx.db, ctx.orgId, now);
-        return { generatedAt: now.toISOString(), scores: calculateClientHealthScores(inputs) };
+        const totals = Object.fromEntries(
+          inputs.map((input) => [
+            input.clientId,
+            {
+              openAr: input.overdueOpenAmount,
+              overdueCount: input.overdueOpenCount,
+              revenue180d: input.recentRevenue + input.priorRevenue,
+            },
+          ]),
+        );
+        return {
+          generatedAt: now.toISOString(),
+          scores: calculateClientHealthScores(inputs),
+          totals,
+        };
       },
       ["analytics:clientHealth", ctx.orgId],
       { tags: [analyticsTag(ctx.orgId)], revalidate: ANALYTICS_TTL }

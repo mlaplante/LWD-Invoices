@@ -6,6 +6,10 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { ClientImportExportButtons } from "@/components/clients/ClientImportExportButtons";
 import { Suspense } from "react";
 import { cn } from "@/lib/utils";
+import {
+  ClientBehaviorPill,
+  ClientHealthBar,
+} from "@/components/clients/ClientHealthBar";
 
 // Generate consistent initials + color from a name
 function initials(name: string): string {
@@ -17,19 +21,19 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
+// Avatars are tinted from the system palette rather than a rainbow, so the
+// only colour that carries meaning in the row is the health bar.
 const AVATAR_COLORS = [
-  "bg-violet-100 text-violet-700",
-  "bg-blue-100 text-blue-700",
-  "bg-emerald-100 text-emerald-700",
-  "bg-amber-100 text-amber-700",
-  "bg-rose-100 text-rose-700",
-  "bg-cyan-100 text-cyan-700",
-  "bg-orange-100 text-orange-700",
-  "bg-indigo-100 text-indigo-700",
+  "bg-primary/12 text-primary dark:bg-primary/25 dark:text-accent-foreground",
+  "bg-black/[0.06] text-muted-foreground dark:bg-white/10",
 ];
 
 function avatarColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+}
+
+function money(n: number): string {
+  return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
 const PAGE_SIZE = 25;
@@ -41,7 +45,7 @@ export default async function ClientsPage({
 }) {
   const { page: rawPage, search, tag } = await searchParams;
   const page = Math.max(1, parseInt(rawPage ?? "1", 10));
-  const [{ items: paginated, total }, usedTags] = await Promise.all([
+  const [{ items: paginated, total }, usedTags, health] = await Promise.all([
     api.clients.list({
       includeArchived: false,
       search: search || undefined,
@@ -50,7 +54,16 @@ export default async function ClientsPage({
       pageSize: PAGE_SIZE,
     }),
     api.clients.usedTags(),
+    // Cached org-wide (5-min TTL), so this doesn't scale with page size.
+    api.analytics.clientHealth(),
   ]);
+
+  const healthById = new Map(health.scores.map((s) => [s.clientId, s]));
+  const totalsById = health.totals;
+  const totalOpenAr = Object.values(totalsById).reduce(
+    (sum, t) => sum + t.openAr,
+    0,
+  );
 
   const listParams = (p: number) => {
     const qs = new URLSearchParams();
@@ -70,7 +83,7 @@ export default async function ClientsPage({
     <div className="space-y-5">
       {/* Page heading */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-3xl tracking-tight">Clients</h1>
+        <h1 className="font-display text-[28px]">Clients</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Suspense>
             <SearchInput placeholder="Search clients…" />
@@ -180,85 +193,118 @@ export default async function ClientsPage({
             ))}
           </div>
 
-          {/* Desktop table */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-2">
-                    Client
-                  </th>
-                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Phone
-                  </th>
-                  <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Location
-                  </th>
-                  <th className="pb-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {paginated.map((client) => (
-                  <tr
-                    key={client.id}
-                    className="group hover:bg-accent/30 transition-colors"
-                  >
-                    <td className="py-3.5 pl-2">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${avatarColor(client.name)}`}
-                        >
-                          {initials(client.name)}
-                        </div>
-                        <div>
-                          <Link
-                            href={`/clients/${client.id}`}
-                            className="font-semibold text-foreground hover:text-primary transition-colors leading-tight"
-                          >
-                            {client.name}
-                          </Link>
-                          {client.email && (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {client.email}
-                            </p>
-                          )}
-                          {client.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {client.tags.map((t) => (
-                                <span
-                                  key={t}
-                                  className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                                >
-                                  {t}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 text-muted-foreground">
-                      {client.phone ?? "—"}
-                    </td>
-                    <td className="py-3.5 text-muted-foreground">
-                      {[client.city, client.country]
-                        .filter(Boolean)
-                        .join(", ") || "—"}
-                    </td>
-                    <td className="py-3.5 pr-2">
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                        <Link
-                          href={`/clients/${client.id}`}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-                        >
-                          View
-                        </Link>
-                      </div>
-                    </td>
+          {/* Desktop table — health and payment behaviour lead, because
+              "who is at risk" is the question this list actually answers. */}
+          <div className="hidden overflow-hidden rounded-[10px] border border-border bg-card sm:block">
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Health</th>
+                    <th>Behavior</th>
+                    <th className="text-right">Open AR</th>
+                    <th className="text-right">Revenue · 180d</th>
+                    <th>Signal</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paginated.map((client) => {
+                    const health = healthById.get(client.id);
+                    const totals = totalsById[client.id];
+                    const signal = health?.signals[0];
+                    return (
+                      <tr key={client.id} className="group">
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`flex size-[34px] shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarColor(client.name)}`}
+                            >
+                              {initials(client.name)}
+                            </div>
+                            <div className="min-w-0">
+                              <Link
+                                href={`/clients/${client.id}`}
+                                className="font-medium text-foreground transition-colors hover:text-primary"
+                              >
+                                {client.name}
+                              </Link>
+                              <p className="font-mono text-[10px] text-muted-foreground">
+                                {client.email ??
+                                  [client.city, client.country]
+                                    .filter(Boolean)
+                                    .join(", ") ??
+                                  "—"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          {health ? (
+                            <ClientHealthBar
+                              score={health.score}
+                              band={health.band}
+                              lowData={health.lowData}
+                            />
+                          ) : (
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              —
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <ClientBehaviorPill
+                            band={health?.band ?? "stable"}
+                            isNew={!health}
+                          />
+                        </td>
+                        <td
+                          className={cn(
+                            "text-right font-semibold tabular-nums",
+                            totals?.openAr ? "text-danger-foreground" : "",
+                          )}
+                        >
+                          {money(totals?.openAr ?? 0)}
+                        </td>
+                        <td className="text-right font-mono text-xs tabular-nums">
+                          {money(totals?.revenue180d ?? 0)}
+                        </td>
+                        <td className="max-w-[220px]">
+                          {signal ? (
+                            <span
+                              className={cn(
+                                "text-[11px]",
+                                health?.band === "critical" ||
+                                  health?.band === "at_risk"
+                                  ? "text-danger-foreground"
+                                  : "text-primary dark:text-accent-foreground",
+                              )}
+                            >
+                              {signal}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">
+                              —
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Footer stats — the mono strip that closes every list view */}
+          <div className="flex flex-wrap gap-x-5 gap-y-1 font-mono text-[10.5px] text-muted-foreground">
+            <span>
+              {total} active client{total === 1 ? "" : "s"}
+            </span>
+            <span aria-hidden>·</span>
+            <span>open ar {money(totalOpenAr)}</span>
+            <span aria-hidden>·</span>
+            <span>health scores recomputed nightly</span>
           </div>
 
           {/* Pagination footer */}

@@ -11,6 +11,7 @@ import { DateRangeFilter } from "@/components/ui/DateRangeFilter";
 import { Suspense } from "react";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { InvoiceDatePresets } from "@/components/invoices/InvoiceDatePresets";
+import { SmartCollectionsStrip } from "@/components/invoices/SmartCollectionsStrip";
 
 // ── Tab config ───────────────────────────────────────────────────────────────
 
@@ -109,20 +110,17 @@ export default async function InvoicesPage({
   return (
     <div className="space-y-5">
       {/* Page heading */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="font-display text-3xl tracking-tight">Invoices</h1>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-[28px]">Invoices</h1>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5 print:hidden">
             <Suspense>
               <InvoiceDatePresets />
             </Suspense>
             <Suspense>
               <DateRangeFilter />
             </Suspense>
-            <Suspense>
-              <SearchInput placeholder="Search invoices…" />
-            </Suspense>
-            <Button asChild size="sm">
+            <Button asChild>
               <Link href="/invoices/new">+ New Invoice</Link>
             </Button>
           </div>
@@ -130,11 +128,12 @@ export default async function InvoicesPage({
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="overflow-x-auto border-b border-border print:hidden">
+      {/* Filter tabs — the active tab is a soft indigo pill rather than an
+          underline, so the row reads as filters instead of navigation. */}
+      <div className="flex flex-wrap items-center gap-1 print:hidden">
         <nav
           aria-label="Invoice filters"
-          className="flex min-w-max items-center gap-1"
+          className="flex min-w-0 flex-1 flex-wrap items-center gap-1"
         >
           {TABS.map((t) => (
             <Link
@@ -142,19 +141,21 @@ export default async function InvoicesPage({
               href={t.id === "all" ? "/invoices" : `/invoices?tab=${t.id}`}
               aria-current={activeTab === t.id ? "page" : undefined}
               className={cn(
-                "relative px-4 py-2.5 text-sm font-medium transition-colors",
+                "rounded-[6px] px-3.5 py-[7px] text-xs transition-colors duration-200 ease-[ease]",
                 activeTab === t.id
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-accent font-medium text-accent-foreground"
+                  : t.id === "unpaid"
+                    ? "text-danger-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                    : "text-muted-foreground hover:bg-black/[0.04] hover:text-foreground dark:hover:bg-white/[0.04]",
               )}
             >
               {t.label}
-              {activeTab === t.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
-              )}
             </Link>
           ))}
         </nav>
+        <Suspense>
+          <SearchInput placeholder="Filter by client, number, amount…" />
+        </Suspense>
       </div>
 
       {/* Invoice table */}
@@ -203,9 +204,11 @@ export default async function InvoicesPage({
             }))}
           />
 
-          {/* Desktop table with bulk actions */}
-          <div className="hidden sm:block print:block overflow-x-auto">
-            <InvoiceTableWithBulk
+          {/* Desktop table with bulk actions. The card clips the table so
+              its header rule meets the 10px corner cleanly. */}
+          <div className="hidden overflow-hidden rounded-[10px] border border-border bg-card sm:block print:block">
+            <div className="overflow-x-auto">
+              <InvoiceTableWithBulk
               invoices={paginatedInvoices.map((inv) => ({
                 id: inv.id,
                 number: inv.number,
@@ -222,12 +225,18 @@ export default async function InvoicesPage({
                     }
                   : null,
               }))}
-            />
+              />
+            </div>
+
+            {/* Collections lives under the list, not behind a nav item */}
+            <Suspense>
+              <SmartCollectionsStrip />
+            </Suspense>
           </div>
 
           {/* Pagination footer */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground print:hidden">
+            <div className="flex items-center justify-between border-t border-border px-2 py-3 text-xs text-muted-foreground print:hidden">
               <span>
                 Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of{" "}
                 {total}
