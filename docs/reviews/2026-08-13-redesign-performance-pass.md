@@ -213,6 +213,52 @@ covers the heavy libraries; Recharts is route-scoped/lazy; `jszip` and
 `@react-pdf/renderer` are server-only (the latter externalized); CSS is
 22 KB gz total; immutable cache headers on hashed assets and fonts.
 
+## Addendum 2 (same day): why Netlify builds run cold, and the fix
+
+Report: Netlify never gets the warm-build benefit measured above. Verified
+facts (from reading the pinned `@netlify/plugin-nextjs` 5.15.13 source in
+`node_modules` and from controlled builds in this sandbox):
+
+1. **`NETLIFY_NEXT_CACHE_PERSIST` was fictional.** The string appears nowhere
+   in the plugin. There is no opt-in flag: the plugin unconditionally restores
+   `.next/cache` in `onPreBuild` and saves it in `onBuild` (`dist/build/cache.js`),
+   logging exactly `Next.js cache restored` / `No Next.js cache to restore` /
+   `Next.js cache saved`. The env var has been removed from `netlify.toml`.
+2. **The Turbopack cache itself is robust to per-deploy churn.** Controlled
+   experiments here: a new commit SHA → warm (13s); `SENTRY_RELEASE` changed
+   between builds → warm (13s). So deploy-to-deploy variation does not
+   explain cold builds.
+3. **The cache is keyed by Next.js version and grows without bound.**
+   `.next/cache/turbopack/` holds one ~600MB directory per Next version
+   (e.g. `v16.3.0-d73f5622`). A version bump starts an empty cache AND
+   leaves the old directory in the persisted cache forever. This repo bumps
+   dependencies roughly weekly (#108–#112 are all dep updates), so the
+   persisted cache both misses (new version key) and bloats (dead versions
+   accumulate), making Netlify's cache save/restore slower and pushing it
+   toward eviction — a plausible mechanism for "always cold."
+
+**Fix shipped:** `scripts/prune-turbopack-cache.mjs` runs first in the
+Netlify build command (after the plugin's cache restore, before
+`next build`). It deletes every turbopack cache subdirectory not matching
+the installed Next version and can never fail the build (all errors are
+swallowed, always exits 0). Verified locally: keeps the live version dir,
+removes a planted stale one, no-ops cleanly when no cache exists.
+
+**How to confirm on the next deploys** (this sandbox cannot see Netlify):
+
+- In the deploy log, before the build command output, look for
+  `Next.js cache restored` (plugin) — if it says
+  `No Next.js cache to restore` on every build, the cache is not surviving
+  between builds at all (check for "Clear cache and deploy" triggers, and
+  whether the previous build logged `Next.js cache saved`).
+- In the `next build` output, `✓ Compiled successfully in Xs` — warm is
+  single-digit-to-low-double-digit seconds (9–14s here on 4 cores); ~40s+
+  means the compile ran cold even if the cache restored, which after this
+  fix should only happen on deploys that bump Next.js or the lockfile.
+
+Expected steady state after the fix: cold compile only on dependency-update
+deploys; warm (cache-hit) compile on ordinary code deploys.
+
 ## Candidates for a measured pass (need a real database)
 
 - **`EXPLAIN ANALYZE` the queue scan** against real data to confirm the
