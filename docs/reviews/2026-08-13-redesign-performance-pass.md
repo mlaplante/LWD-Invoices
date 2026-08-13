@@ -149,6 +149,70 @@ These are webpack-builder numbers (`--webpack`, same as `npm run analyze`
 forces); production deploys use the Turbopack path, so treat absolute values
 as directional and the before/after **delta** as the reliable signal.
 
+## Addendum (same day): build time & compiled size — what's left
+
+Follow-up question: can build times and compiled sizes be improved further?
+Measured in the same sandbox (4 cores, Turbopack — the builder CI and
+Netlify actually use, unlike the webpack `--webpack`/`analyze` path):
+
+| Build | Wall clock | Compile step |
+|---|---|---|
+| Cold Turbopack build (empty `.next`) | 53s | 39.8s |
+| Warm rebuild (`turbopackFileSystemCacheForBuild`, 1-file touch) | 9s | 1.5s |
+
+**Build time: no meaningful lever remains in the app itself.** The expensive
+parts of a real deploy are outside `next build`: `npm ci`, `prisma generate`,
+`prisma migrate deploy`, and (Netlify only) Sentry source-map upload. The
+repo already has every standard mitigation on: Turbopack FS cache persisted
+in CI (`actions/cache` on `.next/cache`) and Netlify
+(`NETLIFY_NEXT_CACHE_PERSIST`), npm cache in CI, type-check/lint moved out of
+the build (`ignoreBuildErrors`), esbuild for Netlify functions. The one
+untested lever is `widenClientFileUpload: true` in `next.config.ts` — it
+widens Sentry's source-map upload to all client files, which costs upload
+time on every Netlify deploy; setting it `false` trades vendor-frame
+readability in stack traces for faster deploys. Unmeasurable in this sandbox
+(no `SENTRY_AUTH_TOKEN`), so it stays a candidate.
+
+**Compiled size: one dominant lever, and it's a product decision, not a
+tuning knob.** Root first-load JS (`build-manifest.json` `rootMainFiles`,
+loaded on every page, gzip):
+
+| Variant | First-load JS (gz) |
+|---|---|
+| Current (client Sentry: errors + tracing + log forwarding) | **290 KB** |
+| Sentry init kept, tracing/router-spans options removed | 290 KB — **identical** |
+| Client Sentry removed entirely (server/edge Sentry untouched) | **128 KB** |
+
+Two facts fall out:
+
+1. **The client Sentry SDK is 162 KB gz — 56% of every page's baseline JS.**
+   Nothing else comes close: the whole redesign moved first-load JS by 6 KB;
+   fonts by 7 KB.
+2. **Trimming Sentry's init options saves zero bytes.** The static
+   `import * as Sentry from "@sentry/nextjs"` pulls the full client SDK
+   regardless of which integrations are enabled, and the SDK's tree-shaking
+   flag (`disableLogger`) is a documented no-op under Turbopack (see the
+   note already in `next.config.ts`). The choice is all-or-nothing at the
+   import level.
+
+Options, none applied here because they change observability behavior:
+
+- **Keep as-is** — full browser error capture, 10% traces, warn/error log
+  forwarding, at 162 KB gz per first visit (cached after).
+- **Drop client Sentry, keep server/edge** — first-load JS drops 56%.
+  Server-side errors (tRPC, API routes, Inngest) still captured; lost are
+  browser-only errors (hydration, client components) and client traces.
+- **Lazy-load the client SDK after hydration/idle** — keeps telemetry,
+  moves the 162 KB off the critical path (out of `rootMainFiles`, fetched
+  post-interactive). Loses errors thrown before the deferred init runs —
+  which includes exactly the hydration-failure class client Sentry is best
+  at catching. Worth prototyping only with that caveat accepted.
+
+Everything else checked and already optimal: `optimizePackageImports`
+covers the heavy libraries; Recharts is route-scoped/lazy; `jszip` and
+`@react-pdf/renderer` are server-only (the latter externalized); CSS is
+22 KB gz total; immutable cache headers on hashed assets and fonts.
+
 ## Candidates for a measured pass (need a real database)
 
 - **`EXPLAIN ANALYZE` the queue scan** against real data to confirm the
