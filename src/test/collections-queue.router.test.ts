@@ -19,4 +19,12 @@ describe("collections.queue — multi-tenant isolation", () => {
     expect(ctx.db.invoice.findMany.mock.calls[0][0].where.organizationId).toBe("test-org-123");
     expect(ctx.db.organization.findUnique.mock.calls[0][0].where.id).toBe("test-org-123");
   });
+
+  it("only loads the email-event types the score reads", async () => {
+    await caller.queue({ limit: 50 });
+    const select = ctx.db.invoice.findMany.mock.calls[0][0].select;
+    expect(select.emailEvents.where).toEqual({
+      type: { in: ["email.opened", "email.clicked"] },
+    });
+  });
 });
