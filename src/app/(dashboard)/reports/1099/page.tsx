@@ -89,22 +89,22 @@ export default function Form1099Page() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">1099-NEC required</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">{eligible.length}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Total reportable</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">${eligibleTotal.toFixed(2)}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Missing W-9</p>
-          <p className="text-2xl font-bold mt-0.5 tabular-nums text-amber-600">{missingW9.length}</p>
+          <p className="text-2xl font-bold mt-0.5 tabular-nums text-warning-foreground">{missingW9.length}</p>
         </div>
       </div>
 
       {missingW9.length > 0 && (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/12 px-4 py-3 text-sm text-warning-foreground">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <p>
             {missingW9.length} contractor{missingW9.length === 1 ? "" : "s"} need a 1099-NEC but{" "}
@@ -114,8 +114,8 @@ export default function Form1099Page() {
       )}
 
       {/* Preview table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             {year} Contractors with Payments
           </p>
@@ -128,7 +128,7 @@ export default function Form1099Page() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/40">
+                <tr className="border-b border-border">
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contractor</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">TIN</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">W-9</th>

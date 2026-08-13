@@ -135,7 +135,7 @@ export function GatewaySettingsForm() {
 
       {/* Stripe */}
       <TabsContent value="stripe">
-        <div className="rounded-2xl border border-border/50 bg-card p-6 space-y-5 mt-4">
+        <div className="rounded-[10px] border border-border bg-card p-6 space-y-5 mt-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">Stripe</h3>
@@ -251,7 +251,7 @@ export function GatewaySettingsForm() {
             </div>
 
             {errors.stripe && <p className="text-sm text-destructive">{errors.stripe}</p>}
-            {saved.stripe && <p className="text-sm text-green-600">Saved successfully.</p>}
+            {saved.stripe && <p className="text-sm text-success-foreground">Saved successfully.</p>}
 
             <Button type="submit" disabled={upsert.isPending}>Save Stripe Settings</Button>
           </form>
@@ -260,7 +260,7 @@ export function GatewaySettingsForm() {
 
       {/* PayPal */}
       <TabsContent value="paypal">
-        <div className="rounded-2xl border border-border/50 bg-card p-6 space-y-5 mt-4">
+        <div className="rounded-[10px] border border-border bg-card p-6 space-y-5 mt-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">PayPal</h3>
@@ -317,7 +317,7 @@ export function GatewaySettingsForm() {
             </div>
 
             {errors.paypal && <p className="text-sm text-destructive">{errors.paypal}</p>}
-            {saved.paypal && <p className="text-sm text-green-600">Saved successfully.</p>}
+            {saved.paypal && <p className="text-sm text-success-foreground">Saved successfully.</p>}
 
             <Button type="submit" disabled={upsert.isPending}>Save PayPal Settings</Button>
           </form>
@@ -326,7 +326,7 @@ export function GatewaySettingsForm() {
 
       {/* Bank Transfer */}
       <TabsContent value="bank">
-        <div className="rounded-2xl border border-border/50 bg-card p-6 space-y-5 mt-4">
+        <div className="rounded-[10px] border border-border bg-card p-6 space-y-5 mt-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">Bank Transfer</h3>
@@ -362,7 +362,7 @@ export function GatewaySettingsForm() {
                 rows={4}
               />
             </div>
-            {saved.bank && <p className="text-sm text-green-600">Saved successfully.</p>}
+            {saved.bank && <p className="text-sm text-success-foreground">Saved successfully.</p>}
             <Button type="submit" disabled={upsert.isPending}>Save</Button>
           </form>
         </div>
@@ -370,7 +370,7 @@ export function GatewaySettingsForm() {
 
       {/* Cash */}
       <TabsContent value="cash">
-        <div className="rounded-2xl border border-border/50 bg-card p-6 space-y-5 mt-4">
+        <div className="rounded-[10px] border border-border bg-card p-6 space-y-5 mt-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">Cash</h3>
@@ -406,7 +406,7 @@ export function GatewaySettingsForm() {
                 rows={3}
               />
             </div>
-            {saved.cash && <p className="text-sm text-green-600">Saved successfully.</p>}
+            {saved.cash && <p className="text-sm text-success-foreground">Saved successfully.</p>}
             <Button type="submit" disabled={upsert.isPending}>Save</Button>
           </form>
         </div>

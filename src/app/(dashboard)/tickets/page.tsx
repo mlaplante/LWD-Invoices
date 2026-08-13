@@ -28,23 +28,23 @@ export default async function TicketsPage() {
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Total</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">{summary.total}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Open</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">{summary.open}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Urgent</p>
-          <p className="text-2xl font-bold mt-0.5 tabular-nums text-red-600">{summary.urgent}</p>
+          <p className="text-2xl font-bold mt-0.5 tabular-nums text-danger-foreground">{summary.urgent}</p>
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Tickets
           </p>

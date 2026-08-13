@@ -5,7 +5,7 @@ import { trpc } from "@/trpc/client";
 import { MessageSquare } from "lucide-react";
 import { SUGGESTED_ACTIONS } from "@/lib/reply-triage-actions";
 
-const triageStyles: Record<string, string> = { DISPUTE: "bg-red-100 text-red-800", PROMISE_TO_PAY: "bg-emerald-100 text-emerald-800", QUESTION: "bg-blue-100 text-blue-800", INFO_UPDATE: "bg-amber-100 text-amber-800", NEEDS_REVIEW: "bg-muted text-muted-foreground" };
+const triageStyles: Record<string, string> = { DISPUTE: "bg-danger/10 text-danger-foreground", PROMISE_TO_PAY: "bg-success/10 text-success-foreground", QUESTION: "bg-accent text-accent-foreground", INFO_UPDATE: "bg-warning/12 text-warning-foreground", NEEDS_REVIEW: "bg-muted text-muted-foreground" };
 
 function timeAgo(date: Date): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -25,13 +25,13 @@ export function InboundRepliesPanel({ invoiceId }: { invoiceId: string }) {
   if (!data || data.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-5 py-3 border-b border-border/50 flex items-center gap-2">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center gap-2">
         <MessageSquare className="w-4 h-4 text-muted-foreground" />
         <p className="text-sm font-semibold">Client replies</p>
         <span className="text-xs text-muted-foreground">({data.length})</span>
       </div>
-      <ul className="divide-y divide-border/50">
+      <ul className="divide-y divide-divider">
         {data.map((reply) => (
           <li key={reply.id} className="px-5 py-3">
             <div className="flex items-center justify-between gap-2">

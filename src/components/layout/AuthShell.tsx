@@ -42,7 +42,7 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
       </section>
 
       <section className="flex min-h-[calc(100vh-4rem)] items-center justify-center lg:min-h-screen lg:px-10 xl:px-16">
-        <div className="w-full max-w-md rounded-2xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
+        <div className="w-full max-w-md rounded-[10px] border border-border/70 bg-card p-6 shadow-sm sm:p-8">
           <div className="mb-7">
             <Wordmark className="mb-7 inline-block text-foreground lg:hidden" />
             <h1 className="font-display text-4xl leading-none tracking-tight text-foreground">

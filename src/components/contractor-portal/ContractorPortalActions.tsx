@@ -36,7 +36,7 @@ export function ContractorPortalActions({ token, w9OnFile, eligibleYears }: Prop
   }
 
   return (
-    <section className="rounded-2xl border bg-card p-5 space-y-4" style={{ borderColor: "var(--portal-brand, #2563eb)20" }}>
+    <section className="rounded-[10px] border bg-card p-5 space-y-4" style={{ borderColor: "var(--portal-brand, #2563eb)20" }}>
       <div>
         <p className="text-sm font-semibold">Documents</p>
         <p className="text-xs text-muted-foreground mt-0.5">
@@ -47,7 +47,7 @@ export function ContractorPortalActions({ token, w9OnFile, eligibleYears }: Prop
       {/* W-9 */}
       <div className="flex flex-wrap items-center gap-3">
         {w9OnFile ? (
-          <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+          <span className="inline-flex items-center gap-1.5 text-sm text-success-foreground font-medium">
             <CheckCircle2 className="w-4 h-4" /> W-9 on file
           </span>
         ) : (

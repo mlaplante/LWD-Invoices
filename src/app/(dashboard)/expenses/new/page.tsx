@@ -25,7 +25,7 @@ export default async function NewExpensePage() {
         <h1 className="text-xl font-bold tracking-tight">New Expense</h1>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card p-6">
+      <div className="rounded-[10px] border border-border bg-card p-6">
         <ExpenseForm
           mode="create"
           taxes={taxes.map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate) }))}

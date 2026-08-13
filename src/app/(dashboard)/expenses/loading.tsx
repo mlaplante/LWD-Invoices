@@ -9,11 +9,11 @@ export default function ExpensesLoading() {
         <div className="h-9 w-32 rounded-xl bg-muted" />
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="h-20 rounded-2xl bg-muted" />
-        <div className="h-20 rounded-2xl bg-muted" />
-        <div className="h-20 rounded-2xl bg-muted" />
+        <div className="h-20 rounded-[10px] bg-muted" />
+        <div className="h-20 rounded-[10px] bg-muted" />
+        <div className="h-20 rounded-[10px] bg-muted" />
       </div>
-      <div className="h-64 w-full rounded-2xl bg-muted" />
+      <div className="h-64 w-full rounded-[10px] bg-muted" />
     </div>
   );
 }

@@ -19,7 +19,7 @@ export default function NewTicketPage() {
       </div>
 
       {/* Form card */}
-      <div className="rounded-2xl border border-border/50 bg-card p-6">
+      <div className="rounded-[10px] border border-border bg-card p-6">
         <TicketForm />
       </div>
     </div>

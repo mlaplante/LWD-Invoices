@@ -86,7 +86,7 @@ export function InvoiceCanvas({
   return (
     <div
       style={theme.cssVars as React.CSSProperties}
-      className="mx-auto max-w-[52rem] rounded-md bg-white text-neutral-900 shadow-md font-[family-name:var(--canvas-font)]"
+      className="mx-auto max-w-[52rem] rounded-md bg-white text-muted-foreground shadow-md font-[family-name:var(--canvas-font)]"
     >
       {/* 1. Header */}
       <div
@@ -121,7 +121,7 @@ export function InvoiceCanvas({
                 className={`h-7 w-auto gap-1 border-none bg-transparent px-2 text-xs shadow-none ${
                   theme.headerStyle === "banded"
                     ? "text-white/80 hover:bg-white/10 [&_svg]:text-white/80"
-                    : "text-neutral-500 hover:bg-neutral-100"
+                    : "text-muted-foreground hover:bg-muted"
                 }`}
               >
                 <SelectValue />
@@ -143,7 +143,7 @@ export function InvoiceCanvas({
         <div>
           {value.number !== undefined && (
             <div className="flex items-center gap-1">
-              <span className="text-neutral-500">Invoice #</span>
+              <span className="text-muted-foreground">Invoice #</span>
               {readOnly ? (
                 <span className="font-medium">{value.number || "—"}</span>
               ) : (
@@ -160,7 +160,7 @@ export function InvoiceCanvas({
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
           <div className="flex items-center gap-1">
-            <span className="text-neutral-500">Date</span>
+            <span className="text-muted-foreground">Date</span>
             {readOnly ? (
               <span>{formatDate(value.date)}</span>
             ) : (
@@ -173,7 +173,7 @@ export function InvoiceCanvas({
             )}
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-neutral-500">Due</span>
+            <span className="text-muted-foreground">Due</span>
             {readOnly ? (
               <span>{formatDate(value.dueDate)}</span>
             ) : (
@@ -186,7 +186,7 @@ export function InvoiceCanvas({
             )}
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-neutral-500">Currency</span>
+            <span className="text-muted-foreground">Currency</span>
             {readOnly ? (
               <span>{activeCurrency?.code ?? ""}</span>
             ) : (
@@ -216,12 +216,12 @@ export function InvoiceCanvas({
 
       {/* 3. Bill To */}
       <div className={sectionPad}>
-        <div className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Bill To
         </div>
         {readOnly ? (
           <div className="mt-1 text-base font-medium">
-            {activeClient?.name ?? <span className="font-normal text-neutral-400">No client selected</span>}
+            {activeClient?.name ?? <span className="font-normal text-muted-foreground">No client selected</span>}
           </div>
         ) : (
           <Select value={value.clientId} onValueChange={onClientChange}>
@@ -231,7 +231,7 @@ export function InvoiceCanvas({
               className={
                 activeClient
                   ? `mt-1 h-auto w-auto gap-1 border-none bg-transparent px-1 py-0.5 text-base font-medium shadow-none ${HOVER_TINT}`
-                  : "mt-1 h-auto w-auto gap-1 rounded-md border border-dashed border-neutral-300 bg-transparent px-3 py-1.5 text-sm text-neutral-500 shadow-none"
+                  : "mt-1 h-auto w-auto gap-1 rounded-md border border-dashed border-border bg-transparent px-3 py-1.5 text-sm text-muted-foreground shadow-none"
               }
             >
               <SelectValue placeholder="Choose a client" />
@@ -263,15 +263,15 @@ export function InvoiceCanvas({
       <div className={`flex justify-end ${sectionPad}`}>
         <div className="w-72 space-y-1.5">
           <div className="flex justify-between text-sm">
-            <span className="text-neutral-500">Subtotal</span>
+            <span className="text-muted-foreground">Subtotal</span>
             <span>{fmt(totals.subtotal)}</span>
           </div>
 
           {readOnly ? (
             totals.discountTotal > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-500">Discount</span>
-                <span className="text-emerald-600">-{fmt(totals.discountTotal)}</span>
+                <span className="text-muted-foreground">Discount</span>
+                <span className="text-success-foreground">-{fmt(totals.discountTotal)}</span>
               </div>
             )
           ) : (
@@ -288,13 +288,13 @@ export function InvoiceCanvas({
                     type="button"
                     className={`-mx-1 flex w-[calc(100%+0.5rem)] justify-between rounded px-1 text-sm ${HOVER_TINT}`}
                   >
-                    <span className="text-neutral-500">Discount</span>
-                    <span className="text-emerald-600">-{fmt(totals.discountTotal)}</span>
+                    <span className="text-muted-foreground">Discount</span>
+                    <span className="text-success-foreground">-{fmt(totals.discountTotal)}</span>
                   </button>
                 ) : (
                   <button
                     type="button"
-                    className={`-mx-1 flex w-[calc(100%+0.5rem)] justify-between rounded px-1 text-sm text-neutral-400 ${HOVER_TINT}`}
+                    className={`-mx-1 flex w-[calc(100%+0.5rem)] justify-between rounded px-1 text-sm text-muted-foreground ${HOVER_TINT}`}
                   >
                     <span>+ Discount</span>
                     <span />
@@ -370,12 +370,12 @@ export function InvoiceCanvas({
 
           {totals.taxTotal > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-neutral-500">Tax</span>
+              <span className="text-muted-foreground">Tax</span>
               <span>{fmt(totals.taxTotal)}</span>
             </div>
           )}
 
-          <div className="flex justify-between border-t border-neutral-200 pt-1.5 text-base font-bold text-[var(--canvas-accent)]">
+          <div className="flex justify-between border-t border-border pt-1.5 text-base font-bold text-[var(--canvas-accent)]">
             <span>Total</span>
             <span>{fmt(totals.total)}</span>
           </div>
@@ -386,7 +386,7 @@ export function InvoiceCanvas({
       {(!readOnly || value.notes) && (
         <div className={sectionPad}>
           {readOnly ? (
-            <p className="whitespace-pre-wrap text-sm text-neutral-700">{value.notes}</p>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{value.notes}</p>
           ) : (
             <EditableText
               value={value.notes ?? ""}
@@ -394,7 +394,7 @@ export function InvoiceCanvas({
               multiline
               placeholder="Payment terms, bank details, thank you message…"
               ariaLabel="Invoice notes"
-              className="w-full text-sm text-neutral-700"
+              className="w-full text-sm text-muted-foreground"
             />
           )}
         </div>
@@ -402,7 +402,7 @@ export function InvoiceCanvas({
 
       {/* 7. Footer */}
       {footerText && (
-        <div className="border-t border-neutral-200 px-4 py-4 text-center text-xs text-neutral-400 sm:px-8">
+        <div className="border-t border-border px-4 py-4 text-center text-xs text-muted-foreground sm:px-8">
           {footerText}
         </div>
       )}

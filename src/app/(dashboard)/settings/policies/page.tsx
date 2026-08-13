@@ -22,8 +22,8 @@ export default async function PoliciesSettingsPage() {
       </div>
 
       {/* Late Fees */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Late Fees
           </p>

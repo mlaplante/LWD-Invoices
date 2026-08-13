@@ -141,8 +141,8 @@ export function InvoiceDraftQA({
             <div key={severity} className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className={`inline-block h-2 w-2 rounded-full ${
-                  severity === "critical" ? "bg-red-500" :
-                  severity === "warning" ? "bg-yellow-500" : "bg-blue-500"
+                  severity === "critical" ? "bg-danger" :
+                  severity === "warning" ? "bg-warning" : "bg-primary"
                 }`} />
                 <span className="text-xs font-medium uppercase text-muted-foreground">{severity}</span>
                 <span className="text-xs text-muted-foreground">({group.length})</span>
@@ -271,9 +271,9 @@ export function InvoiceDraftQA({
   
   if (scanState === "clean") {
     return (
-      <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4 space-y-3">
+      <div className="rounded-xl border border-success/30/20 bg-success/5 p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <CheckCircle className="h-4 w-4 text-green-500" />
+          <CheckCircle className="h-4 w-4 text-success-foreground" />
           <p className="text-sm text-muted-foreground">No issues found in this scan.</p>
         </div>
         {scanResult && (
@@ -296,9 +296,9 @@ export function InvoiceDraftQA({
   
   if (scanState === "partial") {
     return (
-      <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-3">
+      <div className="rounded-xl border border-warning/30/20 bg-warning/5 p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-yellow-500" />
+          <AlertTriangle className="h-4 w-4 text-warning-foreground" />
           <p className="text-sm text-muted-foreground">
             Some AI checks were unavailable; deterministic checks completed.
           </p>
@@ -319,9 +319,9 @@ export function InvoiceDraftQA({
   
   if (scanState === "error") {
     return (
-      <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 space-y-3">
+      <div className="rounded-xl border border-danger/30/20 bg-danger/5 p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-red-500" />
+          <AlertTriangle className="h-4 w-4 text-danger-foreground" />
           <p className="text-sm text-muted-foreground">
             QA unavailable. You can keep editing or save without it.
           </p>
@@ -342,7 +342,7 @@ export function InvoiceDraftQA({
   // Findings state
   if (scanState === "findings") {
     return (
-      <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 space-y-3">
+      <div className="rounded-xl border border-warning/30/20 bg-warning/5 p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Draft Review Findings</h2>
           <Button

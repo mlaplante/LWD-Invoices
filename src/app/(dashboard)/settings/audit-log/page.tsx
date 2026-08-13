@@ -7,16 +7,16 @@ import { cn } from "@/lib/utils";
 // ── Action badge config ────────────────────────────────────────────────────────
 
 const ACTION_BADGE: Record<string, { label: string; className: string }> = {
-  CREATED:          { label: "Created",        className: "bg-emerald-50 text-emerald-600" },
-  UPDATED:          { label: "Updated",        className: "bg-amber-50 text-amber-600" },
-  DELETED:          { label: "Deleted",        className: "bg-red-50 text-red-600" },
+  CREATED:          { label: "Created",        className: "bg-success/10 text-success-foreground" },
+  UPDATED:          { label: "Updated",        className: "bg-warning/12 text-warning-foreground" },
+  DELETED:          { label: "Deleted",        className: "bg-danger/10 text-danger-foreground" },
   STATUS_CHANGED:   { label: "Status Changed", className: "bg-primary/10 text-primary" },
-  PAYMENT_RECEIVED: { label: "Payment",        className: "bg-emerald-50 text-emerald-700" },
-  SENT:             { label: "Sent",           className: "bg-blue-50 text-blue-600" },
-  VIEWED:           { label: "Viewed",         className: "bg-gray-100 text-gray-500" },
+  PAYMENT_RECEIVED: { label: "Payment",        className: "bg-success/10 text-success-foreground" },
+  SENT:             { label: "Sent",           className: "bg-accent text-accent-foreground" },
+  VIEWED:           { label: "Viewed",         className: "bg-muted text-muted-foreground" },
 };
 
-const DEFAULT_BADGE = { label: "Action", className: "bg-gray-100 text-gray-500" };
+const DEFAULT_BADGE = { label: "Action", className: "bg-muted text-muted-foreground" };
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -41,8 +41,8 @@ export default async function AuditLogPage() {
       </div>
 
       {/* Log card */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Audit Trail
           </p>

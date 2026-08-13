@@ -94,7 +94,7 @@ export function ScheduledReportForm({ editId, onClose }: Props) {
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
+    <form onSubmit={handleSubmit} className="rounded-[10px] border border-border bg-card p-5 space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium">Report Type</label>

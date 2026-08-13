@@ -61,11 +61,11 @@ export default async function ProfitLossPage({
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Total Revenue", value: data.totalRevenue, color: "text-emerald-600" },
-          { label: "Total Expenses", value: data.totalExpenses, color: "text-red-600" },
-          { label: "Net Income", value: data.netIncome, color: data.netIncome >= 0 ? "text-primary" : "text-red-600" },
+          { label: "Total Revenue", value: data.totalRevenue, color: "text-success-foreground" },
+          { label: "Total Expenses", value: data.totalExpenses, color: "text-danger-foreground" },
+          { label: "Net Income", value: data.netIncome, color: data.netIncome >= 0 ? "text-primary" : "text-danger-foreground" },
         ].map((s) => (
-          <div key={s.label} className="rounded-2xl border border-border/50 bg-card px-5 py-4">
+          <div key={s.label} className="rounded-[10px] border border-border bg-card px-5 py-4">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{s.label}</p>
             <p className={`text-2xl font-bold tabular-nums mt-1 ${s.color}`}>${s.value.toFixed(2)}</p>
           </div>
@@ -73,7 +73,7 @@ export default async function ProfitLossPage({
       </div>
 
       {/* Chart */}
-      <div className="rounded-2xl border border-border/50 bg-card px-6 py-5">
+      <div className="rounded-[10px] border border-border bg-card px-6 py-5">
         <p className="text-sm font-semibold mb-4">Monthly Breakdown</p>
         <div className="overflow-x-auto">
           <svg width={totalW} height={CHART_H + 28} viewBox={`0 0 ${totalW} ${CHART_H + 28}`} style={{ display: "block" }}>
@@ -95,14 +95,14 @@ export default async function ProfitLossPage({
         </div>
         <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-primary/70 inline-block" />Revenue</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500/50 inline-block" />Expenses</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-danger/50 inline-block" />Expenses</span>
         </div>
       </div>
 
       {/* Monthly table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="border-b border-border/50">
+          <thead className="border-b border-border">
             <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               <th className="px-5 py-3 text-left">Month</th>
               <th className="px-5 py-3 text-right">Revenue</th>
@@ -116,11 +116,11 @@ export default async function ProfitLossPage({
               const exp = data.expensesByMonth[m] ?? 0;
               const net = rev - exp;
               return (
-                <tr key={m} className="border-b border-border/50 last:border-0">
+                <tr key={m} className="border-b border-border last:border-0">
                   <td className="px-5 py-3 font-medium">{shortMonth(m)} {m.split("-")[0]}</td>
-                  <td className="px-5 py-3 text-right tabular-nums text-emerald-600">${rev.toFixed(2)}</td>
-                  <td className="px-5 py-3 text-right tabular-nums text-red-600">${exp.toFixed(2)}</td>
-                  <td className={`px-5 py-3 text-right tabular-nums font-semibold ${net >= 0 ? "text-primary" : "text-red-600"}`}>${net.toFixed(2)}</td>
+                  <td className="px-5 py-3 text-right tabular-nums text-success-foreground">${rev.toFixed(2)}</td>
+                  <td className="px-5 py-3 text-right tabular-nums text-danger-foreground">${exp.toFixed(2)}</td>
+                  <td className={`px-5 py-3 text-right tabular-nums font-semibold ${net >= 0 ? "text-primary" : "text-danger-foreground"}`}>${net.toFixed(2)}</td>
                 </tr>
               );
             })}

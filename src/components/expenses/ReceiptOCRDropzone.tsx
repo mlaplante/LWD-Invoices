@@ -17,7 +17,7 @@ type ScanState = "idle" | "uploading" | "scanning" | "done" | "error";
 function confidenceBadge(confidence: number) {
   if (confidence >= 0.8) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success-foreground">
         <CheckCircle2 className="w-3 h-3" />
         {Math.round(confidence * 100)}% confidence
       </span>
@@ -25,14 +25,14 @@ function confidenceBadge(confidence: number) {
   }
   if (confidence >= 0.5) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+      <span className="inline-flex items-center gap-1 rounded-full bg-warning/12 px-2 py-0.5 text-xs font-medium text-warning-foreground">
         <AlertTriangle className="w-3 h-3" />
         {Math.round(confidence * 100)}% confidence
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger-foreground">
       <AlertTriangle className="w-3 h-3" />
       {Math.round(confidence * 100)}% confidence
     </span>
@@ -166,7 +166,7 @@ export function ReceiptOCRDropzone({ onResult }: Props) {
 
         {state === "done" && confidence !== null && (
           <>
-            <CheckCircle2 className="w-8 h-8 text-emerald-600 mb-2" />
+            <CheckCircle2 className="w-8 h-8 text-success-foreground mb-2" />
             <p className="text-sm font-medium">Receipt scanned</p>
             <div className="mt-1">{confidenceBadge(confidence)}</div>
             <button

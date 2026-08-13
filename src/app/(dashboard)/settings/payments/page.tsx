@@ -24,8 +24,8 @@ export default function PaymentsSettingsPage() {
       </div>
 
       {/* Content card */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Payment Settings
           </p>
@@ -40,8 +40,8 @@ export default function PaymentsSettingsPage() {
       </div>
 
       {/* Stripe Tax — adjacent because it depends on the Stripe gateway above */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Tax Computation
           </p>
@@ -57,8 +57,8 @@ export default function PaymentsSettingsPage() {
       </div>
 
       {/* Dunning — lives here because it acts on the Stripe auto-charge flow */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Payment Recovery
           </p>
@@ -74,8 +74,8 @@ export default function PaymentsSettingsPage() {
       </div>
 
       {/* Early-payment discount — incentive lever on the same pay flow */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Payment Incentives
           </p>

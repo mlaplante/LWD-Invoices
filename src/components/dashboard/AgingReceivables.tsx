@@ -11,18 +11,18 @@ function fmt(n: number): string {
 }
 
 const BUCKET_COLORS = [
-  "bg-emerald-500",
-  "bg-amber-400",
-  "bg-orange-500",
-  "bg-red-500",
-  "bg-red-700",
+  "bg-success",
+  "bg-warning",
+  "bg-warning",
+  "bg-danger",
+  "bg-danger",
 ];
 
 export function AgingReceivables({ data }: { data: AgingBucket[] }) {
   const grandTotal = data.reduce((s, b) => s + b.total, 0);
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5">
+    <div className="rounded-[10px] border border-border bg-card p-5">
       <h3 className="font-semibold text-sm mb-3">Aging Receivables</h3>
 
       {grandTotal === 0 ? (

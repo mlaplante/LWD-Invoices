@@ -10,9 +10,9 @@ export function RetainerBurnCard({ data }: Props) {
 
   if (periodCount === 0) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-card p-5">
+      <div className="rounded-[10px] border border-border bg-card p-5">
         <div className="flex items-center gap-2 mb-3">
-          <Clock className="h-4 w-4 text-purple-500" />
+          <Clock className="h-4 w-4 text-accent-foreground" />
           <h3 className="font-semibold text-sm">Retainer Burn</h3>
         </div>
         <p className="text-sm text-muted-foreground">No active retainer periods</p>
@@ -25,14 +25,14 @@ export function RetainerBurnCard({ data }: Props) {
   const remaining = Math.max(includedHours - usedHours, 0);
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5">
+    <div className="rounded-[10px] border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-sm flex items-center gap-2">
-          <Clock className="h-4 w-4 text-purple-500" />
+          <Clock className="h-4 w-4 text-accent-foreground" />
           Retainer Burn
         </h3>
         {isOverBurn && (
-          <span className="text-xs font-semibold px-1.5 py-0.5 rounded-md bg-red-50 text-red-700">
+          <span className="text-xs font-semibold px-1.5 py-0.5 rounded-md bg-danger/10 text-danger-foreground">
             Over budget
           </span>
         )}
@@ -41,7 +41,7 @@ export function RetainerBurnCard({ data }: Props) {
       <div className="space-y-3">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Used</span>
-          <span className={cn("font-semibold", isOverBurn && "text-red-600")}>
+          <span className={cn("font-semibold", isOverBurn && "text-danger-foreground")}>
             {usedHours.toFixed(1)}h / {includedHours.toFixed(1)}h
           </span>
         </div>
@@ -51,7 +51,7 @@ export function RetainerBurnCard({ data }: Props) {
           <div
             className={cn(
               "h-full rounded-full transition-all",
-              isOverBurn ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-purple-500",
+              isOverBurn ? "bg-danger" : pct >= 80 ? "bg-warning" : "bg-primary",
             )}
             style={{ width: `${pct}%` }}
             role="progressbar"
@@ -66,7 +66,7 @@ export function RetainerBurnCard({ data }: Props) {
           <span>{Math.round(pct)}% used</span>
           {!isOverBurn && <span>{remaining.toFixed(1)}h remaining</span>}
           {isOverBurn && (
-            <span className="text-red-600 font-medium">
+            <span className="text-danger-foreground font-medium">
               {(usedHours - includedHours).toFixed(1)}h over
             </span>
           )}

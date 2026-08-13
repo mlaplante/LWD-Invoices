@@ -136,7 +136,7 @@ export default async function ClientsPage({
 
       {total === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-[10px] bg-accent flex items-center justify-center mb-4">
             <Users className="w-6 h-6 text-primary" />
           </div>
           <p className="font-semibold text-foreground">
@@ -160,7 +160,7 @@ export default async function ClientsPage({
       ) : (
         <>
           {/* Mobile card list */}
-          <div className="sm:hidden divide-y divide-border/50">
+          <div className="sm:hidden divide-y divide-divider">
             {paginated.map((client) => (
               <Link
                 key={client.id}
@@ -309,7 +309,7 @@ export default async function ClientsPage({
 
           {/* Pagination footer */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
+            <div className="flex items-center justify-between border-t border-border px-2 py-3 text-sm text-muted-foreground">
               <span>
                 Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of{" "}
                 {total}

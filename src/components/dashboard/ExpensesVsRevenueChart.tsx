@@ -22,8 +22,8 @@ function formatCurrency(value: number): string {
 
 export function ExpensesVsRevenueChart({ data }: Props) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-5 py-4 border-b border-border/50">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-border">
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
           Comparison
         </p>

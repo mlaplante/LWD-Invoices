@@ -59,7 +59,7 @@ export default function CashFlowForecastPage() {
             {data.base.horizons.map((h) => {
               const scen = data.scenario?.horizons.find((s) => s.horizonDays === h.horizonDays);
               return (
-                <div key={h.horizonDays} className="rounded-2xl border border-border/50 bg-card p-4">
+                <div key={h.horizonDays} className="rounded-[10px] border border-border bg-card p-4">
                   <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     {h.horizonDays} days
                   </p>
@@ -71,7 +71,7 @@ export default function CashFlowForecastPage() {
                     Net {usd(h.netChange)} · {Math.round(h.confidence * 100)}% confidence
                   </p>
                   {scen && (
-                    <p className="text-xs mt-2 pt-2 border-t border-border/50 text-amber-700">
+                    <p className="text-xs mt-2 pt-2 border-t border-border text-warning-foreground">
                       Scenario: {usd(scen.projectedPosition)} ({usd(scen.projectedPosition - h.projectedPosition)})
                     </p>
                   )}
@@ -81,7 +81,7 @@ export default function CashFlowForecastPage() {
           </div>
 
           {/* Scenario planner */}
-          <div className="rounded-2xl border border-border/50 bg-card p-5">
+          <div className="rounded-[10px] border border-border bg-card p-5">
             <p className="text-sm font-semibold mb-1">What-if: a client pays late</p>
             <p className="text-xs text-muted-foreground mb-3">
               See how a delayed payment shifts your projected position.
@@ -91,7 +91,7 @@ export default function CashFlowForecastPage() {
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <select
-                  className="border border-border/50 rounded-lg px-3 py-1.5 text-sm bg-background"
+                  className="border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
                   value={scenario?.clientId ?? ""}
                   onChange={(e) => {
                     const c = clients.find((x) => x.id === e.target.value);
@@ -107,7 +107,7 @@ export default function CashFlowForecastPage() {
                 </select>
                 <span className="text-sm text-muted-foreground">pays</span>
                 <select
-                  className="border border-border/50 rounded-lg px-3 py-1.5 text-sm bg-background disabled:opacity-50"
+                  className="border border-border rounded-lg px-3 py-1.5 text-sm bg-background disabled:opacity-50"
                   disabled={!scenario}
                   value={scenario?.delayDays ?? 30}
                   onChange={(e) =>

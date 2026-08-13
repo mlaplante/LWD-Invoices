@@ -32,7 +32,7 @@ export default async function EditProjectPage({ params }: Props) {
         <span className="text-border/70">/</span>
         <h1 className="text-xl font-bold tracking-tight">Edit Project</h1>
       </div>
-      <div className="rounded-2xl border border-border/50 bg-card p-6">
+      <div className="rounded-[10px] border border-border bg-card p-6">
         <ProjectForm
           mode="edit"
           project={project}

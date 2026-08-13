@@ -7,8 +7,8 @@ export default function InvoiceEditLoading() {
         <Skeleton className="h-4 w-20" />
         <Skeleton className="h-7 w-32" />
       </div>
-      <div className="rounded-2xl border border-border/50 overflow-hidden">
-        <div className="px-8 py-6 border-b border-border/50 space-y-3">
+      <div className="rounded-[10px] border border-border overflow-hidden">
+        <div className="px-8 py-6 border-b border-border space-y-3">
           <div className="grid grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="space-y-1.5">
@@ -29,7 +29,7 @@ export default function InvoiceEditLoading() {
           ))}
           <Skeleton className="h-8 w-28 rounded-lg" />
         </div>
-        <div className="px-8 py-4 border-t border-border/50 flex justify-end gap-2">
+        <div className="px-8 py-4 border-t border-border flex justify-end gap-2">
           <Skeleton className="h-9 w-20 rounded-lg" />
           <Skeleton className="h-9 w-28 rounded-lg" />
         </div>

@@ -86,7 +86,7 @@ export default async function ContractorPortalPage({
     <PortalShell branding={branding}>
       <div className="space-y-6">
         {/* Identity */}
-        <section className="rounded-2xl border bg-card p-5" style={{ borderColor: `${branding.brandColor}20` }}>
+        <section className="rounded-[10px] border bg-card p-5" style={{ borderColor: `${branding.brandColor}20` }}>
           <h2 className="text-lg font-semibold">{displayName}</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             Contractor portal · {contractor.organization.name}
@@ -120,7 +120,7 @@ export default async function ContractorPortalPage({
 
         {/* Tax years */}
         {years.length > 0 && (
-          <section className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${branding.brandColor}20` }}>
+          <section className="rounded-[10px] border bg-card overflow-hidden" style={{ borderColor: `${branding.brandColor}20` }}>
             <div className="px-5 py-3 border-b" style={{ borderColor: `${branding.brandColor}20` }}>
               <p className="text-sm font-semibold">Tax years</p>
             </div>
@@ -148,7 +148,7 @@ export default async function ContractorPortalPage({
         )}
 
         {/* Payment history */}
-        <section className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${branding.brandColor}20` }}>
+        <section className="rounded-[10px] border bg-card overflow-hidden" style={{ borderColor: `${branding.brandColor}20` }}>
           <div className="px-5 py-3 border-b" style={{ borderColor: `${branding.brandColor}20` }}>
             <p className="text-sm font-semibold">Payment history</p>
           </div>

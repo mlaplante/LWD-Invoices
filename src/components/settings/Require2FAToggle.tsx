@@ -55,11 +55,11 @@ export function Require2FAToggle({ require2FA: initial }: Require2FAToggleProps)
   if (confirming) {
     return (
       <div className="space-y-3">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
-          <p className="text-sm font-semibold text-amber-800">
+        <div className="bg-warning/12 border border-warning/30 rounded-lg p-4 space-y-2">
+          <p className="text-sm font-semibold text-warning-foreground">
             Require 2FA for all team members?
           </p>
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-warning-foreground">
             All team members who have not yet set up two-factor authentication
             will be required to do so on their next sign-in. They will not be
             able to access the dashboard until they enroll.
@@ -89,7 +89,7 @@ export function Require2FAToggle({ require2FA: initial }: Require2FAToggleProps)
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         {require2FA ? (
-          <ShieldCheck className="w-5 h-5 text-emerald-600" />
+          <ShieldCheck className="w-5 h-5 text-success-foreground" />
         ) : (
           <ShieldAlert className="w-5 h-5 text-muted-foreground" />
         )}

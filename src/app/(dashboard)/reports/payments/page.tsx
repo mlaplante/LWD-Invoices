@@ -7,10 +7,10 @@ import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 
 const GATEWAY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  STRIPE:        { label: "Stripe",        icon: <CreditCard className="w-4 h-4" />, color: "bg-violet-50 text-violet-600" },
-  PAYPAL:        { label: "PayPal",        icon: <DollarSign className="w-4 h-4" />, color: "bg-blue-50 text-blue-600" },
-  BANK_TRANSFER: { label: "Bank Transfer", icon: <Landmark className="w-4 h-4" />,   color: "bg-emerald-50 text-emerald-600" },
-  CASH:          { label: "Cash",          icon: <Banknote className="w-4 h-4" />,   color: "bg-amber-50 text-amber-600" },
+  STRIPE:        { label: "Stripe",        icon: <CreditCard className="w-4 h-4" />, color: "bg-accent text-accent-foreground" },
+  PAYPAL:        { label: "PayPal",        icon: <DollarSign className="w-4 h-4" />, color: "bg-accent text-accent-foreground" },
+  BANK_TRANSFER: { label: "Bank Transfer", icon: <Landmark className="w-4 h-4" />,   color: "bg-success/10 text-success-foreground" },
+  CASH:          { label: "Cash",          icon: <Banknote className="w-4 h-4" />,   color: "bg-warning/12 text-warning-foreground" },
 };
 
 export default async function PaymentsReportPage({
@@ -63,23 +63,23 @@ export default async function PaymentsReportPage({
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Total Revenue</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">${totalRevenue.toFixed(2)}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Transactions</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">{totalTxns}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Gateway Fees</p>
-          <p className="text-2xl font-bold mt-0.5 tabular-nums text-red-600">-${totalFees.toFixed(2)}</p>
+          <p className="text-2xl font-bold mt-0.5 tabular-nums text-danger-foreground">-${totalFees.toFixed(2)}</p>
         </div>
       </div>
 
       {/* Gateway breakdown */}
       {entries.length === 0 ? (
-        <div className="rounded-2xl border border-border/50 bg-card flex flex-col items-center justify-center py-14 text-center">
+        <div className="rounded-[10px] border border-border bg-card flex flex-col items-center justify-center py-14 text-center">
           <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
         </div>
       ) : (
@@ -88,12 +88,12 @@ export default async function PaymentsReportPage({
             const config = GATEWAY_CONFIG[method] ?? {
               label: method.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
               icon: <CreditCard className="w-4 h-4" />,
-              color: "bg-gray-100 text-gray-500",
+              color: "bg-muted text-muted-foreground",
             };
             const net = stats.total - stats.fees;
             return (
-              <div key={method} className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-                <div className="px-5 py-4 border-b border-border/50 flex items-center gap-3">
+              <div key={method} className="rounded-[10px] border border-border bg-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-border flex items-center gap-3">
                   <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", config.color)}>
                     {config.icon}
                   </div>
@@ -110,9 +110,9 @@ export default async function PaymentsReportPage({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Gateway Fees</span>
-                    <span className="font-semibold tabular-nums text-red-600">-${stats.fees.toFixed(2)}</span>
+                    <span className="font-semibold tabular-nums text-danger-foreground">-${stats.fees.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between border-t border-border/40 pt-2.5">
+                  <div className="flex justify-between border-t border-border pt-2.5">
                     <span className="font-semibold">Net Revenue</span>
                     <span className="font-bold tabular-nums">${net.toFixed(2)}</span>
                   </div>

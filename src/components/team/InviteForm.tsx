@@ -24,7 +24,7 @@ export function InviteForm() {
   });
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-6">
+    <div className="rounded-[10px] border border-border bg-card p-6">
       <h2 className="text-sm font-semibold mb-4">Invite a Team Member</h2>
       <form
         onSubmit={(e) => {

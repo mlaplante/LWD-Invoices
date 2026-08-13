@@ -57,14 +57,14 @@ export function TeamMemberList({ members: initialMembers }: { members: Member[] 
   });
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-6 py-4 border-b border-border/50">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-6 py-4 border-b border-border">
         <p className="text-sm font-semibold">Team Members</p>
         <p className="text-xs text-muted-foreground mt-0.5">{members.length} members</p>
       </div>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border/40">
+          <tr className="border-b border-border">
             <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
@@ -80,7 +80,7 @@ export function TeamMemberList({ members: initialMembers }: { members: Member[] 
                   ? `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim()
                   : "\u2014"}
                 {!m.isActive && (
-                  <span className="ml-2 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-red-50 text-red-600">
+                  <span className="ml-2 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-danger/10 text-danger-foreground">
                     Suspended
                   </span>
                 )}
@@ -105,11 +105,11 @@ export function TeamMemberList({ members: initialMembers }: { members: Member[] 
                 {m.role !== "OWNER" && (
                   <>
                     {m.isActive ? (
-                      <button type="button" onClick={() => suspendMutation.mutate({ userId: m.id })} className="text-xs text-amber-600 hover:text-amber-700 transition-colors mr-3">
+                      <button type="button" onClick={() => suspendMutation.mutate({ userId: m.id })} className="text-xs text-warning-foreground hover:text-warning-foreground transition-colors mr-3">
                         Suspend
                       </button>
                     ) : (
-                      <button type="button" onClick={() => reactivateMutation.mutate({ userId: m.id })} className="text-xs text-emerald-600 hover:text-emerald-700 transition-colors mr-3">
+                      <button type="button" onClick={() => reactivateMutation.mutate({ userId: m.id })} className="text-xs text-success-foreground hover:text-success-foreground transition-colors mr-3">
                         Reactivate
                       </button>
                     )}

@@ -11,7 +11,7 @@ export function ReportHeader({ title, orgName, logoUrl, dateRange }: Props) {
   return (
     <>
       {/* Professional letterhead — visible on screen and print */}
-      <div className="rounded-2xl border border-border/50 bg-card px-6 py-5 print:border-0 print:rounded-none print:px-0 print:py-0 print:mb-4">
+      <div className="rounded-[10px] border border-border bg-card px-6 py-5 print:border-0 print:rounded-none print:px-0 print:py-0 print:mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {logoUrl && (
@@ -35,7 +35,7 @@ export function ReportHeader({ title, orgName, logoUrl, dateRange }: Props) {
             )}
           </div>
         </div>
-        <div className="border-t border-border/50 mt-4 pt-0 print:border-border" />
+        <div className="border-t border-border mt-4 pt-0 print:border-border" />
       </div>
 
       {/* Print footer — only visible when printing */}

@@ -13,9 +13,9 @@ export function ReminderHistory({ invoiceId }: Props) {
   return (
     <div className="space-y-3">
       <h2 className="text-base font-semibold">Reminder History</h2>
-      <div className="rounded-2xl border border-border/50 overflow-hidden">
+      <div className="rounded-[10px] border border-border overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-muted/30 border-b border-border/50">
+          <thead className="bg-muted/30 border-b border-border">
             <tr>
               <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sent</th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sequence</th>

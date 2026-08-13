@@ -212,7 +212,7 @@ export function ContractorForm({ mode, contractorId, defaults = {} }: Props) {
       </div>
 
       {isCorp && (
-        <p className="text-xs text-amber-600">
+        <p className="text-xs text-warning-foreground">
           Corporations are generally exempt from 1099-NEC reporting. Consider marking this contractor exempt below.
         </p>
       )}

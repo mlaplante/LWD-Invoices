@@ -26,8 +26,8 @@ export default async function ExpenseSettingsPage() {
       </div>
 
       {/* Categories */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Categories
           </p>
@@ -42,8 +42,8 @@ export default async function ExpenseSettingsPage() {
       </div>
 
       {/* Suppliers */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Suppliers
           </p>

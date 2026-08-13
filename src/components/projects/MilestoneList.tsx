@@ -43,7 +43,7 @@ export function MilestoneList({ projectId }: Props) {
           {milestones.map((m) => (
             <div
               key={m.id}
-              className="flex items-center gap-3 rounded-xl border border-border/50 bg-card px-4 py-3"
+              className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
             >
               <div
                 className="w-3 h-3 rounded-full shrink-0"

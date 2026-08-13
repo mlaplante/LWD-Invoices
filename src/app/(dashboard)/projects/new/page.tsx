@@ -23,7 +23,7 @@ export default async function NewProjectPage() {
         <span className="text-border/70">/</span>
         <h1 className="text-xl font-bold tracking-tight">New Project</h1>
       </div>
-      <div className="rounded-2xl border border-border/50 bg-card p-6">
+      <div className="rounded-[10px] border border-border bg-card p-6">
         <ProjectForm mode="create" clients={clients} currencies={currencies} templates={templates} />
       </div>
     </div>

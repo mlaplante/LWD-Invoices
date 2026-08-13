@@ -56,28 +56,28 @@ export function ContractorList() {
       {/* Summary stats */}
       {contractors.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <div className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium">Contractors</p>
             <p className="text-2xl font-bold mt-0.5 tabular-nums">{contractors.length}</p>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <div className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium">{year} Reportable</p>
             <p className="text-2xl font-bold mt-0.5 tabular-nums">${ytdTotal.toFixed(2)}</p>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <div className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium">Need a 1099-NEC</p>
             <p className="text-2xl font-bold mt-0.5 tabular-nums">{eligibleCount}</p>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <div className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium">Missing W-9</p>
-            <p className="text-2xl font-bold mt-0.5 tabular-nums text-amber-600">{missingW9Count}</p>
+            <p className="text-2xl font-bold mt-0.5 tabular-nums text-warning-foreground">{missingW9Count}</p>
           </div>
         </div>
       )}
 
       {/* Table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             All Contractors
           </p>
@@ -97,7 +97,7 @@ export function ContractorList() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/40">
+                <tr className="border-b border-border">
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">TIN</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">W-9</th>
@@ -127,7 +127,7 @@ export function ContractorList() {
                         <span className="inline-flex items-center gap-1.5">
                           <Badge variant={w9.variant}>{w9.label}</Badge>
                           {needsW9 ? (
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" aria-label="W-9 needed for filing" />
+                            <AlertTriangle className="w-3.5 h-3.5 text-warning-foreground" aria-label="W-9 needed for filing" />
                           ) : null}
                         </span>
                       </td>

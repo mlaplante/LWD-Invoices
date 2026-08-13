@@ -23,7 +23,7 @@ export function ClosePeriodBanner({
   });
 
   return (
-    <div className="rounded-md border border-yellow-300 bg-yellow-50 p-4 flex items-center justify-between">
+    <div className="rounded-md border border-warning/30 bg-warning/12 p-4 flex items-center justify-between">
       <div className="text-sm">
         <strong>{periodLabel}</strong> period ended on{" "}
         {periodEnd.toLocaleDateString()}. Close it and open the next period?

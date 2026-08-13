@@ -27,7 +27,7 @@ export function SavedCards({ clientToken }: { clientToken: string }) {
   if (!cards || cards.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-4 space-y-3">
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
       <h3 className="text-sm font-semibold flex items-center gap-2">
         <CreditCard className="h-4 w-4 text-muted-foreground" />
         Saved Payment Methods
@@ -51,7 +51,7 @@ export function SavedCards({ clientToken }: { clientToken: string }) {
             <button
               onClick={() => removeCard.mutate({ clientToken, cardId: card.id })}
               disabled={removeCard.isPending}
-              className="text-muted-foreground hover:text-red-600 transition-colors p-1"
+              className="text-muted-foreground hover:text-danger-foreground transition-colors p-1"
               aria-label="Remove card"
             >
               <Trash2 className="h-4 w-4" />

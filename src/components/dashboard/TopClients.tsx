@@ -10,7 +10,7 @@ type TopClient = {
 export function TopClients({ data }: { data: TopClient[] }) {
   if (data.length === 0) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-card p-5">
+      <div className="rounded-[10px] border border-border bg-card p-5">
         <h3 className="font-semibold text-sm mb-3">Top Clients</h3>
         <p className="text-sm text-muted-foreground">No payments this month</p>
       </div>
@@ -18,7 +18,7 @@ export function TopClients({ data }: { data: TopClient[] }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5">
+    <div className="rounded-[10px] border border-border bg-card p-5">
       <h3 className="font-semibold text-sm mb-3">Top Clients This Month</h3>
       <div className="space-y-3">
         {data.map((client, i) => (

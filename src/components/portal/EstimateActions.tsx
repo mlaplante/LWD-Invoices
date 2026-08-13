@@ -39,7 +39,7 @@ export function EstimateActions({ token, currentStatus }: Props) {
 
   if (status === "ACCEPTED") {
     return (
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-700 text-sm font-medium">
+      <div className="rounded-xl border border-success/30 bg-success/10 p-3 text-success-foreground text-sm font-medium">
         Estimate accepted
       </div>
     );

@@ -16,13 +16,13 @@ import { PortalShell } from "@/components/portal/PortalShell";
 import { resolveEarlyPayOffer } from "@/server/services/early-payment-discount";
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string; dot: string }> = {
-  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",      dot: "bg-gray-400" },
-  SENT:           { label: "Unpaid",   className: "bg-amber-50 text-amber-600",     dot: "bg-amber-500" },
-  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600",       dot: "bg-blue-500" },
-  PAID:           { label: "Paid",     className: "bg-emerald-50 text-emerald-600", dot: "bg-emerald-500" },
-  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600",         dot: "bg-red-500" },
+  DRAFT:          { label: "Draft",    className: "bg-muted text-muted-foreground",      dot: "bg-muted-foreground" },
+  SENT:           { label: "Unpaid",   className: "bg-warning/12 text-warning-foreground",     dot: "bg-warning" },
+  PARTIALLY_PAID: { label: "Partial",  className: "bg-accent text-accent-foreground",       dot: "bg-primary" },
+  PAID:           { label: "Paid",     className: "bg-success/10 text-success-foreground", dot: "bg-success" },
+  OVERDUE:        { label: "Overdue",  className: "bg-danger/10 text-danger-foreground",         dot: "bg-danger" },
   ACCEPTED:       { label: "Accepted", className: "bg-primary/10 text-primary",     dot: "bg-primary" },
-  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-400",      dot: "bg-gray-300" },
+  REJECTED:       { label: "Rejected", className: "bg-muted text-muted-foreground",      dot: "bg-border" },
 };
 
 const PAYABLE_STATUSES: InvoiceStatus[] = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
@@ -141,10 +141,10 @@ export default async function PortalInvoicePage({
       <main aria-label="Invoice details" className="space-y-6" data-template={invoice.organization.invoiceTemplate ?? "modern"}>
         {/* Invoice card */}
         <div className={cn(
-          "border border-border/50 bg-card overflow-hidden",
+          "border border-border bg-card overflow-hidden",
           (invoice.organization.invoiceTemplate ?? "modern") === "classic"
             ? "rounded-none border-t-2"
-            : "rounded-2xl"
+            : "rounded-[10px]"
         )}>
           {/* Invoice header */}
           <div className="px-6 py-5 text-white" style={{ backgroundColor: brandColor }}>
@@ -188,7 +188,7 @@ export default async function PortalInvoicePage({
             {/* Line items */}
             <table className="w-full text-sm" aria-label="Invoice line items">
               <thead>
-                <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground pb-3">
+                <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground pb-3">
                   <th className="pb-3 font-semibold">Description</th>
                   <th className="pb-3 text-right font-semibold">Qty</th>
                   <th className="pb-3 text-right font-semibold">Rate</th>
@@ -197,14 +197,14 @@ export default async function PortalInvoicePage({
               </thead>
               <tbody>
                 {invoice.lines.map((line) => (
-                  <tr key={line.id} className="border-b border-border/50">
+                  <tr key={line.id} className="border-b border-border">
                     <td className="py-3.5">
                       <p className="font-medium text-foreground">{line.name}</p>
                       {line.description && (
                         <p className="text-xs text-muted-foreground">{line.description}</p>
                       )}
                       {Number(line.discount) > 0 && (
-                        <p className="text-xs text-emerald-600 mt-0.5">
+                        <p className="text-xs text-success-foreground mt-0.5">
                           {line.discountIsPercentage
                             ? `${Number(line.discount)}% discount `
                             : "Discount "}
@@ -290,7 +290,7 @@ export default async function PortalInvoicePage({
                   }
                   return null;
                 })()}
-                <div className="flex justify-between border-t border-border/50 pt-2 text-base font-bold text-foreground">
+                <div className="flex justify-between border-t border-border pt-2 text-base font-bold text-foreground">
                   <span>Total</span>
                   <span className="font-display">{f(invoice.total)}</span>
                 </div>
@@ -298,11 +298,11 @@ export default async function PortalInvoicePage({
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Credit Applied</span>
-                      <span className="text-emerald-600">
+                      <span className="text-success-foreground">
                         -{sym}{Number(invoice.creditApplied).toFixed(2)}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm font-semibold border-t border-border/50 pt-1.5">
+                    <div className="flex justify-between text-sm font-semibold border-t border-border pt-1.5">
                       <span>Balance Due</span>
                       <span>
                         {sym}{(Number(invoice.total) - Number(invoice.creditApplied)).toFixed(2)}
@@ -344,13 +344,13 @@ export default async function PortalInvoicePage({
 
             {/* Signed indicator */}
             {invoice.signedAt && invoice.signedByName && (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
+              <div className="rounded-xl border border-success/30 bg-success/10 p-4 flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-success-foreground shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-emerald-800">
+                  <p className="text-sm font-medium text-success-foreground">
                     Signed by {invoice.signedByName}
                   </p>
-                  <p className="text-xs text-emerald-600">
+                  <p className="text-xs text-success-foreground">
                     {formatDateLong(invoice.signedAt)}
                   </p>
                 </div>
@@ -382,7 +382,7 @@ export default async function PortalInvoicePage({
 
         {/* Payment history */}
         {invoice.payments.length > 0 && (
-          <div className="rounded-2xl border border-border/50 bg-card p-6">
+          <div className="rounded-[10px] border border-border bg-card p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold text-foreground">Payment History</h2>
               <Button asChild variant="ghost" size="sm">
@@ -394,7 +394,7 @@ export default async function PortalInvoicePage({
             </div>
             <table className="w-full text-sm" aria-label="Payment history">
               <thead>
-                <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <th className="pb-3 font-semibold">Date</th>
                   <th className="pb-3 font-semibold">Method</th>
                   <th className="pb-3 text-right font-semibold">Amount</th>
@@ -402,7 +402,7 @@ export default async function PortalInvoicePage({
               </thead>
               <tbody>
                 {invoice.payments.map((p) => (
-                  <tr key={p.id} className="border-b border-border/50 last:border-0">
+                  <tr key={p.id} className="border-b border-border last:border-0">
                     <td className="py-3.5 text-muted-foreground">{formatDateLong(p.paidAt)}</td>
                     <td className="py-3.5 capitalize text-muted-foreground">{p.method}</td>
                     <td className="py-3.5 text-right font-medium text-foreground">
@@ -417,11 +417,11 @@ export default async function PortalInvoicePage({
 
         {/* Payment Schedule */}
         {invoice.partialPayments.length > 0 && (
-          <div className="rounded-2xl border border-border/50 bg-card p-6">
+          <div className="rounded-[10px] border border-border bg-card p-6">
             <h2 className="text-base font-semibold text-foreground mb-4">Payment Schedule</h2>
             <table className="w-full text-sm" aria-label="Payment schedule">
               <thead>
-                <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <th className="pb-3 font-semibold">#</th>
                   <th className="pb-3 font-semibold">Due Date</th>
                   <th className="pb-3 text-right font-semibold">Amount</th>
@@ -430,7 +430,7 @@ export default async function PortalInvoicePage({
               </thead>
               <tbody>
                 {invoice.partialPayments.map((pp, i) => (
-                  <tr key={pp.id} className="border-b border-border/50 last:border-0">
+                  <tr key={pp.id} className="border-b border-border last:border-0">
                     <td className="py-3.5 text-muted-foreground">{i + 1}</td>
                     <td className="py-3.5 text-muted-foreground">{formatDateLong(pp.dueDate)}</td>
                     <td className="py-3.5 text-right font-medium text-foreground">
@@ -440,11 +440,11 @@ export default async function PortalInvoicePage({
                     </td>
                     <td className="py-3.5 text-right">
                       {pp.isPaid ? (
-                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600">
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-success/10 text-success-foreground">
                           Paid
                         </span>
                       ) : (
-                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-500">
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
                           Pending
                         </span>
                       )}
@@ -458,11 +458,11 @@ export default async function PortalInvoicePage({
 
         {/* Early-payment discount offer */}
         {isPayable && earlyPayOffer && gateways.length > 0 && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-            <p className="text-sm font-semibold text-emerald-800">
+          <div className="rounded-[10px] border border-success/30 bg-success/10 p-5">
+            <p className="text-sm font-semibold text-success-foreground">
               Pay by {formatDateLong(earlyPayOffer.deadline)} and save {earlyPayOffer.percent}%
             </p>
-            <p className="mt-1 text-sm text-emerald-700">
+            <p className="mt-1 text-sm text-success-foreground">
               Pay the full balance online with card or bank debit by{" "}
               {formatDateLong(earlyPayOffer.deadline)} and you&apos;ll be charged{" "}
               <span className="font-semibold">{f(earlyPayOffer.discountedBalance)}</span> instead of{" "}

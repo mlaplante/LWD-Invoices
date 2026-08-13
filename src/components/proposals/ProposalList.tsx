@@ -4,9 +4,9 @@ import { formatCurrency } from "@/lib/format";
 
 const STATUS_BADGE: Record<ProposalStatus, { label: string; className: string }> = {
   none: { label: "No draft", className: "bg-muted text-muted-foreground" },
-  draft: { label: "Draft", className: "bg-amber-50 text-amber-700" },
-  sent: { label: "Sent", className: "bg-blue-50 text-blue-700" },
-  viewed: { label: "Viewed", className: "bg-emerald-50 text-emerald-700" },
+  draft: { label: "Draft", className: "bg-warning/12 text-warning-foreground" },
+  sent: { label: "Sent", className: "bg-accent text-accent-foreground" },
+  viewed: { label: "Viewed", className: "bg-success/10 text-success-foreground" },
   signed: { label: "Signed", className: "bg-primary/10 text-primary" },
 };
 

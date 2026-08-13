@@ -15,7 +15,7 @@ export default async function InvitePage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="max-w-md w-full mx-4">
-          <div className="rounded-2xl border border-border/50 bg-card p-8 text-center">
+          <div className="rounded-[10px] border border-border bg-card p-8 text-center">
             <h1 className="text-xl font-bold mb-2">Invalid Invitation</h1>
             <p className="text-sm text-muted-foreground">
               {result.reason === "not_found" && "This invitation link is invalid."}

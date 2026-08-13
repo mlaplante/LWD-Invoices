@@ -30,14 +30,14 @@ export function DueThisWeek({ data }: { data: DueInvoice[] }) {
   const totalDue = data.reduce((s, inv) => s + inv.remaining, 0);
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5">
+    <div className="rounded-[10px] border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-sm flex items-center gap-2">
-          <CalendarClock className="h-4 w-4 text-amber-500" />
+          <CalendarClock className="h-4 w-4 text-warning-foreground" />
           Due This Week
         </h3>
         {data.length > 0 && (
-          <span className="text-xs font-semibold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700">
+          <span className="text-xs font-semibold px-1.5 py-0.5 rounded-md bg-warning/12 text-warning-foreground">
             {data.length} invoice{data.length !== 1 ? "s" : ""}
           </span>
         )}
@@ -66,7 +66,7 @@ export function DueThisWeek({ data }: { data: DueInvoice[] }) {
               </Link>
             ))}
           </div>
-          <div className="border-t border-border/50 pt-2 flex justify-between items-center">
+          <div className="border-t border-border pt-2 flex justify-between items-center">
             <span className="text-xs text-muted-foreground">Total due</span>
             <span className="text-sm font-bold">${totalDue.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
           </div>

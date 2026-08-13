@@ -156,7 +156,7 @@ export function RecordPaymentDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="transactionId">
-              Transaction ID <span className="text-gray-400 font-normal">(optional)</span>
+              Transaction ID <span className="text-muted-foreground font-normal">(optional)</span>
             </Label>
             <Input
               id="transactionId"
@@ -168,7 +168,7 @@ export function RecordPaymentDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="gatewayFee">
-              Gateway Fee <span className="text-gray-400 font-normal">(optional)</span>
+              Gateway Fee <span className="text-muted-foreground font-normal">(optional)</span>
             </Label>
             <Input
               id="gatewayFee"
@@ -182,7 +182,7 @@ export function RecordPaymentDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="notes">
-              Notes <span className="text-gray-400 font-normal">(optional)</span>
+              Notes <span className="text-muted-foreground font-normal">(optional)</span>
             </Label>
             <Textarea
               id="notes"
@@ -192,7 +192,7 @@ export function RecordPaymentDialog({
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-danger-foreground">{error}</p>}
 
           <DialogFooter className="gap-2">
             <Button

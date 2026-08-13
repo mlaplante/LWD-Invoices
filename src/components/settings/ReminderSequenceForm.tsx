@@ -137,7 +137,7 @@ export function ReminderSequenceForm({ editId, onClose }: Props) {
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-border/50 bg-card p-5 space-y-5">
+    <form onSubmit={handleSubmit} className="rounded-[10px] border border-border bg-card p-5 space-y-5">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium">Sequence Name</label>
@@ -169,7 +169,7 @@ export function ReminderSequenceForm({ editId, onClose }: Props) {
           </Button>
         </div>
         {steps.map((step, i) => (
-          <div key={i} className="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-3">
+          <div key={i} className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">
                 Step {i + 1}:{" "}

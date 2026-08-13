@@ -17,9 +17,9 @@ export function ClientCreditHoldBanner({ clientId }: { clientId: string }) {
   const fmt = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
   return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3.5 flex items-start gap-2.5">
-      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-      <div className="text-sm text-red-800 flex-1">
+    <div className="rounded-[10px] border border-danger/30 bg-danger/10 px-5 py-3.5 flex items-start gap-2.5">
+      <AlertTriangle className="w-4 h-4 text-danger-foreground shrink-0 mt-0.5" />
+      <div className="text-sm text-danger-foreground flex-1">
         {data.creditHold && (
           <span className="font-medium">
             This client is on credit hold{data.creditHoldAuto ? " (auto)" : ""}.
@@ -32,7 +32,7 @@ export function ClientCreditHoldBanner({ clientId }: { clientId: string }) {
             limit by <strong>{fmt(data.overLimitBy)}</strong>.{" "}
           </span>
         )}
-        <span className="text-red-700/80">Review before sending or charging. </span>
+        <span className="text-danger-foreground/80">Review before sending or charging. </span>
         <Link href={`/clients/${clientId}`} className="underline font-medium">
           Manage credit
         </Link>

@@ -21,15 +21,15 @@ import type { WidgetKey } from "@/lib/dashboard-layout";
 // Lazy-load chart components to defer the ~400KB Recharts bundle
 const RevenueChart = dynamic(
   () => import("@/components/dashboard/RevenueChart").then((m) => m.RevenueChart),
-  { loading: () => <Skeleton className="h-72 rounded-2xl" /> },
+  { loading: () => <Skeleton className="h-72 rounded-[10px]" /> },
 );
 const InvoiceStatusChart = dynamic(
   () => import("@/components/dashboard/InvoiceStatusChart").then((m) => m.InvoiceStatusChart),
-  { loading: () => <Skeleton className="h-72 rounded-2xl" /> },
+  { loading: () => <Skeleton className="h-72 rounded-[10px]" /> },
 );
 const ExpensesVsRevenueChart = dynamic(
   () => import("@/components/dashboard/ExpensesVsRevenueChart").then((m) => m.ExpensesVsRevenueChart),
-  { loading: () => <Skeleton className="h-72 rounded-2xl" /> },
+  { loading: () => <Skeleton className="h-72 rounded-[10px]" /> },
 );
 
 /* ── Async sections (one per WIDGET_KEY) ── */
@@ -117,8 +117,8 @@ async function EstimatedTaxSection() {
 async function ActivitySection() {
   const items = await api.dashboard.activityFeed();
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-5 py-4 border-b border-border/50">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-border">
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
           Feed
         </p>
@@ -142,62 +142,62 @@ function buildSectionMap(): Record<WidgetKey, SectionEntry> {
       fallback: (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }, (_, i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
+            <Skeleton key={i} className="h-28 rounded-[10px]" />
           ))}
         </div>
       ),
       section: <SummarySection />,
     },
     revenue: {
-      fallback: <Skeleton className="h-72 rounded-2xl" />,
+      fallback: <Skeleton className="h-72 rounded-[10px]" />,
       section: <RevenueSection />,
     },
     invoiceStatus: {
-      fallback: <Skeleton className="h-72 rounded-2xl" />,
+      fallback: <Skeleton className="h-72 rounded-[10px]" />,
       section: <InvoiceStatusSection />,
     },
     expenses: {
-      fallback: <Skeleton className="h-72 rounded-2xl" />,
+      fallback: <Skeleton className="h-72 rounded-[10px]" />,
       section: <ExpensesSection />,
     },
     cashFlow: {
-      fallback: <Skeleton className="h-64 rounded-2xl" />,
+      fallback: <Skeleton className="h-64 rounded-[10px]" />,
       section: <CashFlowInsightSection />,
     },
     topClients: {
-      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      fallback: <Skeleton className="h-40 rounded-[10px]" />,
       section: <TopClientsSection />,
     },
     aging: {
-      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      fallback: <Skeleton className="h-40 rounded-[10px]" />,
       section: <AgingSection />,
     },
     dueThisWeek: {
-      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      fallback: <Skeleton className="h-40 rounded-[10px]" />,
       section: <DueThisWeekSection />,
     },
     estimateConversion: {
-      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      fallback: <Skeleton className="h-40 rounded-[10px]" />,
       section: <EstimateConversionSection />,
     },
     tasks: {
-      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      fallback: <Skeleton className="h-40 rounded-[10px]" />,
       section: <TasksSection />,
     },
     retainerBurn: {
-      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      fallback: <Skeleton className="h-40 rounded-[10px]" />,
       section: <RetainerBurnSection />,
     },
     estimatedTax: {
-      fallback: <Skeleton className="h-40 rounded-2xl" />,
+      fallback: <Skeleton className="h-40 rounded-[10px]" />,
       section: <EstimatedTaxSection />,
     },
     activity: {
-      fallback: <Skeleton className="h-48 rounded-2xl" />,
+      fallback: <Skeleton className="h-48 rounded-[10px]" />,
       section: <ActivitySection />,
     },
     weeklyBriefing: {
-      fallback: <Skeleton className="h-96 rounded-2xl" />,
+      fallback: <Skeleton className="h-96 rounded-[10px]" />,
       section: <BriefingSection />,
     },
   };

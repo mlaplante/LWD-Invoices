@@ -209,7 +209,7 @@ export function ExpenseForm({
           </p>
         )}
         {scanWarnings.length > 0 && (
-          <div className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="mt-2 rounded-md bg-warning/12 px-3 py-2 text-xs text-warning-foreground">
             <p className="font-medium">Review before saving</p>
             <ul className="mt-1 list-disc pl-4">
               {scanWarnings.map((warning) => (

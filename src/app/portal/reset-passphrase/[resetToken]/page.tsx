@@ -51,7 +51,7 @@ export default function PortalResetPassphrasePage() {
   if (loginUrl) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-card p-8 text-center">
+        <div className="w-full max-w-sm rounded-[10px] border border-border bg-card p-8 text-center">
           <h1 className="text-xl font-bold text-foreground mb-2">Passphrase updated</h1>
           <p className="text-sm text-muted-foreground mb-6">
             Your new passphrase is set. Use it the next time you open one of
@@ -67,7 +67,7 @@ export default function PortalResetPassphrasePage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-card p-8">
+      <div className="w-full max-w-sm rounded-[10px] border border-border bg-card p-8">
         <h1 className="text-xl font-bold text-foreground mb-2">Choose a new passphrase</h1>
         <p className="text-sm text-muted-foreground mb-6">
           Enter a new passphrase for your client portal. It must be at least 8

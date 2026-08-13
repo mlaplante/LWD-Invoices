@@ -190,14 +190,14 @@ export function PaymentScheduleDialog({
             {paidEntries.map((e, i) => (
               <div
                 key={e.id ?? `paid-${i}`}
-                className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
+                className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
               >
                 <span className="w-6 text-center font-medium">{i + 1}</span>
                 <span className="flex-1">
                   {e.isPercentage ? `${e.amount}%` : fmt(e.amount)}
                 </span>
                 <span>{e.dueDate}</span>
-                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600">
+                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-success/10 text-success-foreground">
                   Paid
                 </span>
               </div>
@@ -214,7 +214,7 @@ export function PaymentScheduleDialog({
           {editableEntries.map((entry, relIdx) => {
             const absIdx = paidEntries.length + relIdx;
             return (
-              <div key={absIdx} className="space-y-2 rounded-lg border border-border/50 p-3 sm:border-0 sm:p-0 sm:rounded-none">
+              <div key={absIdx} className="space-y-2 rounded-lg border border-border p-3 sm:border-0 sm:p-0 sm:rounded-none">
                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                   <span className="w-6 text-center text-sm font-medium text-muted-foreground shrink-0">
                     {absIdx + 1}
@@ -317,7 +317,7 @@ export function PaymentScheduleDialog({
         </div>
 
         {entries.length > 0 && (
-          <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 px-4 py-2 text-sm">
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-2 text-sm">
             <div className="flex items-center gap-2">
               <span>
                 Scheduled:{" "}
@@ -328,7 +328,7 @@ export function PaymentScheduleDialog({
                 </span>
               </span>
               {coverageMismatch && entries.some((e) => !e.isPaid) && (
-                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-600">
+                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-warning/12 text-warning-foreground">
                   <AlertTriangle className="w-3 h-3" />
                   Doesn&apos;t cover full total
                 </span>

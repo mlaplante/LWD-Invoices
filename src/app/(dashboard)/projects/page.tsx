@@ -12,21 +12,21 @@ const STATUS_BADGE: Record<
   ProjectStatus,
   { label: string; className: string }
 > = {
-  ACTIVE: { label: "Active", className: "bg-emerald-50 text-emerald-600" },
+  ACTIVE: { label: "Active", className: "bg-success/10 text-success-foreground" },
   COMPLETED: { label: "Completed", className: "bg-primary/10 text-primary" },
-  ARCHIVED: { label: "Archived", className: "bg-gray-100 text-gray-500" },
+  ARCHIVED: { label: "Archived", className: "bg-muted text-muted-foreground" },
 };
 
 // Consistent folder color from project name
 const FOLDER_COLORS = [
-  "bg-violet-100 text-violet-600",
-  "bg-blue-100 text-blue-600",
-  "bg-emerald-100 text-emerald-600",
-  "bg-amber-100 text-amber-600",
-  "bg-rose-100 text-rose-600",
-  "bg-cyan-100 text-cyan-600",
-  "bg-orange-100 text-orange-600",
-  "bg-indigo-100 text-indigo-600",
+  "bg-accent text-accent-foreground",
+  "bg-accent text-accent-foreground",
+  "bg-success/10 text-success-foreground",
+  "bg-warning/12 text-warning-foreground",
+  "bg-danger/10 text-danger-foreground",
+  "bg-accent text-accent-foreground",
+  "bg-warning/12 text-warning-foreground",
+  "bg-accent text-accent-foreground",
 ];
 
 function folderColor(name: string): string {
@@ -119,7 +119,7 @@ export default async function ProjectsPage({
       {/* Project table */}
       {total === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-[10px] bg-accent flex items-center justify-center mb-4">
             <FolderOpen className="w-6 h-6 text-primary" />
           </div>
           <p className="font-semibold text-foreground">
@@ -146,7 +146,7 @@ export default async function ProjectsPage({
                 <Link
                   key={p.id}
                   href={`/projects/${p.id}`}
-                  className="block rounded-xl border border-border/50 bg-card p-4 space-y-1"
+                  className="block rounded-xl border border-border bg-card p-4 space-y-1"
                 >
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-sm truncate">{p.name}</p>
@@ -187,7 +187,7 @@ export default async function ProjectsPage({
                   <th className="pb-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-divider">
                 {paginated.map((p) => {
                   const badge = STATUS_BADGE[p.status];
                   return (
@@ -260,7 +260,7 @@ export default async function ProjectsPage({
             </table>
             {/* Pagination footer */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-border/40 px-2 py-3 text-sm text-muted-foreground">
+              <div className="flex items-center justify-between border-t border-border px-2 py-3 text-sm text-muted-foreground">
                 <span>
                   Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of{" "}
                   {total}

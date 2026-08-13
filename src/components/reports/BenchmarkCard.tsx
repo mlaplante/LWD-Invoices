@@ -9,7 +9,7 @@ import type { BenchmarkResult, MetricBenchmark } from "@/server/services/benchma
 export function BenchmarkCard({ benchmark }: { benchmark: BenchmarkResult }) {
   if (!benchmark.available) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/60 bg-card px-5 py-4">
+      <div className="rounded-[10px] border border-dashed border-border/60 bg-card px-5 py-4">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Users className="w-4 h-4" />
           <p className="text-xs font-bold uppercase tracking-widest">Peer Benchmark</p>
@@ -24,7 +24,7 @@ export function BenchmarkCard({ benchmark }: { benchmark: BenchmarkResult }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
+    <div className="rounded-[10px] border border-border bg-card px-5 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Users className="w-4 h-4" />
@@ -54,7 +54,7 @@ function MetricRow({ label, unit, metric }: { label: string; unit: string; metri
     <div>
       <p className="text-xs font-semibold text-muted-foreground">{label}</p>
       <p className="text-sm mt-1">
-        <span className={`font-bold ${strong ? "text-emerald-600" : "text-amber-600"}`}>
+        <span className={`font-bold ${strong ? "text-success-foreground" : "text-warning-foreground"}`}>
           Beats {metric.percentile}%
         </span>{" "}
         of similar businesses

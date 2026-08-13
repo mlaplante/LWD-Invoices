@@ -69,7 +69,7 @@ export function ChangeOrderForm({ projectId, onDone, onCancel }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-border/50 bg-card p-5 space-y-4"
+      className="rounded-xl border border-border bg-card p-5 space-y-4"
     >
       <h3 className="text-sm font-semibold">New Change Order</h3>
 

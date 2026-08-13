@@ -6,10 +6,10 @@ import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 
 const RISK_COPY: Record<string, { label: string; cls: string }> = {
-  critical: { label: "Critical concentration", cls: "bg-red-50 text-red-700 border-red-200" },
-  high: { label: "High concentration", cls: "bg-orange-50 text-orange-700 border-orange-200" },
-  watch: { label: "Worth watching", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  ok: { label: "Well diversified", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  critical: { label: "Critical concentration", cls: "bg-danger/10 text-danger-foreground border-danger/30" },
+  high: { label: "High concentration", cls: "bg-warning/12 text-warning-foreground border-warning/30" },
+  watch: { label: "Worth watching", cls: "bg-warning/12 text-warning-foreground border-warning/30" },
+  ok: { label: "Well diversified", cls: "bg-success/10 text-success-foreground border-success/30" },
 };
 
 export default async function ClientConcentrationReportPage({
@@ -55,13 +55,13 @@ export default async function ClientConcentrationReportPage({
       <ReportFilters basePath="/reports/client-concentration" from={params.from} to={params.to} />
 
       {data.summary.totalRevenue === 0 ? (
-        <div className="rounded-2xl border border-border/50 bg-card flex flex-col items-center justify-center py-16 text-center">
+        <div className="rounded-[10px] border border-border bg-card flex flex-col items-center justify-center py-16 text-center">
           <p className="text-sm text-muted-foreground">No payments recorded for the selected period.</p>
         </div>
       ) : (
         <>
           {data.summary.topClientName && (
-            <div className={`rounded-2xl border px-5 py-4 flex items-start gap-3 ${risk.cls}`}>
+            <div className={`rounded-[10px] border px-5 py-4 flex items-start gap-3 ${risk.cls}`}>
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-sm">{risk.label}</p>
@@ -74,33 +74,33 @@ export default async function ClientConcentrationReportPage({
           )}
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-2xl border border-border/50 bg-card p-4">
+            <div className="rounded-[10px] border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground font-medium">Top Client</p>
               <p className="text-2xl font-bold mt-0.5 tabular-nums">{data.summary.topClientPct.toFixed(1)}%</p>
             </div>
-            <div className="rounded-2xl border border-border/50 bg-card p-4">
+            <div className="rounded-[10px] border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground font-medium">Top 3 Clients</p>
               <p className="text-2xl font-bold mt-0.5 tabular-nums">{data.summary.top3Pct.toFixed(1)}%</p>
             </div>
-            <div className="rounded-2xl border border-border/50 bg-card p-4">
+            <div className="rounded-[10px] border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground font-medium">HHI</p>
               <p className="text-2xl font-bold mt-0.5 tabular-nums">{Math.round(data.summary.hhi)}</p>
             </div>
-            <div className="rounded-2xl border border-border/50 bg-card p-4">
+            <div className="rounded-[10px] border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground font-medium">Active Clients</p>
               <p className="text-2xl font-bold mt-0.5 tabular-nums">{data.summary.activeClients}</p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-border/50">
+          <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+            <div className="px-6 py-4 border-b border-border">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Detail</p>
               <p className="text-base font-semibold mt-0.5">Revenue Share by Client</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border/40">
+                  <tr className="border-b border-border">
                     <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Client</th>
                     <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Revenue</th>
                     <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Share</th>

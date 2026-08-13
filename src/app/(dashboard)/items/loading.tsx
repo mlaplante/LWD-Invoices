@@ -9,8 +9,8 @@ export default function ItemsLoading() {
           <Skeleton className="h-4 w-64" />
         </div>
       </div>
-      <div className="rounded-2xl border border-border/50 overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50 space-y-1">
+      <div className="rounded-[10px] border border-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-border space-y-1">
           <Skeleton className="h-3 w-16" />
           <Skeleton className="h-5 w-24" />
         </div>

@@ -91,7 +91,7 @@ export function ScenarioPlanner() {
         {/* Controls */}
         <div className="grid gap-4 sm:grid-cols-3">
           {/* Late payment */}
-          <div className="rounded-lg border border-border/50 p-3 space-y-2">
+          <div className="rounded-lg border border-border p-3 space-y-2">
             <label className="flex items-center justify-between text-sm font-medium">
               Client pays late
               <Switch checked={lateEnabled} onCheckedChange={setLateEnabled} />
@@ -123,7 +123,7 @@ export function ScenarioPlanner() {
           </div>
 
           {/* Contractor hire */}
-          <div className="rounded-lg border border-border/50 p-3 space-y-2">
+          <div className="rounded-lg border border-border p-3 space-y-2">
             <label className="flex items-center justify-between text-sm font-medium">
               Hire a contractor
               <Switch checked={hireEnabled} onCheckedChange={setHireEnabled} />
@@ -156,7 +156,7 @@ export function ScenarioPlanner() {
           </div>
 
           {/* Churn */}
-          <div className="rounded-lg border border-border/50 p-3 space-y-2">
+          <div className="rounded-lg border border-border p-3 space-y-2">
             <label className="flex items-center justify-between text-sm font-medium">
               Recurring revenue churns
               <Switch checked={churnEnabled} onCheckedChange={setChurnEnabled} />
@@ -185,16 +185,16 @@ export function ScenarioPlanner() {
               const scen = data.scenario?.horizons.find((s) => s.horizonDays === h.horizonDays);
               const delta = scen ? scen.projectedPosition - h.projectedPosition : 0;
               return (
-                <div key={h.horizonDays} className="rounded-lg border border-border/50 p-4">
+                <div key={h.horizonDays} className="rounded-lg border border-border p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {h.horizonDays} days
                   </p>
                   <p className="text-2xl font-bold tabular-nums mt-1">{usd(h.projectedPosition)}</p>
                   <p className="text-xs text-muted-foreground">baseline position</p>
                   {scen && (
-                    <div className="mt-2 pt-2 border-t border-border/50">
+                    <div className="mt-2 pt-2 border-t border-border">
                       <p className="text-sm font-semibold tabular-nums">{usd(scen.projectedPosition)}</p>
-                      <p className={delta < 0 ? "text-xs text-red-600" : "text-xs text-emerald-600"}>
+                      <p className={delta < 0 ? "text-xs text-danger-foreground" : "text-xs text-success-foreground"}>
                         {delta < 0 ? "" : "+"}{usd(delta)} vs baseline
                       </p>
                     </div>

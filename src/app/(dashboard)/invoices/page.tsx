@@ -161,7 +161,7 @@ export default async function InvoicesPage({
       {/* Invoice table */}
       {total === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-[10px] bg-accent flex items-center justify-center mb-4">
             <FileText className="w-6 h-6 text-primary" />
           </div>
           <p className="font-semibold text-foreground">

@@ -79,16 +79,16 @@ export default async function ExpensesReportPage({
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">{expenses.length}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Total Amount</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">${totalAmount.toFixed(2)}</p>
         </div>
         {topCategories.slice(0, 2).map(([cat, amt]) => (
-          <div key={cat} className="rounded-2xl border border-border/50 bg-card p-4">
+          <div key={cat} className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium truncate">{cat}</p>
             <p className="text-2xl font-bold mt-0.5 tabular-nums">${amt.toFixed(2)}</p>
           </div>
@@ -96,8 +96,8 @@ export default async function ExpensesReportPage({
       </div>
 
       {/* Expenses table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expenses</p>
           <p className="text-base font-semibold mt-0.5">All Expenses</p>
         </div>
@@ -110,7 +110,7 @@ export default async function ExpensesReportPage({
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border/40">
+              <tr className="border-b border-border">
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Project</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Category</th>

@@ -68,7 +68,7 @@ export function LateFeeSettingsForm({ org }: { org: LateFeeOrg }) {
           type="checkbox"
           checked={form.lateFeeEnabled}
           onChange={(e) => setForm((f) => ({ ...f, lateFeeEnabled: e.target.checked }))}
-          className="h-4 w-4 rounded border-gray-300"
+          className="h-4 w-4 rounded border-border"
         />
         <span className="text-sm font-medium">Enable automatic late fees</span>
       </label>
@@ -130,7 +130,7 @@ export function LateFeeSettingsForm({ org }: { org: LateFeeOrg }) {
               onChange={(e) =>
                 setForm((f) => ({ ...f, lateFeeRecurring: e.target.checked }))
               }
-              className="h-4 w-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border-border"
             />
             <span className="text-sm font-medium">Apply recurring late fees</span>
           </label>

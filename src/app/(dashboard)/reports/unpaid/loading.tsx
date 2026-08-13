@@ -9,10 +9,10 @@ export default function UnpaidReportLoading() {
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {Array.from({ length: 2 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 rounded-2xl" />
+          <Skeleton key={i} className="h-20 rounded-[10px]" />
         ))}
       </div>
-      <Skeleton className="h-64 rounded-2xl" />
+      <Skeleton className="h-64 rounded-[10px]" />
     </div>
   );
 }

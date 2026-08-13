@@ -14,7 +14,7 @@ export default function UnpaidInvoicesPage() {
         <p className="text-sm text-muted-foreground">Nothing outstanding. 🎉</p>
       )}
       {data && data.length > 0 && (
-        <ul className="divide-y divide-border/40 rounded-2xl border border-border/50 bg-card">
+        <ul className="divide-y divide-border/40 rounded-[10px] border border-border bg-card">
           {data.map((inv) => (
             <li key={inv.id}>
               <Link

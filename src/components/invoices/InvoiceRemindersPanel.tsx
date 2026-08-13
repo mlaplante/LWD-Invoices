@@ -30,13 +30,13 @@ export function InvoiceRemindersPanel({ invoiceId }: { invoiceId: string }) {
   if (!data || data.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-5 py-3 border-b border-border/50 flex items-center gap-2">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center gap-2">
         <BellRing className="w-4 h-4 text-muted-foreground" />
         <p className="text-sm font-semibold">Reminders sent</p>
         <span className="text-xs text-muted-foreground">({data.length})</span>
       </div>
-      <ul className="divide-y divide-border/50">
+      <ul className="divide-y divide-divider">
         {data.map((r) => (
           <li key={`${r.kind}-${r.id}`} className="px-5 py-3 flex items-start gap-3">
             <span className="mt-0.5 shrink-0 text-muted-foreground">

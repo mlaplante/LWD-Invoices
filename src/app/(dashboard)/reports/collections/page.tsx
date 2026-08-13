@@ -7,10 +7,10 @@ import { ChevronLeft } from "lucide-react";
 import { CollectionsReminderDialog } from "@/components/reports/CollectionsReminderDialog";
 
 const BAND_STYLES: Record<string, string> = {
-  low: "bg-emerald-50 text-emerald-700",
-  moderate: "bg-blue-50 text-blue-700",
-  high: "bg-amber-50 text-amber-700",
-  severe: "bg-red-50 text-red-700",
+  low: "bg-success/10 text-success-foreground",
+  moderate: "bg-accent text-accent-foreground",
+  high: "bg-warning/12 text-warning-foreground",
+  severe: "bg-danger/10 text-danger-foreground",
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -54,10 +54,10 @@ export default function CollectionsPage() {
       )}
 
       {data && data.invoices.length > 0 && (
-        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="rounded-[10px] border border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-border/50">
+              <thead className="border-b border-border">
                 <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   <th className="px-5 py-2 text-left">Invoice</th>
                   <th className="px-5 py-2 text-left">Client</th>
@@ -70,7 +70,7 @@ export default function CollectionsPage() {
               </thead>
               <tbody>
                 {data.invoices.map((inv) => (
-                  <tr key={inv.invoiceId} className="border-b border-border/50 last:border-0">
+                  <tr key={inv.invoiceId} className="border-b border-border last:border-0">
                     <td className="px-5 py-3 font-medium">#{inv.invoiceNumber}</td>
                     <td className="px-5 py-3">{inv.clientName}</td>
                     <td className="px-5 py-3 text-right tabular-nums">{usd(inv.balance)}</td>

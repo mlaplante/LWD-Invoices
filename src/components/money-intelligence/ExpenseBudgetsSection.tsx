@@ -30,9 +30,9 @@ function usd(n: number): string {
 }
 
 const STATUS_STYLES = {
-  under: { bar: "bg-emerald-500", label: "On track", text: "text-emerald-600" },
-  warning: { bar: "bg-amber-500", label: "Trending over", text: "text-amber-600" },
-  over: { bar: "bg-red-500", label: "Over budget", text: "text-red-600" },
+  under: { bar: "bg-success", label: "On track", text: "text-success-foreground" },
+  warning: { bar: "bg-warning", label: "Trending over", text: "text-warning-foreground" },
+  over: { bar: "bg-danger", label: "Over budget", text: "text-danger-foreground" },
 } as const;
 
 function BudgetBar({

@@ -125,7 +125,7 @@ export default async function UtilizationReportPage({
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
+        <div className="rounded-[10px] border border-border bg-card px-5 py-4">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Overall Utilization
           </p>
@@ -133,7 +133,7 @@ export default async function UtilizationReportPage({
             {(data.summary.utilizationPct * 100).toFixed(1)}%
           </p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
+        <div className="rounded-[10px] border border-border bg-card px-5 py-4">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Billable Hours
           </p>
@@ -141,7 +141,7 @@ export default async function UtilizationReportPage({
             {data.summary.billableHours.toFixed(1)}h
           </p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
+        <div className="rounded-[10px] border border-border bg-card px-5 py-4">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Non-billable Hours
           </p>
@@ -151,14 +151,14 @@ export default async function UtilizationReportPage({
 
       {/* Table */}
       {data.rows.length === 0 ? (
-        <div className="rounded-2xl border border-border/50 bg-card px-6 py-12 text-center text-muted-foreground text-sm">
+        <div className="rounded-[10px] border border-border bg-card px-6 py-12 text-center text-muted-foreground text-sm">
           No time entries for this period.
         </div>
       ) : (
-        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="rounded-[10px] border border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-border/50">
+              <thead className="border-b border-border">
                 <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   <th className="px-5 py-3 text-left">Period</th>
                   <th className="px-5 py-3 text-left">{dimensionLabel}</th>
@@ -172,7 +172,7 @@ export default async function UtilizationReportPage({
                 {data.rows.map((row) => (
                   <tr
                     key={row.key}
-                    className="border-b border-border/50 last:border-0 hover:bg-accent/30"
+                    className="border-b border-border last:border-0 hover:bg-accent/30"
                   >
                     <td className="px-5 py-3 text-muted-foreground">{row.periodLabel}</td>
                     <td className="px-5 py-3 font-medium">{row.label}</td>

@@ -12,16 +12,16 @@ type TicketsListOutput = inferRouterOutputs<AppRouter>["tickets"]["list"];
 type TicketItem = TicketsListOutput["items"][number];
 
 const PRIORITY_BADGE: Record<string, { label: string; className: string }> = {
-  LOW:    { label: "Low",    className: "bg-gray-100 text-gray-500" },
-  NORMAL: { label: "Normal", className: "bg-blue-50 text-blue-600" },
-  HIGH:   { label: "High",   className: "bg-amber-50 text-amber-600" },
-  URGENT: { label: "Urgent", className: "bg-red-50 text-red-600" },
+  LOW:    { label: "Low",    className: "bg-muted text-muted-foreground" },
+  NORMAL: { label: "Normal", className: "bg-accent text-accent-foreground" },
+  HIGH:   { label: "High",   className: "bg-warning/12 text-warning-foreground" },
+  URGENT: { label: "Urgent", className: "bg-danger/10 text-danger-foreground" },
 };
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  OPEN:        { label: "Open",        className: "bg-emerald-50 text-emerald-600" },
-  IN_PROGRESS: { label: "In Progress", className: "bg-blue-50 text-blue-600" },
-  CLOSED:      { label: "Closed",      className: "bg-gray-100 text-gray-500" },
+  OPEN:        { label: "Open",        className: "bg-success/10 text-success-foreground" },
+  IN_PROGRESS: { label: "In Progress", className: "bg-accent text-accent-foreground" },
+  CLOSED:      { label: "Closed",      className: "bg-muted text-muted-foreground" },
   RESOLVED:    { label: "Resolved",    className: "bg-primary/10 text-primary" },
 };
 
@@ -68,13 +68,13 @@ export function TicketsList({
       {/* Mobile cards */}
       <div className="sm:hidden space-y-2 p-3">
         {tickets.map((t) => {
-          const priority = PRIORITY_BADGE[t.priority] ?? { label: t.priority, className: "bg-gray-100 text-gray-500" };
-          const status = STATUS_BADGE[t.status] ?? { label: t.status, className: "bg-gray-100 text-gray-500" };
+          const priority = PRIORITY_BADGE[t.priority] ?? { label: t.priority, className: "bg-muted text-muted-foreground" };
+          const status = STATUS_BADGE[t.status] ?? { label: t.status, className: "bg-muted text-muted-foreground" };
           return (
             <Link
               key={t.id}
               href={`/tickets/${t.id}`}
-              className="block rounded-xl border border-border/50 bg-card p-4 space-y-1"
+              className="block rounded-xl border border-border bg-card p-4 space-y-1"
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="font-semibold text-sm truncate">
@@ -104,7 +104,7 @@ export function TicketsList({
       <div className="hidden sm:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border/40">
+            <tr className="border-b border-border">
               <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">#</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Subject</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Client</th>
@@ -115,8 +115,8 @@ export function TicketsList({
           </thead>
           <tbody className="divide-y divide-border/40">
             {tickets.map((t) => {
-              const priority = PRIORITY_BADGE[t.priority] ?? { label: t.priority, className: "bg-gray-100 text-gray-500" };
-              const status = STATUS_BADGE[t.status] ?? { label: t.status, className: "bg-gray-100 text-gray-500" };
+              const priority = PRIORITY_BADGE[t.priority] ?? { label: t.priority, className: "bg-muted text-muted-foreground" };
+              const status = STATUS_BADGE[t.status] ?? { label: t.status, className: "bg-muted text-muted-foreground" };
               return (
                 <tr key={t.id} className="hover:bg-accent/20 transition-colors">
                   <td className="px-6 py-3.5 font-mono text-xs text-muted-foreground">

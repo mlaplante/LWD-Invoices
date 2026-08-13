@@ -89,10 +89,10 @@ export function TaxManager({ initialTaxes }: Props) {
                   <td className="px-3 py-2 font-medium">{t.name}</td>
                   <td className="px-3 py-2 text-right">{rateNum(t.rate).toFixed(2)}%</td>
                   <td className="px-3 py-2">{t.isCompound && <span className="text-xs text-muted-foreground">Yes</span>}</td>
-                  <td className="px-3 py-2">{t.isDefault && <span className="text-xs font-medium text-green-600">Default</span>}</td>
+                  <td className="px-3 py-2">{t.isDefault && <span className="text-xs font-medium text-success-foreground">Default</span>}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => startEdit(t)} className="text-xs text-blue-600 hover:underline">Edit</button>
+                      <button onClick={() => startEdit(t)} className="text-xs text-accent-foreground hover:underline">Edit</button>
                       <button onClick={() => deleteMutation.mutate({ id: t.id })} className="text-xs text-destructive hover:underline">Delete</button>
                     </div>
                   </td>

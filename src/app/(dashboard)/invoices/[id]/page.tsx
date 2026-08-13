@@ -42,13 +42,13 @@ import { formatDate, formatCurrency } from "@/lib/format";
 // ── Status badge config ───────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string }> = {
-  DRAFT:         { label: "Draft",    className: "bg-gray-100 text-gray-500" },
-  SENT:          { label: "Sent",     className: "bg-amber-50 text-amber-600" },
-  PARTIALLY_PAID:{ label: "Partial",  className: "bg-blue-50 text-blue-600" },
-  PAID:          { label: "Paid",     className: "bg-emerald-50 text-emerald-600" },
-  OVERDUE:       { label: "Overdue",  className: "bg-red-50 text-red-600" },
+  DRAFT:         { label: "Draft",    className: "bg-muted text-muted-foreground" },
+  SENT:          { label: "Sent",     className: "bg-warning/12 text-warning-foreground" },
+  PARTIALLY_PAID:{ label: "Partial",  className: "bg-accent text-accent-foreground" },
+  PAID:          { label: "Paid",     className: "bg-success/10 text-success-foreground" },
+  OVERDUE:       { label: "Overdue",  className: "bg-danger/10 text-danger-foreground" },
   ACCEPTED:      { label: "Accepted", className: "bg-primary/10 text-primary" },
-  REJECTED:      { label: "Rejected", className: "bg-gray-100 text-gray-400" },
+  REJECTED:      { label: "Rejected", className: "bg-muted text-muted-foreground" },
 };
 
 const TYPE_LABEL: Record<InvoiceType, string> = {
@@ -251,10 +251,10 @@ export default async function InvoiceDetailPage({
       <ClientCreditHoldBanner clientId={invoice.client.id} />
 
       {/* ── Invoice document card ─────────────────────────────────── */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
 
         {/* Top banner: org name (left) + metadata grid (right) */}
-        <div className="grid grid-cols-1 gap-6 px-4 sm:px-8 pt-6 sm:pt-8 pb-6 border-b border-border/50 sm:grid-cols-[1fr_auto] sm:gap-10">
+        <div className="grid grid-cols-1 gap-6 px-4 sm:px-8 pt-6 sm:pt-8 pb-6 border-b border-border sm:grid-cols-[1fr_auto] sm:gap-10">
           <div>
             {invoice.organization.logoUrl && (
               <Image
@@ -304,7 +304,7 @@ export default async function InvoiceDetailPage({
         </div>
 
         {/* Issue From / Issue For */}
-        <div className="grid grid-cols-1 gap-4 px-4 sm:px-8 py-5 border-b border-border/50 bg-muted/20 sm:grid-cols-2 sm:gap-6">
+        <div className="grid grid-cols-1 gap-4 px-4 sm:px-8 py-5 border-b border-border bg-muted/20 sm:grid-cols-2 sm:gap-6">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
               Issue From
@@ -345,7 +345,7 @@ export default async function InvoiceDetailPage({
             </thead>
             <tbody>
               {invoice.lines.map((line) => (
-                <tr key={line.id} className="border-b border-border/40">
+                <tr key={line.id} className="border-b border-border">
                   <td className="py-4">
                     <p className="font-medium">{line.name}</p>
                     {line.description && (
@@ -354,7 +354,7 @@ export default async function InvoiceDetailPage({
                       </p>
                     )}
                     {Number(line.discount) > 0 && (
-                      <p className="text-xs text-emerald-600 mt-0.5">
+                      <p className="text-xs text-success-foreground mt-0.5">
                         {line.discountIsPercentage
                           ? `${Number(line.discount)}% discount `
                           : "Discount "}
@@ -398,7 +398,7 @@ export default async function InvoiceDetailPage({
                       ? ` — ${invoice.discountDescription}`
                       : ""}
                   </span>
-                  <span className="font-medium text-emerald-600">
+                  <span className="font-medium text-success-foreground">
                     -{f(invoice.discountType === "percentage"
                       ? Number(invoice.subtotal) * Number(invoice.discountAmount) / 100
                       : Number(invoice.discountAmount))}
@@ -408,7 +408,7 @@ export default async function InvoiceDetailPage({
               {Number(invoice.discountTotal) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Discount</span>
-                  <span className="font-medium text-emerald-600">
+                  <span className="font-medium text-success-foreground">
                     -{f(invoice.discountTotal)}
                   </span>
                 </div>
@@ -422,7 +422,7 @@ export default async function InvoiceDetailPage({
               {Number(invoice.retainerApplied) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Retainer Applied</span>
-                  <span className="font-medium text-emerald-600">
+                  <span className="font-medium text-success-foreground">
                     -{f(Number(invoice.retainerApplied))}
                   </span>
                 </div>
@@ -437,7 +437,7 @@ export default async function InvoiceDetailPage({
 
         {/* Notes */}
         {invoice.notes && (
-          <div className="mx-4 sm:mx-8 mb-6 sm:mb-8 rounded-xl border border-border/50 bg-muted/40 p-4">
+          <div className="mx-4 sm:mx-8 mb-6 sm:mb-8 rounded-xl border border-border bg-muted/40 p-4">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
               Notes
             </p>
@@ -457,10 +457,10 @@ export default async function InvoiceDetailPage({
       {invoice.payments.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-base font-semibold">Payment History</h2>
-          <div className="rounded-2xl border border-border/50 overflow-hidden">
+          <div className="rounded-[10px] border border-border overflow-hidden">
             <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/30 border-b border-border/50">
+              <thead className="bg-muted/30 border-b border-border">
                 <tr>
                   {["Date", "Method", "Reference", "Amount"].map((h, i) => (
                     <th
@@ -502,10 +502,10 @@ export default async function InvoiceDetailPage({
       {invoice.partialPayments.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-base font-semibold">Payment Schedule</h2>
-          <div className="rounded-2xl border border-border/50 overflow-hidden">
+          <div className="rounded-[10px] border border-border overflow-hidden">
             <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/30 border-b border-border/50">
+              <thead className="bg-muted/30 border-b border-border">
                 <tr>
                   {["#", "Due Date", "Amount", "Status", ""].map((h, i) => (
                     <th
@@ -532,11 +532,11 @@ export default async function InvoiceDetailPage({
                     </td>
                     <td className="px-5 py-3">
                       {pp.isPaid ? (
-                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600">
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-success/10 text-success-foreground">
                           Paid {formatDate(pp.paidAt)}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-500">
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
                           Pending
                         </span>
                       )}
@@ -582,12 +582,12 @@ export default async function InvoiceDetailPage({
       <ReminderHistory invoiceId={invoice.id} />
 
       {/* ── Comments ─────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border/50 p-5">
+      <div className="rounded-[10px] border border-border p-5">
         <InvoiceComments invoiceId={invoice.id} />
       </div>
 
       {/* ── Attachments ──────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border/50 p-5">
+      <div className="rounded-[10px] border border-border p-5">
         <AttachmentPanel context="INVOICE" contextId={invoice.id} />
       </div>
     </div>

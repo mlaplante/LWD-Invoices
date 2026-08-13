@@ -9,8 +9,8 @@ export default function ExpenseSettingsLoading() {
       </div>
 
       {/* Categories card */}
-      <div className="rounded-2xl border border-border/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50 space-y-1">
+      <div className="rounded-[10px] border border-border overflow-hidden">
+        <div className="px-6 py-5 border-b border-border space-y-1">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-3 w-64" />
@@ -27,8 +27,8 @@ export default function ExpenseSettingsLoading() {
       </div>
 
       {/* Suppliers card */}
-      <div className="rounded-2xl border border-border/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50 space-y-1">
+      <div className="rounded-[10px] border border-border overflow-hidden">
+        <div className="px-6 py-5 border-b border-border space-y-1">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-3 w-64" />

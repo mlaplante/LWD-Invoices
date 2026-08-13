@@ -12,14 +12,14 @@ export default function DashboardLoading() {
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-2xl" />
+          <Skeleton key={i} className="h-24 rounded-[10px]" />
         ))}
       </div>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <Skeleton className="lg:col-span-2 h-64 rounded-2xl" />
+        <Skeleton className="lg:col-span-2 h-64 rounded-[10px]" />
         <div className="space-y-5">
-          <Skeleton className="h-40 rounded-2xl" />
-          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-40 rounded-[10px]" />
+          <Skeleton className="h-40 rounded-[10px]" />
         </div>
       </div>
     </div>

@@ -610,8 +610,8 @@ export function InvoiceForm({
     <div
       className={`rounded-md border p-3 text-sm ${
         duplicateMatch.severity === "danger"
-          ? "border-red-300 bg-red-50 text-red-900"
-          : "border-amber-300 bg-amber-50 text-amber-900"
+          ? "border-danger/30 bg-danger/10 text-danger-foreground"
+          : "border-warning/30 bg-warning/12 text-warning-foreground"
       }`}
     >
       <p className="font-semibold">Possible duplicate invoice</p>
@@ -627,7 +627,7 @@ export function InvoiceForm({
   );
 
   const stripeTaxWarningSection = stripeTaxPreflight && !stripeTaxPreflight.ok && (
-    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+    <div className="rounded-md border border-warning/30 bg-warning/12 p-3 text-sm text-warning-foreground">
       <p className="font-semibold">Stripe Tax can&apos;t calculate yet</p>
       <p className="mt-1">Saving will fail until the following are filled in:</p>
       <ul className="mt-1 list-disc pl-5">
@@ -868,7 +868,7 @@ export function InvoiceForm({
               {invoiceTotals.discountTotal > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Discount</span>
-                  <span className="text-emerald-600">
+                  <span className="text-success-foreground">
                     -{fmt(invoiceTotals.discountTotal)}
                   </span>
                 </div>

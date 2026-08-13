@@ -41,7 +41,7 @@ export function RunwaySection() {
                 </p>
                 <p
                   className={`flex items-center gap-1.5 text-2xl font-bold tabular-nums ${
-                    burning ? "text-red-600" : "text-emerald-600"
+                    burning ? "text-danger-foreground" : "text-success-foreground"
                   }`}
                 >
                   {burning ? <TrendingDown className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />}
@@ -61,12 +61,12 @@ export function RunwaySection() {
             {/* Net positions */}
             <div className="grid gap-3 sm:grid-cols-3">
               {data.netPositions.map((p) => (
-                <div key={p.horizonDays} className="rounded-lg border border-border/50 p-4">
+                <div key={p.horizonDays} className="rounded-lg border border-border p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {p.horizonDays} days
                   </p>
                   <p className="text-xl font-bold tabular-nums mt-1">{usd(p.projectedPosition)}</p>
-                  <p className={`text-xs ${p.netChange < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                  <p className={`text-xs ${p.netChange < 0 ? "text-danger-foreground" : "text-success-foreground"}`}>
                     Net {p.netChange < 0 ? "" : "+"}{usd(p.netChange)}
                   </p>
                 </div>

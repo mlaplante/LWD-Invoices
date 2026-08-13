@@ -7,8 +7,8 @@ export default function ProjectSettingsLoading() {
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-6 w-36" />
       </div>
-      <div className="rounded-2xl border border-border/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50 space-y-1">
+      <div className="rounded-[10px] border border-border overflow-hidden">
+        <div className="px-6 py-5 border-b border-border space-y-1">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-5 w-44" />
           <Skeleton className="h-3 w-72" />

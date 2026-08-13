@@ -53,7 +53,7 @@ function SortableRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border/50 bg-card hover:bg-muted/30 transition-colors"
+      className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors"
       aria-label={`${WIDGET_META[entry.key].label} — ${entry.visible ? "visible" : "hidden"}`}
     >
       {/* Drag handle */}
@@ -203,7 +203,7 @@ export function LayoutEditorDialog({
           </DndContext>
         )}
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
+        <div className="flex justify-end gap-2 pt-2 border-t border-border">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

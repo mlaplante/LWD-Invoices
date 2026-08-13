@@ -174,7 +174,7 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
               <Badge variant="secondary">Below ${NEC_1099_THRESHOLD} threshold</Badge>
             )}
             {needsW9 ? (
-              <span className="inline-flex items-center gap-1 text-xs text-amber-600">
+              <span className="inline-flex items-center gap-1 text-xs text-warning-foreground">
                 <AlertTriangle className="w-3.5 h-3.5" /> W-9 needed before filing
               </span>
             ) : null}
@@ -194,7 +194,7 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
 
       <div className="grid gap-5 lg:grid-cols-3">
         {/* W-9 / identity card */}
-        <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-4 lg:col-span-1">
+        <div className="rounded-[10px] border border-border bg-card p-5 space-y-4 lg:col-span-1">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">W-9 Details</p>
 
           <dl className="space-y-2 text-sm">
@@ -251,7 +251,7 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
           </dl>
 
           {/* W-9 document */}
-          <div className="pt-2 border-t border-border/50">
+          <div className="pt-2 border-t border-border">
             <input
               ref={fileRef}
               type="file"
@@ -288,7 +288,7 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
         </div>
 
         {/* Contractor portal */}
-        <div className="rounded-2xl border border-border/50 bg-card p-5 lg:col-span-3">
+        <div className="rounded-[10px] border border-border bg-card p-5 lg:col-span-3">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Self-Service Portal</p>
@@ -331,8 +331,8 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
         </div>
 
         {/* Payments */}
-        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden lg:col-span-2">
-          <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
+        <div className="rounded-[10px] border border-border bg-card overflow-hidden lg:col-span-2">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payments</p>
               <p className="text-sm mt-0.5">
@@ -346,7 +346,7 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
           </div>
 
           {showAddPayment && (
-            <form onSubmit={submitPayment} className="px-5 py-4 border-b border-border/50 bg-muted/20 space-y-3">
+            <form onSubmit={submitPayment} className="px-5 py-4 border-b border-border bg-muted/20 space-y-3">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div>
                   <label className="text-xs font-medium">Amount</label>
@@ -415,7 +415,7 @@ export function ContractorDetail({ contractorId }: { contractorId: string }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border/40">
+                  <tr className="border-b border-border">
                     <th className="px-5 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>
                     <th className="px-5 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Method</th>
                     <th className="px-5 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Memo</th>

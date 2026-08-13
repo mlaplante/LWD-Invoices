@@ -16,8 +16,8 @@ export default async function SecuritySettingsPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Authentication
           </p>
@@ -32,8 +32,8 @@ export default async function SecuritySettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Password</p>
           <p className="text-base font-semibold mt-1">Change Password</p>
           <p className="text-sm text-muted-foreground mt-0.5">Update the password you use to sign in.</p>
@@ -43,8 +43,8 @@ export default async function SecuritySettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
           <p className="text-base font-semibold mt-1">Active Sessions</p>
           <p className="text-sm text-muted-foreground mt-0.5">

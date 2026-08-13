@@ -16,63 +16,63 @@ const subPages = [
     label: "Account",
     description: "Update your name and profile information.",
     icon: <User className="w-4 h-4" />,
-    color: "bg-slate-50 text-slate-600",
+    color: "bg-muted text-muted-foreground",
   },
   {
     href: "/settings/security",
     label: "Security",
     description: "Two-factor authentication and account security settings.",
     icon: <Shield className="w-4 h-4" />,
-    color: "bg-sky-50 text-sky-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/settings/invoices",
     label: "Invoice Templates",
     description: "Choose your PDF layout and customize fonts, colors, and footer.",
     icon: <Palette className="w-4 h-4" />,
-    color: "bg-sky-50 text-sky-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/settings/payments",
     label: "Payment Gateways",
     description: "Configure Stripe, PayPal, and manual payment methods.",
     icon: <CreditCard className="w-4 h-4" />,
-    color: "bg-emerald-50 text-emerald-600",
+    color: "bg-success/10 text-success-foreground",
   },
   {
     href: "/settings/projects",
     label: "Project Settings",
     description: "Default task statuses, project templates, and rates.",
     icon: <FolderKanban className="w-4 h-4" />,
-    color: "bg-violet-50 text-violet-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/settings/audit-log",
     label: "Activity Log",
     description: "View a history of all actions in your organization.",
     icon: <ScrollText className="w-4 h-4" />,
-    color: "bg-blue-50 text-blue-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/settings/expenses",
     label: "Expense Settings",
     description: "Manage expense categories and suppliers.",
     icon: <Wallet className="w-4 h-4" />,
-    color: "bg-amber-50 text-amber-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
   {
     href: "/settings/proposals",
     label: "Proposal Templates",
     description: "Manage reusable proposal templates for estimates.",
     icon: <FileText className="w-4 h-4" />,
-    color: "bg-rose-50 text-rose-600",
+    color: "bg-danger/10 text-danger-foreground",
   },
   {
     href: "/settings/automations",
     label: "Email Automations",
     description: "Automated emails triggered by invoice events.",
     icon: <Mail className="w-4 h-4" />,
-    color: "bg-indigo-50 text-indigo-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/settings/automation-rules",
@@ -86,42 +86,42 @@ const subPages = [
     label: "Policies",
     description: "Late fees, interest, and payment enforcement rules.",
     icon: <ShieldAlert className="w-4 h-4" />,
-    color: "bg-orange-50 text-orange-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
   {
     href: "/settings/reports",
     label: "Scheduled Reports",
     description: "Automatically generate and email reports on a recurring schedule.",
     icon: <CalendarClock className="w-4 h-4" />,
-    color: "bg-teal-50 text-teal-600",
+    color: "bg-success/10 text-success-foreground",
   },
   {
     href: "/settings/reminders",
     label: "Reminder Sequences",
     description: "Automatic escalating reminder emails for unpaid invoices.",
     icon: <Bell className="w-4 h-4" />,
-    color: "bg-purple-50 text-purple-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/settings/retention",
     label: "Client Retention",
     description: "Weekly check-in queue and message templates for past clients.",
     icon: <HeartHandshake className="w-4 h-4" />,
-    color: "bg-pink-50 text-pink-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/settings/briefing",
     label: "Weekly Briefing",
     description: "Proactive Monday email: overdue total, at-risk clients, projected cash.",
     icon: <Newspaper className="w-4 h-4" />,
-    color: "bg-cyan-50 text-cyan-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/settings/estimated-tax",
     label: "Estimated Taxes",
     description: "Quarterly self-employment set-aside percentage and due-date reminders.",
     icon: <Landmark className="w-4 h-4" />,
-    color: "bg-orange-50 text-orange-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
 ];
 
@@ -147,7 +147,7 @@ export default async function SettingsPage() {
           <Link
             key={p.href}
             href={p.href}
-            className="group rounded-2xl border border-border/50 bg-card p-4 hover:border-primary/30 hover:bg-accent/30 transition-colors flex items-start gap-3"
+            className="group rounded-[10px] border border-border bg-card p-4 hover:border-primary/30 hover:bg-accent/30 transition-colors flex items-start gap-3"
           >
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${p.color}`}>
               {p.icon}
@@ -166,8 +166,8 @@ export default async function SettingsPage() {
       </div>
 
       {/* Organization */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Organization
           </p>
@@ -182,8 +182,8 @@ export default async function SettingsPage() {
       </div>
 
       {/* Security Enforcement */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Security
           </p>
@@ -198,8 +198,8 @@ export default async function SettingsPage() {
       </div>
 
       {/* Branding */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Branding
           </p>
@@ -214,8 +214,8 @@ export default async function SettingsPage() {
       </div>
 
       {/* Portal Branding */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Portal
           </p>
@@ -230,8 +230,8 @@ export default async function SettingsPage() {
       </div>
 
       {/* Currencies */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Currencies
           </p>
@@ -246,8 +246,8 @@ export default async function SettingsPage() {
       </div>
 
       {/* Taxes */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Taxes
           </p>

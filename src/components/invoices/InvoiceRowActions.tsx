@@ -32,7 +32,7 @@ export function InvoiceRowActions({ invoiceId, invoiceTotal, status, invoiceType
       {isPayable && invoiceType !== "ESTIMATE" && (
         <button
           onClick={() => setPayOpen(true)}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-colors"
+          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-success/10 text-success-foreground hover:bg-success hover:text-white transition-colors"
         >
           Mark Paid
         </button>

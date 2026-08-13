@@ -75,12 +75,12 @@ export default async function ForecastPage({
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Total Pipeline", value: data.summary.totalOutstanding, color: "text-blue-600" },
-          { label: `Recurring (${months}mo)`, value: data.summary.totalRecurring, color: "text-emerald-600" },
+          { label: "Total Pipeline", value: data.summary.totalOutstanding, color: "text-accent-foreground" },
+          { label: `Recurring (${months}mo)`, value: data.summary.totalRecurring, color: "text-success-foreground" },
           { label: "Combined Forecast", value: data.summary.grandTotal, color: "text-primary" },
-          { label: "Overdue", value: data.summary.overdueAmount, color: "text-red-600" },
+          { label: "Overdue", value: data.summary.overdueAmount, color: "text-danger-foreground" },
         ].map((s) => (
-          <div key={s.label} className="rounded-2xl border border-border/50 bg-card px-5 py-4">
+          <div key={s.label} className="rounded-[10px] border border-border bg-card px-5 py-4">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               {s.label}
             </p>
@@ -92,7 +92,7 @@ export default async function ForecastPage({
       </div>
 
       {/* Stacked bar chart */}
-      <div className="rounded-2xl border border-border/50 bg-card px-6 py-5">
+      <div className="rounded-[10px] border border-border bg-card px-6 py-5">
         <p className="text-sm font-semibold mb-4">Monthly Breakdown</p>
         {data.summary.grandTotal === 0 ? (
           <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
@@ -158,10 +158,10 @@ export default async function ForecastPage({
       </div>
 
       {/* Monthly table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="border-b border-border/50">
+          <thead className="border-b border-border">
             <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               <th className="px-5 py-3 text-left">Month</th>
               <th className="px-5 py-3 text-right">Outstanding</th>
@@ -171,14 +171,14 @@ export default async function ForecastPage({
           </thead>
           <tbody>
             {data.months.map((m) => (
-              <tr key={m.month} className="border-b border-border/50 last:border-0">
+              <tr key={m.month} className="border-b border-border last:border-0">
                 <td className="px-5 py-3 font-medium">
                   {shortMonth(m.month)} {m.month.split("-")[0]}
                 </td>
-                <td className="px-5 py-3 text-right tabular-nums text-blue-600">
+                <td className="px-5 py-3 text-right tabular-nums text-accent-foreground">
                   ${m.outstanding.toFixed(2)}
                 </td>
-                <td className="px-5 py-3 text-right tabular-nums text-emerald-600">
+                <td className="px-5 py-3 text-right tabular-nums text-success-foreground">
                   ${m.recurring.toFixed(2)}
                 </td>
                 <td className="px-5 py-3 text-right tabular-nums font-semibold text-primary">

@@ -45,7 +45,7 @@ export default function ExpenseAnomaliesPage() {
             empty={data.duplicates.length === 0 ? "No duplicate receipts detected." : null}
           >
             {data.duplicates.map((d, i) => (
-              <div key={i} className="px-5 py-3 border-b border-border/50 last:border-0">
+              <div key={i} className="px-5 py-3 border-b border-border last:border-0">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">{d.supplierName}</span>
                   <span className="tabular-nums">{usd(d.amount)}</span>
@@ -61,7 +61,7 @@ export default function ExpenseAnomaliesPage() {
             empty={data.outliers.length === 0 ? "No out-of-pattern spend detected." : null}
           >
             {data.outliers.map((o) => (
-              <div key={o.expenseId} className="px-5 py-3 border-b border-border/50 last:border-0">
+              <div key={o.expenseId} className="px-5 py-3 border-b border-border last:border-0">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">{o.supplierName}</span>
                   <span className="tabular-nums">
@@ -80,7 +80,7 @@ export default function ExpenseAnomaliesPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-4">
+    <div className="rounded-[10px] border border-border bg-card p-4">
       <p className="text-xs text-muted-foreground font-medium">{label}</p>
       <p className="font-display text-2xl mt-0.5 tabular-nums">{value}</p>
     </div>
@@ -99,8 +99,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-5 py-3 border-b border-border/50 flex items-center gap-2">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center gap-2">
         {icon}
         <p className="text-sm font-semibold">{title}</p>
       </div>

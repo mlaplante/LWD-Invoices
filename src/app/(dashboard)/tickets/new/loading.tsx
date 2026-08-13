@@ -7,7 +7,7 @@ export default function NewTicketLoading() {
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-6 w-24" />
       </div>
-      <div className="rounded-2xl border border-border/50 bg-card p-6 space-y-4">
+      <div className="rounded-[10px] border border-border bg-card p-6 space-y-4">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="space-y-1.5">
             <Skeleton className="h-3 w-20" />

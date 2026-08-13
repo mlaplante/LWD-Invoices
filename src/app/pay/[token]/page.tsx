@@ -158,7 +158,7 @@ export default async function PayPage({
 
   return (
     <main aria-label="Payment" className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl border border-border/50 bg-card shadow-lg overflow-hidden">
+      <div className="w-full max-w-md rounded-[10px] border border-border bg-card shadow-lg overflow-hidden">
         <div className="p-8 space-y-6">
           {/* Org branding */}
           <div className="flex flex-col items-center gap-3">
@@ -180,8 +180,8 @@ export default async function PayPage({
           {isPaid ? (
             /* Paid confirmation */
             <div className="flex flex-col items-center gap-4 py-6">
-              <div className="rounded-full bg-emerald-100 p-4">
-                <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+              <div className="rounded-full bg-success/10 p-4">
+                <CheckCircle2 className="h-10 w-10 text-success-foreground" />
               </div>
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-bold text-foreground">
@@ -207,7 +207,7 @@ export default async function PayPage({
                     </p>
                     <p className="text-sm text-muted-foreground">
                       <span className="line-through">{f(earlyPayOffer.balance)}</span>{" "}
-                      <span className="font-medium text-emerald-600">
+                      <span className="font-medium text-success-foreground">
                         {earlyPayOffer.percent}% off until {formatDateLong(earlyPayOffer.deadline)}
                       </span>
                     </p>
@@ -236,7 +236,7 @@ export default async function PayPage({
                     return (
                       <div
                         key={inst.id}
-                        className="rounded-xl border border-border/50 p-4 space-y-3"
+                        className="rounded-xl border border-border p-4 space-y-3"
                       >
                         <div className="flex items-center justify-between">
                           <div>
@@ -268,7 +268,7 @@ export default async function PayPage({
                               <input type="hidden" name="partialPaymentId" value={inst.id} />
                               <button
                                 type="submit"
-                                className="flex items-center justify-center gap-2 w-full rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                                className="flex items-center justify-center gap-2 w-full rounded-lg bg-success px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-success"
                               >
                                 <CreditCard className="h-4 w-4" />
                                 Pay with {savedCards[0].brand.charAt(0).toUpperCase() + savedCards[0].brand.slice(1)} ending {savedCards[0].last4}
@@ -331,7 +331,7 @@ export default async function PayPage({
                       <input type="hidden" name="paymentMethodId" value={savedCards[0].stripePaymentMethodId} />
                       <button
                         type="submit"
-                        className="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                        className="flex items-center justify-center gap-2 w-full rounded-xl bg-success px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-success"
                       >
                         <CreditCard className="h-4 w-4" />
                         Pay with {savedCards[0].brand.charAt(0).toUpperCase() + savedCards[0].brand.slice(1)} ending {savedCards[0].last4}

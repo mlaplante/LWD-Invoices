@@ -8,9 +8,9 @@ import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  SENT:           { label: "Unpaid",  className: "bg-amber-50 text-amber-600" },
-  PARTIALLY_PAID: { label: "Partial", className: "bg-blue-50 text-blue-600" },
-  OVERDUE:        { label: "Overdue", className: "bg-red-50 text-red-600" },
+  SENT:           { label: "Unpaid",  className: "bg-warning/12 text-warning-foreground" },
+  PARTIALLY_PAID: { label: "Partial", className: "bg-accent text-accent-foreground" },
+  OVERDUE:        { label: "Overdue", className: "bg-danger/10 text-danger-foreground" },
 };
 
 export default async function UnpaidReportPage() {
@@ -51,21 +51,21 @@ export default async function UnpaidReportPage() {
 
       {/* Summary stat */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Outstanding</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">{invoices.length}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Overdue</p>
-          <p className="text-2xl font-bold mt-0.5 tabular-nums text-red-600">
+          <p className="text-2xl font-bold mt-0.5 tabular-nums text-danger-foreground">
             {invoices.filter((i) => i.status === "OVERDUE").length}
           </p>
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Unpaid
           </p>
@@ -74,13 +74,13 @@ export default async function UnpaidReportPage() {
 
         {invoices.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-sm font-medium text-emerald-600">All invoices paid!</p>
+            <p className="text-sm font-medium text-success-foreground">All invoices paid!</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border/40">
+              <tr className="border-b border-border">
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Invoice</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Client</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
@@ -90,7 +90,7 @@ export default async function UnpaidReportPage() {
             </thead>
             <tbody className="divide-y divide-border/40">
               {invoices.map((inv) => {
-                const badge = STATUS_BADGE[inv.status as InvoiceStatus] ?? { label: inv.status, className: "bg-gray-100 text-gray-500" };
+                const badge = STATUS_BADGE[inv.status as InvoiceStatus] ?? { label: inv.status, className: "bg-muted text-muted-foreground" };
                 return (
                   <tr key={inv.id} className="hover:bg-accent/20 transition-colors">
                     <td className="px-6 py-3.5">

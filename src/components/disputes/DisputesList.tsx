@@ -19,13 +19,13 @@ import { AlertTriangle, Clock, ShieldX } from "lucide-react";
 import type { DisputeStatus } from "@/generated/prisma";
 
 const STATUS_BADGE: Record<DisputeStatus, { label: string; className: string }> = {
-  NEEDS_RESPONSE: { label: "Needs response", className: "bg-red-50 text-red-600" },
-  UNDER_REVIEW: { label: "Under review", className: "bg-amber-50 text-amber-600" },
-  WON: { label: "Won", className: "bg-emerald-50 text-emerald-600" },
-  LOST: { label: "Lost", className: "bg-gray-100 text-gray-500" },
-  WARNING_CLOSED: { label: "Warning closed", className: "bg-gray-100 text-gray-500" },
-  CHARGE_REFUNDED: { label: "Refunded", className: "bg-blue-50 text-blue-600" },
-  CLOSED: { label: "Closed", className: "bg-gray-100 text-gray-500" },
+  NEEDS_RESPONSE: { label: "Needs response", className: "bg-danger/10 text-danger-foreground" },
+  UNDER_REVIEW: { label: "Under review", className: "bg-warning/12 text-warning-foreground" },
+  WON: { label: "Won", className: "bg-success/10 text-success-foreground" },
+  LOST: { label: "Lost", className: "bg-muted text-muted-foreground" },
+  WARNING_CLOSED: { label: "Warning closed", className: "bg-muted text-muted-foreground" },
+  CHARGE_REFUNDED: { label: "Refunded", className: "bg-accent text-accent-foreground" },
+  CLOSED: { label: "Closed", className: "bg-muted text-muted-foreground" },
 };
 
 type DisputeRow = {
@@ -52,14 +52,14 @@ export function DisputesList() {
   const [nowMs] = useState(() => Date.now());
 
   if (isLoading) {
-    return <div className="h-32 rounded-2xl border border-border/50 bg-card animate-pulse" />;
+    return <div className="h-32 rounded-[10px] border border-border bg-card animate-pulse" />;
   }
 
   const disputes = (data?.disputes ?? []) as DisputeRow[];
 
   if (disputes.length === 0) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-card p-10 text-center">
+      <div className="rounded-[10px] border border-border bg-card p-10 text-center">
         <ShieldX className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
         <p className="text-sm font-medium">No disputes</p>
         <p className="text-sm text-muted-foreground mt-1">
@@ -72,10 +72,10 @@ export function DisputesList() {
 
   return (
     <>
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
               <th className="px-5 py-3 font-semibold">Client</th>
               <th className="px-5 py-3 font-semibold">Invoice</th>
               <th className="px-5 py-3 font-semibold">Amount</th>
@@ -107,7 +107,7 @@ export function DisputesList() {
                   </td>
                   <td className="px-5 py-3">
                     {d.evidenceDueBy ? (
-                      <span className={cn("inline-flex items-center gap-1", urgent && "text-red-600 font-medium")}>
+                      <span className={cn("inline-flex items-center gap-1", urgent && "text-danger-foreground font-medium")}>
                         {urgent && <AlertTriangle className="w-3.5 h-3.5" />}
                         {formatDate(d.evidenceDueBy)}
                       </span>

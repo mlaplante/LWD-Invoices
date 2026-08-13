@@ -219,7 +219,7 @@ export function MileageTracker() {
                           </span>
                         )}
                         {e.billable && (
-                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                          <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground">
                             billable
                           </span>
                         )}

@@ -29,7 +29,7 @@ export function RetentionQueue() {
 
   if (settings && !settings.retentionEnabled) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-card p-8 text-center">
+      <div className="rounded-[10px] border border-border bg-card p-8 text-center">
         <Inbox className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
         <p className="text-base font-semibold">Retention automation is off</p>
         <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
@@ -83,7 +83,7 @@ export function RetentionQueue() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
         ) : items.length === 0 ? (
@@ -96,7 +96,7 @@ export function RetentionQueue() {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-border/50">
+          <ul className="divide-y divide-divider">
             {items.map((item) => (
               <li key={item.id}>
                 <button
@@ -116,7 +116,7 @@ export function RetentionQueue() {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
                     {item.status === "COMPLETED" && item.outcome && (
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">
+                      <span className="px-2 py-0.5 rounded-full bg-success/10 text-success-foreground font-medium">
                         {item.outcome.replace("_", " ").toLowerCase()}
                       </span>
                     )}
@@ -166,10 +166,10 @@ function FilterChip({
 }
 
 const TOUCH_TYPE_COLORS: Record<ClientCheckInTouchType, string> = {
-  PROJECT_CLOSE: "bg-rose-100 text-rose-700",
-  THIRTY_DAY: "bg-amber-100 text-amber-700",
-  QUARTERLY: "bg-blue-100 text-blue-700",
-  ANNUAL: "bg-violet-100 text-violet-700",
+  PROJECT_CLOSE: "bg-danger/10 text-danger-foreground",
+  THIRTY_DAY: "bg-warning/12 text-warning-foreground",
+  QUARTERLY: "bg-accent text-accent-foreground",
+  ANNUAL: "bg-accent text-accent-foreground",
 };
 
 function TouchTypeBadge({ touchType }: { touchType: ClientCheckInTouchType }) {

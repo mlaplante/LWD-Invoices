@@ -65,7 +65,7 @@ export function RetainerPanel({ clientId }: { clientId: string }) {
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Retainer</h2>
         <div className="flex items-center gap-3">
-          <span className={cn("text-sm font-semibold", balance > 0 ? "text-emerald-600" : "text-muted-foreground")}>
+          <span className={cn("text-sm font-semibold", balance > 0 ? "text-success-foreground" : "text-muted-foreground")}>
             Balance: ${balance.toFixed(2)}
           </span>
           <Dialog open={open} onOpenChange={setOpen}>
@@ -125,9 +125,9 @@ export function RetainerPanel({ clientId }: { clientId: string }) {
       </div>
 
       {transactions.length > 0 && (
-        <div className="rounded-2xl border border-border/50 overflow-hidden">
+        <div className="rounded-[10px] border border-border overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-muted/30 border-b border-border/50">
+            <thead className="bg-muted/30 border-b border-border">
               <tr>
                 {["Date", "Type", "Description", "Amount"].map((h, i) => (
                   <th
@@ -151,10 +151,10 @@ export function RetainerPanel({ clientId }: { clientId: string }) {
                       className={cn(
                         "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold capitalize",
                         t.type === "deposit"
-                          ? "bg-emerald-50 text-emerald-600"
+                          ? "bg-success/10 text-success-foreground"
                           : t.type === "drawdown"
-                            ? "bg-amber-50 text-amber-600"
-                            : "bg-gray-100 text-gray-500",
+                            ? "bg-warning/12 text-warning-foreground"
+                            : "bg-muted text-muted-foreground",
                       )}
                     >
                       {t.type}
@@ -172,8 +172,8 @@ export function RetainerPanel({ clientId }: { clientId: string }) {
                     className={cn(
                       "px-5 py-3 text-right font-semibold",
                       t.type === "deposit"
-                        ? "text-emerald-600"
-                        : "text-amber-600",
+                        ? "text-success-foreground"
+                        : "text-warning-foreground",
                     )}
                   >
                     {t.type === "deposit" ? "+" : "-"}$

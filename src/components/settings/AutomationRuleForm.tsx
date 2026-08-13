@@ -177,7 +177,7 @@ export function AutomationRuleForm({ editId, onClose }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-6">
+    <div className="rounded-xl border border-border bg-card p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-semibold">{editId ? "Edit Rule" : "New Rule"}</h3>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
@@ -216,7 +216,7 @@ export function AutomationRuleForm({ editId, onClose }: Props) {
         </div>
 
         {/* Conditions */}
-        <div className="rounded-lg border border-border/50 p-4">
+        <div className="rounded-lg border border-border p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Conditions</span>
@@ -276,7 +276,7 @@ export function AutomationRuleForm({ editId, onClose }: Props) {
                     placeholder="value"
                     className="flex-1"
                   />
-                  <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-red-600" onClick={() => removeCondition(i)}>
+                  <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-danger-foreground" onClick={() => removeCondition(i)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -286,7 +286,7 @@ export function AutomationRuleForm({ editId, onClose }: Props) {
         </div>
 
         {/* Actions */}
-        <div className="rounded-lg border border-border/50 p-4">
+        <div className="rounded-lg border border-border p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium">Then do</span>
             <Button type="button" variant="outline" size="sm" onClick={() => setActions((p) => [...p, newAction()])}>
@@ -297,7 +297,7 @@ export function AutomationRuleForm({ editId, onClose }: Props) {
 
           <div className="space-y-4">
             {actions.map((a, i) => (
-              <div key={i} className="rounded-md border border-border/40 p-3 space-y-2">
+              <div key={i} className="rounded-md border border-border p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <Select value={a.type} onValueChange={(v) => updateAction(i, { type: v as ActionType })}>
                     <SelectTrigger className="w-[240px]">
@@ -312,7 +312,7 @@ export function AutomationRuleForm({ editId, onClose }: Props) {
                     </SelectContent>
                   </Select>
                   {actions.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-red-600 ml-auto" onClick={() => removeAction(i)}>
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-danger-foreground ml-auto" onClick={() => removeAction(i)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   )}

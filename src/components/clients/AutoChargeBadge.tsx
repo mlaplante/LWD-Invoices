@@ -31,7 +31,7 @@ export function AutoChargeBadge({
 
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-md">
+      <span className="inline-flex items-center gap-1 text-xs bg-success/10 text-success-foreground px-2 py-0.5 rounded-md">
         <CreditCard className="w-3 h-3" />
         Card on file
       </span>
