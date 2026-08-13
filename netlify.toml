@@ -4,14 +4,20 @@
   # migrations on deploy and the live DB drifts behind schema.prisma.
   # Symptom is "column X does not exist" 500s on any page that reads
   # the new column.
-  command = "prisma generate && prisma migrate deploy && next build"
+  # prune-turbopack-cache drops stale per-Next-version Turbopack cache dirs
+  # (each ~600MB) so the cache @netlify/plugin-nextjs persists between builds
+  # stays small enough to actually survive. It never fails the build.
+  command = "node scripts/prune-turbopack-cache.mjs && prisma generate && prisma migrate deploy && next build"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
-  # Persist .next/cache between builds for faster incremental builds
-  NETLIFY_NEXT_CACHE_PERSIST = "true"
+  # NOTE: .next/cache persistence needs no env flag — @netlify/plugin-nextjs
+  # restores/saves it automatically every build (onPreBuild/onBuild). Check the
+  # deploy log for "Next.js cache restored" vs "No Next.js cache to restore"
+  # to see whether it worked. (A previous "NETLIFY_NEXT_CACHE_PERSIST" var here
+  # was fictional — it appears nowhere in the plugin and did nothing.)
 
 [functions]
   node_bundler = "esbuild"
