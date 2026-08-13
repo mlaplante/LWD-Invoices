@@ -17,13 +17,13 @@ export function DashboardPaymentHistory({ payments }: Props) {
   if (payments.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5">
+    <div className="rounded-[10px] border border-border bg-card p-5">
       <h2 className="text-base font-semibold text-foreground mb-4">
         Recent Payments
       </h2>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <th className="pb-3 font-semibold">Date</th>
             <th className="pb-3 font-semibold">Invoice</th>
             <th className="pb-3 font-semibold">Method</th>
@@ -34,7 +34,7 @@ export function DashboardPaymentHistory({ payments }: Props) {
           {payments.map((p) => (
             <tr
               key={p.id}
-              className="border-b border-border/50 last:border-0"
+              className="border-b border-border last:border-0"
             >
               <td className="py-3 text-muted-foreground">
                 {formatDate(p.paidAt)}

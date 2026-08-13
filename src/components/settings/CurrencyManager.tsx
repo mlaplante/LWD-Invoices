@@ -116,10 +116,10 @@ export function CurrencyManager({ initialCurrencies }: Props) {
                   <td className="px-3 py-2">{c.symbol}</td>
                   <td className="px-3 py-2 capitalize">{c.symbolPosition}</td>
                   <td className="px-3 py-2 text-right">{typeof c.exchangeRate === "object" ? c.exchangeRate.toNumber() : c.exchangeRate}</td>
-                  <td className="px-3 py-2">{c.isDefault && <span className="text-xs font-medium text-green-600">Default</span>}</td>
+                  <td className="px-3 py-2">{c.isDefault && <span className="text-xs font-medium text-success-foreground">Default</span>}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => startEdit(c)} className="text-xs text-blue-600 hover:underline">Edit</button>
+                      <button onClick={() => startEdit(c)} className="text-xs text-accent-foreground hover:underline">Edit</button>
                       <button onClick={() => deleteMutation.mutate({ id: c.id })} className="text-xs text-destructive hover:underline">Delete</button>
                     </div>
                   </td>

@@ -39,7 +39,7 @@ export function RetentionSettings() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-base font-semibold">Enable retention automation</p>
@@ -79,7 +79,7 @@ export function RetentionSettings() {
         </div>
       </div>
 
-      <details className="rounded-2xl border border-border/50 bg-card px-6 py-4">
+      <details className="rounded-[10px] border border-border bg-card px-6 py-4">
         <summary className="text-sm font-semibold cursor-pointer">
           Variables
         </summary>
@@ -134,8 +134,8 @@ function TemplateEditor({ template }: { template: TemplateData }) {
   });
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-6 py-4 border-b border-border/50 flex items-center justify-between gap-3">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-3">
         <div>
           <p className="font-semibold text-sm">{TOUCH_TYPE_LABELS[template.touchType]}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -143,7 +143,7 @@ function TemplateEditor({ template }: { template: TemplateData }) {
           </p>
         </div>
         {template.isCustom && (
-          <span className="text-[10px] font-semibold uppercase tracking-wider rounded bg-emerald-50 text-emerald-700 px-2 py-0.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider rounded bg-success/10 text-success-foreground px-2 py-0.5">
             Customized
           </span>
         )}

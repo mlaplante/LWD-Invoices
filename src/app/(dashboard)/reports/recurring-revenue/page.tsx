@@ -10,7 +10,7 @@ function usd(n: number): string {
 
 function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-4">
+    <div className="rounded-[10px] border border-border bg-card p-4">
       <p className="text-xs text-muted-foreground font-medium">{label}</p>
       <p className="font-display text-2xl sm:text-3xl mt-0.5 tabular-nums">{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
@@ -63,8 +63,8 @@ export default function RecurringRevenuePage() {
             />
           </div>
 
-          <div className="rounded-2xl border border-border/50 bg-card p-5">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+          <div className="rounded-[10px] border border-border bg-card p-5">
+            <p className="eyebrow lowercase text-[11px] mb-3">
               MRR by source
             </p>
             <div className="space-y-2 text-sm">

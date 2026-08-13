@@ -54,7 +54,7 @@ export function EstimatedTaxSettings() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-border/50 bg-background/50 p-5 space-y-4">
+      <div className="rounded-xl border border-border bg-background/50 p-5 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm font-semibold">Set-aside percentage</p>
@@ -85,7 +85,7 @@ export function EstimatedTaxSettings() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/50 bg-background/50 p-5 space-y-4">
+      <div className="rounded-xl border border-border bg-background/50 p-5 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm font-semibold">Email me before each due date</p>

@@ -24,9 +24,9 @@ import { cn } from "@/lib/utils";
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<ProjectStatus, { label: string; className: string }> = {
-  ACTIVE:    { label: "Active",    className: "bg-emerald-50 text-emerald-600" },
+  ACTIVE:    { label: "Active",    className: "bg-success/10 text-success-foreground" },
   COMPLETED: { label: "Completed", className: "bg-primary/10 text-primary" },
-  ARCHIVED:  { label: "Archived",  className: "bg-gray-100 text-gray-500" },
+  ARCHIVED:  { label: "Archived",  className: "bg-muted text-muted-foreground" },
 };
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -112,26 +112,26 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
           icon={<CheckSquare className="w-4 h-4" />}
           label="Tasks"
           value={String(project._count.tasks)}
-          color="text-violet-600 bg-violet-50"
+          color="text-accent-foreground bg-accent"
         />
         <StatCard
           icon={<Users className="w-4 h-4" />}
           label="Client"
           value={project.client.name}
           small
-          color="text-blue-600 bg-blue-50"
+          color="text-accent-foreground bg-accent"
         />
         <StatCard
           icon={<Clock className="w-4 h-4" />}
           label="Time Logged"
           value={`${(project.summary.totalMinutes / 60).toFixed(1)}h`}
-          color="text-amber-600 bg-amber-50"
+          color="text-warning-foreground bg-warning/12"
         />
         <StatCard
           icon={<DollarSign className="w-4 h-4" />}
           label="Expenses"
           value={`${project.currency.symbol}${project.summary.totalExpenses.toFixed(2)}`}
-          color="text-emerald-600 bg-emerald-50"
+          color="text-success-foreground bg-success/10"
         />
       </div>
 
@@ -163,12 +163,12 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       {tab === "time" && <TimeTab projectId={id} />}
       {tab === "expenses" && <ExpensesTab projectId={id} />}
       {tab === "files" && (
-        <div className="rounded-2xl border border-border/50 p-5">
+        <div className="rounded-[10px] border border-border p-5">
           <AttachmentPanel context="PROJECT" contextId={id} />
         </div>
       )}
       {tab === "discussions" && (
-        <div className="rounded-2xl border border-border/50 p-5">
+        <div className="rounded-[10px] border border-border p-5">
           <DiscussionThread projectId={project.id} />
         </div>
       )}
@@ -192,7 +192,7 @@ function StatCard({
   small?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-4 flex items-start gap-3">
+    <div className="rounded-[10px] border border-border bg-card p-4 flex items-start gap-3">
       <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0", color)}>
         {icon}
       </div>

@@ -13,25 +13,25 @@ const cards = [
     key: "outstanding" as const,
     label: "Outstanding",
     icon: DollarSign,
-    color: "text-amber-600",
-    bg: "bg-amber-50",
-    iconBg: "bg-amber-100",
+    color: "text-warning-foreground",
+    bg: "bg-warning/12",
+    iconBg: "bg-warning/12",
   },
   {
     key: "overdue" as const,
     label: "Overdue",
     icon: AlertTriangle,
-    color: "text-red-600",
-    bg: "bg-red-50",
-    iconBg: "bg-red-100",
+    color: "text-danger-foreground",
+    bg: "bg-danger/10",
+    iconBg: "bg-danger/10",
   },
   {
     key: "total" as const,
     label: "Total Invoices",
     icon: FileText,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    iconBg: "bg-blue-100",
+    color: "text-accent-foreground",
+    bg: "bg-accent",
+    iconBg: "bg-accent",
   },
 ] as const;
 
@@ -54,7 +54,7 @@ export function DashboardSummaryCards({
           <div
             key={card.key}
             className={cn(
-              "rounded-2xl border border-border/50 bg-card p-5 flex items-center gap-4"
+              "rounded-[10px] border border-border bg-card p-5 flex items-center gap-4"
             )}
           >
             <div

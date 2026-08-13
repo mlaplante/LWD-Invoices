@@ -15,22 +15,22 @@ export default function ProposalDetailLoading() {
           ))}
         </div>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-border/50 bg-card">
-        <div className="space-y-3 border-b border-border/50 px-8 py-7">
+      <div className="overflow-hidden rounded-[10px] border border-border bg-card">
+        <div className="space-y-3 border-b border-border px-8 py-7">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-4 w-full max-w-xl" />
           <Skeleton className="h-4 w-4/5 max-w-lg" />
         </div>
         <div className="space-y-4 px-8 py-6">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="flex justify-between border-b border-border/40 py-4">
+            <div key={index} className="flex justify-between border-b border-border py-4">
               <Skeleton className="h-4 w-44" />
               <Skeleton className="h-4 w-20" />
             </div>
           ))}
         </div>
       </div>
-      <div className="rounded-2xl border border-border/50 bg-card p-6">
+      <div className="rounded-[10px] border border-border bg-card p-6">
         <Skeleton className="h-5 w-40" />
         <Skeleton className="mt-4 h-20 w-full" />
       </div>

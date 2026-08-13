@@ -7,8 +7,8 @@ export default function TicketDetailLoading() {
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-6 w-36" />
       </div>
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50 space-y-1">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border space-y-1">
           <Skeleton className="h-3 w-16" />
           <Skeleton className="h-5 w-48" />
         </div>

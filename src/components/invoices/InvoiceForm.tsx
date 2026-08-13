@@ -610,8 +610,8 @@ export function InvoiceForm({
     <div
       className={`rounded-md border p-3 text-sm ${
         duplicateMatch.severity === "danger"
-          ? "border-red-300 bg-red-50 text-red-900"
-          : "border-amber-300 bg-amber-50 text-amber-900"
+          ? "border-danger/30 bg-danger/10 text-danger-foreground"
+          : "border-warning/30 bg-warning/12 text-warning-foreground"
       }`}
     >
       <p className="font-semibold">Possible duplicate invoice</p>
@@ -627,7 +627,7 @@ export function InvoiceForm({
   );
 
   const stripeTaxWarningSection = stripeTaxPreflight && !stripeTaxPreflight.ok && (
-    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+    <div className="rounded-md border border-warning/30 bg-warning/12 p-3 text-sm text-warning-foreground">
       <p className="font-semibold">Stripe Tax can&apos;t calculate yet</p>
       <p className="mt-1">Saving will fail until the following are filled in:</p>
       <ul className="mt-1 list-disc pl-5">
@@ -679,8 +679,12 @@ export function InvoiceForm({
       </div>
 
       {view === "form" ? (
-        <>
-          {createFromPromptSection}
+        /* Draft on the left, review rail on the right — Pre-Send QA sits
+           beside the draft rather than behind a button, so problems are
+           visible while you're still editing. Single column under lg. */
+        <div className="grid items-start gap-5 lg:grid-cols-[1.55fr_1fr]">
+          <div className="min-w-0 space-y-6">
+            {createFromPromptSection}
 
           {/* Header fields */}
           <InvoiceMetadata
@@ -834,12 +838,6 @@ export function InvoiceForm({
             </div>
           </div>
 
-          {/* Payment Schedule */}
-          {paymentScheduleSection}
-
-          {/* Invoice Draft QA */}
-          {draftQASection}
-
           {/* Notes */}
           <div className="space-y-1">
             <label htmlFor="invoice-notes" className="text-sm font-medium">
@@ -856,8 +854,6 @@ export function InvoiceForm({
             />
           </div>
 
-          {reminderOverrideSection}
-
           {/* Totals panel */}
           <div className="flex justify-end">
             <div className="w-72 space-y-1.5 rounded-lg border p-4">
@@ -868,7 +864,7 @@ export function InvoiceForm({
               {invoiceTotals.discountTotal > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Discount</span>
-                  <span className="text-emerald-600">
+                  <span className="text-success-foreground">
                     -{fmt(invoiceTotals.discountTotal)}
                   </span>
                 </div>
@@ -885,7 +881,15 @@ export function InvoiceForm({
               </div>
             </div>
           </div>
-        </>
+          </div>
+
+          {/* Review rail — sticky so QA stays in view down a long draft */}
+          <aside className="space-y-3.5 lg:sticky lg:top-5">
+            {draftQASection}
+            {paymentScheduleSection}
+            {reminderOverrideSection}
+          </aside>
+        </div>
       ) : (
         <InvoiceCanvasView
           value={form}

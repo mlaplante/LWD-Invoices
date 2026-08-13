@@ -52,7 +52,7 @@ export function ClientCreditPanel({ clientId }: { clientId: string }) {
 
   if (isLoading || !data) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-card p-5">
+      <div className="rounded-[10px] border border-border bg-card p-5">
         <div className="h-5 w-32 bg-muted rounded animate-pulse" />
       </div>
     );
@@ -61,13 +61,13 @@ export function ClientCreditPanel({ clientId }: { clientId: string }) {
   const fmt = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
+    <div className="rounded-[10px] border border-border bg-card p-5 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {data.creditHold ? (
-            <ShieldAlert className="w-4 h-4 text-red-600" />
+            <ShieldAlert className="w-4 h-4 text-danger-foreground" />
           ) : (
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <ShieldCheck className="w-4 h-4 text-success-foreground" />
           )}
           <h2 className="text-base font-semibold">Credit</h2>
         </div>
@@ -80,9 +80,9 @@ export function ClientCreditPanel({ clientId }: { clientId: string }) {
 
       {/* Warning banner */}
       {data.shouldWarn && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5">
-          <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <div className="text-sm text-red-800">
+        <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-danger-foreground shrink-0 mt-0.5" />
+          <div className="text-sm text-danger-foreground">
             {data.creditHold && (
               <p className="font-medium">
                 This client is on credit hold{data.creditHoldAuto ? " (auto)" : ""}.
@@ -95,7 +95,7 @@ export function ClientCreditPanel({ clientId }: { clientId: string }) {
                 <strong>{fmt(data.overLimitBy)}</strong>.
               </p>
             )}
-            <p className="mt-1 text-xs text-red-700/80">
+            <p className="mt-1 text-xs text-danger-foreground/80">
               Review before sending new invoices or charging a saved card.
             </p>
           </div>
@@ -115,7 +115,7 @@ export function ClientCreditPanel({ clientId }: { clientId: string }) {
       </div>
 
       {/* Policy editor */}
-      <div className="space-y-3 border-t border-border/50 pt-4">
+      <div className="space-y-3 border-t border-border pt-4">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">Credit limit (open AR)</label>
           <Input
@@ -195,7 +195,7 @@ export function ClientCreditPanel({ clientId }: { clientId: string }) {
             <Button
               size="sm"
               variant="ghost"
-              className="text-red-600 hover:text-red-700"
+              className="text-danger-foreground hover:text-danger-foreground"
               disabled={setHold.isPending}
               onClick={() => setHold.mutate({ clientId, hold: true, reason: "Manual credit hold." })}
             >

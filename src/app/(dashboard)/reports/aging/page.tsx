@@ -16,11 +16,11 @@ export default async function AgingPage() {
   ]);
 
   const buckets = [
-    { key: "current" as const, label: "Current", color: "text-emerald-600", dotColor: "bg-emerald-500" },
-    { key: "days1_30" as const, label: "1–30 days", color: "text-amber-600", dotColor: "bg-amber-500" },
-    { key: "days31_60" as const, label: "31–60 days", color: "text-orange-600", dotColor: "bg-orange-500" },
-    { key: "days61_90" as const, label: "61–90 days", color: "text-red-500", dotColor: "bg-red-500" },
-    { key: "days90plus" as const, label: "90+ days", color: "text-red-700", dotColor: "bg-red-700" },
+    { key: "current" as const, label: "Current", color: "text-success-foreground", dotColor: "bg-success" },
+    { key: "days1_30" as const, label: "1–30 days", color: "text-warning-foreground", dotColor: "bg-warning" },
+    { key: "days31_60" as const, label: "31–60 days", color: "text-warning-foreground", dotColor: "bg-warning" },
+    { key: "days61_90" as const, label: "61–90 days", color: "text-danger-foreground", dotColor: "bg-danger" },
+    { key: "days90plus" as const, label: "90+ days", color: "text-danger-foreground", dotColor: "bg-danger" },
   ];
 
   return (
@@ -42,8 +42,8 @@ export default async function AgingPage() {
           const items = data[b.key];
           const total = items.reduce((s, i) => s + Number(i.total), 0);
           return (
-            <div key={b.key} className="rounded-2xl border border-border/50 bg-card px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{b.label}</p>
+            <div key={b.key} className="rounded-[10px] border border-border bg-card px-4 py-3">
+              <p className="eyebrow lowercase text-[11px]">{b.label}</p>
               <p className={`text-xl font-bold tabular-nums mt-1 ${b.color}`}>${total.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{items.length} invoice{items.length !== 1 ? "s" : ""}</p>
             </div>
@@ -56,15 +56,15 @@ export default async function AgingPage() {
         const items = data[b.key];
         if (items.length === 0) return null;
         return (
-          <div key={b.key} className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-            <div className="px-5 py-3 border-b border-border/50 flex items-center gap-2">
+          <div key={b.key} className="rounded-[10px] border border-border bg-card overflow-hidden">
+            <div className="px-5 py-3 border-b border-border flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${b.dotColor}`} />
               <p className="text-sm font-semibold">{b.label}</p>
             </div>
             <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-border/50">
-                <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              <thead className="border-b border-border">
+                <tr className="eyebrow lowercase text-[11px]">
                   <th className="px-5 py-2 text-left">Invoice</th>
                   <th className="px-5 py-2 text-left">Client</th>
                   <th className="px-5 py-2 text-right">Due Date</th>
@@ -74,7 +74,7 @@ export default async function AgingPage() {
               </thead>
               <tbody>
                 {items.map((inv) => (
-                  <tr key={inv.id} className="border-b border-border/50 last:border-0 hover:bg-accent/30">
+                  <tr key={inv.id} className="border-b border-border last:border-0 hover:bg-accent/30">
                     <td className="px-5 py-3">
                       <Link href={`/invoices/${inv.id}`} className="font-medium hover:text-primary transition-colors">
                         #{inv.number}

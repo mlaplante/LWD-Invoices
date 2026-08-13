@@ -42,7 +42,7 @@ export default async function EditRecurringExpensePage({ params }: Props) {
         <h1 className="text-xl font-bold tracking-tight">Edit Recurring Expense</h1>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card p-6">
+      <div className="rounded-[10px] border border-border bg-card p-6">
         <RecurringExpenseForm
           mode="edit"
           recurringExpenseId={rec.id}

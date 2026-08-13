@@ -22,10 +22,10 @@ export function EstimatedTaxCard({ data }: Props) {
   const urgent = nextDue !== null && nextDue.remaining > 0 && nextDue.daysUntil <= 14;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5">
+    <div className="rounded-[10px] border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-sm flex items-center gap-2">
-          <Landmark className="h-4 w-4 text-orange-500" />
+          <Landmark className="h-4 w-4 text-warning-foreground" />
           Estimated Taxes
         </h3>
         <Link
@@ -46,10 +46,10 @@ export function EstimatedTaxCard({ data }: Props) {
           <p className="text-xs text-muted-foreground">Next payment due</p>
           {nextDue ? (
             <>
-              <p className="text-2xl font-bold tabular-nums mt-0.5 text-orange-600">
+              <p className="text-2xl font-bold tabular-nums mt-0.5 text-warning-foreground">
                 {money(nextDue.remaining)}
               </p>
-              <p className={`text-xs mt-0.5 ${urgent ? "font-semibold text-orange-600" : "text-muted-foreground"}`}>
+              <p className={`text-xs mt-0.5 ${urgent ? "font-semibold text-warning-foreground" : "text-muted-foreground"}`}>
                 {nextDue.dueDateLabel} · {nextDue.daysUntil}d ({nextDue.label})
               </p>
             </>

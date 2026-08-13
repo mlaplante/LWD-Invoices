@@ -26,10 +26,10 @@ import { TOUCH_TYPE_LABELS } from "@/server/services/check-in-templates";
 import type { ClientCheckInOutcome } from "@/generated/prisma";
 
 const STATUS_COPY = {
-  active: { label: "Active", color: "text-emerald-700 bg-emerald-50" },
-  recent: { label: "Recent (<90d)", color: "text-blue-700 bg-blue-50" },
-  warm: { label: "Warm (<1y)", color: "text-amber-700 bg-amber-50" },
-  cold: { label: "Cold (>1y)", color: "text-slate-700 bg-slate-100" },
+  active: { label: "Active", color: "text-success-foreground bg-success/10" },
+  recent: { label: "Recent (<90d)", color: "text-accent-foreground bg-accent" },
+  warm: { label: "Warm (<1y)", color: "text-warning-foreground bg-warning/12" },
+  cold: { label: "Cold (>1y)", color: "text-muted-foreground bg-muted" },
 } as const;
 
 type Props = {
@@ -160,7 +160,7 @@ export function CheckInDrawer({ checkInId, onClose }: Props) {
             <div className="px-4 space-y-5 pb-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  <p className="eyebrow lowercase text-[11px]">
                     Draft Message
                   </p>
                   {data.usingDefault && (
@@ -212,8 +212,8 @@ export function CheckInDrawer({ checkInId, onClose }: Props) {
               </div>
 
               {isPending ? (
-                <div className="space-y-4 rounded-xl border border-border/50 p-4 bg-muted/20">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <div className="space-y-4 rounded-xl border border-border p-4 bg-muted/20">
+                  <p className="eyebrow lowercase text-[11px]">
                     Close Out
                   </p>
                   <div className="space-y-2">
@@ -278,9 +278,9 @@ export function CheckInDrawer({ checkInId, onClose }: Props) {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-border/50 p-4 bg-muted/20 space-y-3">
+                <div className="rounded-xl border border-border p-4 bg-muted/20 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    <p className="eyebrow lowercase text-[11px]">
                       {data.checkIn.status === "COMPLETED" ? "Completed" : "Dismissed"}
                     </p>
                     <Button

@@ -8,14 +8,14 @@ function Gauge({ used, total }: { used: number; total: number }) {
     <div className="w-full">
       <div className="h-2 bg-muted rounded overflow-hidden">
         <div
-          className={`h-full ${over ? "bg-amber-500" : "bg-primary"}`}
+          className={`h-full ${over ? "bg-warning" : "bg-primary"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
       <div className="text-sm mt-1">
         {used.toFixed(2)} / {total.toFixed(2)} hrs
         {over ? (
-          <span className="text-amber-700 ml-2">
+          <span className="text-warning-foreground ml-2">
             {(used - total).toFixed(2)} hrs over
           </span>
         ) : null}

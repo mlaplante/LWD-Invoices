@@ -55,7 +55,7 @@ export function PortalComments({ token, initialComments }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-6">
+    <div className="rounded-[10px] border border-border bg-card p-6">
       <h2 className="text-base font-semibold text-foreground mb-4">Comments</h2>
 
       {comments.length === 0 ? (
@@ -63,7 +63,7 @@ export function PortalComments({ token, initialComments }: Props) {
       ) : (
         <div className="space-y-4 mb-6">
           {comments.map((c) => (
-            <div key={c.id} className="rounded-xl border border-border/50 bg-accent/30 p-3">
+            <div key={c.id} className="rounded-xl border border-border bg-accent/30 p-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-foreground">{c.authorName}</span>
                 <span className="text-xs text-muted-foreground">{formatDateTime(c.createdAt)}</span>
@@ -75,7 +75,7 @@ export function PortalComments({ token, initialComments }: Props) {
       )}
 
       {submitted ? (
-        <div className="flex gap-2 text-emerald-600">
+        <div className="flex gap-2 text-success-foreground">
           <CheckCircle2 className="w-5 h-5" />
           Your comment was submitted.
         </div>

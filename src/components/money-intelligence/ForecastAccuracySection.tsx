@@ -10,9 +10,9 @@ function usd(n: number): string {
 }
 
 function accuracyTone(accuracy: number): string {
-  if (accuracy >= 85) return "text-emerald-600";
-  if (accuracy >= 65) return "text-amber-600";
-  return "text-red-600";
+  if (accuracy >= 85) return "text-success-foreground";
+  if (accuracy >= 65) return "text-warning-foreground";
+  return "text-danger-foreground";
 }
 
 /**
@@ -55,7 +55,7 @@ export function ForecastAccuracySection() {
             {/* Per-horizon accuracy */}
             <div className="grid gap-3 sm:grid-cols-3">
               {data.summary.horizons.map((h) => (
-                <div key={h.horizonDays} className="rounded-lg border border-border/50 p-4">
+                <div key={h.horizonDays} className="rounded-lg border border-border p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {h.horizonDays}-day forecasts
                   </p>
@@ -84,7 +84,7 @@ export function ForecastAccuracySection() {
                     <th className="pb-2 text-right">Accuracy</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/50">
+                <tbody className="divide-y divide-divider">
                   {data.recent.map((row, i) => (
                     <tr key={i}>
                       <td className="py-2 text-muted-foreground">

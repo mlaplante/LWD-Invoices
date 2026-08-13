@@ -16,9 +16,9 @@ export default async function SecuritySettingsPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">
             Authentication
           </p>
           <p className="text-base font-semibold mt-1">Two-Factor Authentication</p>
@@ -32,9 +32,9 @@ export default async function SecuritySettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Password</p>
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">Password</p>
           <p className="text-base font-semibold mt-1">Change Password</p>
           <p className="text-sm text-muted-foreground mt-0.5">Update the password you use to sign in.</p>
         </div>
@@ -43,9 +43,9 @@ export default async function SecuritySettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">Sessions</p>
           <p className="text-base font-semibold mt-1">Active Sessions</p>
           <p className="text-sm text-muted-foreground mt-0.5">
             Lost a device, or want to force a refresh on every browser? Sign out everywhere in one click.

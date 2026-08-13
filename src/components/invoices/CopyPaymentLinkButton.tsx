@@ -18,7 +18,7 @@ export function CopyPaymentLinkButton({ payLink }: { payLink: string }) {
   return (
     <Button variant="outline" size="sm" onClick={handleCopy}>
       {copied ? (
-        <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
+        <Check className="w-3.5 h-3.5 mr-1.5 text-success-foreground" />
       ) : (
         <Link2 className="w-3.5 h-3.5 mr-1.5" />
       )}

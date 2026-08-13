@@ -55,7 +55,7 @@ export default function ActivityPage() {
       <ActivityFilters filter={filter} onChange={handleFilterChange} />
 
       {/* Feed */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         {isFetching && items.length === 0 ? (
           <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
             Loading…

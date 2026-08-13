@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/supabase/server";
 import { findDbUserBySupabaseId } from "@/server/user-context";
@@ -13,6 +12,7 @@ import { Plus } from "lucide-react";
 import { CommandPalette, SearchTriggerButton } from "@/components/layout/CommandPalette";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 /* ── Dynamic fragments wrapped in Suspense for PPR ── */
 
@@ -44,7 +44,32 @@ async function MobileNavSection() {
   return <MobileNav activeOrgId={activeOrgId} />;
 }
 
-const UserMenuFallback = () => <Skeleton className="h-8 w-8 rounded-full" />;
+const UserMenuFallback = () => <Skeleton className="size-7 rounded-full" />;
+
+/**
+ * Brand lockup. The indigo monogram tile is the design's stand-in for the
+ * mark — `public/logo.png` is a marketing render with baked-in texture and
+ * heavy padding, so it doesn't sit on a 32px tile. Swap it in here once a
+ * transparent, tightly-cropped asset exists.
+ */
+function BrandMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <Link href="/" className="flex items-center gap-2.5">
+      <span
+        aria-hidden
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground",
+          compact ? "size-[30px] text-[11px]" : "size-8 text-xs",
+        )}
+      >
+        ML
+      </span>
+      <span className="text-[13px] font-semibold leading-tight text-foreground">
+        LWD Invoices
+      </span>
+    </Link>
+  );
+}
 
 export default async function DashboardLayout({
   children,
@@ -67,40 +92,44 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen bg-background">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-[6px] focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-lg"
       >
         Skip to main content
       </a>
 
-      {/* ── Desktop sidebar (static shell, pre-rendered) ──── */}
-      <aside className="hidden lg:flex w-56 shrink-0 flex-col gap-0 overflow-hidden bg-sidebar p-4 print:hidden lg:sticky lg:top-0 lg:h-screen">
-        <div className="flex items-center px-2 mb-5">
-          <Image src="/logo-horizontal.png" alt="LWD Invoices" width={180} height={40} className="h-9 w-auto" priority />
+      {/* ── Desktop rail — 204px, paper-white ─────────────── */}
+      <aside className="hidden w-[204px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar pb-4 pt-[18px] print:hidden lg:sticky lg:top-0 lg:flex lg:h-screen">
+        <div className="px-5 pb-4">
+          <BrandMark />
         </div>
 
-        <Link
-          href="/invoices/new"
-          className="flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl py-2.5 mb-5 text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-primary/30"
-        >
-          <Plus className="w-4 h-4" />
-          New Invoice
-        </Link>
+        <div className="px-5 pb-[18px]">
+          <Link
+            href="/invoices/new"
+            className="flex w-full items-center justify-center gap-1.5 rounded-[6px] bg-primary py-2.5 text-[11px] font-semibold uppercase tracking-[2px] text-primary-foreground shadow-[0_4px_15px_rgba(63,81,181,0.4)] transition-all duration-200 ease-[ease] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(63,81,181,0.5)]"
+          >
+            <Plus className="size-3.5" />
+            New Invoice
+          </Link>
+        </div>
 
-        <Suspense>
-          <SidebarNav />
-        </Suspense>
+        <div className="min-h-0 flex-1 px-3">
+          <Suspense>
+            <SidebarNav />
+          </Suspense>
+        </div>
 
-        <Suspense>
-          <OrgSwitcherSection />
-        </Suspense>
+        <div className="mt-auto border-t border-sidebar-border px-5 pt-3.5">
+          <Suspense>
+            <OrgSwitcherSection />
+          </Suspense>
+        </div>
       </aside>
 
-      {/* ── Mobile fixed top header ────────────────────────── */}
-      <header className="lg:hidden fixed top-0 inset-x-0 z-20 h-14 flex items-center justify-between border-b border-sidebar-border bg-sidebar px-4 shadow-sm print:hidden">
-        <div className="flex items-center">
-          <Image src="/logo-horizontal.png" alt="LWD Invoices" width={150} height={34} className="h-7 w-auto" priority />
-        </div>
-        <div className="flex items-center gap-3">
+      {/* ── Mobile top header ─────────────────────────────── */}
+      <header className="fixed inset-x-0 top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-card px-5 print:hidden lg:hidden">
+        <BrandMark compact />
+        <div className="flex items-center gap-3.5">
           <SearchTriggerButton />
           <ThemeToggle />
           <NotificationBell />
@@ -110,10 +139,9 @@ export default async function DashboardLayout({
         </div>
       </header>
 
-      {/* ── Main area ──────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 lg:p-5 lg:pl-0">
-        {/* Desktop top bar */}
-        <header className="hidden lg:flex items-center justify-end gap-3 mb-5 px-1 print:hidden">
+      {/* ── Main area — content sits directly on paper ────── */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="hidden items-center justify-end gap-3 px-10 pt-6 print:hidden lg:flex">
           <SearchTriggerButton />
           <ThemeToggle />
           <NotificationBell />
@@ -122,15 +150,14 @@ export default async function DashboardLayout({
           </Suspense>
         </header>
 
-        {/* Content area */}
-        <main id="main" className="flex-1 lg:bg-card lg:rounded-2xl lg:shadow-sm lg:ring-1 lg:ring-border/40 lg:overflow-auto">
-          <div className="pt-16 pb-28 px-4 lg:p-6 lg:pt-6 lg:pb-6">
+        <main id="main" className="flex-1">
+          <div className="px-5 pb-28 pt-[78px] lg:px-10 lg:pb-10 lg:pt-6">
             {children}
           </div>
         </main>
       </div>
 
-      {/* ── Mobile bottom navigation ───────────────────────── */}
+      {/* ── Mobile tab bar + FAB ──────────────────────────── */}
       <div className="print:hidden">
         <Suspense>
           <MobileNavSection />

@@ -17,7 +17,7 @@ export default function NewContractorPage() {
         <h1 className="text-xl font-bold tracking-tight">New Contractor</h1>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card p-6">
+      <div className="rounded-[10px] border border-border bg-card p-6">
         <ContractorForm mode="create" />
       </div>
     </div>

@@ -32,7 +32,7 @@ export function ProposalNudgeSettings({ initialEnabled, initialDelayHours }: Pro
   const dirty = enabled !== initialEnabled || delayHours !== initialDelayHours;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
+    <div className="rounded-[10px] border border-border bg-card p-5 space-y-4">
       <div>
         <h2 className="text-base font-semibold">Viewed-but-not-signed nudge</h2>
         <p className="text-sm text-muted-foreground mt-0.5">

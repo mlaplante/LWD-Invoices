@@ -7,9 +7,9 @@ import { Gauge } from "lucide-react";
 type Props = { invoiceId: string };
 
 const BAND_CONFIG: Record<string, { label: string; className: string; bar: string }> = {
-  high: { label: "Likely to pay", className: "bg-emerald-50 text-emerald-700", bar: "bg-emerald-500" },
-  medium: { label: "Uncertain", className: "bg-amber-50 text-amber-700", bar: "bg-amber-500" },
-  low: { label: "At risk", className: "bg-red-50 text-red-700", bar: "bg-red-500" },
+  high: { label: "Likely to pay", className: "bg-success/10 text-success-foreground", bar: "bg-success" },
+  medium: { label: "Uncertain", className: "bg-warning/12 text-warning-foreground", bar: "bg-warning" },
+  low: { label: "At risk", className: "bg-danger/10 text-danger-foreground", bar: "bg-danger" },
 };
 
 /**
@@ -27,7 +27,7 @@ export function PaymentProbabilityPanel({ invoiceId }: Props) {
   const band = BAND_CONFIG[score.paymentProbabilityBand] ?? BAND_CONFIG.medium;
 
   return (
-    <div className="rounded-lg border border-border/50 p-4 sm:p-6 space-y-3">
+    <div className="rounded-lg border border-border p-4 sm:p-6 space-y-3">
       <div className="flex items-center gap-2">
         <Gauge className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-sm font-semibold">Payment probability</h2>

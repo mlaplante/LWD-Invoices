@@ -9,161 +9,161 @@ const reports = [
     label: "Project Health",
     description: "Composite health per project from budget, tasks, unbilled time, and invoices.",
     icon: <Activity className="w-4 h-4" />,
-    color: "bg-rose-50 text-rose-600",
+    color: "bg-danger/10 text-danger-foreground",
   },
   {
     href: "/reports/tax-dashboard",
     label: "Tax-Ready Dashboard",
     description: "Sales tax due, income by service, deductible expenses, and 1099 exposure in one view.",
     icon: <Landmark className="w-4 h-4" />,
-    color: "bg-orange-50 text-orange-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
   {
     href: "/reports/estimated-tax",
     label: "Estimated Taxes",
     description: "Quarterly self-employment set-aside from net income, with federal due dates.",
     icon: <Landmark className="w-4 h-4" />,
-    color: "bg-orange-50 text-orange-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
   {
     href: "/reports/client-health",
     label: "Client Health",
     description: "Composite health score, churn risk, and upsell signals per client.",
     icon: <HeartPulse className="w-4 h-4" />,
-    color: "bg-rose-50 text-rose-600",
+    color: "bg-danger/10 text-danger-foreground",
   },
   {
     href: "/reports/client-concentration",
     label: "Client Concentration",
     description: "Revenue share per client with over-dependence risk indicators.",
     icon: <Users className="w-4 h-4" />,
-    color: "bg-sky-50 text-sky-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/cash-flow-forecast",
     label: "Cash-Flow Forecast",
     description: "Projected 30/60/90-day cash position with what-if late-payment scenarios.",
     icon: <LineChart className="w-4 h-4" />,
-    color: "bg-emerald-50 text-emerald-600",
+    color: "bg-success/10 text-success-foreground",
   },
   {
     href: "/reports/recurring-revenue",
     label: "Recurring Revenue",
     description: "MRR, ARR, ARPA, and revenue/logo churn across recurring streams.",
     icon: <Repeat className="w-4 h-4" />,
-    color: "bg-indigo-50 text-indigo-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/collections",
     label: "Smart Collections",
     description: "Open invoices ranked by late-payment risk with recommended dunning actions.",
     icon: <BellRing className="w-4 h-4" />,
-    color: "bg-amber-50 text-amber-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
   {
     href: "/reports/expense-anomalies",
     label: "Expense Anomalies",
     description: "Duplicate-receipt detection and out-of-pattern spend, from your OCR data.",
     icon: <AlertTriangle className="w-4 h-4" />,
-    color: "bg-orange-50 text-orange-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
   {
     href: "/reports/unpaid",
     label: "Unpaid Invoices",
     description: "Outstanding invoices requiring payment.",
     icon: <FileText className="w-4 h-4" />,
-    color: "bg-amber-50 text-amber-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
   {
     href: "/reports/payments",
     label: "Payments by Gateway",
     description: "Revenue breakdown by payment method.",
     icon: <CreditCard className="w-4 h-4" />,
-    color: "bg-emerald-50 text-emerald-600",
+    color: "bg-success/10 text-success-foreground",
   },
   {
     href: "/reports/expenses",
     label: "Expense Breakdown",
     description: "Project expenses by category and supplier.",
     icon: <Receipt className="w-4 h-4" />,
-    color: "bg-violet-50 text-violet-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/profit-loss",
     label: "Profit & Loss",
     description: "Net income breakdown with revenue vs. expenses by month.",
     icon: <TrendingUp className="w-4 h-4" />,
-    color: "bg-blue-50 text-blue-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/profitability",
     label: "Profitability",
     description: "Margin analysis by client and project.",
     icon: <PieChart className="w-4 h-4" />,
-    color: "bg-indigo-50 text-indigo-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/forecast",
     label: "Revenue Forecast",
     description: "Pipeline view of expected revenue over the next months.",
     icon: <BarChart3 className="w-4 h-4" />,
-    color: "bg-teal-50 text-teal-600",
+    color: "bg-success/10 text-success-foreground",
   },
   {
     href: "/reports/aging",
     label: "Invoice Aging",
     description: "Outstanding invoices bucketed by days overdue.",
     icon: <Clock className="w-4 h-4" />,
-    color: "bg-red-50 text-red-600",
+    color: "bg-danger/10 text-danger-foreground",
   },
   {
     href: "/reports/dso",
     label: "AR Aging & DSO",
     description: "Receivables by balance due with a Days-Sales-Outstanding trend.",
     icon: <Gauge className="w-4 h-4" />,
-    color: "bg-fuchsia-50 text-fuchsia-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/retainers",
     label: "Retainer Burn-down",
     description: "Hours and prepaid retainers with projected depletion dates and 80% warnings.",
     icon: <Wallet className="w-4 h-4" />,
-    color: "bg-sky-50 text-sky-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/time",
     label: "Time Tracking",
     description: "Hours logged and billable totals by project.",
     icon: <Timer className="w-4 h-4" />,
-    color: "bg-cyan-50 text-cyan-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/utilization",
     label: "Utilization",
     description: "Billable vs non-billable time by client, project, or user.",
     icon: <Percent className="w-4 h-4" />,
-    color: "bg-cyan-50 text-cyan-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     href: "/reports/tax-liability",
     label: "Tax Liability",
     description: "Tax collected by type for your accountant.",
     icon: <Scale className="w-4 h-4" />,
-    color: "bg-orange-50 text-orange-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
   {
     href: "/reports/year-end",
     label: "Year-End Export",
     description: "P&L, expenses, payments, and tax reports for your accountant.",
     icon: <Download className="w-4 h-4" />,
-    color: "bg-rose-50 text-rose-600",
+    color: "bg-danger/10 text-danger-foreground",
   },
   {
     href: "/reports/1099",
     label: "1099 / Contractor Tax Pack",
     description: "1099-NEC forms and a filing summary for contractors paid $600+.",
     icon: <Contact className="w-4 h-4" />,
-    color: "bg-lime-50 text-lime-600",
+    color: "bg-success/10 text-success-foreground",
   },
 ];
 
@@ -212,24 +212,24 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-[28px]">Reports</h1>
         <a
           href="/api/reports/invoices/export"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground border border-border/50 rounded-lg px-3 py-1.5 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-[6px] border border-primary bg-card px-4 py-2 text-[11px] font-semibold uppercase tracking-[2px] text-primary transition-colors duration-200 ease-[ease] hover:bg-primary hover:text-primary-foreground"
         >
-          <Download className="w-3.5 h-3.5" />
-          Export Invoices CSV
+          <Download className="size-3.5" />
+          Year-end export pack
         </a>
       </div>
 
       <ReportsAskPanel />
 
       {/* Revenue chart card */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 pt-5 pb-4 border-b border-border/50 flex items-start justify-between">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 pt-5 pb-4 border-b border-border flex items-start justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="eyebrow lowercase text-[11px]">
               Revenue
             </p>
             <p className="text-base font-semibold mt-0.5">Last 12 Months</p>
@@ -268,7 +268,7 @@ export default async function ReportsPage() {
                         y1={CHART_H - (avgRevenue / max) * CHART_H}
                         x2={totalW}
                         y2={CHART_H - (avgRevenue / max) * CHART_H}
-                        stroke="hsl(var(--border))"
+                        stroke="var(--border)"
                         strokeWidth="1"
                         strokeDasharray="3 3"
                       />
@@ -286,14 +286,14 @@ export default async function ReportsPage() {
                             width={BAR_W}
                             height={barH}
                             rx={3}
-                            fill={isCurrentMonth ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.35)"}
+                            fill={isCurrentMonth ? "var(--primary)" : "color-mix(in srgb, var(--primary) 35%, transparent)"}
                           />
                           <text
                             x={x + BAR_W / 2}
                             y={CHART_H + 18}
                             textAnchor="middle"
                             fontSize={9}
-                            fill="hsl(var(--muted-foreground))"
+                            fill="var(--muted-foreground)"
                           >
                             {shortMonth(m)}
                           </text>
@@ -311,28 +311,33 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      {/* Nav cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {reports.map((r) => (
-          <Link
-            key={r.href}
-            href={r.href}
-            className="group rounded-2xl border border-border/50 bg-card p-4 hover:border-primary/30 hover:bg-accent/30 transition-colors flex items-start gap-3"
-          >
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${r.color}`}>
-              {r.icon}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                {r.label}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                {r.description}
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5 group-hover:text-primary transition-colors" />
-          </Link>
-        ))}
+      {/* Report launcher — one clipped card divided into cells rather than
+          a field of separate cards, so the grid reads as a single index. */}
+      <div className="overflow-hidden rounded-[10px] border border-border bg-card">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3">
+          {reports.map((r) => (
+            <Link
+              key={r.href}
+              href={r.href}
+              className="group flex items-start gap-3 border-b border-r border-divider px-[22px] py-[18px] transition-colors duration-200 ease-[ease] last:border-b-0 hover:bg-primary/[0.03]"
+            >
+              <span
+                className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${r.color}`}
+              >
+                {r.icon}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-medium text-foreground transition-colors group-hover:text-primary">
+                  {r.label}
+                </span>
+                <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">
+                  {r.description}
+                </span>
+              </span>
+              <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

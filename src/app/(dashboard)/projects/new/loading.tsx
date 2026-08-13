@@ -7,7 +7,7 @@ export default function NewProjectLoading() {
         <Skeleton className="h-4 w-20" />
         <Skeleton className="h-7 w-28" />
       </div>
-      <div className="rounded-2xl border border-border/50 p-6 space-y-4">
+      <div className="rounded-[10px] border border-border p-6 space-y-4">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="space-y-1.5">
             <Skeleton className="h-3 w-20" />

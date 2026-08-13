@@ -25,12 +25,12 @@ function relativeTime(date: Date | string): string {
 
 const ACTION_CONFIG: Record<string, { label: string; dotColor: string }> = {
   CREATED:          { label: "created",          dotColor: "bg-primary" },
-  UPDATED:          { label: "updated",           dotColor: "bg-blue-400" },
-  SENT:             { label: "sent",              dotColor: "bg-violet-400" },
-  PAYMENT_RECEIVED: { label: "payment received",  dotColor: "bg-emerald-500" },
-  STATUS_CHANGED:   { label: "status changed",    dotColor: "bg-amber-400" },
-  VIEWED:           { label: "viewed",            dotColor: "bg-sky-400" },
-  DELETED:          { label: "deleted",           dotColor: "bg-red-400" },
+  UPDATED:          { label: "updated",           dotColor: "bg-primary" },
+  SENT:             { label: "sent",              dotColor: "bg-primary" },
+  PAYMENT_RECEIVED: { label: "payment received",  dotColor: "bg-success" },
+  STATUS_CHANGED:   { label: "status changed",    dotColor: "bg-warning" },
+  VIEWED:           { label: "viewed",            dotColor: "bg-primary" },
+  DELETED:          { label: "deleted",           dotColor: "bg-danger" },
 };
 
 function entityHref(entityType: string, entityId: string): string {
@@ -62,7 +62,7 @@ export function ActivityFeed({ items, linkItems = false }: Props) {
   return (
     <div className="divide-y divide-border/40">
       {items.map((item) => {
-        const cfg = ACTION_CONFIG[item.action] ?? { label: item.action.toLowerCase(), dotColor: "bg-gray-400" };
+        const cfg = ACTION_CONFIG[item.action] ?? { label: item.action.toLowerCase(), dotColor: "bg-muted-foreground" };
         const inner = (
           <>
             <div className="pt-1.5">

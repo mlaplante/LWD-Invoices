@@ -5,10 +5,10 @@ import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 
 const BAND_STYLES: Record<string, string> = {
-  severe: "bg-red-100 text-red-800",
-  high: "bg-orange-100 text-orange-800",
-  moderate: "bg-amber-100 text-amber-800",
-  low: "bg-emerald-100 text-emerald-800",
+  severe: "bg-danger/10 text-danger-foreground",
+  high: "bg-warning/12 text-warning-foreground",
+  moderate: "bg-warning/12 text-warning-foreground",
+  low: "bg-success/10 text-success-foreground",
 };
 
 interface DraftState {
@@ -124,7 +124,7 @@ export function CollectionsQueue() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-md bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+                  className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary disabled:opacity-50"
                   disabled={
                     sendReminder.isPending || !draft.subject.trim() || !draft.body.trim()
                   }

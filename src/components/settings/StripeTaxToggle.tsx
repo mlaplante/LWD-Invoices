@@ -17,7 +17,7 @@ export function StripeTaxToggle() {
   });
 
   return (
-    <div className="rounded-xl border border-border/50 bg-background/50 p-5">
+    <div className="rounded-xl border border-border bg-background/50 p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-sm font-semibold">Use Stripe Tax</p>

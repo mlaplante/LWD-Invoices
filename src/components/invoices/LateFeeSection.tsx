@@ -32,14 +32,14 @@ export function LateFeeSection({ invoiceId }: { invoiceId: string }) {
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Late Fees</h2>
         {totalActive > 0 && (
-          <span className="text-sm font-medium text-red-600">
+          <span className="text-sm font-medium text-danger-foreground">
             Total: ${totalActive.toFixed(2)}
           </span>
         )}
       </div>
-      <div className="rounded-2xl border border-border/50 overflow-hidden">
+      <div className="rounded-[10px] border border-border overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-muted/30 border-b border-border/50">
+          <thead className="bg-muted/30 border-b border-border">
             <tr>
               {["Date", "Type", "Rate", "Amount", "Status", ""].map((h, i) => (
                 <th
@@ -69,11 +69,11 @@ export function LateFeeSection({ invoiceId }: { invoiceId: string }) {
                 </td>
                 <td className="px-5 py-3">
                   {entry.isWaived ? (
-                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-500">
+                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
                       Waived
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-red-50 text-red-600">
+                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-danger/10 text-danger-foreground">
                       Active
                     </span>
                   )}

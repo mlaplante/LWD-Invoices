@@ -59,27 +59,27 @@ export default async function TaxDashboardPage({
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Sales Tax Due</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">${data.salesTaxDue.toFixed(2)}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Gross Income</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">${data.grossIncome.toFixed(2)}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Deductible Expenses</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">
             ${data.deductible.deductibleTotal.toFixed(2)}
           </p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Est. Net Income</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">
             ${data.estimatedNetIncome.toFixed(2)}
           </p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">
             1099 Exposure ({data.contractorExposure.year})
           </p>
@@ -93,9 +93,9 @@ export default async function TaxDashboardPage({
       </div>
 
       {/* Income by category */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Income</p>
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">Income</p>
           <p className="text-base font-semibold mt-0.5">By Service (ex-tax, cash collected)</p>
         </div>
         {data.incomeByCategory.length === 0 ? (
@@ -105,7 +105,7 @@ export default async function TaxDashboardPage({
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border/40">
+              <tr className="border-b border-border">
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Service
                 </th>
@@ -141,10 +141,10 @@ export default async function TaxDashboardPage({
       </div>
 
       {/* Deductible expenses */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50 flex items-center justify-between">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="eyebrow lowercase text-[11px]">
               Expenses
             </p>
             <p className="text-base font-semibold mt-0.5">Deductible by Category</p>
@@ -157,7 +157,7 @@ export default async function TaxDashboardPage({
           </Link>
         </div>
         {uncategorized && (
-          <div className="px-6 py-3 bg-amber-50 text-amber-800 text-sm border-b border-amber-200">
+          <div className="px-6 py-3 bg-warning/12 text-warning-foreground text-sm border-b border-warning/30">
             ${uncategorized.amount.toFixed(2)} of expenses are uncategorized and excluded from the
             deductible total — assign categories to include them.
           </div>
@@ -171,7 +171,7 @@ export default async function TaxDashboardPage({
                   <span
                     className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                       c.deductible
-                        ? "bg-emerald-50 text-emerald-700"
+                        ? "bg-success/10 text-success-foreground"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
@@ -201,7 +201,7 @@ export default async function TaxDashboardPage({
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
           href="/reports/tax-liability"
-          className="rounded-2xl border border-border/50 bg-card p-5 hover:border-primary/30 hover:bg-accent/30 transition-colors flex items-center justify-between print:hidden"
+          className="rounded-[10px] border border-border bg-card p-5 hover:border-primary/30 hover:bg-accent/30 transition-colors flex items-center justify-between print:hidden"
         >
           <div>
             <p className="font-semibold text-sm">Sales Tax Detail</p>
@@ -213,7 +213,7 @@ export default async function TaxDashboardPage({
         </Link>
         <Link
           href="/reports/1099"
-          className="rounded-2xl border border-border/50 bg-card p-5 hover:border-primary/30 hover:bg-accent/30 transition-colors flex items-center justify-between print:hidden"
+          className="rounded-[10px] border border-border bg-card p-5 hover:border-primary/30 hover:bg-accent/30 transition-colors flex items-center justify-between print:hidden"
         >
           <div>
             <p className="font-semibold text-sm">1099 / Contractor Tax Pack</p>

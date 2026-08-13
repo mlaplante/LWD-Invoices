@@ -295,16 +295,16 @@ export function MfaEnrollment() {
   if (state === "recovery-codes") {
     return (
       <div className="space-y-4 max-w-sm">
-        <div className="flex items-center gap-2 text-emerald-600">
+        <div className="flex items-center gap-2 text-success-foreground">
           <ShieldCheck className="w-5 h-5" />
           <span className="font-semibold">Two-Factor Authentication Enabled</span>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
-          <p className="text-sm font-semibold text-amber-800">
+        <div className="bg-warning/12 border border-warning/30 rounded-lg p-4 space-y-2">
+          <p className="text-sm font-semibold text-warning-foreground">
             Save your recovery codes
           </p>
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-warning-foreground">
             These codes can be used to access your account if you lose your
             authenticator device. Each code can only be used once.
             <strong> Store them somewhere safe &mdash; they will not be shown again.</strong>
@@ -336,7 +336,7 @@ export function MfaEnrollment() {
   if (state === "enrolled") {
     return (
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-emerald-600">
+        <div className="flex items-center gap-2 text-success-foreground">
           <ShieldCheck className="w-4 h-4" />
           <span className="text-sm font-medium">Two-factor authentication is enabled.</span>
         </div>

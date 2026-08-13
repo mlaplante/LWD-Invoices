@@ -90,7 +90,7 @@ export function ApplyRetainerDialog({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Retainer Balance</span>
-              <p className="font-semibold text-emerald-600">
+              <p className="font-semibold text-success-foreground">
                 ${balance.toFixed(2)}
               </p>
             </div>

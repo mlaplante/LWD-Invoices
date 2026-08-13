@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { InvoiceRowActions } from "@/components/invoices/InvoiceRowActions";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 import { INVOICE_STATUS_BADGE as STATUS_BADGE, INVOICE_TYPE_LABELS as TYPE_LABELS } from "@/lib/invoice-ui";
-import { FileText, Archive, Trash2, RefreshCw, Send, CheckCircle } from "lucide-react";
+import { Archive, Trash2, RefreshCw, Send, CheckCircle } from "lucide-react";
 
 type Invoice = {
   id: string;
@@ -48,9 +48,9 @@ function formatBulkResult(
 }
 
 const PROBABILITY_BAND: Record<string, { className: string; title: string }> = {
-  high: { className: "bg-emerald-50 text-emerald-600", title: "Likely to pay" },
-  medium: { className: "bg-amber-50 text-amber-600", title: "Payment uncertain" },
-  low: { className: "bg-red-50 text-red-600", title: "At risk of late/non-payment" },
+  high: { className: "bg-success/10 text-success-foreground", title: "Likely to pay" },
+  medium: { className: "bg-warning/12 text-warning-foreground", title: "Payment uncertain" },
+  low: { className: "bg-danger/10 text-danger-foreground", title: "At risk of late/non-payment" },
 };
 
 type RowProps = {
@@ -63,14 +63,14 @@ type RowProps = {
 const InvoiceRow = React.memo(function InvoiceRow({ inv, isSelected, onToggle, probability }: RowProps) {
   const badge = STATUS_BADGE[inv.status];
   const probBand = probability ? PROBABILITY_BAND[probability.band] : undefined;
+  const isDraft = inv.status === "DRAFT";
   return (
     <tr
-      className={cn(
-        "group hover:bg-accent/30 transition-colors",
-        isSelected && "bg-accent/20"
-      )}
+      className={cn("group", isSelected && "bg-accent/40")}
+      // Overdue rows carry a faint red wash so the queue reads at a glance
+      data-attention={inv.status === "OVERDUE" ? "true" : undefined}
     >
-      <td className="py-3.5 pl-2 print:hidden">
+      <td className="print:hidden">
         <input
           type="checkbox"
           checked={isSelected}
@@ -79,49 +79,39 @@ const InvoiceRow = React.memo(function InvoiceRow({ inv, isSelected, onToggle, p
           aria-label={`Select invoice ${inv.number}`}
         />
       </td>
-      <td className="py-3.5">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
-            <FileText className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground leading-tight flex items-center gap-1.5">
-              <span className="font-mono text-xs text-muted-foreground">#{inv.number}</span>
-              {TYPE_LABELS[inv.type]}
-              {inv.recurringInvoice?.isActive && (
-                <span
-                  className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary rounded-md px-1.5 py-0.5"
-                  title={`Recurring · ${inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}`}
-                >
-                  <RefreshCw className="w-2.5 h-2.5" />
-                  {inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}
-                </span>
-              )}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {inv.client.name}
-            </p>
-          </div>
-        </div>
+      <td className={cn("font-medium", isDraft && "text-muted-foreground")}>
+        <span className="inline-flex items-center gap-1.5">
+          {isDraft ? TYPE_LABELS[inv.type] : inv.number}
+          {inv.recurringInvoice?.isActive && (
+            <span
+              className="inline-flex items-center gap-0.5 font-mono text-[9px] font-normal text-muted-foreground"
+              title={`Recurring · ${inv.recurringInvoice.frequency.charAt(0) + inv.recurringInvoice.frequency.slice(1).toLowerCase()}`}
+            >
+              <RefreshCw className="size-2.5" />
+              {inv.recurringInvoice.frequency.toLowerCase()}
+            </span>
+          )}
+        </span>
       </td>
-      <td className="py-3.5 text-muted-foreground">
-        {formatDate(inv.date)}
-      </td>
-      <td className="py-3.5 text-foreground/80">
+      <td className={cn(isDraft && "text-muted-foreground")}>
         {inv.client.name}
       </td>
-      <td className="py-3.5 text-right font-mono font-semibold tabular-nums text-foreground">
-        {formatCurrency(inv.total, inv.currency.symbol, inv.currency.symbolPosition, inv.currency.code)}
-      </td>
-      <td className="py-3.5 pl-4">
+      <td>
         <div className="flex items-center gap-1.5">
-          <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium", badge.className)}>
-            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", badge.dot)} />
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-[11px] py-[3px] text-[10px] font-medium tracking-[0.5px]",
+              badge.className,
+            )}
+          >
             {badge.label}
           </span>
           {probability && probBand && (
             <span
-              className={cn("inline-flex items-center rounded-lg px-2 py-1 text-xs font-medium tabular-nums", probBand.className)}
+              className={cn(
+                "inline-flex items-center rounded-full px-2 py-[3px] text-[10px] font-medium tabular-nums",
+                probBand.className,
+              )}
               title={`Payment probability: ${probability.percent}% — ${probBand.title}`}
             >
               {probability.percent}%
@@ -129,7 +119,18 @@ const InvoiceRow = React.memo(function InvoiceRow({ inv, isSelected, onToggle, p
           )}
         </div>
       </td>
-      <td className="py-3.5 pr-2 print:hidden">
+      <td className="font-mono text-[11px] text-muted-foreground">
+        {formatDate(inv.date)}
+      </td>
+      <td
+        className={cn(
+          "text-right font-semibold tabular-nums",
+          isDraft && "text-muted-foreground",
+        )}
+      >
+        {formatCurrency(inv.total, inv.currency.symbol, inv.currency.symbolPosition, inv.currency.code)}
+      </td>
+      <td className="text-right print:hidden">
         <InvoiceRowActions
           invoiceId={inv.id}
           invoiceTotal={inv.total}
@@ -287,10 +288,10 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
         </div>
       )}
 
-      <table className="w-full text-sm">
+      <table className="data-table">
         <thead>
-          <tr className="border-b border-border">
-            <th className="pb-3 pl-2 w-8 print:hidden">
+          <tr>
+            <th className="w-8 print:hidden">
               <input
                 type="checkbox"
                 checked={allSelected}
@@ -299,25 +300,15 @@ export function InvoiceTableWithBulk({ invoices }: Props) {
                 aria-label="Select all"
               />
             </th>
-            <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Invoice
-            </th>
-            <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Date
-            </th>
-            <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Client
-            </th>
-            <th className="pb-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Amount
-            </th>
-            <th className="pb-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide pl-4">
-              Status
-            </th>
-            <th className="pb-3 print:hidden" />
+            <th>Invoice</th>
+            <th>Client</th>
+            <th>Status</th>
+            <th>Due</th>
+            <th className="text-right">Amount</th>
+            <th className="print:hidden" />
           </tr>
         </thead>
-        <tbody className="divide-y divide-border/50">
+        <tbody>
           {invoices.map((inv) => {
             const prob = probabilityData?.byInvoiceId[inv.id];
             return (

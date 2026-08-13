@@ -30,7 +30,7 @@ export function InviteAcceptClient({ token, orgName, orgLogoUrl, inviterName, ro
   const roleName = role.charAt(0) + role.slice(1).toLowerCase();
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-8 text-center">
+    <div className="rounded-[10px] border border-border bg-card p-8 text-center">
       {orgLogoUrl && (
         <Image
           src={orgLogoUrl}

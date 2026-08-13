@@ -64,7 +64,7 @@ export function MoreActions({ children }: { children: React.ReactNode }) {
             aria-hidden
           />
           {/* Bottom sheet above the mobile tab bar; anchored dropdown from sm: up */}
-          <div className="fixed inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom,0px)+0.75rem)] z-50 flex max-h-[70dvh] flex-col gap-3 overflow-y-auto rounded-2xl border border-border/70 bg-popover p-3 pb-4 shadow-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[min(70vh,28rem)] sm:w-64 sm:gap-2 sm:rounded-xl sm:p-2 sm:pb-2 sm:shadow-lg [&_button]:w-full [&_button]:justify-start [&_button]:text-xs sm:[&_button]:text-sm [&_a]:w-full [&_a]:justify-start">
+          <div className="fixed inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom,0px)+0.75rem)] z-50 flex max-h-[70dvh] flex-col gap-3 overflow-y-auto rounded-[10px] border border-border/70 bg-popover p-3 pb-4 shadow-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[min(70vh,28rem)] sm:w-64 sm:gap-2 sm:rounded-xl sm:p-2 sm:pb-2 sm:shadow-lg [&_button]:w-full [&_button]:justify-start [&_button]:text-xs sm:[&_button]:text-sm [&_a]:w-full [&_a]:justify-start">
             <div className="flex items-center justify-between sm:hidden">
               <span className="text-sm font-semibold">More actions</span>
               <button

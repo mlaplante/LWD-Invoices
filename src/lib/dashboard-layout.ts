@@ -1,18 +1,26 @@
+/**
+ * Order matters: this is the default top-to-bottom order of the dashboard.
+ * The briefing leads, then the stat row, then the "needs attention" queue
+ * and the forecast — everything after that is supporting detail.
+ *
+ * Existing users keep their saved order; `normalizeLayout` appends any new
+ * key at the end rather than reshuffling what they already arranged.
+ */
 export const WIDGET_KEYS = [
+  "weeklyBriefing",
   "summary",
+  "dueThisWeek",
+  "cashFlow",
+  "aging",
+  "topClients",
+  "estimatedTax",
   "revenue",
   "invoiceStatus",
   "expenses",
-  "cashFlow",
-  "topClients",
-  "aging",
-  "dueThisWeek",
   "estimateConversion",
   "tasks",
   "retainerBurn",
-  "estimatedTax",
   "activity",
-  "weeklyBriefing",
 ] as const;
 
 export type WidgetKey = (typeof WIDGET_KEYS)[number];

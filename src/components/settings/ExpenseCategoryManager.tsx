@@ -81,7 +81,7 @@ export function ExpenseCategoryManager({ initialCategories }: Props) {
                       disabled={updateMutation.isPending}
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         c.deductible
-                          ? "bg-emerald-50 text-emerald-700"
+                          ? "bg-success/10 text-success-foreground"
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -90,7 +90,7 @@ export function ExpenseCategoryManager({ initialCategories }: Props) {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => startEdit(c)} className="text-xs text-blue-600 hover:underline">
+                      <button onClick={() => startEdit(c)} className="text-xs text-accent-foreground hover:underline">
                         Edit
                       </button>
                       <button

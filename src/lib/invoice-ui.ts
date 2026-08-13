@@ -7,14 +7,19 @@ import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
 
 export type StatusBadgeConfig = { label: string; className: string; dot: string };
 
+/**
+ * Status tints follow the La Plante pill ramp — a ~10% fill of the status
+ * colour with the text at full strength. Hard-coded palette colours are
+ * deliberately avoided so these follow the theme into dark mode.
+ */
 export const INVOICE_STATUS_BADGE: Record<InvoiceStatus, StatusBadgeConfig> = {
-  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500",       dot: "bg-gray-400" },
-  SENT:           { label: "Unpaid",   className: "bg-amber-50 text-amber-600",      dot: "bg-amber-500" },
-  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600",        dot: "bg-blue-500" },
-  PAID:           { label: "Paid",     className: "bg-emerald-50 text-emerald-600",  dot: "bg-emerald-500" },
-  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600",          dot: "bg-red-500" },
-  ACCEPTED:       { label: "Accepted", className: "bg-primary/10 text-primary",      dot: "bg-primary" },
-  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-400",       dot: "bg-gray-300" },
+  DRAFT:          { label: "Draft",    className: "bg-black/5 text-[#777] dark:bg-white/8 dark:text-muted-foreground", dot: "bg-muted-foreground" },
+  SENT:           { label: "Sent",     className: "bg-primary/8 text-primary dark:bg-primary/25 dark:text-accent-foreground", dot: "bg-primary" },
+  PARTIALLY_PAID: { label: "Partial",  className: "bg-warning/12 text-warning-foreground", dot: "bg-warning" },
+  PAID:           { label: "Paid",     className: "bg-success/10 text-success-foreground", dot: "bg-success" },
+  OVERDUE:        { label: "Overdue",  className: "bg-danger/10 text-danger-foreground",   dot: "bg-danger" },
+  ACCEPTED:       { label: "Accepted", className: "bg-success/10 text-success-foreground", dot: "bg-success" },
+  REJECTED:       { label: "Rejected", className: "bg-black/5 text-[#777] dark:bg-white/8 dark:text-muted-foreground", dot: "bg-muted-foreground" },
 };
 
 /** Badge lookup that tolerates plain-string statuses (e.g. serialized portal rows). */

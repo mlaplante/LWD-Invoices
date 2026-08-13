@@ -38,7 +38,7 @@ export function ReportsAskPanel() {
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
+    <section className="overflow-hidden rounded-[10px] border border-primary/20 bg-card shadow-sm">
       <div className="flex flex-col gap-3 border-b border-primary/10 bg-primary/[0.035] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
@@ -76,8 +76,8 @@ export function ReportsAskPanel() {
               <p
                 className={
                   message.role === "user"
-                    ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground whitespace-pre-wrap"
-                    : "max-w-[90%] rounded-2xl rounded-bl-sm bg-accent/60 px-3 py-2 text-sm whitespace-pre-wrap"
+                    ? "max-w-[85%] rounded-[10px] rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground whitespace-pre-wrap"
+                    : "max-w-[90%] rounded-[10px] rounded-bl-sm bg-accent/60 px-3 py-2 text-sm whitespace-pre-wrap"
                 }
               >
                 {message.streaming && !message.content

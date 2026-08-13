@@ -468,7 +468,7 @@ function SortableLineItemImpl({
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+        <div className="flex items-center justify-between pt-2 border-t border-border">
           <span className="text-sm text-muted-foreground">Total</span>
           <div className="text-right">
             <span className="text-sm font-semibold">{fmt(result.total, currencySymbol)}</span>

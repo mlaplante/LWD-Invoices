@@ -7,8 +7,8 @@ export default function NewInvoiceLoading() {
         <Skeleton className="h-4 w-20" />
         <Skeleton className="h-6 w-28" />
       </div>
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50 space-y-1">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border space-y-1">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-5 w-36" />
         </div>
@@ -23,15 +23,15 @@ export default function NewInvoiceLoading() {
             ))}
           </div>
           {/* Line items */}
-          <div className="rounded-xl border border-border/50 overflow-hidden">
-            <div className="px-4 py-3 border-b border-border/50 flex gap-3">
+          <div className="rounded-xl border border-border overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex gap-3">
               <Skeleton className="h-3 flex-1" />
               <Skeleton className="h-3 w-16" />
               <Skeleton className="h-3 w-16" />
               <Skeleton className="h-3 w-20" />
             </div>
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="px-4 py-3 flex gap-3 border-b border-border/40">
+              <div key={i} className="px-4 py-3 flex gap-3 border-b border-border">
                 <Skeleton className="h-8 flex-1 rounded-lg" />
                 <Skeleton className="h-8 w-16 rounded-lg" />
                 <Skeleton className="h-8 w-16 rounded-lg" />

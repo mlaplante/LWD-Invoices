@@ -30,9 +30,9 @@ export function InvoiceStatusChart({ data }: Props) {
   const total = data.reduce((s, d) => s + d.count, 0);
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-5 py-4 border-b border-border/50">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-border">
+        <p className="eyebrow lowercase text-[11px]">
           Invoices
         </p>
         <p className="text-sm font-semibold mt-0.5">Status Breakdown</p>
@@ -61,8 +61,8 @@ export function InvoiceStatusChart({ data }: Props) {
               <Tooltip
                 contentStyle={{
                   borderRadius: "0.75rem",
-                  border: "1px solid hsl(var(--border))",
-                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--card)",
                   fontSize: "0.8125rem",
                 }}
                 formatter={(value, name) => [

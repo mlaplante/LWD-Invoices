@@ -83,7 +83,7 @@ export default function MfaChallengePage() {
       <div className="space-y-6">
         <div className="space-y-2">
           <div className="flex justify-center">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-[10px] bg-primary/10 flex items-center justify-center">
               <ShieldCheck className="w-6 h-6 text-primary" />
             </div>
           </div>

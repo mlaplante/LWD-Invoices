@@ -177,7 +177,7 @@ export function SendInvoiceButton({
                   <div><span className="font-medium">To:</span> {preview.data.to}</div>
                   <div><span className="font-medium">Subject:</span> {preview.data.subject}</div>
                   {scheduledSendAt && (
-                    <div className="flex items-center gap-1.5 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-900">
+                    <div className="flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-xs text-accent-foreground">
                       <CalendarClock className="h-3.5 w-3.5 shrink-0" />
                       <span className="flex-1">
                         <span className="font-medium">Scheduled:</span>{" "}

@@ -33,10 +33,10 @@ export function ReminderSequenceList({ onEdit }: Props) {
 
   return (
     <>
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border/40">
+            <tr className="border-b border-border">
               <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Steps</th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Schedule</th>
@@ -66,9 +66,9 @@ export function ReminderSequenceList({ onEdit }: Props) {
                 </td>
                 <td className="px-5 py-3.5">
                   {seq.enabled ? (
-                    <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">Active</span>
+                    <span className="inline-flex rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success-foreground">Active</span>
                   ) : (
-                    <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Paused</span>
+                    <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Paused</span>
                   )}
                 </td>
                 <td className="px-5 py-3.5 text-muted-foreground">{seq._count.invoices}</td>

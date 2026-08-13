@@ -1,150 +1,104 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ChevronDown } from "lucide-react";
-import { NAV_SECTIONS, isNavItemActive, type NavItem } from "@/lib/nav-items";
+import {
+  NAV_HUBS,
+  activeHubId,
+  isNavItemActive,
+  type NavHub,
+} from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
 
-const COLLAPSED_STORAGE_KEY = "lwd:sidebar-collapsed";
-// Settings/Team stay reachable without scrolling: this section is pinned
-// below the scroll region instead of rendered inside it.
-const PINNED_SECTION_TITLE = "Admin";
-
-function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const active = isNavItemActive(item.href, pathname);
-  const Icon = item.icon;
+/**
+ * The rail: seven hubs, paper-white. Only the active hub reveals its
+ * sub-nav, so the list never exceeds ~13 rows even at its tallest.
+ *
+ * Expansion is derived from the pathname rather than held in state —
+ * there is no way to expand a hub you are not inside, which is what
+ * keeps the rail short.
+ */
+export function SidebarNav({ invoiceBadge }: { invoiceBadge?: number }) {
+  const pathname = usePathname();
+  const activeHub = activeHubId(pathname);
 
   return (
-    <Link
-      href={item.href}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-150",
-        active
-          ? "bg-sidebar-accent text-sidebar-foreground"
-          : "text-sidebar-foreground/50 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground/80",
-      )}
+    <nav
+      aria-label="Primary navigation"
+      className="sidebar-scroll -mr-2 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-2"
     >
-      <Icon
-        className={cn(
-          "w-4 h-4 shrink-0",
-          active ? "opacity-100" : "opacity-60",
-        )}
-      />
-      <span className="flex-1">{item.label}</span>
-      {active && (
-        <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-sm shadow-primary/50" />
-      )}
-    </Link>
+      {NAV_HUBS.map((hub) => (
+        <HubRow
+          key={hub.id}
+          hub={hub}
+          expanded={activeHub === hub.id}
+          pathname={pathname}
+          badge={hub.id === "invoices" ? invoiceBadge : undefined}
+        />
+      ))}
+    </nav>
   );
 }
 
-export function SidebarNav() {
-  const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-
-  // Server render always shows every section expanded; the stored preference
-  // is applied after hydration to avoid an SSR/client markup mismatch.
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(COLLAPSED_STORAGE_KEY);
-      if (stored) setCollapsed(new Set(JSON.parse(stored) as string[]));
-    } catch {
-      // Corrupt or unavailable storage just means "everything expanded".
-    }
-  }, []);
-
-  const toggleSection = (title: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(title)) {
-        next.delete(title);
-      } else {
-        next.add(title);
-      }
-      try {
-        window.localStorage.setItem(
-          COLLAPSED_STORAGE_KEY,
-          JSON.stringify([...next]),
-        );
-      } catch {
-        // Persistence is best-effort; the toggle still works for the session.
-      }
-      return next;
-    });
-  };
-
-  const scrollSections = NAV_SECTIONS.filter(
-    (section) => section.title !== PINNED_SECTION_TITLE,
-  );
-  const pinnedSection = NAV_SECTIONS.find(
-    (section) => section.title === PINNED_SECTION_TITLE,
-  );
+function HubRow({
+  hub,
+  expanded,
+  pathname,
+  badge,
+}: {
+  hub: NavHub;
+  expanded: boolean;
+  pathname: string;
+  badge?: number;
+}) {
+  const Icon = hub.icon;
+  // A hub with sub-nav showing is already "current" via its sub-item, so
+  // aria-current goes on whichever row is the precise destination.
+  const selfIsCurrent = isNavItemActive(hub.href, pathname);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <nav
-        aria-label="Primary navigation"
-        className="sidebar-scroll -mr-2 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-2"
+    <>
+      <Link
+        href={hub.href}
+        aria-current={selfIsCurrent ? "page" : undefined}
+        className={cn(
+          "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors duration-200 ease-[ease]",
+          expanded
+            ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+            : "text-sidebar-foreground hover:bg-black/[0.04] hover:text-foreground dark:hover:bg-white/[0.04]",
+        )}
       >
-        {scrollSections.map((section) => {
-          const isCollapsed = collapsed.has(section.title);
-          const containsActive = section.items.some((item) =>
-            isNavItemActive(item.href, pathname),
-          );
-          const panelId = `sidebar-section-${section.title.replace(/\W+/g, "-").toLowerCase()}`;
+        <Icon className="size-4 shrink-0" />
+        <span className="flex-1">{hub.label}</span>
+        {badge ? (
+          <span className="rounded-full bg-primary/10 px-[7px] py-px font-mono text-[10px] font-medium text-primary">
+            {badge}
+          </span>
+        ) : null}
+      </Link>
 
-          return (
-            <section key={section.title}>
-              <button
-                type="button"
-                onClick={() => toggleSection(section.title)}
-                aria-expanded={!isCollapsed}
-                aria-controls={panelId}
-                className="flex w-full items-center gap-1.5 rounded-md px-3 pt-3 pb-1 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/30 transition-colors hover:text-sidebar-foreground/60"
-              >
-                <span>{section.title}</span>
-                {isCollapsed && containsActive && (
-                  <span
-                    aria-hidden
-                    className="h-1.5 w-1.5 rounded-full bg-primary shadow-sm shadow-primary/50"
-                  />
-                )}
-                <ChevronDown
-                  aria-hidden
-                  className={cn(
-                    "ml-auto h-3 w-3 transition-transform duration-200",
-                    isCollapsed && "-rotate-90",
-                  )}
-                />
-              </button>
-              <div
-                id={panelId}
+      {expanded && hub.items.length > 0 && (
+        <div className="mb-1 mt-0.5 flex flex-col gap-px pl-[26px]">
+          {hub.items.map((item) => {
+            const active = isNavItemActive(item.href, pathname);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "grid transition-[grid-template-rows] duration-200",
-                  isCollapsed ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
+                  "rounded-[5px] px-2.5 py-[5px] text-xs transition-colors duration-200 ease-[ease]",
+                  active
+                    ? "font-medium text-primary"
+                    : "text-muted-foreground hover:bg-black/[0.03] hover:text-foreground dark:hover:bg-white/[0.03]",
                 )}
               >
-                <div className="flex flex-col gap-0.5 overflow-hidden">
-                  {section.items.map((item) => (
-                    <NavLink key={item.href} item={item} pathname={pathname} />
-                  ))}
-                </div>
-              </div>
-            </section>
-          );
-        })}
-      </nav>
-
-      {pinnedSection && (
-        <div className="mt-2 flex flex-col gap-0.5 border-t border-sidebar-border pt-2">
-          {pinnedSection.items.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
-          ))}
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
       )}
-    </div>
+    </>
   );
 }

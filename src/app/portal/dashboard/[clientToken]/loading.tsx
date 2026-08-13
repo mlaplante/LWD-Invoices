@@ -15,17 +15,17 @@ export default function PortalDashboardLoading() {
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-2xl" />
+          <Skeleton key={i} className="h-24 rounded-[10px]" />
         ))}
       </div>
 
       {/* Invoice table */}
-      <Skeleton className="h-64 rounded-2xl" />
+      <Skeleton className="h-64 rounded-[10px]" />
 
       {/* Two-column: payments + projects */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Skeleton className="h-48 rounded-2xl" />
-        <Skeleton className="h-48 rounded-2xl" />
+        <Skeleton className="h-48 rounded-[10px]" />
+        <Skeleton className="h-48 rounded-[10px]" />
       </div>
     </div>
   );

@@ -118,7 +118,7 @@ const TEMPLATES = [
         <div className="border-b border-dotted border-border" />
         <div className="space-y-2 flex-1">
           {[1, 2].map((i) => (
-            <div key={i} className="flex justify-between border-b border-dotted border-border/50 pb-1.5">
+            <div key={i} className="flex justify-between border-b border-dotted border-border pb-1.5">
               <div className="space-y-0.5">
                 <div className="w-14 h-1 rounded bg-muted-foreground/25" />
                 <div className="w-8 h-0.5 rounded bg-muted-foreground/15" />
@@ -152,7 +152,7 @@ const TEMPLATES = [
             </div>
           ))}
         </div>
-        <div className="border border-border/50 rounded flex-1">
+        <div className="border border-border rounded flex-1">
           <div className="bg-muted/30 px-1.5 py-0.5 flex gap-1">
             {["w-8", "w-4", "w-4", "w-4", "w-4"].map((w, i) => (
               <div key={i} className={`${w} h-0.5 rounded bg-muted-foreground/25`} />
@@ -210,9 +210,9 @@ export function InvoiceTemplateSettings({ org }: Props) {
   return (
     <div className="space-y-6">
       {/* Template Picker */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">
             Layout
           </p>
           <p className="text-base font-semibold mt-1">Invoice Template</p>
@@ -231,7 +231,7 @@ export function InvoiceTemplateSettings({ org }: Props) {
                   "relative rounded-xl border-2 p-0 overflow-hidden transition-all text-left",
                   template === t.id
                     ? "border-primary ring-2 ring-primary/20"
-                    : "border-border/50 hover:border-border"
+                    : "border-border hover:border-border"
                 )}
               >
                 {/* Visual preview */}
@@ -243,7 +243,7 @@ export function InvoiceTemplateSettings({ org }: Props) {
                     </div>
                   )}
                 </div>
-                <div className="px-3 py-2.5 border-t border-border/50">
+                <div className="px-3 py-2.5 border-t border-border">
                   <p className="text-sm font-semibold">{t.name}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {t.description}
@@ -256,9 +256,9 @@ export function InvoiceTemplateSettings({ org }: Props) {
       </div>
 
       {/* Customization */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">
             Customization
           </p>
           <p className="text-base font-semibold mt-1">Template Options</p>
@@ -337,9 +337,9 @@ export function InvoiceTemplateSettings({ org }: Props) {
       </div>
 
       {/* Deposit Default */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">
             Payments
           </p>
           <p className="text-base font-semibold mt-1">Default Deposit</p>

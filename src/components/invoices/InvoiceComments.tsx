@@ -50,7 +50,7 @@ export function InvoiceComments({ invoiceId }: Props) {
           {comments.map((c) => (
             <div
               key={c.id}
-              className={`rounded-lg border p-4 ${c.isPrivate ? "border-yellow-200 bg-yellow-50/50" : "bg-card"}`}
+              className={`rounded-lg border p-4 ${c.isPrivate ? "border-warning/30 bg-warning/50" : "bg-card"}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
@@ -59,7 +59,7 @@ export function InvoiceComments({ invoiceId }: Props) {
                       {c.authorName ?? (c.authorUserId ? "Staff" : "Client")}
                     </span>
                     {c.isPrivate && (
-                      <span className="inline-flex rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">
+                      <span className="inline-flex rounded-full bg-warning/12 px-2 py-0.5 text-xs font-medium text-warning-foreground">
                         Private
                       </span>
                     )}
@@ -86,7 +86,7 @@ export function InvoiceComments({ invoiceId }: Props) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-border/50 bg-card p-4">
+      <form onSubmit={handleSubmit} className="space-y-3 rounded-[10px] border border-border bg-card p-4">
         <p className="text-sm font-medium">Add a note</p>
 
         <div className="space-y-1.5">
@@ -105,7 +105,7 @@ export function InvoiceComments({ invoiceId }: Props) {
             type="checkbox"
             checked={isPrivate}
             onChange={(e) => setIsPrivate(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300"
+            className="h-4 w-4 rounded border-border"
           />
           <Label htmlFor="isPrivate" className="text-sm font-normal cursor-pointer">
             Private (staff only, hidden from client portal)

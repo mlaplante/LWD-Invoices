@@ -60,16 +60,20 @@ export default async function EditInvoicePage({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex min-w-0 items-center gap-3.5">
         <Link
-          href={`/invoices/${invoice.id}`}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          href="/invoices"
+          className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          #{invoice.number}
+          <ArrowLeft className="size-3.5" />
+          Invoices
         </Link>
-        <span className="text-border/70">/</span>
-        <h1 className="text-xl font-bold tracking-tight">Edit Invoice</h1>
+        <h1 className="min-w-0 truncate font-display text-2xl">
+          {invoice.number}
+          <span className="ml-2.5 font-mono text-xs tracking-normal text-muted-foreground">
+            {invoice.status === "DRAFT" ? "draft" : "sent"}
+          </span>
+        </h1>
       </div>
 
       <InvoiceForm

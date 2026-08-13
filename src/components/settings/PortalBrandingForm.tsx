@@ -135,7 +135,7 @@ export function PortalBrandingForm({ org }: Props) {
       <div className="space-y-1.5">
         <Label>Preview</Label>
         <div
-          className="rounded-xl border border-border/50 overflow-hidden text-sm"
+          className="rounded-xl border border-border overflow-hidden text-sm"
           style={{ fontFamily: previewFont }}
         >
           {/* Preview header */}
@@ -167,7 +167,7 @@ export function PortalBrandingForm({ org }: Props) {
           </div>
 
           {/* Preview footer */}
-          <div className="px-4 py-2.5 text-center text-xs text-muted-foreground border-t border-border/50">
+          <div className="px-4 py-2.5 text-center text-xs text-muted-foreground border-t border-border">
             {footerText && <p>{footerText}</p>}
             {!hidePowered && (
               <p className="opacity-60">Powered by LWD Invoices</p>

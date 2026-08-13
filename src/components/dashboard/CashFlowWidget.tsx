@@ -19,9 +19,9 @@ export function CashFlowWidget({ collectedThisMonth, outstandingAR, expensesThis
     `$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-5 py-4 border-b border-border/50">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-border">
+        <p className="eyebrow lowercase text-[11px]">
           This Month
         </p>
         <p className="text-sm font-semibold mt-0.5">Cash Flow</p>
@@ -58,8 +58,8 @@ export function CashFlowWidget({ collectedThisMonth, outstandingAR, expensesThis
         <div className="flex-1 space-y-1.5 min-w-0">
           {[
             { label: "Invoiced", value: fmt(total), color: "" },
-            { label: "Collected", value: fmt(collectedThisMonth), color: "text-emerald-600" },
-            { label: "Expenses", value: `−${fmt(expensesThisMonth)}`, color: "text-red-500" },
+            { label: "Collected", value: fmt(collectedThisMonth), color: "text-success-foreground" },
+            { label: "Expenses", value: `−${fmt(expensesThisMonth)}`, color: "text-danger-foreground" },
           ].map(({ label, value, color }) => (
             <div key={label} className="flex justify-between items-center text-xs gap-2">
               <span className="text-muted-foreground">{label}</span>
@@ -69,7 +69,7 @@ export function CashFlowWidget({ collectedThisMonth, outstandingAR, expensesThis
           <div className="h-px bg-border/60 my-1" />
           <div className="flex justify-between items-center text-xs gap-2">
             <span className="font-semibold">Net</span>
-            <span className={cn("font-mono font-semibold tabular-nums", net >= 0 ? "text-emerald-600" : "text-red-500")}>
+            <span className={cn("font-mono font-semibold tabular-nums", net >= 0 ? "text-success-foreground" : "text-danger-foreground")}>
               {net < 0 ? "−" : ""}{fmt(net)}
             </span>
           </div>

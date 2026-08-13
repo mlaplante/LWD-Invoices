@@ -138,15 +138,15 @@ export function ExpenseList() {
       {/* Summary stats */}
       {expenses.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <div className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
             <p className="text-2xl font-bold mt-0.5 tabular-nums">{expenses.length}</p>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <div className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium">Total Amount</p>
             <p className="text-2xl font-bold mt-0.5 tabular-nums">${totalAmount.toFixed(2)}</p>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-card p-4">
+          <div className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium">Reimbursable</p>
             <p className="text-2xl font-bold mt-0.5 tabular-nums">
               {expenses.filter((e) => e.reimbursable).length}
@@ -222,9 +222,9 @@ export function ExpenseList() {
       )}
 
       {/* Table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">
             All Expenses
           </p>
         </div>
@@ -246,7 +246,7 @@ export function ExpenseList() {
             {recurringExpenses.map((rec) => {
               const amount = rec.qty * Number(rec.rate);
               return (
-                <div key={`rec-m-${rec.id}`} className="block rounded-xl border border-border/50 bg-card p-4 mx-4 my-2">
+                <div key={`rec-m-${rec.id}`} className="block rounded-xl border border-border bg-card p-4 mx-4 my-2">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-sm truncate flex items-center gap-1.5">
                       <Repeat className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -266,7 +266,7 @@ export function ExpenseList() {
             {expenses.map((expense) => {
               const amount = expense.qty * Number(expense.rate);
               return (
-                <div key={`exp-m-${expense.id}`} className="block rounded-xl border border-border/50 bg-card p-4 mx-4 my-2">
+                <div key={`exp-m-${expense.id}`} className="block rounded-xl border border-border bg-card p-4 mx-4 my-2">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-sm truncate">{expense.name}</p>
                     <p className="text-sm font-medium tabular-nums">${amount.toFixed(2)}</p>
@@ -288,7 +288,7 @@ export function ExpenseList() {
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/40">
+                <tr className="border-b border-border">
                   <th className="px-6 py-3 w-8 print:hidden">
                     <input
                       type="checkbox"
@@ -337,12 +337,12 @@ export function ExpenseList() {
                         {rec.isActive ? (
                           <span>Next: {new Date(rec.nextRunAt).toLocaleDateString()}</span>
                         ) : (
-                          <span className="text-zinc-400">Paused</span>
+                          <span className="text-muted-foreground">Paused</span>
                         )}
                       </td>
                       <td className="px-6 py-3.5 text-center">
                         {rec.reimbursable ? (
-                          <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          <span className="inline-flex rounded-full bg-warning/12 px-2 py-0.5 text-xs font-medium text-warning-foreground">
                             Yes
                           </span>
                         ) : (
@@ -387,7 +387,7 @@ export function ExpenseList() {
                 {recurringExpenses.length > 0 && expenses.length > 0 && (
                   <tr>
                     <td colSpan={9} className="px-6 py-1.5 bg-muted/30">
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      <p className="eyebrow lowercase text-[11px]">
                         One-Time Expenses
                       </p>
                     </td>
@@ -444,7 +444,7 @@ export function ExpenseList() {
                       </td>
                       <td className="px-6 py-3.5 text-center">
                         {expense.reimbursable ? (
-                          <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          <span className="inline-flex rounded-full bg-warning/12 px-2 py-0.5 text-xs font-medium text-warning-foreground">
                             Yes
                           </span>
                         ) : (

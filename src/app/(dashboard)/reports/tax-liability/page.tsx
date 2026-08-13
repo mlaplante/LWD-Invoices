@@ -85,12 +85,12 @@ export default async function TaxLiabilityReportPage({
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Total Tax Liability</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">${data.grandTotal.toFixed(2)}</p>
         </div>
         {data.summary.slice(0, 3).map((s) => (
-          <div key={s.taxName} className="rounded-2xl border border-border/50 bg-card p-4">
+          <div key={s.taxName} className="rounded-[10px] border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium truncate">
               {s.taxName} ({s.taxRate}%)
             </p>
@@ -101,9 +101,9 @@ export default async function TaxLiabilityReportPage({
       </div>
 
       {/* Detail table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Details</p>
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">Details</p>
           <p className="text-base font-semibold mt-0.5">Tax by Invoice</p>
         </div>
 
@@ -115,7 +115,7 @@ export default async function TaxLiabilityReportPage({
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border/40">
+              <tr className="border-b border-border">
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Invoice</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Client</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>

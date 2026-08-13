@@ -82,7 +82,7 @@ export function ProposalFileUpload({
   // ── Uploaded file display ──
   if (fileUrl && fileName) {
     return (
-      <div className="rounded-xl border border-border/50 bg-muted/30 p-4">
+      <div className="rounded-xl border border-border bg-muted/30 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">

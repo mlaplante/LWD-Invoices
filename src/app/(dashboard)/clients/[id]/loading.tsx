@@ -13,9 +13,9 @@ export default function ClientDetailLoading() {
           <Skeleton className="h-8 w-20 rounded-lg" />
         </div>
       </div>
-      <div className="rounded-2xl border border-border/50 overflow-hidden">
-        <div className="px-8 pt-7 pb-6 border-b border-border/50 flex items-start gap-5">
-          <Skeleton className="w-14 h-14 rounded-2xl shrink-0" />
+      <div className="rounded-[10px] border border-border overflow-hidden">
+        <div className="px-8 pt-7 pb-6 border-b border-border flex items-start gap-5">
+          <Skeleton className="w-14 h-14 rounded-[10px] shrink-0" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-6 w-48" />
             <Skeleton className="h-4 w-36" />

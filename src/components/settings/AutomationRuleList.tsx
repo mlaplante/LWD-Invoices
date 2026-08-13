@@ -9,10 +9,10 @@ import { toast } from "sonner";
 import { Workflow, Pencil, Trash2, CreditCard, Send, Eye, AlertTriangle } from "lucide-react";
 
 const TRIGGER_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
-  PAYMENT_RECEIVED: { label: "Payment Received", icon: <CreditCard className="w-3.5 h-3.5" />, color: "text-emerald-600", bg: "bg-emerald-50" },
-  INVOICE_SENT: { label: "Invoice Sent", icon: <Send className="w-3.5 h-3.5" />, color: "text-blue-600", bg: "bg-blue-50" },
-  INVOICE_VIEWED: { label: "Invoice Viewed", icon: <Eye className="w-3.5 h-3.5" />, color: "text-amber-600", bg: "bg-amber-50" },
-  INVOICE_OVERDUE: { label: "Invoice Overdue", icon: <AlertTriangle className="w-3.5 h-3.5" />, color: "text-red-600", bg: "bg-red-50" },
+  PAYMENT_RECEIVED: { label: "Payment Received", icon: <CreditCard className="w-3.5 h-3.5" />, color: "text-success-foreground", bg: "bg-success/10" },
+  INVOICE_SENT: { label: "Invoice Sent", icon: <Send className="w-3.5 h-3.5" />, color: "text-accent-foreground", bg: "bg-accent" },
+  INVOICE_VIEWED: { label: "Invoice Viewed", icon: <Eye className="w-3.5 h-3.5" />, color: "text-warning-foreground", bg: "bg-warning/12" },
+  INVOICE_OVERDUE: { label: "Invoice Overdue", icon: <AlertTriangle className="w-3.5 h-3.5" />, color: "text-danger-foreground", bg: "bg-danger/10" },
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -60,7 +60,7 @@ export function AutomationRuleList({ onEdit }: Props) {
       {rules.map((rule) => {
         const t = TRIGGER_CONFIG[rule.trigger] ?? { label: rule.trigger, icon: null, color: "", bg: "bg-muted" };
         return (
-          <div key={rule.id} className="rounded-xl border border-border/50 bg-card p-4">
+          <div key={rule.id} className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -88,7 +88,7 @@ export function AutomationRuleList({ onEdit }: Props) {
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(rule.id)}>
                   <Pencil className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => setDeleteId(rule.id)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-danger-foreground" onClick={() => setDeleteId(rule.id)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>

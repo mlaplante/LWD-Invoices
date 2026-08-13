@@ -1,26 +1,26 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Poppins, Roboto_Mono } from "next/font/google";
 import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "sonner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-const jakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-geist-sans",
+// La Plante system: Poppins carries display (300), body (400), row titles
+// (500), buttons (600) and stat numbers (700). No other typefaces.
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Roboto Mono carries eyebrows, meta lines, table headers, footer stats.
+const robotoMono = Roboto_Mono({
+  variable: "--font-roboto-mono",
   subsets: ["latin"],
-});
-
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  subsets: ["latin"],
-  weight: "400",
+  weight: ["400", "500", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -47,7 +47,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
       </head>
       <body
-        className={`${jakartaSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased`}
+        className={`${poppins.variable} ${robotoMono.variable} font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"

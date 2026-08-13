@@ -131,7 +131,7 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
       )}
 
       {/* Card list */}
-      <div className="divide-y divide-border/50">
+      <div className="divide-y divide-divider">
         {invoices.map((inv) => {
           const badge = STATUS_BADGE[inv.status];
           const isSelected = selected.has(inv.id);

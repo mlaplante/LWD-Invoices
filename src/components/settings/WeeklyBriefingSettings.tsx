@@ -79,7 +79,7 @@ export function WeeklyBriefingSettings() {
   return (
     <div className="space-y-5">
       {/* Enable toggle */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-base font-semibold">Send a weekly briefing</p>
@@ -102,8 +102,8 @@ export function WeeklyBriefingSettings() {
       </div>
 
       {/* Recipients */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border">
           <p className="text-base font-semibold">Recipients</p>
           <p className="text-sm text-muted-foreground mt-0.5">
             Leave empty to send to all org owners and admins.
@@ -155,8 +155,8 @@ export function WeeklyBriefingSettings() {
       </div>
 
       {/* Preview */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between gap-3">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border flex items-center justify-between gap-3">
           <div>
             <p className="text-base font-semibold">This week&apos;s briefing</p>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -176,7 +176,7 @@ export function WeeklyBriefingSettings() {
           <div className="px-6 py-5 grid grid-cols-3 gap-4">
             <div>
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Overdue</p>
-              <p className="text-xl font-bold text-red-600 mt-0.5">{money(preview.overdue.total)}</p>
+              <p className="text-xl font-bold text-danger-foreground mt-0.5">{money(preview.overdue.total)}</p>
               <p className="text-xs text-muted-foreground">{preview.overdue.count} invoices</p>
             </div>
             <div>
@@ -186,7 +186,7 @@ export function WeeklyBriefingSettings() {
             </div>
             <div>
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Projected 30d</p>
-              <p className="text-xl font-bold text-emerald-600 mt-0.5">
+              <p className="text-xl font-bold text-success-foreground mt-0.5">
                 {h30 ? money(h30.projectedInflow) : "—"}
               </p>
               <p className="text-xs text-muted-foreground">

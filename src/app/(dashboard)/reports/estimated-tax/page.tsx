@@ -66,7 +66,7 @@ export default async function EstimatedTaxReportPage({
       <div className="flex items-center gap-2 print:hidden">
         <Link
           href={`/reports/estimated-tax?year=${year - 1}`}
-          className="inline-flex items-center gap-1 rounded-lg border border-border/50 px-2.5 py-1.5 text-sm hover:bg-accent/30"
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm hover:bg-accent/30"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
           {year - 1}
@@ -74,7 +74,7 @@ export default async function EstimatedTaxReportPage({
         <span className="rounded-lg bg-muted px-3 py-1.5 text-sm font-semibold">{year}</span>
         <Link
           href={`/reports/estimated-tax?year=${year + 1}`}
-          className="inline-flex items-center gap-1 rounded-lg border border-border/50 px-2.5 py-1.5 text-sm hover:bg-accent/30"
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm hover:bg-accent/30"
         >
           {year + 1}
           <ChevronRight className="w-3.5 h-3.5" />
@@ -83,22 +83,22 @@ export default async function EstimatedTaxReportPage({
 
       {/* Next-due callout */}
       {data.nextDue && (
-        <div className="rounded-2xl border border-orange-200 bg-orange-50 px-6 py-5 flex items-start gap-4">
-          <CalendarClock className="w-5 h-5 text-orange-600 mt-0.5 shrink-0" />
+        <div className="rounded-[10px] border border-warning/30 bg-warning/12 px-6 py-5 flex items-start gap-4">
+          <CalendarClock className="w-5 h-5 text-warning-foreground mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-orange-900">
+            <p className="text-sm font-semibold text-warning-foreground">
               Next payment due {fmtDate(data.nextDue.dueDate)} ({data.nextDue.label}) ·{" "}
               {data.nextDue.daysUntil} day{data.nextDue.daysUntil === 1 ? "" : "s"} away
             </p>
-            <p className="text-sm text-orange-800 mt-0.5">
+            <p className="text-sm text-warning-foreground mt-0.5">
               {data.nextDue.paid > 0 ? "Remaining" : "Recommended"} payment for this quarter:{" "}
               <span className="font-bold tabular-nums">{money(data.nextDue.remaining)}</span>
               {data.nextDue.paid > 0 && (
-                <span className="text-orange-700"> · {money(data.nextDue.paid)} already paid</span>
+                <span className="text-warning-foreground"> · {money(data.nextDue.paid)} already paid</span>
               )}
             </p>
             {!data.enabled && (
-              <p className="text-xs text-orange-700 mt-2">
+              <p className="text-xs text-warning-foreground mt-2">
                 Want a heads-up before each deadline?{" "}
                 <Link href="/settings/estimated-tax" className="underline">
                   Turn on reminder emails
@@ -112,45 +112,45 @@ export default async function EstimatedTaxReportPage({
 
       {/* YTD summary cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Net SE Income (YTD)</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">{money(data.ytd.netIncome)}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {money(data.ytd.grossIncome)} − {money(data.ytd.deductibleExpenses + data.ytd.mileageDeduction)} deductions
           </p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">
             Recommended Set-aside ({data.setAsidePercent}%)
           </p>
-          <p className="text-2xl font-bold mt-0.5 tabular-nums text-orange-600">
+          <p className="text-2xl font-bold mt-0.5 tabular-nums text-warning-foreground">
             {money(data.ytd.recommendedSetAside)}
           </p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Paid YTD</p>
           <p className="text-2xl font-bold mt-0.5 tabular-nums">{money(data.ytd.paid)}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             SE tax est. {money(data.ytd.seTaxEstimate)}
           </p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card p-4">
+        <div className="rounded-[10px] border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">Remaining to Set Aside</p>
-          <p className="text-2xl font-bold mt-0.5 tabular-nums text-orange-600">
+          <p className="text-2xl font-bold mt-0.5 tabular-nums text-warning-foreground">
             {money(data.ytd.remaining)}
           </p>
         </div>
       </div>
 
       {/* Quarterly breakdown */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Quarters</p>
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">Quarters</p>
           <p className="text-base font-semibold mt-0.5">Net income &amp; set-aside by IRS period</p>
         </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border/40 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <tr className="border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               <th className="px-6 py-3 text-left">Quarter</th>
               <th className="px-6 py-3 text-left">Due</th>
               <th className="px-6 py-3 text-right">Income</th>
@@ -167,12 +167,12 @@ export default async function EstimatedTaxReportPage({
               return (
                 <tr
                   key={q.quarter}
-                  className={`transition-colors ${isNext ? "bg-orange-50/60" : "hover:bg-accent/20"}`}
+                  className={`transition-colors ${isNext ? "bg-warning/60" : "hover:bg-accent/20"}`}
                 >
                   <td className="px-6 py-3.5 font-medium">
                     {q.label}
                     {isNext && (
-                      <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700">
+                      <span className="ml-2 rounded-full bg-warning/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning-foreground">
                         Next
                       </span>
                     )}
@@ -184,8 +184,8 @@ export default async function EstimatedTaxReportPage({
                   </td>
                   <td className="px-6 py-3.5 text-right tabular-nums font-medium">{money(q.netIncome)}</td>
                   <td className="px-6 py-3.5 text-right tabular-nums">{money(q.recommendedSetAside)}</td>
-                  <td className="px-6 py-3.5 text-right tabular-nums text-emerald-600">{money(q.paid)}</td>
-                  <td className="px-6 py-3.5 text-right tabular-nums font-semibold text-orange-600">
+                  <td className="px-6 py-3.5 text-right tabular-nums text-success-foreground">{money(q.paid)}</td>
+                  <td className="px-6 py-3.5 text-right tabular-nums font-semibold text-warning-foreground">
                     {money(q.remaining)}
                   </td>
                 </tr>
@@ -201,10 +201,10 @@ export default async function EstimatedTaxReportPage({
               <td className="px-6 py-3 text-right font-bold tabular-nums">
                 {money(data.ytd.recommendedSetAside)}
               </td>
-              <td className="px-6 py-3 text-right font-bold tabular-nums text-emerald-600">
+              <td className="px-6 py-3 text-right font-bold tabular-nums text-success-foreground">
                 {money(data.ytd.paid)}
               </td>
-              <td className="px-6 py-3 text-right font-bold tabular-nums text-orange-600">
+              <td className="px-6 py-3 text-right font-bold tabular-nums text-warning-foreground">
                 {money(data.ytd.remaining)}
               </td>
             </tr>

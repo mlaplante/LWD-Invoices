@@ -94,7 +94,7 @@ export function PaymentScheduleSection({
         {schedule.length > 0 ? "Edit Schedule" : "Set Up Payment Schedule"}
       </Button>
       {schedule.length > 0 && (
-        <label className="flex items-start gap-3 rounded-lg border border-border/50 p-3">
+        <label className="flex items-start gap-3 rounded-lg border border-border p-3">
           <Switch checked={installmentAutoChargeEnabled} onCheckedChange={setInstallmentAutoChargeEnabled} />
           <span className="text-sm">Auto-charge installments <span className="block text-xs text-muted-foreground">Each installment is charged to the client&apos;s saved card on its due date. Requires autopay and a saved payment method.</span></span>
         </label>

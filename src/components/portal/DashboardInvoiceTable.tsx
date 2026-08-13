@@ -56,7 +56,7 @@ export function DashboardInvoiceTable({ invoices }: Props) {
   const filtered = invoices.filter((inv) => matchesFilter(inv.status, filter));
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
       {/* Filter buttons */}
       <div className="flex gap-1 p-4 pb-0">
         {FILTERS.map((f) => (
@@ -76,7 +76,7 @@ export function DashboardInvoiceTable({ invoices }: Props) {
       <div className="hidden sm:block p-4">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <th className="pb-3 font-semibold">Invoice</th>
               <th className="pb-3 font-semibold">Status</th>
               <th className="pb-3 font-semibold">Date</th>
@@ -108,7 +108,7 @@ export function DashboardInvoiceTable({ invoices }: Props) {
                 return (
                   <tr
                     key={inv.id}
-                    className="border-b border-border/50 last:border-0"
+                    className="border-b border-border last:border-0"
                   >
                     <td className="py-3.5 font-medium text-foreground">
                       #{inv.number}
@@ -142,7 +142,7 @@ export function DashboardInvoiceTable({ invoices }: Props) {
                       className={cn(
                         "py-3.5 text-right font-medium",
                         balance > 0
-                          ? "text-amber-600"
+                          ? "text-warning-foreground"
                           : "text-foreground"
                       )}
                     >
@@ -182,7 +182,7 @@ export function DashboardInvoiceTable({ invoices }: Props) {
               <a
                 key={inv.id}
                 href={`/portal/${inv.portalToken}`}
-                className="block rounded-xl border border-border/50 p-4 hover:bg-accent/30 transition-colors"
+                className="block rounded-xl border border-border p-4 hover:bg-accent/30 transition-colors"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium text-foreground">
@@ -210,7 +210,7 @@ export function DashboardInvoiceTable({ invoices }: Props) {
                   <span
                     className={cn(
                       "font-medium",
-                      balance > 0 ? "text-amber-600" : "text-foreground"
+                      balance > 0 ? "text-warning-foreground" : "text-foreground"
                     )}
                   >
                     {fmt(balance, sym, pos)}

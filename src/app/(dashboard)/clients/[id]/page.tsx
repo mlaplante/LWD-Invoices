@@ -26,13 +26,13 @@ import { db } from "@/server/db";
 // ── Shared status badge config ───────────────────────────────────────────────
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string }> = {
-  DRAFT:         { label: "Draft",    className: "bg-gray-100 text-gray-500" },
-  SENT:          { label: "Unpaid",   className: "bg-amber-50 text-amber-600" },
-  PARTIALLY_PAID:{ label: "Partial",  className: "bg-blue-50 text-blue-600" },
+  DRAFT:         { label: "Draft",    className: "bg-muted text-muted-foreground" },
+  SENT:          { label: "Unpaid",   className: "bg-warning/12 text-warning-foreground" },
+  PARTIALLY_PAID:{ label: "Partial",  className: "bg-accent text-accent-foreground" },
   PAID:          { label: "Paid",     className: "bg-primary/10 text-primary" },
-  OVERDUE:       { label: "Overdue",  className: "bg-red-50 text-red-600" },
-  ACCEPTED:      { label: "Accepted", className: "bg-emerald-50 text-emerald-600" },
-  REJECTED:      { label: "Rejected", className: "bg-gray-100 text-gray-400" },
+  OVERDUE:       { label: "Overdue",  className: "bg-danger/10 text-danger-foreground" },
+  ACCEPTED:      { label: "Accepted", className: "bg-success/10 text-success-foreground" },
+  REJECTED:      { label: "Rejected", className: "bg-muted text-muted-foreground" },
 };
 
 const TYPE_LABEL: Record<InvoiceType, string> = {
@@ -49,14 +49,14 @@ function initials(name: string): string {
 }
 
 const AVATAR_COLORS = [
-  "bg-violet-100 text-violet-700",
-  "bg-blue-100 text-blue-700",
-  "bg-emerald-100 text-emerald-700",
-  "bg-amber-100 text-amber-700",
-  "bg-rose-100 text-rose-700",
-  "bg-cyan-100 text-cyan-700",
-  "bg-orange-100 text-orange-700",
-  "bg-indigo-100 text-indigo-700",
+  "bg-accent text-accent-foreground",
+  "bg-accent text-accent-foreground",
+  "bg-success/10 text-success-foreground",
+  "bg-warning/12 text-warning-foreground",
+  "bg-danger/10 text-danger-foreground",
+  "bg-accent text-accent-foreground",
+  "bg-warning/12 text-warning-foreground",
+  "bg-accent text-accent-foreground",
 ];
 
 function avatarColor(name: string): string {
@@ -150,7 +150,7 @@ export default async function ClientDetailPage({
             {client.name}
           </h1>
           {isReliable && (
-            <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 shrink-0">
+            <span className="inline-flex items-center rounded-lg bg-success/10 px-2.5 py-1 text-xs font-semibold text-success-foreground shrink-0">
               Reliable payer
             </span>
           )}
@@ -173,12 +173,12 @@ export default async function ClientDetailPage({
       </div>
 
       {/* ── Client profile banner ─────────────────────────────────── */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         {/* Banner */}
-        <div className="px-8 pt-7 pb-6 border-b border-border/50 flex items-start gap-5">
+        <div className="px-8 pt-7 pb-6 border-b border-border flex items-start gap-5">
           <div
             className={cn(
-              "w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-extrabold shrink-0",
+              "w-14 h-14 rounded-[10px] flex items-center justify-center text-lg font-extrabold shrink-0",
               color
             )}
           >
@@ -201,7 +201,7 @@ export default async function ClientDetailPage({
             {Number(client.creditBalance) > 0 && (
               <div className="flex items-center gap-1.5 text-sm mt-2">
                 <span className="text-muted-foreground">Credit Balance:</span>
-                <span className="font-semibold text-emerald-600">
+                <span className="font-semibold text-success-foreground">
                   ${Number(client.creditBalance).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -239,7 +239,7 @@ export default async function ClientDetailPage({
 
         {/* Edit form */}
         <div className="px-8 py-6">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-5">
+          <p className="eyebrow lowercase text-[11px] mb-5">
             Edit Details
           </p>
           <ClientForm mode="edit" client={client} />
@@ -250,12 +250,12 @@ export default async function ClientDetailPage({
       <ClientCreditPanel clientId={id} />
 
       {/* ── Retainer ──────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border/50 bg-card p-5">
+      <div className="rounded-[10px] border border-border bg-card p-5">
         <RetainerPanel clientId={id} />
       </div>
 
       {/* ── Hours Retainers ───────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border/50 bg-card p-5">
+      <div className="rounded-[10px] border border-border bg-card p-5">
         <RetainerList clientId={id} />
       </div>
 
@@ -272,7 +272,7 @@ export default async function ClientDetailPage({
           {outstandingBalance > 0 && (
             <div className="text-sm">
               <span className="text-muted-foreground">Outstanding: </span>
-              <span className="font-semibold text-amber-600">
+              <span className="font-semibold text-warning-foreground">
                 {balanceCurrency?.symbolPosition === "after"
                   ? `${outstandingBalance.toFixed(2)}${balanceCurrency.symbol}`
                   : `${balanceCurrency?.symbol ?? "$"}${outstandingBalance.toFixed(2)}`}
@@ -305,7 +305,7 @@ export default async function ClientDetailPage({
         )}
 
         {invoices.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 rounded-2xl border border-border/50 border-dashed text-center">
+          <div className="flex flex-col items-center justify-center py-10 rounded-[10px] border border-border border-dashed text-center">
             <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mb-3">
               <FileText className="w-4 h-4 text-primary" />
             </div>
@@ -323,9 +323,9 @@ export default async function ClientDetailPage({
             )}
           </div>
         ) : (
-          <div className="rounded-2xl border border-border/50 overflow-hidden">
+          <div className="rounded-[10px] border border-border overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-muted/30 border-b border-border/50">
+              <thead className="bg-muted/30 border-b border-border">
                 <tr>
                   {["Invoice", "Date", "Due", "Status", "Total", ""].map(
                     (h, i) => (

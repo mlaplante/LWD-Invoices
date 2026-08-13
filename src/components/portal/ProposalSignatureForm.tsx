@@ -48,12 +48,12 @@ export function ProposalSignatureForm({ token, invoiceNumber }: Props) {
 
   if (signMutation.isSuccess) {
     return (
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center space-y-2">
-        <CheckCircle className="h-8 w-8 text-emerald-600 mx-auto" />
-        <p className="text-base font-semibold text-emerald-800">
+      <div className="rounded-xl border border-success/30 bg-success/10 p-6 text-center space-y-2">
+        <CheckCircle className="h-8 w-8 text-success-foreground mx-auto" />
+        <p className="text-base font-semibold text-success-foreground">
           Proposal Signed Successfully
         </p>
-        <p className="text-sm text-emerald-600">
+        <p className="text-sm text-success-foreground">
           Estimate #{invoiceNumber} has been signed and accepted.
         </p>
       </div>

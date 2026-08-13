@@ -66,14 +66,14 @@ export function EstimatedTaxPayments({ year, currencySymbol }: Props) {
   const valid = Number.isFinite(parsedAmount) && parsedAmount > 0;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden print:hidden">
-      <div className="px-6 py-4 border-b border-border/50">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payments</p>
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden print:hidden">
+      <div className="px-6 py-4 border-b border-border">
+        <p className="eyebrow lowercase text-[11px]">Payments</p>
         <p className="text-base font-semibold mt-0.5">Record what you&apos;ve paid in {year}</p>
       </div>
 
       {/* Add form */}
-      <div className="px-6 py-5 border-b border-border/50 flex flex-wrap items-end gap-3">
+      <div className="px-6 py-5 border-b border-border flex flex-wrap items-end gap-3">
         <div>
           <Label htmlFor="etp-quarter" className="text-xs">Quarter</Label>
           <select

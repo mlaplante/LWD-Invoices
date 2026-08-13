@@ -101,12 +101,12 @@ export function TimesheetTable({ projects }: Props) {
             {entries.map((entry) => (
               <div
                 key={entry.id}
-                className="rounded-xl border border-border/50 bg-card p-4 space-y-1"
+                className="rounded-xl border border-border bg-card p-4 space-y-1"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-sm truncate">{entry.project?.name ?? "Retainer"}</p>
                   {entry.invoiceLineId ? (
-                    <span className="shrink-0 inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                    <span className="shrink-0 inline-flex rounded-full bg-success/10 px-2 py-0.5 text-xs text-success-foreground">
                       Billed
                     </span>
                   ) : (
@@ -129,7 +129,7 @@ export function TimesheetTable({ projects }: Props) {
                 )}
               </div>
             ))}
-            <div className="rounded-xl border border-border/50 bg-muted/30 p-4 flex items-center justify-between">
+            <div className="rounded-xl border border-border bg-muted/30 p-4 flex items-center justify-between">
               <p className="text-sm font-medium">Totals</p>
               <p className="text-sm font-semibold tabular-nums">{formatMinutes(totalRounded)}</p>
             </div>
@@ -170,7 +170,7 @@ export function TimesheetTable({ projects }: Props) {
                     </td>
                     <td className="px-4 py-2 text-center">
                       {entry.invoiceLineId ? (
-                        <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                        <span className="inline-flex rounded-full bg-success/10 px-2 py-0.5 text-xs text-success-foreground">
                           Billed
                         </span>
                       ) : (

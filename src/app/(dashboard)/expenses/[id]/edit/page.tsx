@@ -42,7 +42,7 @@ export default async function EditExpensePage({ params }: Props) {
         <h1 className="text-xl font-bold tracking-tight">Edit Expense</h1>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card p-6">
+      <div className="rounded-[10px] border border-border bg-card p-6">
         <ExpenseForm
           mode="edit"
           expenseId={id}

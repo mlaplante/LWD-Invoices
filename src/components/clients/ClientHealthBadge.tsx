@@ -3,10 +3,10 @@
 import { trpc } from "@/trpc/client";
 
 const BAND_STYLES: Record<string, string> = {
-  healthy: "bg-emerald-50 text-emerald-700",
-  stable: "bg-blue-50 text-blue-700",
-  at_risk: "bg-amber-50 text-amber-700",
-  critical: "bg-red-50 text-red-700",
+  healthy: "bg-success/10 text-success-foreground",
+  stable: "bg-accent text-accent-foreground",
+  at_risk: "bg-warning/12 text-warning-foreground",
+  critical: "bg-danger/10 text-danger-foreground",
 };
 
 const BAND_LABELS: Record<string, string> = {

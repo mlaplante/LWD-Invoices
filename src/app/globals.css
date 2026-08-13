@@ -4,12 +4,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─────────────────────────────────────────────────────────────
+   La Plante design system
+   Indigo #3F51B5 primary · paper #F1F1F1 canvas · paper-white
+   sidebar · Poppins display/body + Roboto Mono for meta.
+   Portal is the only surface that uses the blog-blue gradient.
+   ───────────────────────────────────────────────────────────── */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-instrument-serif);
+  --font-sans: var(--font-poppins);
+  --font-mono: var(--font-roboto-mono);
+  --font-display: var(--font-poppins);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,6 +46,22 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Status ramp — used by pills, health bars, status dots, charts */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+
+  /* Row divider — lighter than --border, used inside tables and cards */
+  --color-divider: var(--divider);
+
+  /* Client-portal accent (blog blue). Never used inside the app shell. */
+  --color-portal: var(--portal);
+  --color-portal-deep: var(--portal-deep);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -49,78 +72,115 @@
 }
 
 :root {
-  --radius: 0.75rem;
-  /* Cool porcelain background */
-  --background: oklch(0.977 0.004 255);
-  --foreground: oklch(0.165 0.02 265);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.165 0.02 265);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.165 0.02 265);
-  /* Cobalt brand — matches org brandColor default (#2563eb) and email accents */
-  --primary: oklch(0.546 0.245 262.881);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.965 0.007 255);
-  --secondary-foreground: oklch(0.22 0.02 265);
-  --muted: oklch(0.965 0.007 255);
-  --muted-foreground: oklch(0.5 0.02 260);
-  /* Light cobalt tint for accents/hover */
-  --accent: oklch(0.955 0.016 255);
-  --accent-foreground: oklch(0.48 0.21 262);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0.008 255);
-  --input: oklch(0.922 0.008 255);
-  --ring: oklch(0.546 0.245 262.881);
-  --chart-1: oklch(0.546 0.245 262.881);
-  --chart-2: oklch(0.7 0.13 182);
-  --chart-3: oklch(0.6 0.19 293);
-  --chart-4: oklch(0.77 0.16 70);
-  --chart-5: oklch(0.65 0.2 15);
-  /* Deep ink-navy sidebar — matches email header (#0f1628) */
-  --sidebar: oklch(0.185 0.032 264);
-  --sidebar-foreground: oklch(0.9 0.012 255);
-  --sidebar-primary: oklch(0.546 0.245 262.881);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.245 0.04 264);
-  --sidebar-accent-foreground: oklch(0.97 0.008 255);
-  --sidebar-border: oklch(0.27 0.038 264);
-  --sidebar-ring: oklch(0.623 0.188 260);
+  /* Cards 10px · buttons 6px (radius-sm) · pills 100px */
+  --radius: 0.625rem;
+
+  --background: #f1f1f1;
+  --foreground: #202020;
+  --card: #ffffff;
+  --card-foreground: #202020;
+  --popover: #ffffff;
+  --popover-foreground: #202020;
+
+  --primary: #3f51b5;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f5f5f5;
+  --secondary-foreground: #202020;
+  --muted: #fafafa;
+  --muted-foreground: rgba(0, 0, 0, 0.5);
+
+  /* 8% indigo wash — nav active state, sent pills, filter tabs */
+  --accent: rgba(63, 81, 181, 0.08);
+  --accent-foreground: #3f51b5;
+
+  --destructive: #c0392b;
+  --success: #27ae60;
+  --success-foreground: #1e8449;
+  --warning: #e67e22;
+  --warning-foreground: #b9770e;
+  --danger: #c0392b;
+  --danger-foreground: #c0392b;
+
+  --border: #e5e7eb;
+  --divider: #f0f0f0;
+  --input: #dddddd;
+  --ring: #3f51b5;
+
+  --portal: #2980b9;
+  --portal-deep: #1a6da3;
+
+  /* Indigo ramp for forecast bars / DSO trend / aging segments */
+  --chart-1: #3f51b5;
+  --chart-2: rgba(63, 81, 181, 0.7);
+  --chart-3: rgba(63, 81, 181, 0.45);
+  --chart-4: rgba(63, 81, 181, 0.25);
+  --chart-5: #c0392b;
+
+  /* Paper-white sidebar — the core departure from the old dark navy rail */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #555555;
+  --sidebar-primary: #3f51b5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(63, 81, 181, 0.08);
+  --sidebar-accent-foreground: #3f51b5;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #3f51b5;
 }
 
 .dark {
   /* Native form controls, scrollbars, etc. follow the dark palette */
   color-scheme: dark;
-  --background: oklch(0.155 0.02 262);
-  --foreground: oklch(0.965 0.005 255);
-  --card: oklch(0.205 0.025 262);
-  --card-foreground: oklch(0.965 0.005 255);
-  --popover: oklch(0.205 0.025 262);
-  --popover-foreground: oklch(0.965 0.005 255);
-  --primary: oklch(0.623 0.188 259.8);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.26 0.028 262);
-  --secondary-foreground: oklch(0.965 0.005 255);
-  --muted: oklch(0.26 0.028 262);
-  --muted-foreground: oklch(0.72 0.02 258);
-  --accent: oklch(0.28 0.045 262);
-  --accent-foreground: oklch(0.85 0.08 258);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(0.94 0.02 258 / 12%);
-  --input: oklch(0.94 0.02 258 / 16%);
-  --ring: oklch(0.623 0.188 259.8);
-  --chart-1: oklch(0.623 0.188 259.8);
-  --chart-2: oklch(0.72 0.14 182);
-  --chart-3: oklch(0.68 0.17 293);
-  --chart-4: oklch(0.8 0.16 78);
-  --chart-5: oklch(0.68 0.19 15);
-  --sidebar: oklch(0.135 0.022 262);
-  --sidebar-foreground: oklch(0.9 0.012 255);
-  --sidebar-primary: oklch(0.623 0.188 259.8);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.215 0.032 262);
-  --sidebar-accent-foreground: oklch(0.97 0.008 255);
-  --sidebar-border: oklch(0.94 0.02 258 / 10%);
-  --sidebar-ring: oklch(0.623 0.188 259.8);
+
+  --background: #1a1a1a;
+  --foreground: #e0e0e0;
+  --card: #0f172a;
+  --card-foreground: #e0e0e0;
+  --popover: #0f172a;
+  --popover-foreground: #e0e0e0;
+
+  /* The hero keeps solid #3F51B5 on dark; text-on-dark lightens to #aab4e8 */
+  --primary: #3f51b5;
+  --primary-foreground: #ffffff;
+
+  --secondary: #1e293b;
+  --secondary-foreground: #e0e0e0;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+
+  --accent: rgba(63, 81, 181, 0.25);
+  --accent-foreground: #aab4e8;
+
+  --destructive: #e57373;
+  --success: #27ae60;
+  --success-foreground: #6ee7a8;
+  --warning: #e6a23c;
+  --warning-foreground: #e6a23c;
+  --danger: #e57373;
+  --danger-foreground: #e57373;
+
+  --border: #334155;
+  --divider: #1e293b;
+  --input: #334155;
+  --ring: #7986cb;
+
+  --portal: #3d9ad6;
+  --portal-deep: #2980b9;
+
+  --chart-1: #7986cb;
+  --chart-2: rgba(121, 134, 203, 0.7);
+  --chart-3: rgba(121, 134, 203, 0.45);
+  --chart-4: rgba(121, 134, 203, 0.25);
+  --chart-5: #e57373;
+
+  --sidebar: #0f172a;
+  --sidebar-foreground: #94a3b8;
+  --sidebar-primary: #3f51b5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(63, 81, 181, 0.25);
+  --sidebar-accent-foreground: #aab4e8;
+  --sidebar-border: #334155;
+  --sidebar-ring: #7986cb;
 }
 
 @layer base {
@@ -133,6 +193,7 @@
   ::selection {
     @apply bg-primary/20 text-foreground;
   }
+  /* Spec: 2px solid indigo, 2px offset */
   :where(a, button, input, select, textarea, [tabindex]):focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
   }
@@ -155,8 +216,112 @@
     transparent;
 }
 
-.font-display {
-  font-family: var(--font-instrument-serif), serif;
+/* These sit in the components layer so Tailwind utilities still win —
+   `font-display font-bold` keeps its bold, `eyebrow text-[11px]` its size. */
+@layer components {
+  /* Display headings: Poppins 300 with a wide track. Page H1s are 28–32px. */
+  .font-display {
+    font-family: var(--font-poppins), system-ui, sans-serif;
+    font-weight: 300;
+    letter-spacing: 1px;
+  }
+
+  /* ── Eyebrow ────────────────────────────────────────────────
+     Lowercase mono label with an indigo highlighter underline.
+     Section headings inside cards use this instead of a heavier
+     type ramp. Opacity lifts in dark mode so it stays visible.
+     ─────────────────────────────────────────────────────────── */
+  .eyebrow {
+    display: inline-block;
+    font-family: var(--font-roboto-mono), monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 1px;
+    color: var(--foreground);
+    box-shadow: inset 0 -8px 0 rgba(63, 81, 181, 0.25);
+  }
+
+  .dark .eyebrow {
+    box-shadow: inset 0 -8px 0 rgba(63, 81, 181, 0.45);
+  }
+
+  /* Mono meta line — table headers, timestamps, footer stat strips */
+  .meta {
+    font-family: var(--font-roboto-mono), monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--muted-foreground);
+  }
+
+  /* Briefing hero — solid indigo with an inset vignette, never a gradient */
+  .hero-indigo {
+    background: #3f51b5;
+    color: #ffffff;
+    border-radius: 10px;
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .dark .hero-indigo {
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45);
+  }
+
+  /* The one gradient in the system: client-portal header */
+  .portal-header {
+    background: linear-gradient(135deg, var(--portal), var(--portal-deep));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  /* ── .data-table ────────────────────────────────────────────
+     Element-level version of the <Table> primitive, for the list
+     views that build their markup by hand. Adding this one class
+     to a <table> gives it the full treatment without rewriting
+     every th/td. Per-cell utilities still win (they're utilities).
+     ─────────────────────────────────────────────────────────── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .data-table th {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-roboto-mono), monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+    text-align: left;
+  }
+
+  .data-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--divider);
+    font-size: 13px;
+    color: var(--foreground);
+  }
+
+  .data-table tbody tr:last-child > td {
+    border-bottom: 0;
+  }
+
+  .data-table tbody tr {
+    transition: background-color 0.2s ease;
+  }
+
+  .data-table tbody tr:hover {
+    background: rgba(0, 0, 0, 0.015);
+  }
+
+  .dark .data-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  /* Overdue / disputed / failed rows carry a faint red wash */
+  .data-table tbody tr[data-attention="true"] {
+    background: color-mix(in srgb, var(--danger) 3%, transparent);
+  }
 }
 
 .auth-shell__intro::before,

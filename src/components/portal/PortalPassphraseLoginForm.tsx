@@ -89,7 +89,7 @@ export function PortalPassphraseLoginForm({
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-card p-8">
+      <div className="w-full max-w-sm rounded-[10px] border border-border bg-card p-8">
         <h1 className="text-xl font-bold text-foreground mb-2">{title}</h1>
         <p className="text-sm text-muted-foreground mb-6">{description}</p>
 

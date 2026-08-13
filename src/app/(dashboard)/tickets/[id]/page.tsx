@@ -6,16 +6,16 @@ import { TicketThread } from "@/components/tickets/TicketThread";
 import { cn } from "@/lib/utils";
 
 const PRIORITY_BADGE: Record<string, { label: string; className: string }> = {
-  LOW:    { label: "Low",    className: "bg-gray-100 text-gray-500" },
-  NORMAL: { label: "Normal", className: "bg-blue-50 text-blue-600" },
-  HIGH:   { label: "High",   className: "bg-amber-50 text-amber-600" },
-  URGENT: { label: "Urgent", className: "bg-red-50 text-red-600" },
+  LOW:    { label: "Low",    className: "bg-muted text-muted-foreground" },
+  NORMAL: { label: "Normal", className: "bg-accent text-accent-foreground" },
+  HIGH:   { label: "High",   className: "bg-warning/12 text-warning-foreground" },
+  URGENT: { label: "Urgent", className: "bg-danger/10 text-danger-foreground" },
 };
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  OPEN:        { label: "Open",        className: "bg-emerald-50 text-emerald-600" },
-  IN_PROGRESS: { label: "In Progress", className: "bg-blue-50 text-blue-600" },
-  CLOSED:      { label: "Closed",      className: "bg-gray-100 text-gray-500" },
+  OPEN:        { label: "Open",        className: "bg-success/10 text-success-foreground" },
+  IN_PROGRESS: { label: "In Progress", className: "bg-accent text-accent-foreground" },
+  CLOSED:      { label: "Closed",      className: "bg-muted text-muted-foreground" },
   RESOLVED:    { label: "Resolved",    className: "bg-primary/10 text-primary" },
 };
 
@@ -28,8 +28,8 @@ export default async function TicketDetailPage({
   const ticket = await api.tickets.get({ id }).catch(() => null);
   if (!ticket) notFound();
 
-  const priority = PRIORITY_BADGE[ticket.priority] ?? { label: ticket.priority, className: "bg-gray-100 text-gray-500" };
-  const status = STATUS_BADGE[ticket.status] ?? { label: ticket.status, className: "bg-gray-100 text-gray-500" };
+  const priority = PRIORITY_BADGE[ticket.priority] ?? { label: ticket.priority, className: "bg-muted text-muted-foreground" };
+  const status = STATUS_BADGE[ticket.status] ?? { label: ticket.status, className: "bg-muted text-muted-foreground" };
 
   return (
     <div className="space-y-5">
@@ -56,18 +56,18 @@ export default async function TicketDetailPage({
 
       {/* Ticket meta */}
       {ticket.client && (
-        <div className="rounded-2xl border border-border/50 bg-card px-6 py-4 flex items-center gap-6 text-sm">
+        <div className="rounded-[10px] border border-border bg-card px-6 py-4 flex items-center gap-6 text-sm">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Client</p>
+            <p className="eyebrow lowercase text-[11px]">Client</p>
             <p className="font-medium mt-0.5">{ticket.client.name}</p>
           </div>
         </div>
       )}
 
       {/* Thread */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">
             Thread
           </p>
           <p className="text-base font-semibold mt-0.5">Conversation</p>

@@ -21,35 +21,35 @@ const reports = [
     label: "Profit & Loss",
     description: "Revenue, expenses, and net income summarized by month.",
     icon: FileText,
-    color: "bg-blue-50 text-blue-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     id: "expenses",
     label: "Expense Ledger",
     description: "All expenses with category, supplier, and amounts.",
     icon: Receipt,
-    color: "bg-violet-50 text-violet-600",
+    color: "bg-accent text-accent-foreground",
   },
   {
     id: "payments",
     label: "Payment Ledger",
     description: "Every payment received with gateway and invoice reference.",
     icon: CreditCard,
-    color: "bg-emerald-50 text-emerald-600",
+    color: "bg-success/10 text-success-foreground",
   },
   {
     id: "tax",
     label: "Tax Liability",
     description: "Tax collected by type, ready for your accountant.",
     icon: Scale,
-    color: "bg-orange-50 text-orange-600",
+    color: "bg-warning/12 text-warning-foreground",
   },
   {
     id: "aging",
     label: "AR Aging Snapshot",
     description: "Outstanding receivables by aging bucket as of December 31.",
     icon: Gauge,
-    color: "bg-fuchsia-50 text-fuchsia-600",
+    color: "bg-accent text-accent-foreground",
   },
 ];
 
@@ -158,7 +158,7 @@ export default function YearEndExportPage() {
           return (
             <div
               key={r.id}
-              className="rounded-2xl border border-border/50 bg-card p-5 space-y-3"
+              className="rounded-[10px] border border-border bg-card p-5 space-y-3"
             >
               <div className="flex items-start gap-3">
                 <div

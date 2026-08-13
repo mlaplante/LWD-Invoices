@@ -25,7 +25,7 @@ function RetainerRow({ row }: { row: RetainerBurndown }) {
       : `$${row.remaining.toFixed(2)}`;
 
   return (
-    <div className="px-5 py-4 border-b border-border/50 last:border-0">
+    <div className="px-5 py-4 border-b border-border last:border-0">
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="min-w-0">
           <p className="font-medium text-sm leading-snug">{row.clientName}</p>
@@ -33,7 +33,7 @@ function RetainerRow({ row }: { row: RetainerBurndown }) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {row.warning && (
-            <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5">
+            <span className="inline-flex items-center rounded-full bg-warning/12 text-warning-foreground text-xs font-semibold px-2 py-0.5">
               80% used
             </span>
           )}
@@ -44,7 +44,7 @@ function RetainerRow({ row }: { row: RetainerBurndown }) {
       <div className="flex items-center gap-3">
         <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${row.warning ? "bg-amber-500" : "bg-primary"}`}
+            className={`h-full rounded-full transition-all ${row.warning ? "bg-warning" : "bg-primary"}`}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -97,11 +97,11 @@ export default async function RetainerBurndownPage() {
           Hours Retainers
         </h2>
         {hours.length === 0 ? (
-          <div className="rounded-2xl border border-border/50 bg-card px-6 py-10 text-center text-sm text-muted-foreground">
+          <div className="rounded-[10px] border border-border bg-card px-6 py-10 text-center text-sm text-muted-foreground">
             No active hours retainers.
           </div>
         ) : (
-          <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+          <div className="rounded-[10px] border border-border bg-card overflow-hidden">
             {hours.map((row) => (
               <RetainerRow key={row.retainerId} row={row} />
             ))}
@@ -115,11 +115,11 @@ export default async function RetainerBurndownPage() {
           Prepaid Retainers
         </h2>
         {money.length === 0 ? (
-          <div className="rounded-2xl border border-border/50 bg-card px-6 py-10 text-center text-sm text-muted-foreground">
+          <div className="rounded-[10px] border border-border bg-card px-6 py-10 text-center text-sm text-muted-foreground">
             No prepaid retainers.
           </div>
         ) : (
-          <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+          <div className="rounded-[10px] border border-border bg-card overflow-hidden">
             {money.map((row) => (
               <RetainerRow key={row.retainerId} row={row} />
             ))}

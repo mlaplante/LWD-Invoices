@@ -5,10 +5,10 @@ import { PrintReportButton } from "@/components/reports/PrintReportButton";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 
 const BAND_STYLES: Record<string, string> = {
-  healthy: "bg-emerald-50 text-emerald-700",
-  stable: "bg-blue-50 text-blue-700",
-  at_risk: "bg-amber-50 text-amber-700",
-  critical: "bg-red-50 text-red-700",
+  healthy: "bg-success/10 text-success-foreground",
+  stable: "bg-accent text-accent-foreground",
+  at_risk: "bg-warning/12 text-warning-foreground",
+  critical: "bg-danger/10 text-danger-foreground",
 };
 
 const BAND_LABELS: Record<string, string> = {
@@ -70,17 +70,17 @@ export default async function ProjectHealthReportPage() {
       {/* Summary cards */}
       {scores.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <div className="rounded-[10px] border border-border bg-card px-5 py-4">
+            <p className="eyebrow lowercase text-[11px]">
               Projects Scored
             </p>
             <p className="text-2xl font-bold mt-1">{scores.length}</p>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <div className="rounded-[10px] border border-border bg-card px-5 py-4">
+            <p className="eyebrow lowercase text-[11px]">
               At Risk / Critical
             </p>
-            <p className={`text-2xl font-bold mt-1 ${atRiskCount > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+            <p className={`text-2xl font-bold mt-1 ${atRiskCount > 0 ? "text-danger-foreground" : "text-success-foreground"}`}>
               {atRiskCount}
             </p>
           </div>
@@ -88,15 +88,15 @@ export default async function ProjectHealthReportPage() {
       )}
 
       {scores.length === 0 ? (
-        <div className="rounded-2xl border border-border/50 bg-card px-6 py-12 text-center text-muted-foreground text-sm">
+        <div className="rounded-[10px] border border-border bg-card px-6 py-12 text-center text-muted-foreground text-sm">
           No projects to score yet.
         </div>
       ) : (
-        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="rounded-[10px] border border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-border/50">
-                <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              <thead className="border-b border-border">
+                <tr className="eyebrow lowercase text-[11px]">
                   <th className="px-5 py-3 text-left">Project</th>
                   <th className="px-5 py-3 text-left">Client</th>
                   <th className="px-5 py-3 text-right">Score</th>
@@ -121,7 +121,7 @@ export default async function ProjectHealthReportPage() {
                   return (
                     <tr
                       key={s.projectId}
-                      className="border-b border-border/50 last:border-0 align-top hover:bg-accent/30"
+                      className="border-b border-border last:border-0 align-top hover:bg-accent/30"
                     >
                       <td className="px-5 py-3 font-medium">
                         <Link

@@ -64,7 +64,7 @@ export function ItemManager({ initialItems }: Props) {
   return (
     <div className="space-y-3">
       {items.length === 0 && !adding ? (
-        <div className="rounded-2xl border border-dashed border-border/60 p-12 text-center text-muted-foreground">
+        <div className="rounded-[10px] border border-dashed border-border/60 p-12 text-center text-muted-foreground">
           <p className="font-medium">No items yet</p>
           <p className="text-sm mt-1">Create reusable items to speed up invoice creation.</p>
           <Button className="mt-4" onClick={() => setAdding(true)}>Add Item</Button>
@@ -72,7 +72,7 @@ export function ItemManager({ initialItems }: Props) {
       ) : (
         <>
           {items.length > 0 && (
-            <div className="overflow-x-auto rounded-2xl border border-border/50">
+            <div className="overflow-x-auto rounded-[10px] border border-border">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/50">
                   <tr>
@@ -114,7 +114,7 @@ export function ItemManager({ initialItems }: Props) {
                         <td className="px-4 py-3 text-muted-foreground">{item.unit ?? "—"}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-2">
-                            <button onClick={() => startEdit(item)} className="text-xs text-blue-600 hover:underline">Edit</button>
+                            <button onClick={() => startEdit(item)} className="text-xs text-accent-foreground hover:underline">Edit</button>
                             <button onClick={() => deleteMutation.mutate({ id: item.id })} className="text-xs text-destructive hover:underline">Delete</button>
                           </div>
                         </td>
@@ -127,7 +127,7 @@ export function ItemManager({ initialItems }: Props) {
           )}
 
           {adding ? (
-            <div className="rounded-2xl border border-border/50 p-4 space-y-3">
+            <div className="rounded-[10px] border border-border p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium">Name *</label>

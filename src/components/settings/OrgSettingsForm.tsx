@@ -99,7 +99,7 @@ export function OrgSettingsForm({ org }: { org: Org }) {
         </div>
       )}
       {saved && (
-        <div className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-700">
+        <div className="rounded-md bg-success/10 px-4 py-3 text-sm text-success-foreground">
           Saved successfully.
         </div>
       )}

@@ -74,7 +74,7 @@ export function ExpenseSupplierManager({ initialSuppliers }: Props) {
                   <td className="px-3 py-2 font-medium">{s.name}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => startEdit(s)} className="text-xs text-blue-600 hover:underline">
+                      <button onClick={() => startEdit(s)} className="text-xs text-accent-foreground hover:underline">
                         Edit
                       </button>
                       <button

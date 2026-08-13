@@ -79,13 +79,13 @@ export default async function ProfitabilityPage({
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Total Revenue", value: data.totalRevenue, color: "text-emerald-600" },
-          { label: "Total Costs", value: data.totalCosts, color: "text-red-600" },
-          { label: "Total Margin", value: data.totalMargin, color: data.totalMargin >= 0 ? "text-primary" : "text-red-600" },
-          { label: "Avg Margin %", value: null, pct: data.avgMarginPercent, color: data.avgMarginPercent >= 0 ? "text-primary" : "text-red-600" },
+          { label: "Total Revenue", value: data.totalRevenue, color: "text-success-foreground" },
+          { label: "Total Costs", value: data.totalCosts, color: "text-danger-foreground" },
+          { label: "Total Margin", value: data.totalMargin, color: data.totalMargin >= 0 ? "text-primary" : "text-danger-foreground" },
+          { label: "Avg Margin %", value: null, pct: data.avgMarginPercent, color: data.avgMarginPercent >= 0 ? "text-primary" : "text-danger-foreground" },
         ].map((s) => (
-          <div key={s.label} className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <div key={s.label} className="rounded-[10px] border border-border bg-card px-5 py-4">
+            <p className="eyebrow lowercase text-[11px]">
               {s.label}
             </p>
             <p className={`text-2xl font-bold tabular-nums mt-1 ${s.color}`}>
@@ -96,7 +96,7 @@ export default async function ProfitabilityPage({
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
         {data.rows.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm text-muted-foreground">
             No data for the selected period.
@@ -104,8 +104,8 @@ export default async function ProfitabilityPage({
         ) : (
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-border/50">
-              <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <thead className="border-b border-border">
+              <tr className="eyebrow lowercase text-[11px]">
                 <th className="px-5 py-3 text-left">
                   {tab === "client" ? "Client" : "Project"}
                 </th>
@@ -125,7 +125,7 @@ export default async function ProfitabilityPage({
                 return (
                   <tr
                     key={(row.clientId ?? row.projectId) as string}
-                    className="border-b border-border/50 last:border-0"
+                    className="border-b border-border last:border-0"
                   >
                     <td className="px-5 py-3 font-medium">{name}</td>
                     {tab === "project" && (
@@ -133,19 +133,19 @@ export default async function ProfitabilityPage({
                         {row.clientName as string}
                       </td>
                     )}
-                    <td className="px-5 py-3 text-right tabular-nums text-emerald-600">
+                    <td className="px-5 py-3 text-right tabular-nums text-success-foreground">
                       ${(row.revenue as number).toFixed(2)}
                     </td>
-                    <td className="px-5 py-3 text-right tabular-nums text-red-600">
+                    <td className="px-5 py-3 text-right tabular-nums text-danger-foreground">
                       ${(row.costs as number).toFixed(2)}
                     </td>
                     <td
-                      className={`px-5 py-3 text-right tabular-nums font-semibold ${margin >= 0 ? "text-primary" : "text-red-600"}`}
+                      className={`px-5 py-3 text-right tabular-nums font-semibold ${margin >= 0 ? "text-primary" : "text-danger-foreground"}`}
                     >
                       ${margin.toFixed(2)}
                     </td>
                     <td
-                      className={`px-5 py-3 text-right tabular-nums ${(row.marginPercent as number) >= 0 ? "text-primary" : "text-red-600"}`}
+                      className={`px-5 py-3 text-right tabular-nums ${(row.marginPercent as number) >= 0 ? "text-primary" : "text-danger-foreground"}`}
                     >
                       {(row.marginPercent as number).toFixed(1)}%
                     </td>

@@ -12,13 +12,13 @@ const EVENT_CONFIG: Record<
   string,
   { label: string; icon: typeof Mail; className: string }
 > = {
-  "email.sent": { label: "Sent", icon: Send, className: "bg-gray-100 text-gray-500" },
-  "email.delivered": { label: "Delivered", icon: MailCheck, className: "bg-blue-50 text-blue-600" },
-  "email.delivery_delayed": { label: "Delivery delayed", icon: AlertTriangle, className: "bg-amber-50 text-amber-600" },
-  "email.opened": { label: "Opened", icon: Eye, className: "bg-emerald-50 text-emerald-600" },
-  "email.clicked": { label: "Clicked link", icon: MousePointerClick, className: "bg-violet-50 text-violet-600" },
-  "email.bounced": { label: "Bounced", icon: Ban, className: "bg-red-50 text-red-600" },
-  "email.complained": { label: "Marked as spam", icon: AlertTriangle, className: "bg-red-50 text-red-600" },
+  "email.sent": { label: "Sent", icon: Send, className: "bg-muted text-muted-foreground" },
+  "email.delivered": { label: "Delivered", icon: MailCheck, className: "bg-accent text-accent-foreground" },
+  "email.delivery_delayed": { label: "Delivery delayed", icon: AlertTriangle, className: "bg-warning/12 text-warning-foreground" },
+  "email.opened": { label: "Opened", icon: Eye, className: "bg-success/10 text-success-foreground" },
+  "email.clicked": { label: "Clicked link", icon: MousePointerClick, className: "bg-accent text-accent-foreground" },
+  "email.bounced": { label: "Bounced", icon: Ban, className: "bg-danger/10 text-danger-foreground" },
+  "email.complained": { label: "Marked as spam", icon: AlertTriangle, className: "bg-danger/10 text-danger-foreground" },
 };
 
 function configFor(type: string) {
@@ -26,7 +26,7 @@ function configFor(type: string) {
     EVENT_CONFIG[type] ?? {
       label: type.replace(/^email\./, "").replace(/_/g, " "),
       icon: Mail,
-      className: "bg-gray-100 text-gray-500",
+      className: "bg-muted text-muted-foreground",
     }
   );
 }
@@ -50,26 +50,26 @@ export function ProposalEngagementPanel({ invoiceId, hasSent, signedAt }: Props)
         {events.length > 0 && (
           <div className="flex items-center gap-2 text-xs">
             {delivered && (
-              <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-semibold text-blue-600">
+              <span className="inline-flex items-center rounded-md bg-accent px-2 py-0.5 font-semibold text-accent-foreground">
                 Delivered
               </span>
             )}
             {openCount > 0 && (
-              <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-600">
+              <span className="inline-flex items-center rounded-md bg-success/10 px-2 py-0.5 font-semibold text-success-foreground">
                 Opened{openCount > 1 ? ` ×${openCount}` : ""}
               </span>
             )}
             {clickCount > 0 && (
-              <span className="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 font-semibold text-violet-600">
+              <span className="inline-flex items-center rounded-md bg-accent px-2 py-0.5 font-semibold text-accent-foreground">
                 Clicked{clickCount > 1 ? ` ×${clickCount}` : ""}
               </span>
             )}
             {signedAt ? (
-              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600/10 px-2 py-0.5 font-semibold text-emerald-700">
+              <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-0.5 font-semibold text-success-foreground">
                 <PenLine className="h-3 w-3" /> Signed
               </span>
             ) : viewedNotSigned ? (
-              <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 font-semibold text-amber-600">
+              <span className="inline-flex items-center rounded-md bg-warning/12 px-2 py-0.5 font-semibold text-warning-foreground">
                 Viewed · not signed
               </span>
             ) : null}
@@ -77,7 +77,7 @@ export function ProposalEngagementPanel({ invoiceId, hasSent, signedAt }: Props)
         )}
       </div>
 
-      <div className="rounded-2xl border border-border/50 p-5">
+      <div className="rounded-[10px] border border-border p-5">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading engagement…</p>
         ) : events.length === 0 ? (

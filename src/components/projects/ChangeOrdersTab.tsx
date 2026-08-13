@@ -13,13 +13,13 @@ import { ChangeOrderForm } from "./ChangeOrderForm";
 type Props = { projectId: string };
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string }> = {
-  DRAFT:          { label: "Draft",    className: "bg-gray-100 text-gray-500" },
-  SENT:           { label: "Sent",     className: "bg-amber-50 text-amber-600" },
-  PARTIALLY_PAID: { label: "Partial",  className: "bg-blue-50 text-blue-600" },
-  PAID:           { label: "Paid",     className: "bg-emerald-50 text-emerald-600" },
-  OVERDUE:        { label: "Overdue",  className: "bg-red-50 text-red-600" },
+  DRAFT:          { label: "Draft",    className: "bg-muted text-muted-foreground" },
+  SENT:           { label: "Sent",     className: "bg-warning/12 text-warning-foreground" },
+  PARTIALLY_PAID: { label: "Partial",  className: "bg-accent text-accent-foreground" },
+  PAID:           { label: "Paid",     className: "bg-success/10 text-success-foreground" },
+  OVERDUE:        { label: "Overdue",  className: "bg-danger/10 text-danger-foreground" },
   ACCEPTED:       { label: "Approved", className: "bg-primary/10 text-primary" },
-  REJECTED:       { label: "Rejected", className: "bg-gray-100 text-gray-400" },
+  REJECTED:       { label: "Rejected", className: "bg-muted text-muted-foreground" },
 };
 
 export function ChangeOrdersTab({ projectId }: Props) {
@@ -48,10 +48,10 @@ export function ChangeOrdersTab({ projectId }: Props) {
   return (
     <div className="space-y-4">
       {items.length > 0 ? (
-        <div className="rounded-xl border border-border/50 overflow-hidden">
+        <div className="rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border/50 bg-muted/40">
+              <tr className="border-b border-border bg-muted/40">
                 <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">
                   Number
                 </th>
@@ -66,7 +66,7 @@ export function ChangeOrdersTab({ projectId }: Props) {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50">
+            <tbody className="divide-y divide-divider">
               {items.map((inv) => {
                 const badge = STATUS_BADGE[inv.status];
                 return (

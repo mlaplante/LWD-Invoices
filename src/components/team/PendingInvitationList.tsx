@@ -26,13 +26,13 @@ export function PendingInvitationList() {
   if (!invitations || invitations.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-6 py-4 border-b border-border/50">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-6 py-4 border-b border-border">
         <p className="text-sm font-semibold">Pending Invitations</p>
       </div>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border/40">
+          <tr className="border-b border-border">
             <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Expires</th>

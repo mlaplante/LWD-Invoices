@@ -56,9 +56,9 @@ export function RecurringExpenseList() {
         </Button>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">
             All Recurring Expenses
           </p>
         </div>
@@ -77,7 +77,7 @@ export function RecurringExpenseList() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/40">
+                <tr className="border-b border-border">
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Frequency</th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
@@ -111,9 +111,9 @@ export function RecurringExpenseList() {
                       </td>
                       <td className="px-6 py-3.5 text-center">
                         {item.isActive ? (
-                          <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Active</span>
+                          <span className="inline-flex rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success-foreground">Active</span>
                         ) : (
-                          <span className="inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500">Paused</span>
+                          <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Paused</span>
                         )}
                       </td>
                       <td className="px-6 py-3.5 text-right">

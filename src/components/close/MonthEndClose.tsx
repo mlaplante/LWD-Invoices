@@ -49,9 +49,9 @@ function money(symbol: string, n: number): string {
 }
 
 const SEVERITY_STYLE = {
-  ok: { badge: "bg-emerald-50 text-emerald-600", icon: CheckCircle2, label: "OK" },
-  warning: { badge: "bg-amber-50 text-amber-600", icon: TriangleAlert, label: "Warning" },
-  error: { badge: "bg-red-50 text-red-600", icon: AlertTriangle, label: "Blocking" },
+  ok: { badge: "bg-success/10 text-success-foreground", icon: CheckCircle2, label: "OK" },
+  warning: { badge: "bg-warning/12 text-warning-foreground", icon: TriangleAlert, label: "Warning" },
+  error: { badge: "bg-danger/10 text-danger-foreground", icon: AlertTriangle, label: "Blocking" },
 } as const;
 
 export function MonthEndClose() {
@@ -109,7 +109,7 @@ export function MonthEndClose() {
           <span
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
-              isClosed ? "bg-gray-100 text-gray-600" : "bg-amber-50 text-amber-600",
+              isClosed ? "bg-muted text-muted-foreground" : "bg-warning/12 text-warning-foreground",
             )}
           >
             {isClosed ? <Lock className="w-3.5 h-3.5" /> : <LockOpen className="w-3.5 h-3.5" />}
@@ -136,7 +136,7 @@ export function MonthEndClose() {
       </div>
 
       {isLoading || !report ? (
-        <div className="h-64 rounded-2xl border border-border/50 bg-card animate-pulse" />
+        <div className="h-64 rounded-[10px] border border-border bg-card animate-pulse" />
       ) : (
         <div className={cn("space-y-5 transition-opacity", isFetching && "opacity-60")}>
           {/* Totals */}
@@ -152,7 +152,7 @@ export function MonthEndClose() {
           </div>
 
           {/* Narrative + readiness */}
-          <div className="rounded-2xl border border-border/50 bg-card p-5">
+          <div className="rounded-[10px] border border-border bg-card p-5">
             <div className="flex items-start gap-3">
               <Sparkles className="w-5 h-5 text-primary shrink-0 mt-0.5" />
               <div className="space-y-2">
@@ -186,10 +186,10 @@ export function MonthEndClose() {
                       className={cn(
                         "w-4 h-4 shrink-0 mt-0.5",
                         item.severity === "error"
-                          ? "text-red-500"
+                          ? "text-danger-foreground"
                           : item.severity === "warning"
-                            ? "text-amber-500"
-                            : "text-emerald-500",
+                            ? "text-warning-foreground"
+                            : "text-success-foreground",
                       )}
                     />
                     <div className="flex-1 min-w-0">
@@ -252,7 +252,7 @@ export function MonthEndClose() {
           )}
 
           {!report.periodElapsed && (
-            <p className="text-sm text-amber-600 inline-flex items-center gap-1.5">
+            <p className="text-sm text-warning-foreground inline-flex items-center gap-1.5">
               <TriangleAlert className="w-4 h-4" /> This month hasn&apos;t finished yet — you can preview
               the close but not lock it until the period ends.
             </p>
@@ -290,7 +290,7 @@ export function MonthEndClose() {
 
 function Stat({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card px-4 py-3">
+    <div className="rounded-[10px] border border-border bg-card px-4 py-3">
       <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={cn("mt-1 font-semibold", emphasize ? "text-xl text-primary" : "text-lg")}>{value}</p>
     </div>
@@ -307,8 +307,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="px-5 py-3 border-b border-border/50">
+    <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-border">
         <h2 className="text-sm font-semibold">{title}</h2>
         {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
@@ -321,7 +321,7 @@ function AnomalyRow({ severity, message }: { severity: "warning" | "danger"; mes
   return (
     <div className="flex items-start gap-3 px-5 py-3.5">
       <AlertTriangle
-        className={cn("w-4 h-4 shrink-0 mt-0.5", severity === "danger" ? "text-red-500" : "text-amber-500")}
+        className={cn("w-4 h-4 shrink-0 mt-0.5", severity === "danger" ? "text-danger-foreground" : "text-warning-foreground")}
       />
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>

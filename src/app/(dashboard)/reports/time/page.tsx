@@ -51,26 +51,26 @@ export default async function TimeTrackingReportPage({
       <ReportFilters basePath="/reports/time" from={params.from} to={params.to} />
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Hours</p>
+        <div className="rounded-[10px] border border-border bg-card px-5 py-4">
+          <p className="eyebrow lowercase text-[11px]">Total Hours</p>
           <p className="text-2xl font-bold mt-1">{fmtHours(totalMinutes)}</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Billable Value</p>
+        <div className="rounded-[10px] border border-border bg-card px-5 py-4">
+          <p className="eyebrow lowercase text-[11px]">Billable Value</p>
           <p className="text-2xl font-bold mt-1 text-primary">${totalBillable.toFixed(2)}</p>
         </div>
       </div>
 
       {data.length === 0 ? (
-        <div className="rounded-2xl border border-border/50 bg-card px-6 py-12 text-center text-muted-foreground text-sm">
+        <div className="rounded-[10px] border border-border bg-card px-6 py-12 text-center text-muted-foreground text-sm">
           No time entries for this period.
         </div>
       ) : (
-        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="rounded-[10px] border border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-border/50">
-              <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <thead className="border-b border-border">
+              <tr className="eyebrow lowercase text-[11px]">
                 <th className="px-5 py-3 text-left">Project</th>
                 <th className="px-5 py-3 text-left">Client</th>
                 <th className="px-5 py-3 text-right">Hours</th>
@@ -79,7 +79,7 @@ export default async function TimeTrackingReportPage({
             </thead>
             <tbody>
               {data.map((row) => (
-                <tr key={row.projectId} className="border-b border-border/50 last:border-0 hover:bg-accent/30">
+                <tr key={row.projectId} className="border-b border-border last:border-0 hover:bg-accent/30">
                   <td className="px-5 py-3 font-medium">{row.projectName}</td>
                   <td className="px-5 py-3 text-muted-foreground">{row.clientName}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{fmtHours(row.totalMinutes)}</td>

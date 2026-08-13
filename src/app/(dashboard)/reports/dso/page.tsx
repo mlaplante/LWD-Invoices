@@ -7,11 +7,11 @@ import { BenchmarkCard } from "@/components/reports/BenchmarkCard";
 import { AGING_BUCKETS } from "@/server/services/ar-reports";
 
 const BUCKET_STYLES: Record<string, { color: string; dotColor: string }> = {
-  current: { color: "text-emerald-600", dotColor: "bg-emerald-500" },
-  d1_30: { color: "text-amber-600", dotColor: "bg-amber-500" },
-  d31_60: { color: "text-orange-600", dotColor: "bg-orange-500" },
-  d61_90: { color: "text-red-500", dotColor: "bg-red-500" },
-  d90plus: { color: "text-red-700", dotColor: "bg-red-700" },
+  current: { color: "text-success-foreground", dotColor: "bg-success" },
+  d1_30: { color: "text-warning-foreground", dotColor: "bg-warning" },
+  d31_60: { color: "text-warning-foreground", dotColor: "bg-warning" },
+  d61_90: { color: "text-danger-foreground", dotColor: "bg-danger" },
+  d90plus: { color: "text-danger-foreground", dotColor: "bg-danger" },
 };
 
 function fmtMoney(n: number) {
@@ -64,13 +64,13 @@ export default async function DsoDashboardPage() {
 
       {/* Headline metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Days Sales Outstanding</p>
+        <div className="rounded-[10px] border border-border bg-card px-5 py-4">
+          <p className="eyebrow lowercase text-[11px]">Days Sales Outstanding</p>
           <div className="flex items-baseline gap-2 mt-1">
             <p className="text-3xl font-bold tabular-nums">{currentDso.toFixed(1)}</p>
             <span className="text-sm text-muted-foreground">days</span>
             {prev && Math.abs(dsoDelta) >= 0.05 && (
-              <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${improving ? "text-emerald-600" : "text-red-600"}`}>
+              <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${improving ? "text-success-foreground" : "text-danger-foreground"}`}>
                 {improving ? <TrendingDown className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
                 {Math.abs(dsoDelta).toFixed(1)}
               </span>
@@ -80,13 +80,13 @@ export default async function DsoDashboardPage() {
             Avg. time to collect · {improving ? "improving" : prev ? "rising" : "current"} vs. last month
           </p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Receivable</p>
+        <div className="rounded-[10px] border border-border bg-card px-5 py-4">
+          <p className="eyebrow lowercase text-[11px]">Total Receivable</p>
           <p className="text-3xl font-bold tabular-nums mt-1">${fmtMoney(aging.totalAR)}</p>
           <p className="text-xs text-muted-foreground mt-0.5">Outstanding balance, net of payments</p>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Open Invoices</p>
+        <div className="rounded-[10px] border border-border bg-card px-5 py-4">
+          <p className="eyebrow lowercase text-[11px]">Open Invoices</p>
           <p className="text-3xl font-bold tabular-nums mt-1">{openCount}</p>
           <p className="text-xs text-muted-foreground mt-0.5">With a balance due</p>
         </div>
@@ -96,9 +96,9 @@ export default async function DsoDashboardPage() {
       <BenchmarkCard benchmark={benchmark} />
 
       {/* DSO trend chart */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-6 pt-5 pb-4 border-b border-border/50">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">DSO Trend</p>
+      <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+        <div className="px-6 pt-5 pb-4 border-b border-border">
+          <p className="eyebrow lowercase text-[11px]">DSO Trend</p>
           <p className="text-base font-semibold mt-0.5">Last {trend.length} Months</p>
         </div>
         <div className="px-6 py-5">
@@ -115,12 +115,12 @@ export default async function DsoDashboardPage() {
                 style={{ display: "block", minWidth: "100%" }}
                 preserveAspectRatio="none"
               >
-                <path d={areaPath} fill="hsl(var(--primary) / 0.10)" />
-                <path d={linePath} fill="none" stroke="hsl(var(--primary))" strokeWidth={2} strokeLinejoin="round" />
+                <path d={areaPath} fill="color-mix(in srgb, var(--primary) 10%, transparent)" />
+                <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinejoin="round" />
                 {trend.map((p, i) => (
                   <g key={p.month}>
-                    <circle cx={xFor(i)} cy={yFor(p.dso)} r={i === trend.length - 1 ? 4 : 2.5} fill="hsl(var(--primary))" />
-                    <text x={xFor(i)} y={CHART_H + 16} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">
+                    <circle cx={xFor(i)} cy={yFor(p.dso)} r={i === trend.length - 1 ? 4 : 2.5} fill="var(--primary)" />
+                    <text x={xFor(i)} y={CHART_H + 16} textAnchor="middle" fontSize={9} fill="var(--muted-foreground)">
                       {p.label}
                     </text>
                   </g>
@@ -138,8 +138,8 @@ export default async function DsoDashboardPage() {
           const style = BUCKET_STYLES[b.key];
           const pct = aging.totalAR > 0 ? (bucket.total / aging.totalAR) * 100 : 0;
           return (
-            <div key={b.key} className="rounded-2xl border border-border/50 bg-card px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{b.label}</p>
+            <div key={b.key} className="rounded-[10px] border border-border bg-card px-4 py-3">
+              <p className="eyebrow lowercase text-[11px]">{b.label}</p>
               <p className={`text-xl font-bold tabular-nums mt-1 ${style.color}`}>${fmtMoney(bucket.total)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {bucket.count} invoice{bucket.count !== 1 ? "s" : ""} · {pct.toFixed(0)}%
@@ -155,16 +155,16 @@ export default async function DsoDashboardPage() {
         if (bucket.rows.length === 0) return null;
         const style = BUCKET_STYLES[b.key];
         return (
-          <div key={b.key} className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-            <div className="px-5 py-3 border-b border-border/50 flex items-center gap-2">
+          <div key={b.key} className="rounded-[10px] border border-border bg-card overflow-hidden">
+            <div className="px-5 py-3 border-b border-border flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${style.dotColor}`} />
               <p className="text-sm font-semibold">{b.label}</p>
               <span className="text-xs text-muted-foreground ml-auto tabular-nums">${fmtMoney(bucket.total)}</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="border-b border-border/50">
-                  <tr className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <thead className="border-b border-border">
+                  <tr className="eyebrow lowercase text-[11px]">
                     <th className="px-5 py-2 text-left">Invoice</th>
                     <th className="px-5 py-2 text-left">Client</th>
                     <th className="px-5 py-2 text-right">Due Date</th>
@@ -174,7 +174,7 @@ export default async function DsoDashboardPage() {
                 </thead>
                 <tbody>
                   {bucket.rows.map((inv) => (
-                    <tr key={inv.invoiceId} className="border-b border-border/50 last:border-0 hover:bg-accent/30">
+                    <tr key={inv.invoiceId} className="border-b border-border last:border-0 hover:bg-accent/30">
                       <td className="px-5 py-3">
                         <Link href={`/invoices/${inv.invoiceId}`} className="font-medium hover:text-primary transition-colors">
                           #{inv.number}

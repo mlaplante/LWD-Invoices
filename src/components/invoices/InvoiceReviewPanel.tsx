@@ -3,8 +3,8 @@
 import { trpc } from "@/trpc/client";
 
 const SEVERITY_STYLES: Record<string, string> = {
-  warning: "border-amber-300 bg-amber-50 text-amber-900",
-  info: "border-sky-300 bg-sky-50 text-sky-900",
+  warning: "border-warning/30 bg-warning/12 text-warning-foreground",
+  info: "border-primary/30 bg-accent text-accent-foreground",
 };
 
 export function InvoiceReviewPanel({ invoiceId }: { invoiceId: string }) {
@@ -14,7 +14,7 @@ export function InvoiceReviewPanel({ invoiceId }: { invoiceId: string }) {
     <div className="space-y-2">
       <button
         type="button"
-        className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-gray-50"
+        className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
         onClick={() => review.mutate({ invoiceId })}
         disabled={review.isPending}
       >
@@ -22,7 +22,7 @@ export function InvoiceReviewPanel({ invoiceId }: { invoiceId: string }) {
       </button>
 
       {review.data && review.data.findings.length === 0 && (
-        <p className="text-sm text-emerald-700">
+        <p className="text-sm text-success-foreground">
           No issues found — this invoice looks ready to send.
         </p>
       )}
@@ -41,7 +41,7 @@ export function InvoiceReviewPanel({ invoiceId }: { invoiceId: string }) {
       )}
 
       {review.error && (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-danger-foreground">
           Couldn&apos;t run the review. You can still send.
         </p>
       )}

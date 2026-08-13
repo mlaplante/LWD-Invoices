@@ -9,7 +9,7 @@ export default function ProjectsLoading() {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-border/50 p-5 space-y-3">
+          <div key={i} className="rounded-[10px] border border-border p-5 space-y-3">
             <div className="flex items-center gap-3">
               <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
               <div className="space-y-1.5 flex-1">

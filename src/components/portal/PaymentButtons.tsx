@@ -60,12 +60,12 @@ export function PaymentButtons({ token, gateways, total, orgName, partialPayment
     kind === "ach" ? "Pay by Bank (ACH)" : "Pay by Bank (SEPA)";
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-6">
+    <div className="rounded-[10px] border border-border bg-card p-6">
       <h2 className="text-base font-semibold text-foreground mb-4">{label ?? "Pay Now"}</h2>
       {earlyPayTotal ? (
         <p className="text-sm text-muted-foreground mb-4">
           Amount due: <span className="line-through">{total}</span>{" "}
-          <span className="font-semibold text-emerald-700">{earlyPayTotal}</span>{" "}
+          <span className="font-semibold text-success-foreground">{earlyPayTotal}</span>{" "}
           <span className="text-xs">({earlyPayPercent}% early-payment discount, card & bank payments)</span>
         </p>
       ) : (
@@ -118,13 +118,13 @@ export function PaymentButtons({ token, gateways, total, orgName, partialPayment
         )}
 
         {paypalGateway?.paypalUrl && (
-          <Button asChild className="w-full py-6 bg-yellow-400 text-yellow-900 hover:bg-yellow-500">
+          <Button asChild className="w-full py-6 bg-warning text-warning-foreground hover:bg-warning">
             <a
               href={paypalGateway.paypalUrl}
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span className="font-bold text-blue-700">Pay</span>
+              <span className="font-bold text-accent-foreground">Pay</span>
               {paypalGateway.label ?? "Pay with PayPal"}
               {surchargeNote(paypalGateway)}
             </a>
@@ -134,7 +134,7 @@ export function PaymentButtons({ token, gateways, total, orgName, partialPayment
         {manualGateways.map((g) => (
           <div
             key={g.gatewayType}
-            className="rounded-xl border border-border/50 bg-accent/30 p-4"
+            className="rounded-xl border border-border bg-accent/30 p-4"
           >
             <p className="text-sm font-medium text-foreground mb-1">
               {g.label ?? g.gatewayType.replace("_", " ")}

@@ -20,10 +20,10 @@ import { RotateCcw } from "lucide-react";
 import type { RefundStatus } from "@/generated/prisma";
 
 const REFUND_BADGE: Record<RefundStatus, { label: string; className: string }> = {
-  PENDING: { label: "Pending", className: "bg-amber-50 text-amber-600" },
-  SUCCEEDED: { label: "Refunded", className: "bg-emerald-50 text-emerald-600" },
-  FAILED: { label: "Failed", className: "bg-red-50 text-red-600" },
-  CANCELED: { label: "Canceled", className: "bg-gray-100 text-gray-500" },
+  PENDING: { label: "Pending", className: "bg-warning/12 text-warning-foreground" },
+  SUCCEEDED: { label: "Refunded", className: "bg-success/10 text-success-foreground" },
+  FAILED: { label: "Failed", className: "bg-danger/10 text-danger-foreground" },
+  CANCELED: { label: "Canceled", className: "bg-muted text-muted-foreground" },
 };
 
 /**
@@ -50,7 +50,7 @@ export function InvoiceRefundsPanel({ invoiceId }: { invoiceId: string }) {
       <h2 className="text-base font-semibold">Refunds</h2>
 
       {refundablePayments.length > 0 && (
-        <div className="rounded-2xl border border-border/50 bg-card divide-y divide-border/40">
+        <div className="rounded-[10px] border border-border bg-card divide-y divide-border/40">
           {refundablePayments.map((p) => (
             <div key={p.id} className="flex items-center justify-between gap-3 px-5 py-3">
               <div className="text-sm">
@@ -72,9 +72,9 @@ export function InvoiceRefundsPanel({ invoiceId }: { invoiceId: string }) {
       )}
 
       {refunds.length > 0 && (
-        <div className="rounded-2xl border border-border/50 overflow-hidden">
+        <div className="rounded-[10px] border border-border overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-muted/30 border-b border-border/50">
+            <thead className="bg-muted/30 border-b border-border">
               <tr>
                 {["Date", "Method", "Amount", "Status"].map((h, i) => (
                   <th

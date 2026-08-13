@@ -44,12 +44,12 @@ export function ProfitabilitySection() {
               {data.insights.recommendations.slice(0, 6).map((rec) => (
                 <li
                   key={`${rec.type}-${rec.id}`}
-                  className="flex items-start gap-2 rounded-lg border border-border/50 p-3 text-sm"
+                  className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm"
                 >
                   {rec.type === "negative_margin" ? (
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger-foreground" />
                   ) : (
-                    <TrendingDown className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <TrendingDown className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
                   )}
                   <span>{rec.message}</span>
                 </li>

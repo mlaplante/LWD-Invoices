@@ -26,7 +26,7 @@ export function ClientEmailPreferencesPanel({ clientId }: { clientId: string }) 
 
   if (isLoading || !data) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-card p-5">
+      <div className="rounded-[10px] border border-border bg-card p-5">
         <div className="h-5 w-32 bg-muted rounded animate-pulse" />
       </div>
     );
@@ -35,13 +35,13 @@ export function ClientEmailPreferencesPanel({ clientId }: { clientId: string }) 
   const anyDisabled = data.kinds.some((k) => !data.preferences[k.kind]);
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
+    <div className="rounded-[10px] border border-border bg-card p-5 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <MailX className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-base font-semibold">Email preferences</h2>
           {anyDisabled && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+            <span className="rounded-full bg-warning/12 px-2 py-0.5 text-xs font-medium text-warning-foreground">
               Opted out of some emails
             </span>
           )}

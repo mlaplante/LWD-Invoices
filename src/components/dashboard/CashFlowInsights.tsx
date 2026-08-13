@@ -19,10 +19,10 @@ function changeLabel(value: number | null): string {
 }
 
 const severityClass = {
-  info: "border-blue-200 bg-blue-50 text-blue-900",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  warning: "border-amber-200 bg-amber-50 text-amber-900",
-  danger: "border-red-200 bg-red-50 text-red-900",
+  info: "border-primary/30 bg-accent text-accent-foreground",
+  success: "border-success/30 bg-success/10 text-success-foreground",
+  warning: "border-warning/30 bg-warning/12 text-warning-foreground",
+  danger: "border-danger/30 bg-danger/10 text-danger-foreground",
 };
 
 export function CashFlowInsights({ data }: Props) {
@@ -31,7 +31,7 @@ export function CashFlowInsights({ data }: Props) {
   const TrendIcon = isQuarterUp ? TrendingUp : TrendingDown;
 
   return (
-    <section className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
+    <section className="rounded-[10px] border border-border bg-card p-5 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -39,7 +39,7 @@ export function CashFlowInsights({ data }: Props) {
               <Sparkles className="h-4 w-4" />
             </span>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">AI cash-flow insights</p>
+              <p className="eyebrow lowercase text-[11px]">AI cash-flow insights</p>
               <h2 className="text-base font-semibold">Narrative and action cards</h2>
             </div>
           </div>
@@ -47,8 +47,8 @@ export function CashFlowInsights({ data }: Props) {
             {narrative.summary}
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-xl border border-border/50 px-3 py-2 text-sm">
-          <TrendIcon className={cn("h-4 w-4", isQuarterUp ? "text-emerald-600" : "text-amber-600")} />
+        <div className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
+          <TrendIcon className={cn("h-4 w-4", isQuarterUp ? "text-success-foreground" : "text-warning-foreground")} />
           <span className="font-semibold">{changeLabel(metrics.currentQuarter.cashInChangePercent)}</span>
           <span className="text-muted-foreground">vs last quarter</span>
         </div>
@@ -67,26 +67,26 @@ export function CashFlowInsights({ data }: Props) {
       </div>
 
       <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border/50 p-3">
+        <div className="rounded-xl border border-border p-3">
           <p className="text-xs text-muted-foreground">This month net</p>
           <p className="mt-1 font-semibold">{money(metrics.currentMonth.netCash)}</p>
         </div>
-        <div className="rounded-xl border border-border/50 p-3">
+        <div className="rounded-xl border border-border p-3">
           <p className="text-xs text-muted-foreground">This quarter cash in</p>
           <p className="mt-1 font-semibold">{money(metrics.currentQuarter.cashIn)}</p>
         </div>
-        <div className="rounded-xl border border-border/50 p-3">
+        <div className="rounded-xl border border-border p-3">
           <p className="text-xs text-muted-foreground">Overdue balance</p>
           <p className="mt-1 font-semibold">{money(metrics.overdue.total)}</p>
         </div>
-        <div className="rounded-xl border border-border/50 p-3">
+        <div className="rounded-xl border border-border p-3">
           <p className="text-xs text-muted-foreground">Narrative source</p>
           <p className="mt-1 font-semibold capitalize">{narrative.source}</p>
         </div>
       </div>
 
       {metrics.unbilledRetainerOpportunities.length > 0 ? (
-        <div className="rounded-xl border border-border/50 p-3">
+        <div className="rounded-xl border border-border p-3">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Unbilled retainer opportunities</p>
           <ul className="mt-2 space-y-1 text-sm">
             {metrics.unbilledRetainerOpportunities.slice(0, 3).map((item) => (

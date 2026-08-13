@@ -4,11 +4,11 @@ export default function Loading() {
       <div className="h-8 w-48 bg-muted rounded" />
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-border/50 bg-card h-24" />
+          <div key={i} className="rounded-[10px] border border-border bg-card h-24" />
         ))}
       </div>
-      <div className="rounded-2xl border border-border/50 bg-card h-64" />
-      <div className="rounded-2xl border border-border/50 bg-card h-48" />
+      <div className="rounded-[10px] border border-border bg-card h-64" />
+      <div className="rounded-[10px] border border-border bg-card h-48" />
     </div>
   );
 }

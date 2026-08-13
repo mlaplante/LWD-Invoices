@@ -24,26 +24,26 @@ const TRIGGER_CONFIG: Record<
   PAYMENT_RECEIVED: {
     label: "Payment Received",
     icon: <CreditCard className="w-3.5 h-3.5" />,
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
+    color: "text-success-foreground",
+    bg: "bg-success/10",
   },
   INVOICE_SENT: {
     label: "Invoice Sent",
     icon: <Send className="w-3.5 h-3.5" />,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
+    color: "text-accent-foreground",
+    bg: "bg-accent",
   },
   INVOICE_VIEWED: {
     label: "Invoice Viewed",
     icon: <Eye className="w-3.5 h-3.5" />,
-    color: "text-amber-600",
-    bg: "bg-amber-50",
+    color: "text-warning-foreground",
+    bg: "bg-warning/12",
   },
   INVOICE_OVERDUE: {
     label: "Invoice Overdue",
     icon: <AlertTriangle className="w-3.5 h-3.5" />,
-    color: "text-red-600",
-    bg: "bg-red-50",
+    color: "text-danger-foreground",
+    bg: "bg-danger/10",
   },
 };
 
@@ -74,7 +74,7 @@ export function AutomationList({ onEdit }: Props) {
         {[1, 2].map((i) => (
           <div
             key={i}
-            className="h-20 rounded-xl border border-border/50 bg-muted/30 animate-pulse"
+            className="h-20 rounded-xl border border-border bg-muted/30 animate-pulse"
           />
         ))}
       </div>
@@ -112,7 +112,7 @@ export function AutomationList({ onEdit }: Props) {
           return (
             <div
               key={a.id}
-              className="rounded-xl border border-border/50 bg-card p-4 flex items-start gap-4"
+              className="rounded-xl border border-border bg-card p-4 flex items-start gap-4"
             >
               {/* Trigger badge */}
               <div

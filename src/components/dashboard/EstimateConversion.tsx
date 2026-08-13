@@ -13,7 +13,7 @@ export function EstimateConversion({ data }: { data: ConversionData }) {
       : null;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-5">
+    <div className="rounded-[10px] border border-border bg-card p-5">
       <h3 className="font-semibold text-sm mb-3">Estimate Conversion</h3>
 
       <div className="flex items-end gap-2 mb-2">
@@ -21,7 +21,7 @@ export function EstimateConversion({ data }: { data: ConversionData }) {
           {thisMonth.rate !== null ? `${thisMonth.rate}%` : "—"}
         </span>
         {trend !== null && trend !== 0 && (
-          <span className={`flex items-center gap-0.5 text-xs font-medium ${trend > 0 ? "text-emerald-600" : "text-red-600"}`}>
+          <span className={`flex items-center gap-0.5 text-xs font-medium ${trend > 0 ? "text-success-foreground" : "text-danger-foreground"}`}>
             {trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             {trend > 0 ? "+" : ""}{trend}%
           </span>
