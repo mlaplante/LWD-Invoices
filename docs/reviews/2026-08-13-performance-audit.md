@@ -18,7 +18,7 @@ while production builds with Turbopack, so its figures are indicative, not the s
 | # | Finding | Status |
 |---|---|---|
 | 1 | Index drift (51 undeclared) | **Fixed** — 40 declared, 11 partial documented; drift 51 → 11 |
-| 2 | Prisma pool `max: 1` serializes `Promise.all` | Open — see sizing note at the end |
+| 2 | Prisma pool `max: 1` serializes `Promise.all` | **Partially done.** `resolveMembership` collapsed to one query (shipped, tested). The `max` change itself is **blocked** on confirming the production `DATABASE_URL` — see Sizing. |
 | 3 | `@dnd-kit/*` in `optimizePackageImports` | **Fixed** — entries removed, comment added |
 | 4–8 | — | Open |
 | 9 | Two redundant duplicate indexes (new, found while fixing #1) | Open |
@@ -148,7 +148,12 @@ reasoning — watch for `prepared statement "s0" already exists` under concurren
 **Estimate:** ~10 minutes of editing, ~half a day to land safely — confirm the URL, deploy to a
 preview branch, instrument, load-test, watch Supabase's connection count and error rate, then ship.
 
-#### Cheaper alternative that captures part of the win with no infra risk
+> **BLOCKED, 2026-08-13.** The gating question above could not be answered from this environment:
+> the Netlify CLI is not installed, no `NETLIFY_AUTH_TOKEN` is present, and the Netlify MCP reader
+> exposes project/deploy metadata but not environment variables. **The `max` value is unchanged at
+> `1`.** Do not raise it until someone reads the Netlify env and confirms the port.
+
+#### Shipped: the part that needed no infra decision
 
 `resolveMembership()` fires two queries against `UserOrganization` for the *same* `userId` on every
 authenticated request. They can be one query:
@@ -165,11 +170,17 @@ return rows.find((r) => r.organizationId === activeOrgId) ?? rows[0] ?? null;
 Both the current `findUnique` and this `findMany` are served by the existing
 `@@unique([userId, organizationId])` index, which leads on `userId`, so neither is a scan.
 
-Be precise about the win, though: today's code only issues two queries when the `activeOrgId` cookie
-is present — the no-cookie path is already a single query (`Promise.resolve(null)` for the other
+Be precise about the win: the old code only issued two queries when the `activeOrgId` cookie was
+present — the no-cookie path was already a single query (`Promise.resolve(null)` for the other
 branch). So this saves one round trip **on the cookie path only**, trading two indexed point-lookups
-for one indexed range read plus a JS `.find()` over a handful of rows. Still worth it, and unlike
-#2 it carries no infra risk — but it is not a universal halving.
+for one indexed range read plus a JS `.find()` over a handful of rows. Not a universal halving, but
+it is on the path of every authenticated request and carries no infra risk.
+
+**Shipped as `ef3bf69`.** The selection rule is now an exported pure function, `pickMembership()`,
+covered by `src/test/user-context-membership.test.ts` (7 cases). The security-relevant one is
+pinned explicitly: a cookie naming an org the user has no membership row for is *ignored*, falling
+back to the earliest membership — it can never widen access. That behaviour was previously implicit
+in `findUnique` returning `null`, and untested.
 
 **Confirm with:** `resolveMembership()` in `src/server/user-context.ts` is the ideal measurement
 target — a two-query `Promise.all` that runs on *every authenticated request*, so it's both the
