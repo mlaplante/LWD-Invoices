@@ -1,35 +1,20 @@
-"use client";
+import { api, HydrateClient } from "@/trpc/server";
+import { UnpaidInvoicesList } from "@/components/invoices/UnpaidInvoicesList";
 
-import Link from "next/link";
-import { trpc } from "@/trpc/client";
+export const dynamic = "force-dynamic";
 
-export default function UnpaidInvoicesPage() {
-  const { data, isLoading } = trpc.invoices.openForReminder.useQuery({});
+/**
+ * Server shell so the open-invoice query runs during the RSC render rather than
+ * after hydration. `prefetch({})` mirrors the client's `useQuery({})` exactly —
+ * the inputs must match or the query keys diverge, the hydrated entry is ignored,
+ * and the page pays for the query twice.
+ */
+export default async function UnpaidInvoicesPage() {
+  void api.invoices.openForReminder.prefetch({});
 
   return (
-    <div className="space-y-3">
-      <h1 className="font-display text-2xl tracking-tight">Unpaid invoices</h1>
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {data?.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nothing outstanding. 🎉</p>
-      )}
-      {data && data.length > 0 && (
-        <ul className="divide-y divide-border/40 rounded-[10px] border border-border bg-card">
-          {data.map((inv) => (
-            <li key={inv.id}>
-              <Link
-                href={`/invoices/${inv.id}`}
-                className="flex items-center justify-between gap-3 px-4 py-3 active:bg-accent"
-              >
-                <span className="truncate text-sm font-medium">
-                  {inv.number} — {inv.clientName}
-                </span>
-                <span className="text-sm tabular-nums">{inv.total.toFixed(2)}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <HydrateClient>
+      <UnpaidInvoicesList />
+    </HydrateClient>
   );
 }

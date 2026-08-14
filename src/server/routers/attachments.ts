@@ -12,8 +12,12 @@ export const attachmentsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
+      // Existence check only — `org.id` below is just `ctx.orgId`. See the note
+      // in auditLog.ts: selecting the whole Organization row (121 columns) to
+      // answer a yes/no question is pure wire and memory overhead.
       const org = await ctx.db.organization.findFirst({
         where: { id: ctx.orgId },
+        select: { id: true },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.attachment.findMany({

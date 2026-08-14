@@ -3,7 +3,7 @@
 import { createTRPCReact } from "@trpc/react-query";
 import type { AppRouter } from "@/server/routers/_app";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink } from "@trpc/client";
+import { httpBatchStreamLink } from "@trpc/client";
 import superjson from "@/lib/superjson";
 import { useState } from "react";
 import { makeQueryClient } from "./query-client";
@@ -29,7 +29,17 @@ export function TRPCReactProvider({ children }: { children: React.ReactNode }) {
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [
-        httpBatchLink({
+        // Streaming batch link, not plain httpBatchLink. Batching is still what
+        // we want (one request instead of N), but a non-streaming batch resolves
+        // as a single unit: every procedure in the batch waits for the slowest
+        // one before any of them paint. Pages that fire a wide batch — the
+        // money-intelligence dashboard sends seven, an invoice detail page sends
+        // a long tail of panel queries — hold their fast panels hostage to the
+        // slow one. httpBatchStreamLink flushes each response as it resolves.
+        //
+        // Options are a superset of httpBatchLink's (it adds `streamHeader`), so
+        // url/transformer/maxURLLength carry over unchanged.
+        httpBatchStreamLink({
           url: `${getBaseUrl()}/api/trpc`,
           transformer: superjson,
           maxURLLength: 2048,

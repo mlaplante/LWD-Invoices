@@ -18,8 +18,13 @@ export const auditLogRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
+      // Existence check only — `org.id` below is just `ctx.orgId`. Organization
+      // has 121 columns, so selecting the row wholesale pulled every branding,
+      // tax, portal and reminder setting on each activity-feed load to answer a
+      // yes/no question.
       const org = await ctx.db.organization.findFirst({
         where: { id: ctx.orgId },
+        select: { id: true },
       });
       if (!org) throw new TRPCError({ code: "NOT_FOUND" });
 

@@ -20,8 +20,11 @@ while production builds with Turbopack, so its figures are indicative, not the s
 | 1 | Index drift (51 undeclared) | **Fixed** — 40 declared, 11 partial documented; drift 51 → 11 |
 | 2 | Prisma pool `max: 1` serializes `Promise.all` | **Partially done.** `resolveMembership` collapsed to one query (shipped, tested). The `max` change itself is **blocked** on confirming the production `DATABASE_URL` — see Sizing. |
 | 3 | `@dnd-kit/*` in `optimizePackageImports` | **Fixed** — entries removed, comment added |
-| 4–8 | — | Open |
-| 9 | Two redundant duplicate indexes (new, found while fixing #1) | Open |
+| 4 | ~24 client pages with no server prefetch | **In progress** — 3 converted (`reports/collections`, `invoices/unpaid`, `activity`), ~21 remain |
+| 5 | `httpBatchLink` blocks on slowest in batch | **Fixed** — swapped to `httpBatchStreamLink` |
+| 6–8 | — | Open |
+| 9 | Two redundant duplicate indexes (found while fixing #1) | Open |
+| 10 | Whole-`Organization` rows fetched as existence checks (found while fixing #4) | **Fixed** — 3 sites given a `select` |
 
 ---
 
@@ -301,6 +304,31 @@ adding, by query-site count:
 
 `ExpenseCategory`, `ExpenseSupplier`, `TaskStatus` also appear but are served from
 `src/server/cached.ts` at 1-hour TTL, so they're low value.
+
+### 10. Whole `Organization` rows fetched as existence checks
+
+> **FIXED.** Found while converting the activity page for #4.
+
+`Organization` has **121 fields**. Three call sites loaded the entire row with no `select`:
+
+| Site | Used | Fix |
+|---|---|---|
+| `routers/auditLog.ts` `list` | `org.id` (= `ctx.orgId`) + existence | `select: { id: true }` |
+| `routers/attachments.ts` `list` | `org.id` + existence | `select: { id: true }` |
+| `services/contractor-1099.ts` | 10 payer fields | named those 10 |
+
+The first two ran a 121-column fetch to answer a yes/no question — `auditLog.list` backs the
+activity feed, so it paid that on every load and every "Load more".
+
+For scale: the other 30 org lookups in `src/server` all already pass a `select`. These three were
+the outliers, not the norm.
+
+**Worth noting but not changed:** the existence check in the first two is arguably redundant
+outright. `ctx.orgId` comes from a `UserOrganization` row whose FK to `Organization` is
+`onDelete: Cascade`, so an org that doesn't exist can't have a membership row pointing at it, and
+`protectedProcedure` would have already failed. Removing the check would save the round trip
+entirely — but it changes error semantics, so it belongs in its own change rather than folded in
+here.
 
 ### 9. Two redundant duplicate indexes
 

@@ -84,7 +84,24 @@ export async function get1099Pack(
   const { from, to } = yearRange(year);
 
   const [org, contractors, totals] = await Promise.all([
-    db.organization.findUnique({ where: { id: orgId } }),
+    // Only the payer block below reads from `org`. Organization has 121
+    // columns; naming the ten used here keeps the encrypted TIN the widest
+    // thing on the wire instead of the whole org record.
+    db.organization.findUnique({
+      where: { id: orgId },
+      select: {
+        name: true,
+        payerTinEncrypted: true,
+        payerTin: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        postalCode: true,
+        country: true,
+        phone: true,
+      },
+    }),
     db.contractor.findMany({
       where: { organizationId: orgId, isArchived: false },
     }),
