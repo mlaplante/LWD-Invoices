@@ -642,25 +642,29 @@ export function InvoiceForm({
     <div className="space-y-6">
       {/* View toggle + autosave status */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-md border p-0.5">
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "form" ? "default" : "ghost"}
-            className="h-7 px-3 text-xs"
-            onClick={() => switchView("form")}
-          >
-            Form
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "canvas" ? "default" : "ghost"}
-            className="h-7 px-3 text-xs"
-            onClick={() => switchView("canvas")}
-          >
-            Preview edit
-          </Button>
+        {/* Same soft-indigo pill treatment as the list views' filter tabs —
+            the filled/glowing button reads as a primary action, not a mode. */}
+        <div className="inline-flex rounded-[8px] border bg-card p-0.5">
+          {(
+            [
+              { id: "form", label: "Form" },
+              { id: "canvas", label: "Preview edit" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              aria-pressed={view === tab.id}
+              onClick={() => switchView(tab.id)}
+              className={`rounded-[6px] px-3.5 py-[5px] text-xs transition-colors duration-200 ease-[ease] ${
+                view === tab.id
+                  ? "bg-accent font-medium text-accent-foreground"
+                  : "text-muted-foreground hover:bg-black/[0.04] hover:text-foreground dark:hover:bg-white/[0.04]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
         <span aria-live="polite" className="text-xs text-muted-foreground">
           {autosave.status === "saving" && "Saving…"}
@@ -698,8 +702,8 @@ export function InvoiceForm({
 
           {/* Line Items */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold">Line Items</h3>
+            <div className="flex items-center gap-2.5">
+              <h3 className="eyebrow lowercase text-[11px]">line items</h3>
               {mode === "create" && (
                 <Button
                   variant="outline"
@@ -753,8 +757,8 @@ export function InvoiceForm({
           </div>
 
           {/* Invoice-Level Discount */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Invoice Discount</h3>
+          <div className="space-y-2.5">
+            <h3 className="eyebrow lowercase text-[11px]">invoice discount</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <label
@@ -839,9 +843,12 @@ export function InvoiceForm({
           </div>
 
           {/* Notes */}
-          <div className="space-y-1">
-            <label htmlFor="invoice-notes" className="text-sm font-medium">
-              Notes
+          <div className="space-y-2">
+            <label
+              htmlFor="invoice-notes"
+              className="eyebrow lowercase text-[11px]"
+            >
+              notes
             </label>
             <Textarea
               id="invoice-notes"
@@ -856,7 +863,7 @@ export function InvoiceForm({
 
           {/* Totals panel */}
           <div className="flex justify-end">
-            <div className="w-72 space-y-1.5 rounded-lg border p-4">
+            <div className="w-72 space-y-1.5 rounded-[10px] border bg-card p-5 tabular-nums">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>{fmt(invoiceTotals.subtotal)}</span>

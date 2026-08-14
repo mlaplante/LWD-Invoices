@@ -20,7 +20,8 @@ export function ReminderOverrideBlock({
   setReminderDaysOverride,
 }: Props) {
   return (
-    <div>
+    <section className="rounded-[10px] border bg-card p-5 space-y-3">
+      <h3 className="eyebrow lowercase text-[11px]">reminders</h3>
       <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
         <input
           type="checkbox"
@@ -34,7 +35,7 @@ export function ReminderOverrideBlock({
         Use org default reminder schedule
       </label>
       {useCustomReminders && (
-        <div className="mt-2 flex flex-wrap gap-2 pl-1">
+        <div className="flex flex-wrap gap-x-3 gap-y-2 pl-1">
           {REMINDER_DAY_OPTIONS.map((d) => (
             <label
               key={d}
@@ -57,6 +58,6 @@ export function ReminderOverrideBlock({
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
