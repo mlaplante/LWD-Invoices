@@ -43,10 +43,10 @@ export function CreateFromPromptPanel({
   }
 
   return (
-    <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold">Create from a prompt</h2>
-        <p className="text-sm text-muted-foreground">
+    <section className="rounded-[10px] border border-primary/20 bg-primary/5 p-5 space-y-3">
+      <div className="space-y-1.5">
+        <h2 className="eyebrow lowercase text-[11px]">✦ create from a prompt</h2>
+        <p className="text-xs leading-relaxed text-muted-foreground">
           Describe the invoice in plain English. We’ll draft it only — review
           all matches before saving or sending.
         </p>

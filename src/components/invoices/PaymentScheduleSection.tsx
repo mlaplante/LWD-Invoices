@@ -43,11 +43,11 @@ export function PaymentScheduleSection({
   setInstallmentAutoChargeEnabled,
 }: Props) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <h3 className="text-sm font-semibold">Payment Schedule</h3>
+    <section className="rounded-[10px] border bg-card p-5 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="eyebrow lowercase text-[11px]">payment schedule</h3>
         {schedule.length > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
             {schedule.length} payment{schedule.length !== 1 ? "s" : ""} scheduled
             <button
               type="button"
@@ -113,6 +113,6 @@ export function PaymentScheduleSection({
           setScheduleOpen(false);
         }}
       />
-    </div>
+    </section>
   );
 }

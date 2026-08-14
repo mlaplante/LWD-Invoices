@@ -79,6 +79,12 @@ function fmt(n: number, symbol: string): string {
   return `${symbol}${n.toFixed(2)}`;
 }
 
+// One template shared by the header row and every line row, so the column
+// labels stay aligned with the fields under them. The name column is
+// minmax(0,…) so a long item name can never push the grid wider than the card.
+const DESKTOP_GRID =
+  "grid-cols-[24px_minmax(0,2fr)_64px_96px_104px_64px_110px_96px_28px] gap-2";
+
 // ── Sortable line item ────────────────────────────────────────────────────────
 
 type SortableLineItemProps = {
@@ -127,9 +133,13 @@ function SortableLineItemImpl({
   const isDiscount = isDiscountType(line.lineType);
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded-md border bg-card">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="border-b border-divider bg-card last:border-b-0"
+    >
       {/* ── Desktop grid layout ── */}
-      <div className="hidden sm:grid grid-cols-[24px_2fr_80px_120px_80px_80px_120px_100px_32px] gap-2 items-start p-2">
+      <div className={`hidden sm:grid ${DESKTOP_GRID} items-start px-3 py-2`}>
         {/* Drag handle */}
         <button
           type="button"
@@ -142,13 +152,13 @@ function SortableLineItemImpl({
         </button>
 
         {/* Name + type */}
-        <div className="space-y-1">
-          <div className="flex gap-1">
+        <div className="min-w-0 space-y-1">
+          <div className="flex items-center gap-1.5">
             <Input
               placeholder="Item name"
               value={line.name}
               onChange={(e) => onUpdate(index, { name: e.target.value })}
-              className="h-8 text-sm"
+              className="h-8 min-w-0 flex-1 text-sm"
               ref={(el) => registerFirstInput(index, el)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -164,7 +174,7 @@ function SortableLineItemImpl({
               value={line.lineType}
               onValueChange={(v: string) => onUpdate(index, { lineType: v as LineType })}
             >
-              <SelectTrigger className="h-8 w-36 text-xs">
+              <SelectTrigger className="h-8 w-28 shrink-0 px-2 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -178,7 +188,7 @@ function SortableLineItemImpl({
             <button
               type="button"
               onClick={() => onToggleDescription(index)}
-              className="text-muted-foreground hover:text-foreground"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
               title="Toggle description"
             >
               {isExpanded ? (
@@ -221,7 +231,7 @@ function SortableLineItemImpl({
         />
 
         {/* Discount */}
-        <div className="flex gap-0.5">
+        <div className="flex items-center gap-1">
           <Input
             type="number"
             min={0}
@@ -236,7 +246,7 @@ function SortableLineItemImpl({
             onClick={() =>
               onUpdate(index, { discountIsPercentage: !line.discountIsPercentage })
             }
-            className="h-8 rounded border px-1 text-xs hover:bg-muted"
+            className="h-8 shrink-0 rounded-[6px] border border-input px-1.5 text-xs text-muted-foreground transition-colors duration-200 hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
             title={line.discountIsPercentage ? "Switch to fixed" : "Switch to %"}
             disabled={isDiscount}
           >
@@ -261,28 +271,32 @@ function SortableLineItemImpl({
         />
 
         {/* Tax multi-select */}
-        <div className="flex flex-wrap gap-1">
-          {taxes.map((tax) => (
-            <button
-              key={tax.id}
-              type="button"
-              onClick={() => onToggleTax(index, tax.id)}
-              className={`rounded px-1.5 py-0.5 text-xs border transition-colors ${
-                line.taxIds.includes(tax.id)
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-border hover:bg-muted"
-              }`}
-            >
-              {tax.name} {tax.rate}%
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-1 pt-1">
+          {taxes.length === 0 ? (
+            <span className="text-xs text-muted-foreground/70">—</span>
+          ) : (
+            taxes.map((tax) => (
+              <button
+                key={tax.id}
+                type="button"
+                onClick={() => onToggleTax(index, tax.id)}
+                className={`rounded-full border px-2 py-0.5 text-xs transition-colors duration-200 ${
+                  line.taxIds.includes(tax.id)
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"
+                }`}
+              >
+                {tax.name} {tax.rate}%
+              </button>
+            ))
+          )}
         </div>
 
         {/* Calculated total */}
-        <div className="text-right text-sm font-medium">
+        <div className="pt-1.5 text-right text-sm font-medium tabular-nums">
           <div>{fmt(result.total, currencySymbol)}</div>
           {result.taxTotal > 0 && (
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs font-normal text-muted-foreground">
               tax: {fmt(result.taxTotal, currencySymbol)}
             </div>
           )}
@@ -455,10 +469,10 @@ function SortableLineItemImpl({
                   key={tax.id}
                   type="button"
                   onClick={() => onToggleTax(index, tax.id)}
-                  className={`rounded px-2 py-1.5 text-xs border transition-colors ${
+                  className={`rounded-full border px-2.5 py-1 text-xs transition-colors duration-200 ${
                     line.taxIds.includes(tax.id)
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-muted-foreground border-border hover:bg-muted"
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"
                   }`}
                 >
                   {tax.name} {tax.rate}%
@@ -592,71 +606,82 @@ export function LineItemEditor({ lines, taxes, currencySymbol, onChange }: Props
 
   return (
     <div className="space-y-2">
-      {/* Header */}
-      <div className="hidden sm:grid grid-cols-[24px_2fr_80px_120px_80px_80px_120px_100px_32px] gap-2 px-2 text-xs font-medium text-muted-foreground">
-        <span />
-        <span>Description</span>
-        <span className="text-right">Qty</span>
-        <span className="text-right">Rate</span>
-        <span className="text-right">Discount</span>
-        <span className="text-right">Period</span>
-        <span>Taxes</span>
-        <span className="text-right">Total</span>
-        <span />
-      </div>
-
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-        accessibility={{
-          announcements: {
-            onDragStart: ({ active }) => {
-              const pos = lines.findIndex((l) => l.sort === active.id) + 1;
-              return `Picked up line item ${pos}.`;
-            },
-            onDragOver: ({ active, over }) => {
-              if (!over) return "";
-              const activePos = lines.findIndex((l) => l.sort === active.id) + 1;
-              const overPos = lines.findIndex((l) => l.sort === over.id) + 1;
-              return `Line item ${activePos} moved to position ${overPos}.`;
-            },
-            onDragEnd: ({ active, over }) => {
-              const activePos = lines.findIndex((l) => l.sort === active.id) + 1;
-              if (!over) return `Line item ${activePos} dropped.`;
-              const overPos = lines.findIndex((l) => l.sort === over.id) + 1;
-              return `Line item ${activePos} dropped at position ${overPos}.`;
-            },
-            onDragCancel: ({ active }) => {
-              const pos = lines.findIndex((l) => l.sort === active.id) + 1;
-              return `Reordering cancelled for line item ${pos}.`;
-            },
-          },
-        }}
-      >
-        <SortableContext
-          items={lines.map((l) => l.sort)}
-          strategy={verticalListSortingStrategy}
+      {/* One clipped card holds the header row and every line, so the mono
+          column labels sit on the same grid as the fields below them. */}
+      <div className="overflow-hidden rounded-[10px] border bg-card">
+        <div
+          className={`meta hidden font-medium uppercase sm:grid ${DESKTOP_GRID} border-b border-border px-3 py-2.5`}
         >
-          {lines.map((line, i) => (
-            <SortableLineItem
-              key={line.sort}
-              line={line}
-              index={i}
-              taxes={taxes}
-              currencySymbol={currencySymbol}
-              isExpanded={expandedDescriptions.has(i)}
-              onUpdate={updateLine}
-              onRemove={removeLine}
-              onToggleDescription={toggleDescription}
-              onToggleTax={toggleTax}
-              onEnter={handleEnter}
-              onDuplicate={handleDuplicate}
-              registerFirstInput={registerFirstInput}
-            />
-          ))}
-        </SortableContext>
-      </DndContext>
+          <span />
+          <span>Description</span>
+          <span className="text-right">Qty</span>
+          <span className="text-right">Rate</span>
+          <span className="text-right">Discount</span>
+          <span className="text-right">Period</span>
+          <span>Taxes</span>
+          <span className="text-right">Total</span>
+          <span />
+        </div>
+
+        {lines.length === 0 && (
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+            No line items yet — add one below.
+          </p>
+        )}
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          accessibility={{
+            announcements: {
+              onDragStart: ({ active }) => {
+                const pos = lines.findIndex((l) => l.sort === active.id) + 1;
+                return `Picked up line item ${pos}.`;
+              },
+              onDragOver: ({ active, over }) => {
+                if (!over) return "";
+                const activePos = lines.findIndex((l) => l.sort === active.id) + 1;
+                const overPos = lines.findIndex((l) => l.sort === over.id) + 1;
+                return `Line item ${activePos} moved to position ${overPos}.`;
+              },
+              onDragEnd: ({ active, over }) => {
+                const activePos = lines.findIndex((l) => l.sort === active.id) + 1;
+                if (!over) return `Line item ${activePos} dropped.`;
+                const overPos = lines.findIndex((l) => l.sort === over.id) + 1;
+                return `Line item ${activePos} dropped at position ${overPos}.`;
+              },
+              onDragCancel: ({ active }) => {
+                const pos = lines.findIndex((l) => l.sort === active.id) + 1;
+                return `Reordering cancelled for line item ${pos}.`;
+              },
+            },
+          }}
+        >
+          <SortableContext
+            items={lines.map((l) => l.sort)}
+            strategy={verticalListSortingStrategy}
+          >
+            {lines.map((line, i) => (
+              <SortableLineItem
+                key={line.sort}
+                line={line}
+                index={i}
+                taxes={taxes}
+                currencySymbol={currencySymbol}
+                isExpanded={expandedDescriptions.has(i)}
+                onUpdate={updateLine}
+                onRemove={removeLine}
+                onToggleDescription={toggleDescription}
+                onToggleTax={toggleTax}
+                onEnter={handleEnter}
+                onDuplicate={handleDuplicate}
+                registerFirstInput={registerFirstInput}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      </div>
 
       <Button type="button" variant="outline" size="sm" onClick={addLine}>
         + Add Line Item

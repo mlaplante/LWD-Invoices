@@ -242,7 +242,7 @@ export function InvoiceDraftQA({
     return (
       <div className="rounded-[10px] border border-primary/35 bg-card p-5 space-y-3">
         <div className="space-y-1.5">
-          <span className="eyebrow">✦ pre-send qa</span>
+          <span className="eyebrow lowercase text-[11px]">✦ pre-send qa</span>
           <p className="text-xs leading-relaxed text-muted-foreground">
             Scan this draft for missing info, duplicate risk, unclear lines, and possible revenue leakage.
           </p>
@@ -344,7 +344,7 @@ export function InvoiceDraftQA({
     return (
       <div className="rounded-[10px] border border-primary/35 bg-card p-5 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="eyebrow">✦ pre-send qa</span>
+          <span className="eyebrow lowercase text-[11px]">✦ pre-send qa</span>
           <Button
             type="button"
             variant="outline"
