@@ -67,9 +67,12 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-select",
       "@radix-ui/react-tabs",
       "@radix-ui/react-tooltip",
-      "@dnd-kit/core",
-      "@dnd-kit/sortable",
-      "@dnd-kit/utilities",
+      // NOTE: do not add @dnd-kit/* or @tanstack/react-query here. Both
+      // coordinate through singletons created at module load (DndContext ↔
+      // useDraggable; QueryClientProvider ↔ the tRPC hooks). Modular-import
+      // rewriting can resolve provider and consumer to separate instances, so
+      // the component mounts but never wires up — drag does nothing, or a
+      // query hangs in a permanent loading state, with no console error.
     ],
   },
   async headers() {

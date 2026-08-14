@@ -7,6 +7,35 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── PARTIAL INDEXES: live in raw SQL, NOT declarable here ────────────────────
+//
+// Postgres partial indexes (`CREATE INDEX ... WHERE <predicate>`) have no Prisma
+// DSL equivalent, so the 11 below exist only in prisma/migrations/*.sql. Prisma
+// cannot see them, which means `prisma migrate dev` will propose DROP INDEX for
+// each one and `prisma db push` will drop them outright. Both are wrong — these
+// are load-bearing. If a generated migration contains any of these names,
+// delete those DROP statements before committing.
+//
+//   Client.Client_stripeCustomerId_idx                   WHERE "stripeCustomerId" IS NOT NULL
+//   Expense.Expense_invoiceLineId_idx                    WHERE "invoiceLineId"    IS NOT NULL
+//   Invoice.Invoice_reminderSequenceId_idx               WHERE "reminderSequenceId" IS NOT NULL
+//   Invoice.Invoice_sourceInvoiceId_idx                  WHERE "sourceInvoiceId"  IS NOT NULL
+//   InvoiceLine.InvoiceLine_sourceTable_sourceId_idx     WHERE "sourceId"         IS NOT NULL
+//   ProjectTask.ProjectTask_invoiceLineId_idx            WHERE "invoiceLineId"    IS NOT NULL
+//   ProjectTask.ProjectTask_organizationId_assignedUserId_idx
+//                                                        WHERE "assignedUserId"   IS NOT NULL
+//   Ticket.Ticket_clientId_idx                           WHERE "clientId"         IS NOT NULL
+//   TimeEntry.TimeEntry_invoiceLineId_idx                WHERE "invoiceLineId"    IS NOT NULL
+//   TimeEntry.TimeEntry_organizationId_unbilled_idx      WHERE "invoiceLineId"    IS NULL
+//   HoursRetainerPeriod.HoursRetainerPeriod_one_active_per_retainer
+//                                       UNIQUE, WHERE "status" = 'ACTIVE'  ← also a data
+//                                       constraint: it is what enforces one active period
+//                                       per retainer. Dropping it is a correctness bug,
+//                                       not just a slow query.
+//
+// Every other index that exists in the database IS declared below, so a
+// `migrate dev` diff should mention nothing but these 11.
+//
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 enum UserRole {
@@ -546,6 +575,8 @@ model Client {
   inboundEmails         InboundEmail[]
   disputes              Dispute[]
   emailPreferences      ClientEmailPreference[]
+
+  @@index([organizationId, isArchived])
 }
 
 // Per-client opt-out for non-transactional email kinds (CAN-SPAM / GDPR).
@@ -626,6 +657,8 @@ model Tax {
   invoiceLineTaxes InvoiceLineTax[]
   expenses              Expense[]
   recurringExpenses     RecurringExpense[] @relation("RecurringExpenseTax")
+
+  @@index([organizationId])
 }
 
 model Item {
@@ -639,6 +672,8 @@ model Item {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }
 
 // ─── Invoice Models ───────────────────────────────────────────────────────────
@@ -768,6 +803,12 @@ model Invoice {
   @@index([organizationId, dueDate])
   @@index([organizationId, projectId])
   @@index([scheduledSendAt])
+  @@index([organizationId, isArchived, status])
+  @@index([organizationId, clientId])
+  @@index([organizationId, date])
+  @@index([organizationId, lastViewed])
+  @@index([clientId])
+  @@index([currencyId])
 }
 
 model InvoiceLine {
@@ -799,6 +840,8 @@ model InvoiceLine {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([invoiceId])
 }
 
 // Per-line, per-jurisdiction tax row populated only when Stripe Tax computed
@@ -862,6 +905,7 @@ model PartialPayment {
   updatedAt DateTime @updatedAt
 
   @@index([invoiceId, isPaid])
+  @@index([organizationId])
 }
 
 model Payment {
@@ -1003,6 +1047,8 @@ model Comment {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+
+  @@index([invoiceId])
 }
 
 // ─── Project Models ───────────────────────────────────────────────────────────
@@ -1053,6 +1099,10 @@ model Project {
   checkIns            ClientCheckIn[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId, status])
+  @@index([clientId])
+  @@index([currencyId])
 }
 
 model Milestone {
@@ -1075,6 +1125,9 @@ model Milestone {
   invoice        Invoice?   @relation(fields: [invoiceId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([projectId])
 }
 
 model ProjectTask {
@@ -1106,6 +1159,11 @@ model ProjectTask {
   timer               Timer?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([milestoneId])
+  @@index([parentId])
+  @@index([taskStatusId])
 }
 
 model ProjectTemplate {
@@ -1159,6 +1217,10 @@ model TimeEntry {
 
   @@index([retainerId])
   @@index([retainerPeriodId])
+  @@index([organizationId, date])
+  @@index([organizationId, userId, date])
+  @@index([projectId])
+  @@index([taskId])
 }
 
 model Timer {
@@ -1176,6 +1238,8 @@ model Timer {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId, userId])
 }
 
 model ExpenseCategory {
@@ -1255,6 +1319,12 @@ model Expense {
 
   @@index([recurringExpenseId])
   @@index([organizationId, createdAt])
+  @@index([organizationId, dueDate])
+  @@index([organizationId, paidAt])
+  @@index([projectId])
+  @@index([categoryId])
+  @@index([supplierId])
+  @@index([taxId])
 }
 
 // ─── Recurring Expenses ──────────────────────────────────────────────────────
@@ -1476,6 +1546,10 @@ model CreditNoteApplication {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+
+  @@index([creditNoteId])
+  @@index([invoiceId])
+  @@index([organizationId])
 }
 
 // ─── File Attachments ─────────────────────────────────────────────────────────
@@ -1495,6 +1569,8 @@ model Attachment {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+
+  @@index([organizationId, context, contextId])
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
@@ -1515,6 +1591,7 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([organizationId, userId, snoozedUntil])
+  @@index([organizationId, userId, isRead, createdAt(sort: Desc)])
 }
 
 // ─── Email Automations ────────────────────────────────────────────────────────
@@ -1742,6 +1819,9 @@ model AuditLog {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, entityType, entityId])
 }
 
 model SignatureAuditLog {
@@ -1784,6 +1864,7 @@ model Ticket {
   updatedAt DateTime @updatedAt
 
   @@unique([organizationId, number])
+  @@index([organizationId, status])
 }
 
 model TicketMessage {
