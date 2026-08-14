@@ -156,10 +156,25 @@ describe("AuditLog Router Procedures", () => {
       );
     });
 
-    it("throws NOT_FOUND when organization does not exist", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
+    it("never queries Organization — validity is guaranteed upstream", async () => {
+      // Replaces an older "throws NOT_FOUND when organization does not exist"
+      // test. That branch was unreachable: ctx.orgId is only ever set from a
+      // live UserOrganization row (server/trpc.ts), and that row's foreign key
+      // to Organization means Postgres will not allow it to point at a row that
+      // isn't there. protectedProcedure has already rejected a null orgId. The
+      // lookup cost a round trip on every activity-feed load and every "Load
+      // more" to prove something the schema already enforces.
+      ctx.db.auditLog.findMany.mockResolvedValue([]);
 
-      await expect(caller.list({})).rejects.toThrow("NOT_FOUND");
+      await caller.list({});
+
+      expect(ctx.db.organization.findFirst).not.toHaveBeenCalled();
+      // Scoping is unchanged — it now reads ctx.orgId directly.
+      expect(ctx.db.auditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ organizationId: "test-org-123" }),
+        })
+      );
     });
 
     it("combines entityType and entityId filters", async () => {

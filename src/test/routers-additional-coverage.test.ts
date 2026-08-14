@@ -90,15 +90,26 @@ describe("Attachments Router", () => {
       );
     });
 
-    it("throws NOT_FOUND when organization does not exist", async () => {
-      ctx.db.organization.findFirst.mockResolvedValue(null);
+    it("never queries Organization — validity is guaranteed upstream", async () => {
+      // Replaces an older "throws NOT_FOUND when organization does not exist"
+      // test. ctx.orgId only ever comes from a live UserOrganization row whose
+      // foreign key to Organization makes a missing org impossible, so that
+      // branch could not be reached outside a mock. See the matching note in
+      // routers-auditlog-procedures.test.ts.
+      ctx.db.attachment.findMany.mockResolvedValue([]);
 
-      await expect(
-        caller.list({
-          context: AttachmentContext.INVOICE,
-          contextId: "inv_1",
+      await caller.list({
+        context: AttachmentContext.INVOICE,
+        contextId: "inv_1",
+      });
+
+      expect(ctx.db.organization.findFirst).not.toHaveBeenCalled();
+      // Scoping is unchanged — it now reads ctx.orgId directly.
+      expect(ctx.db.attachment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ organizationId: "test-org-123" }),
         })
-      ).rejects.toThrow("NOT_FOUND");
+      );
     });
   });
 });

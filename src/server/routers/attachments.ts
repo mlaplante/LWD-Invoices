@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
 import { AttachmentContext } from "@/generated/prisma";
 
@@ -12,17 +11,12 @@ export const attachmentsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Existence check only — `org.id` below is just `ctx.orgId`. See the note
-      // in auditLog.ts: selecting the whole Organization row (121 columns) to
-      // answer a yes/no question is pure wire and memory overhead.
-      const org = await ctx.db.organization.findFirst({
-        where: { id: ctx.orgId },
-        select: { id: true },
-      });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+      // No org existence check — see the note in auditLog.ts. `ctx.orgId` comes
+      // only from a live UserOrganization row whose foreign key guarantees the
+      // Organization exists, so the lookup could never fail.
       return ctx.db.attachment.findMany({
         where: {
-          organizationId: org.id,
+          organizationId: ctx.orgId,
           context: input.context,
           contextId: input.contextId,
         },

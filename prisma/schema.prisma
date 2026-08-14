@@ -619,7 +619,9 @@ model ClientPortalSession {
 
   createdAt DateTime @default(now())
 
-  @@index([token])
+  // No @@index([token]) — `token` is already `@unique`, and a unique btree
+  // serves every lookup a plain index would. The duplicate cost a second index
+  // to maintain on every portal-session insert for no read benefit.
   @@index([clientId])
   @@index([expiresAt])
 }
@@ -1164,6 +1166,11 @@ model ProjectTask {
   @@index([milestoneId])
   @@index([parentId])
   @@index([taskStatusId])
+  // The open-task count is org-wide (`where { organizationId, isCompleted }`),
+  // so none of the per-parent indexes above can serve it. The existing
+  // organizationId index on this table is partial (WHERE assignedUserId IS NOT
+  // NULL) and so is unusable for an unfiltered org count.
+  @@index([organizationId, isCompleted])
 }
 
 model ProjectTemplate {
@@ -1530,6 +1537,10 @@ model RecurringInvoice {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // The scheduler sweeps `where { organizationId, isActive: true }`. Lookups by
+  // invoiceId are already covered by the unique constraint on that column.
+  @@index([organizationId, isActive])
 }
 
 // ─── Credit Note Applications ─────────────────────────────────────────────────
@@ -1897,6 +1908,10 @@ model Discussion {
   replies        DiscussionReply[]
 
   createdAt DateTime @default(now())
+
+  // Both reads filter on projectId, which is the selective column here; the
+  // org filter rides along as a check rather than driving the lookup.
+  @@index([projectId])
 }
 
 model DiscussionReply {
@@ -1924,6 +1939,11 @@ model ProposalTemplate {
   proposals       ProposalContent[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // Serves the org-scoped list (`where organizationId orderBy createdAt desc`)
+  // as an index scan, and the `where { organizationId, isDefault }` lookup via
+  // the organizationId prefix.
+  @@index([organizationId, createdAt])
 }
 
 model ProposalContent {
@@ -1943,6 +1963,10 @@ model ProposalContent {
   nudgeSentAt     DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // For the org-scoped list ordered by createdAt. Lookups by invoiceId are
+  // already served by the unique constraint on that column — no index needed.
+  @@index([organizationId, createdAt])
 }
 
 // ─── Late Fee Entries ─────────────────────────────────────────────────────────
@@ -1960,6 +1984,11 @@ model LateFeeEntry {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  // Reads are per-invoice. Unlike ProposalContent/RecurringInvoice, invoiceId
+  // here is NOT unique — an invoice accrues many late-fee entries — so it needs
+  // a real index rather than riding on a unique constraint.
+  @@index([invoiceId])
 }
 
 // ─── Retainers / Deposits ────────────────────────────────────────────────────
@@ -2343,8 +2372,9 @@ model PeriodClose {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // No matching @@index — the unique constraint below already creates a btree
+  // on exactly these columns, so a second identical index was pure write cost.
   @@unique([organizationId, periodYear, periodMonth])
-  @@index([organizationId, periodYear, periodMonth])
 }
 
 // ─── Dashboard Customization ───────────────────────────────────────────────────

@@ -20,11 +20,14 @@ while production builds with Turbopack, so its figures are indicative, not the s
 | 1 | Index drift (51 undeclared) | **Fixed** — 40 declared, 11 partial documented; drift 51 → 11 |
 | 2 | Prisma pool `max: 1` serializes `Promise.all` | **Partially done.** `resolveMembership` collapsed to one query (shipped, tested). The `max` change itself is **blocked** on confirming the production `DATABASE_URL` — see Sizing. |
 | 3 | `@dnd-kit/*` in `optimizePackageImports` | **Fixed** — entries removed, comment added |
-| 4 | ~24 client pages with no server prefetch | **In progress** — 3 converted (`reports/collections`, `invoices/unpaid`, `activity`), ~21 remain |
+| 4 | Client pages with no server prefetch | **Fixed** — all 11 convertible pages done; prefetch pattern went 6 → 20 pages |
 | 5 | `httpBatchLink` blocks on slowest in batch | **Fixed** — swapped to `httpBatchStreamLink` |
-| 6–8 | — | Open |
-| 9 | Two redundant duplicate indexes (found while fixing #1) | Open |
-| 10 | Whole-`Organization` rows fetched as existence checks (found while fixing #4) | **Fixed** — 3 sites given a `select` |
+| 6 | Client `staleTime` premised on a server cache that mostly didn't exist | **Fixed** — narrowed to genuinely cached procedures |
+| 7 | Index gaps | **Fixed** — 6 evidence-chosen indexes added |
+| 8 | Font weights | **Fixed** — Roboto Mono 700 dropped (unused); Poppins unchanged (all 5 used) |
+| 9 | Two indexes duplicating a unique constraint | **Fixed** — both dropped |
+| 10 | Whole-`Organization` rows fetched as existence checks | **Fixed** — then removed outright, see below |
+| 11 | 7 models have no `CREATE TABLE` in any migration | **Open — not a perf issue, but the most serious thing in this document** |
 
 ---
 
@@ -304,6 +307,52 @@ adding, by query-site count:
 
 `ExpenseCategory`, `ExpenseSupplier`, `TaskStatus` also appear but are served from
 `src/server/cached.ts` at 1-hour TTL, so they're low value.
+
+### 11. Seven models have no `CREATE TABLE` in any migration
+
+**Not a performance finding. Found while adding indexes for #7, and more serious than anything
+else in this document.**
+
+`prisma/schema.prisma` declares **77** models. The migration folder contains **70** distinct
+`CREATE TABLE` statements. These seven are never created:
+
+| Model | |
+|---|---|
+| `ScheduledReport` | never mentioned in any migration |
+| `ReminderSequence` | never mentioned |
+| `ReminderLog` | never mentioned |
+| `Retainer` | never mentioned |
+| `RetainerTransaction` | never mentioned |
+| `ReminderStep` | referenced by an `ALTER`/index statement, but never created |
+| `LateFeeEntry` | referenced by an `ALTER`/index statement, but never created |
+
+They exist in production (almost certainly created by `prisma db push`, which applies schema
+changes without writing a migration). The migration history therefore does not describe the
+database. Consequences:
+
+- **`prisma migrate deploy` against a fresh database produces an incomplete schema** — no
+  retainers, no reminder sequences, no scheduled reports. That is the disaster-recovery and
+  new-environment path.
+- **`prisma migrate dev` cannot build a clean shadow database.** The last two rows above are the
+  proof: a migration already runs `ALTER`/index statements against tables nothing created, so a
+  replay errors out.
+
+**This resolves the open question in finding 1.** That section flagged two possible `migrate dev`
+outcomes — silently dropping the 51 undeclared indexes, or erroring on shadow replay — and said to
+confirm before relying on either. It is the second: shadow replay cannot succeed today, so
+`migrate dev` fails loudly rather than emitting a destructive migration. That is the safer failure,
+but it also means **`migrate dev` is currently unusable in this repo**, which is very likely how
+the schema came to be maintained by `db push` in the first place. `db push` is what makes finding 1
+dangerous. The two problems are the same problem.
+
+Fixing this needs a real database to diff against, so it is out of scope here. The shape of the fix
+is a baseline migration containing `CREATE TABLE IF NOT EXISTS` for the seven, generated from the
+live schema and marked as already-applied in production via `prisma migrate resolve`.
+
+**One consequence already handled:** the new index on `LateFeeEntry` in
+`20260813223000_perf_index_tuning` is wrapped in a `to_regclass` existence check, because
+`CREATE INDEX IF NOT EXISTS` still errors when the *table* is missing. The other five indexes in
+that migration target tables that are properly created, so they are unguarded.
 
 ### 10. Whole `Organization` rows fetched as existence checks
 

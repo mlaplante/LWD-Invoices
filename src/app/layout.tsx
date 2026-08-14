@@ -16,10 +16,17 @@ const poppins = Poppins({
 });
 
 // Roboto Mono carries eyebrows, meta lines, table headers, footer stats.
+//
+// 400 and 500 only. next/font emits an @font-face per declared weight and
+// preloads the files, so a weight nothing asks for is a download nobody uses.
+// Audited 2026-08-13: the mono rules in globals.css use 400 (.eyebrow, .meta)
+// and 500 (.data-table th), and the `font-mono` elements pair with
+// font-normal/font-medium/font-semibold — nothing requests 700. If you add a
+// bold mono style, add the weight back here in the same change.
 const robotoMono = Roboto_Mono({
   variable: "--font-roboto-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "500"],
   display: "swap",
 });
 

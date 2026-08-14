@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { AuditAction } from "@/generated/prisma";
 import { router, protectedProcedure } from "../trpc";
 
@@ -18,16 +17,13 @@ export const auditLogRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Existence check only — `org.id` below is just `ctx.orgId`. Organization
-      // has 121 columns, so selecting the row wholesale pulled every branding,
-      // tax, portal and reminder setting on each activity-feed load to answer a
-      // yes/no question.
-      const org = await ctx.db.organization.findFirst({
-        where: { id: ctx.orgId },
-        select: { id: true },
-      });
-      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
-
+      // No org existence check: it cannot fail. `ctx.orgId` is only ever set
+      // from a live UserOrganization row (server/trpc.ts), and that row carries
+      // a foreign key to Organization — Postgres will not let it reference a
+      // row that isn't there. protectedProcedure has already rejected the
+      // request if orgId is null. The lookup was an unconditional round trip on
+      // every activity-feed load and every "Load more" to prove something the
+      // schema already guarantees.
       const entityTypeFilter =
         input.entityTypes && input.entityTypes.length > 0
           ? { entityType: { in: input.entityTypes } }
@@ -42,7 +38,7 @@ export const auditLogRouter = router({
 
       return ctx.db.auditLog.findMany({
         where: {
-          organizationId: org.id,
+          organizationId: ctx.orgId,
           ...entityTypeFilter,
           ...(input.entityId ? { entityId: input.entityId } : {}),
           ...(input.action ? { action: input.action } : {}),

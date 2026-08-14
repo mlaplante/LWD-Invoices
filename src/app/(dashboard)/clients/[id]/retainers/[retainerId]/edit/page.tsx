@@ -1,40 +1,19 @@
-"use client";
+import { api, HydrateClient } from "@/trpc/server";
+import { RetainerEditClient } from "./RetainerEditClient";
 
-import Link from "next/link";
-import { use } from "react";
-import { trpc } from "@/trpc/client";
-import { RetainerForm } from "@/components/admin/retainers/RetainerForm";
+export const dynamic = "force-dynamic";
 
-export default function EditRetainerPage({
+export default async function EditRetainerPage({
   params,
 }: {
   params: Promise<{ id: string; retainerId: string }>;
 }) {
-  const { id: clientId, retainerId } = use(params);
-  const { data, isLoading } = trpc.hoursRetainers.getDetail.useQuery({ id: retainerId });
-
-  if (isLoading || !data) return <div>Loading…</div>;
+  const { id: clientId, retainerId } = await params;
+  void api.hoursRetainers.getDetail.prefetch({ id: retainerId });
 
   return (
-    <div className="space-y-4 max-w-lg">
-      <Link
-        href={`/clients/${clientId}`}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← Back to client
-      </Link>
-      <h1 className="text-2xl font-semibold">Edit retainer</h1>
-      <RetainerForm
-        mode="edit"
-        id={retainerId}
-        initial={{
-          name: data.name,
-          includedHours: Number(data.includedHours),
-          hourlyRate: data.hourlyRate ? Number(data.hourlyRate) : null,
-          active: data.active,
-          clientId,
-        }}
-      />
-    </div>
+    <HydrateClient>
+      <RetainerEditClient clientId={clientId} retainerId={retainerId} />
+    </HydrateClient>
   );
 }
