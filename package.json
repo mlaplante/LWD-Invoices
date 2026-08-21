@@ -78,7 +78,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@netlify/functions": "^5.3.0",
+    "@netlify/functions": "^6.0.0",
     "@netlify/plugin-nextjs": "^5.15.13",
     "@next/bundle-analyzer": "^16.3.1",
     "@tailwindcss/postcss": "^4.3.3",
