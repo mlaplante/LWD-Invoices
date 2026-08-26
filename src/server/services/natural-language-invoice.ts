@@ -226,7 +226,7 @@ export function buildNaturalLanguageInvoiceDraft({
 }: BuildNaturalLanguageInvoiceDraftInput): NaturalLanguageInvoiceDraft {
   const resolvedClient = resolveClient(extraction, context);
   const taxIds = taxIdsForExtraction(extraction, context);
-  const lineResults = extraction.lines.map((line, index) => buildLine(line, index, context, taxIds));
+  const lineResults = (extraction.lines ?? []).map((line, index) => buildLine(line, index, context, taxIds));
 
   const extractionAmbiguities = (extraction.ambiguities ?? []).map((message) => ({
     field: "prompt",
@@ -500,14 +500,17 @@ function toLineList(value: unknown): NaturalLanguageInvoiceExtractedLine[] {
   const items = Array.isArray(value) ? value : isRecord(value) ? [value] : [];
   return items.flatMap((item) => {
     if (!isRecord(item)) return [];
-    const name = optionalString(item.name) ?? optionalString(item.description);
     // A line with no name can't be matched against catalog items or shown to the
-    // user, so drop it rather than seeding the draft with a blank row.
+    // user. Promote the description rather than losing the line's quantity and
+    // rate — but then clear it, so the draft doesn't show the same text twice.
+    const explicitName = optionalString(item.name);
+    const description = optionalString(item.description);
+    const name = explicitName ?? description;
     if (!name) return [];
     const lineType = item.lineType;
     return [{
       name,
-      description: optionalString(item.description),
+      description: explicitName ? description : undefined,
       quantity: optionalNumber(item.quantity),
       unit: optionalString(item.unit),
       rate: optionalNumber(item.rate),

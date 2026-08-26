@@ -189,6 +189,27 @@ describe("natural-language invoice — Gemini provider", () => {
       expect(Array.isArray(result.ambiguities)).toBe(true);
     });
 
+    it("promotes a description to the line name without duplicating it", () => {
+      const result = normalizeExtraction(
+        JSON.stringify({
+          lines: [{ name: "", description: "Design work", quantity: 4, rate: 150 }],
+        }),
+      );
+
+      expect(result.lines).toHaveLength(1);
+      expect(result.lines[0].name).toBe("Design work");
+      expect(result.lines[0].description).toBeUndefined();
+      expect(result.lines[0]).toMatchObject({ quantity: 4, rate: 150 });
+    });
+
+    it("keeps a real description alongside an explicit name", () => {
+      const result = normalizeExtraction(
+        JSON.stringify({ lines: [{ name: "Design", description: "Homepage mockups" }] }),
+      );
+
+      expect(result.lines[0]).toMatchObject({ name: "Design", description: "Homepage mockups" });
+    });
+
     it("drops line entries that are not objects with a usable name", () => {
       const result = normalizeExtraction(
         JSON.stringify({
