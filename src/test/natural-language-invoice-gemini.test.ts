@@ -136,6 +136,69 @@ describe("natural-language invoice — Gemini provider", () => {
       expect(result.lines[0].description).toBeUndefined();
       expect(result.lines[0].lineType).toBeUndefined();
     });
+
+    // Model JSON is untrusted input: nothing in the Gemini request constrains the
+    // response shape, and the models in the fallback chain drift. Observed live:
+    // gemini-2.5-flash answered "charge acme 1500" with ambiguities as a bare
+    // string, which used to blow up downstream as ".map is not a function".
+    it("wraps a bare-string ambiguities in an array", () => {
+      const result = normalizeExtraction(
+        JSON.stringify({
+          clientName: "Acme",
+          lines: [],
+          ambiguities: "The specific service for the $1500 charge is not detailed.",
+        }),
+      );
+
+      expect(result.ambiguities).toEqual([
+        "The specific service for the $1500 charge is not detailed.",
+      ]);
+    });
+
+    // Observed live from gemini-2.5-flash-lite.
+    it("flattens object-shaped ambiguity items to readable strings", () => {
+      const result = normalizeExtraction(
+        JSON.stringify({
+          lines: [],
+          ambiguities: [
+            { field: "quantity", value: "around 10", options: [10] },
+            { message: "Rate is either 100 or 125" },
+          ],
+        }),
+      );
+
+      expect(result.ambiguities).toHaveLength(2);
+      expect(result.ambiguities?.[0]).toContain("around 10");
+      expect(result.ambiguities?.[1]).toBe("Rate is either 100 or 125");
+      for (const ambiguity of result.ambiguities ?? []) {
+        expect(typeof ambiguity).toBe("string");
+      }
+    });
+
+    it("defaults lines and taxNames to arrays when the model returns another shape", () => {
+      const result = normalizeExtraction(
+        JSON.stringify({
+          lines: { name: "Design", quantity: 2, rate: 100 },
+          taxNames: "VAT",
+          ambiguities: { note: "unclear" },
+        }),
+      );
+
+      expect(Array.isArray(result.lines)).toBe(true);
+      expect(result.taxNames).toEqual(["VAT"]);
+      expect(Array.isArray(result.ambiguities)).toBe(true);
+    });
+
+    it("drops line entries that are not objects with a usable name", () => {
+      const result = normalizeExtraction(
+        JSON.stringify({
+          lines: ["Design work", null, { name: "Dev", quantity: 3, rate: 90 }, { quantity: 1 }],
+        }),
+      );
+
+      expect(result.lines).toHaveLength(1);
+      expect(result.lines[0]).toMatchObject({ name: "Dev", quantity: 3, rate: 90 });
+    });
   });
 
   describe("extractNaturalLanguageInvoice (gemini path)", () => {

@@ -443,28 +443,101 @@ export function extractGeminiText(response: Record<string, unknown>): string {
     .join("");
 }
 
+// ─── Untrusted-shape coercion ─────────────────────────────────────────────────
+//
+// Model JSON is untrusted input. Nothing in the request pins the response shape
+// (Gemini gets responseMimeType but no responseSchema), and the models in the
+// fallback chain disagree with each other: gemini-2.5-flash has answered with
+// `ambiguities` as a bare string, gemini-2.5-flash-lite with an array of objects,
+// and `taxNames` comes back null about half the time. Downstream code maps over
+// all of these, so coerce here rather than trusting the cast.
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  // Models occasionally quote numbers ("150", "1,500").
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/[^0-9.\-]/g, ""));
+    if (value.trim() !== "" && Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+/** Render one ambiguity entry as a sentence, whatever shape the model used. */
+function ambiguityToString(value: unknown): string | undefined {
+  if (typeof value === "string") return optionalString(value);
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (isRecord(value)) {
+    // Prefer a human-readable field when the model wrapped the text in an object.
+    for (const key of ["message", "reason", "description", "text", "note", "ambiguity"]) {
+      const message = optionalString(value[key]);
+      if (message) return message;
+    }
+    const field = optionalString(value.field);
+    const detail = optionalString(value.value) ?? optionalString(value.detail);
+    if (field && detail) return `${field}: ${detail}`;
+    if (field) return field;
+    return JSON.stringify(value);
+  }
+  return undefined;
+}
+
+/** Coerce anything into a string[] — a bare string becomes a one-item list. */
+function toStringList(value: unknown): string[] {
+  if (value === null || value === undefined) return [];
+  const items = Array.isArray(value) ? value : [value];
+  return items.map(ambiguityToString).filter((item): item is string => item !== undefined);
+}
+
+function toLineList(value: unknown): NaturalLanguageInvoiceExtractedLine[] {
+  const items = Array.isArray(value) ? value : isRecord(value) ? [value] : [];
+  return items.flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const name = optionalString(item.name) ?? optionalString(item.description);
+    // A line with no name can't be matched against catalog items or shown to the
+    // user, so drop it rather than seeding the draft with a blank row.
+    if (!name) return [];
+    const lineType = item.lineType;
+    return [{
+      name,
+      description: optionalString(item.description),
+      quantity: optionalNumber(item.quantity),
+      unit: optionalString(item.unit),
+      rate: optionalNumber(item.rate),
+      lineType:
+        lineType === "standard" || lineType === "expense" || lineType === "flat_rate"
+          ? lineType
+          : undefined,
+      confidence: optionalNumber(item.confidence),
+    }];
+  });
+}
+
 /**
  * Parse a raw JSON string from any provider into a normalized extraction,
- * coercing the schema's nullable fields to `undefined` so downstream matching
- * doesn't have to special-case null.
+ * coercing the schema's nullable fields to `undefined` and forcing every list
+ * field into an actual array so downstream matching doesn't have to special-case
+ * null — or a model that answered with a different shape than it was asked for.
  */
 export function normalizeExtraction(raw: string): NaturalLanguageInvoiceExtraction {
-  const parsed = JSON.parse(raw) as NaturalLanguageInvoiceExtraction;
+  const parsed: unknown = JSON.parse(raw);
+  if (!isRecord(parsed)) {
+    throw new Error("Invoice parsing returned JSON that is not an object");
+  }
   return {
-    ...parsed,
-    clientName: parsed.clientName ?? undefined,
-    notes: parsed.notes ?? undefined,
-    dueDate: parsed.dueDate ?? undefined,
-    taxNames: parsed.taxNames ?? [],
-    ambiguities: parsed.ambiguities ?? [],
-    lines: (parsed.lines ?? []).map((line) => ({
-      ...line,
-      description: line.description ?? undefined,
-      quantity: line.quantity ?? undefined,
-      unit: line.unit ?? undefined,
-      rate: line.rate ?? undefined,
-      lineType: line.lineType ?? undefined,
-      confidence: line.confidence ?? undefined,
-    })),
+    clientName: optionalString(parsed.clientName),
+    notes: optionalString(parsed.notes),
+    dueDate: optionalString(parsed.dueDate),
+    confidence: optionalNumber(parsed.confidence),
+    taxNames: toStringList(parsed.taxNames),
+    ambiguities: toStringList(parsed.ambiguities),
+    lines: toLineList(parsed.lines),
   };
 }
