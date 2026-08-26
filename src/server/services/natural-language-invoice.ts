@@ -1,6 +1,6 @@
 import { InvoiceStatus, LineType } from "@/generated/prisma";
 import { env } from "@/lib/env";
-import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 
 export type NaturalLanguageInvoiceContext = {
   defaultCurrencyId: string;
@@ -262,12 +262,20 @@ export type ExtractNaturalLanguageInvoiceOptions = {
 const SYSTEM_PROMPT =
   "Extract draft invoice data from the user's natural-language prompt. Return only JSON with keys: clientName, lines [{name, description, quantity, unit, rate, lineType, confidence}], notes, dueDate (YYYY-MM-DD), taxNames, ambiguities, confidence. lineType is one of standard, expense, flat_rate. Use null for anything you cannot determine. Do not invent customers, and never send or save invoices.";
 
+// Models have no idea what day it is — without this, "due next Friday" resolves
+// against the model's training-time notion of "now" (observed: a 2023 due date
+// on a 2026 invoice). Stamp today into the system prompt so relative dates in
+// the user's phrasing resolve against the real calendar.
+export function buildSystemPrompt(now: Date = new Date()): string {
+  const today = now.toISOString().slice(0, 10);
+  const weekday = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  return `${SYSTEM_PROMPT} Today's date is ${today} (${weekday}). Resolve every relative date in the prompt ("next Friday", "in 30 days", "end of month") against that date, and always return dueDate as an absolute YYYY-MM-DD date on or after it.`;
+}
+
 const OPENAI_DEFAULT_MODEL = "gpt-4.1-mini";
-// Ordered Gemini fallback chain — on a 429 (rate-limit/quota) the next model is
-// tried, which rescues the case where Google has zeroed the free-tier quota on
-// one model but not others. Mirrors GEMINI_DEFAULT_MODELS in receipt-ocr.ts;
-// override the whole chain via GEMINI_INVOICE_PARSER_MODELS.
-const GEMINI_DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+// The Gemini chain is the shared GEMINI_DEFAULT_MODELS from ./gemini-fallback
+// (429/404/503 on one model falls through to the next); override the whole
+// chain via GEMINI_INVOICE_PARSER_MODELS.
 
 // Strict JSON schema shared with the OpenAI Responses API. Gemini relies on
 // responseMimeType + the system prompt instead (its strict-schema support is
@@ -353,7 +361,7 @@ export async function extractNaturalLanguageInvoiceWithOpenAI(prompt: string): P
     body: JSON.stringify({
       model: env.OPENAI_INVOICE_PARSER_MODEL ?? OPENAI_DEFAULT_MODEL,
       input: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: buildSystemPrompt() },
         { role: "user", content: prompt },
       ],
       text: {
@@ -397,7 +405,7 @@ export async function extractNaturalLanguageInvoiceWithGemini(prompt: string): P
     apiKey,
     models: resolveGeminiModels(env.GEMINI_INVOICE_PARSER_MODELS, GEMINI_DEFAULT_MODELS),
     body: {
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       // responseMimeType forces pure-JSON output (no markdown fences); temp 0
       // keeps extraction deterministic.

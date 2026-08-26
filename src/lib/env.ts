@@ -81,7 +81,7 @@ export const env = createEnv({
     // Comma-separated, ordered list of Gemini vision models to try for receipt
     // OCR. When one model returns a 429 (rate-limit/quota), the next is tried.
     // Leave unset to use the built-in default chain. Example:
-    //   GEMINI_OCR_MODELS="gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash"
+    //   GEMINI_OCR_MODELS="gemini-2.5-flash,gemini-3.6-flash,gemini-2.5-flash-lite"
     GEMINI_OCR_MODELS: z.string().min(1).optional(),
     // Which provider drafts invoices from natural-language prompts. Defaults to
     // Gemini (its model-fallback chain) when GEMINI_API_KEY is set, otherwise

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withV1Auth } from "../../auth";
 import { jsonWithETag } from "../../etag";
-import { callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "@/server/services/gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "@/server/services/gemini-fallback";
 import { db } from "@/server/db";
 import { InvoiceStatus } from "@/generated/prisma";
 
@@ -179,7 +179,7 @@ export async function GET(req: NextRequest) {
       // Use existing Gemini fallback chain for AI-powered recommendations
       const geminiModels = resolveGeminiModels(
         process.env.GEMINI_MODELS,
-        ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+        GEMINI_DEFAULT_MODELS
       );
       
       // Generate recommendations using existing AI provider

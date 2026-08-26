@@ -16,11 +16,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/lib/env";
-import {
-  callGeminiWithModelFallback,
-  resolveGeminiModels,
-  streamGeminiGenerateContent,
-} from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, resolveGeminiModels, streamGeminiGenerateContent } from "./gemini-fallback";
 import type { db as Db } from "../db";
 import {
   OPEN_STATUSES,
@@ -35,7 +31,7 @@ import { prioritizeCollections } from "./collection-risk";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-opus-4-8";
 // Gemini models that support function calling; override via GEMINI_AGENT_MODELS.
-const DEFAULT_GEMINI_AGENT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+const DEFAULT_GEMINI_AGENT_MODELS = GEMINI_DEFAULT_MODELS;
 const MAX_ITERATIONS = 6;
 const MAX_TOKENS = 1500;
 const DAY_MS = 86_400_000;

@@ -1,10 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/lib/env";
-import {
-  callGeminiWithModelFallback,
-  extractGeminiText,
-  resolveGeminiModels,
-} from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "./gemini-fallback";
 
 export interface OCRLineItem {
   description: string;
@@ -63,13 +59,11 @@ Rules:
 
 const OPENAI_MODEL = "gpt-4.1-mini";
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
-// Ordered fallback chain of vision-capable Gemini models. All handle both
-// images and PDFs via inlineData. When a model returns a 429 (rate-limit or
-// quota), the next model is tried — this rescues the case where Google has
-// zeroed the free-tier quota on one specific model but not others. Override
-// the whole chain via the GEMINI_OCR_MODELS env var. The model-chain iteration
-// and capped-retry logic live in ./gemini-fallback (shared with reminders).
-const GEMINI_DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+// OCR uses the shared GEMINI_DEFAULT_MODELS chain from ./gemini-fallback; every
+// model in it is vision-capable and handles both images and PDFs via inlineData.
+// A 429 (quota), 404 (retired model id) or 503 (overloaded) on one model falls
+// through to the next. Override the whole chain via the GEMINI_OCR_MODELS env
+// var; the iteration and capped-retry logic live in ./gemini-fallback.
 
 export async function parseReceiptWithOCR(
   fileData: Buffer,

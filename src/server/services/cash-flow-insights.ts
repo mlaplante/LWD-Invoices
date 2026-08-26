@@ -1,5 +1,5 @@
 import { env } from "@/lib/env";
-import { callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "./gemini-fallback";
 
 export type InsightSeverity = "info" | "success" | "warning" | "danger";
 
@@ -411,7 +411,7 @@ function deterministicNarrative(metrics: CashFlowInsightMetrics): string {
 
 // Built-in Gemini model fallback chain for the narrative; override via
 // GEMINI_CASHFLOW_MODELS. Mirrors the OCR / reminder / invoice-parser chains.
-const GEMINI_NARRATIVE_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+const GEMINI_NARRATIVE_MODELS = GEMINI_DEFAULT_MODELS;
 
 function deterministicResult(metrics: CashFlowInsightMetrics): NarrativeResult {
   return { summary: deterministicNarrative(metrics), source: "deterministic" };

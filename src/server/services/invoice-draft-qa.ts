@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { env } from "@/lib/env";
-import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 import { extractGeminiText } from "./natural-language-invoice";
 import { parseValidatedJson } from "./ai-structured-output";
 
@@ -418,7 +418,7 @@ const UNCLEAR_SCHEMA = z.object({
   flags: z.array(z.object({ clientLineId: z.string(), reason: z.string() })),
 });
 
-const GEMINI_REVIEW_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+const GEMINI_REVIEW_MODELS = GEMINI_DEFAULT_MODELS;
 
 const UNCLEAR_SYSTEM_PROMPT =
   "You review invoice line items for clarity to a paying client. Given a JSON array of lines " +

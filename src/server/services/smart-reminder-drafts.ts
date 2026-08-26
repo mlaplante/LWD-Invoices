@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 import { interpolateTemplate } from "./automation-template";
-import { callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "./gemini-fallback";
 
 export type ReminderTone = "helpful" | "professional" | "firm";
 export type ReminderDraftSource = "ai" | "template_fallback";
@@ -79,7 +79,7 @@ const MIN_HISTORY_FOR_AI_TONE = 3;
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 // Ordered Gemini fallback chain; on a 429 the next model is tried. Mirrors the
 // receipt-OCR default chain. Override via GEMINI_REMINDER_MODELS.
-const DEFAULT_GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+const DEFAULT_GEMINI_MODELS = GEMINI_DEFAULT_MODELS;
 const DEFAULT_RELIABLE_PAYER_THRESHOLD = 90;
 const REMINDER_SYSTEM_PROMPT =
   "You draft safe, concise invoice reminder emails and return strict JSON only.";

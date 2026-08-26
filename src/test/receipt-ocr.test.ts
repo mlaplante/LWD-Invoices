@@ -285,7 +285,10 @@ describe("receipt OCR service", () => {
       .mockResolvedValue({ ok: false, status: 429, statusText: "Too Many Requests", text: async () => quotaBody });
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(parseReceiptWithOCR(fakeImage, "image/png")).rejects.toThrow(/rate-limited/);
+    // The thrown error names every model tried and the status each returned.
+    await expect(parseReceiptWithOCR(fakeImage, "image/png")).rejects.toThrow(
+      /failed on every model[\s\S]*gemini-2\.0-flash \(429\)[\s\S]*gemini-1\.5-flash \(429\)/,
+    );
     // Each model tried once — "limit: 0" is non-retryable, so no extra attempts.
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
@@ -296,7 +299,7 @@ describe("receipt OCR service", () => {
     Object.assign(envMod.env, original);
   });
 
-  it("does not try other Gemini models on a non-429 error", async () => {
+  it("does not try other Gemini models on an auth/bad-request error", async () => {
     const envMod = await import("@/lib/env");
     const original = { ...envMod.env } as Record<string, unknown>;
     (envMod.env as Record<string, unknown>).GEMINI_API_KEY = "test-gemini";

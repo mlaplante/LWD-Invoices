@@ -6,7 +6,8 @@ vi.mock("@/server/services/gemini-fallback", () => ({
   callGeminiWithModelFallback: vi.fn(({ onOk }) => Promise.resolve(onOk({
     candidates: [{ content: { parts: [{ text: '{"flags":[]}' }] } }],
   }))),
-  resolveGeminiModels: vi.fn(() => ["gemini-2.0-flash"]),
+  resolveGeminiModels: vi.fn(() => ["gemini-2.5-flash"]),
+  GEMINI_DEFAULT_MODELS: ["gemini-2.5-flash"],
 }));
 
 // Mock the env variable

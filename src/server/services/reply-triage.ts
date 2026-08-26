@@ -2,7 +2,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { getAiAvailability } from "./ai-availability";
 import { parseValidatedJson } from "./ai-structured-output";
-import { callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, extractGeminiText, resolveGeminiModels } from "./gemini-fallback";
 import { SUGGESTED_ACTIONS } from "@/lib/reply-triage-actions";
 
 export const triageOutputSchema = z.object({
@@ -28,7 +28,7 @@ export async function classifyReply(input: { bodyText: string; subject: string |
   const invoice = input.invoiceContext ? `Invoice ${input.invoiceContext.number}, total ${input.invoiceContext.total}, due ${input.invoiceContext.dueDate?.toISOString() ?? "unknown"}, status ${input.invoiceContext.status}.` : "No invoice is linked.";
   const prompt = `Classify this inbound client reply. Return JSON only with category, confidence, reasoning, promisedDate. Categories: PROMISE_TO_PAY, DISPUTE, QUESTION, INFO_UPDATE, NEEDS_REVIEW. ${invoice} If ambiguous, mixed, or automated/out-of-office, use NEEDS_REVIEW with low confidence. Subject: ${input.subject ?? ""}\nReply: ${input.bodyText.slice(0, 4000)}`;
   try {
-    const raw = await callGeminiWithModelFallback<string>({ apiKey: env.GEMINI_API_KEY, models: resolveGeminiModels(process.env.GEMINI_REPLY_TRIAGE_MODELS, ["gemini-2.0-flash", "gemini-1.5-flash"]), body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } }, label: "reply triage", onOk: extractGeminiText });
+    const raw = await callGeminiWithModelFallback<string>({ apiKey: env.GEMINI_API_KEY, models: resolveGeminiModels(process.env.GEMINI_REPLY_TRIAGE_MODELS, GEMINI_DEFAULT_MODELS), body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } }, label: "reply triage", onOk: extractGeminiText });
     return finalizeTriage(raw);
   } catch { return finalizeTriage(null); }
 }

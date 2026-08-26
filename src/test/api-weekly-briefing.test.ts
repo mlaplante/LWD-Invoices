@@ -43,6 +43,7 @@ vi.mock("@/server/services/gemini-fallback", () => ({
   ])),
   extractGeminiText: vi.fn((json: any) => JSON.stringify(json)),
   resolveGeminiModels: vi.fn((env: any, fallback: any) => fallback),
+  GEMINI_DEFAULT_MODELS: ["gemini-2.5-flash"],
 }));
 
 describe("Weekly Briefing API Endpoint", () => {

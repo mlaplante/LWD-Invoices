@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { env } from "@/lib/env";
 import {
+  buildSystemPrompt,
   extractGeminiText,
   extractNaturalLanguageInvoice,
   normalizeExtraction,
@@ -33,6 +34,27 @@ describe("natural-language invoice — Gemini provider", () => {
     (env as Record<string, unknown>).GEMINI_API_KEY = originalGeminiKey;
     (env as Record<string, unknown>).OPENAI_API_KEY = originalOpenAIKey;
     (env as Record<string, unknown>).GEMINI_INVOICE_PARSER_MODELS = originalGeminiModels;
+  });
+
+  describe("buildSystemPrompt", () => {
+    it("stamps today's date so relative due dates resolve against the real calendar", () => {
+      const prompt = buildSystemPrompt(new Date("2026-08-26T12:00:00Z"));
+      expect(prompt).toContain("Today's date is 2026-08-26 (Wednesday)");
+      expect(prompt).toContain("dueDate as an absolute YYYY-MM-DD date on or after it");
+    });
+
+    it("sends the dated prompt to Gemini as the system instruction", async () => {
+      (env as Record<string, unknown>).GEMINI_API_KEY = "test-key";
+      const fetchMock = vi.fn().mockResolvedValue(
+        geminiResponse('{"clientName":"Acme","lines":[],"confidence":1}'),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      await extractNaturalLanguageInvoice("Bill Acme", { provider: "gemini" });
+
+      const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
+      expect(body.systemInstruction.parts[0].text).toContain("Today's date is");
+    });
   });
 
   describe("resolveInvoiceParserProvider", () => {
@@ -189,7 +211,7 @@ describe("natural-language invoice — Gemini provider", () => {
 
       await expect(
         extractNaturalLanguageInvoice("Bill Acme", { provider: "gemini" }),
-      ).rejects.toThrow(/rate-limited/);
+      ).rejects.toThrow(/failed on every model[\s\S]*\(429\)/);
       // Each model tried once — "limit: 0" is non-retryable, no extra attempts.
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });

@@ -32,10 +32,7 @@ import {
   type OutlierExpense,
 } from "./expense-anomaly";
 import { checkAnswerGrounding } from "./ai-eval/grounding";
-import {
-  callGeminiWithModelFallback,
-  resolveGeminiModels,
-} from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -43,7 +40,7 @@ const MONTH_NAMES = [
 ];
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-opus-4-8";
-const DEFAULT_GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+const DEFAULT_GEMINI_MODELS = GEMINI_DEFAULT_MODELS;
 const PENNY = 0.01;
 
 // ─── Snapshot input shapes (kept minimal so the pure core is testable) ──────────

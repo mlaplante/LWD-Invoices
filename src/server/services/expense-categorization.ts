@@ -65,7 +65,7 @@ export function suggestFromHistory(
 
 import { z } from "zod";
 import { env } from "@/lib/env";
-import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 import { extractGeminiText } from "./natural-language-invoice";
 import { parseValidatedJson } from "./ai-structured-output";
 
@@ -85,7 +85,7 @@ const AI_SCHEMA = z.object({
   reimbursable: z.boolean(),
 });
 
-const GEMINI_CATEGORY_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+const GEMINI_CATEGORY_MODELS = GEMINI_DEFAULT_MODELS;
 
 export interface ClassifyInput {
   supplierName: string;

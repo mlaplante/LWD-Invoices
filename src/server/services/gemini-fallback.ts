@@ -24,6 +24,28 @@ export function resolveGeminiModels(raw: string | undefined, defaults: string[])
   return defaults;
 }
 
+// Shared default model chain. Every Gemini-backed service starts here unless its
+// GEMINI_*_MODELS env override says otherwise. Google retires model ids on its
+// own schedule (gemini-2.0-flash and gemini-1.5-flash both 404 as of Aug 2026,
+// which took every AI feature down at once), so keep this list current AND rely
+// on the retirement fall-through below rather than on any single id surviving.
+export const GEMINI_DEFAULT_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-3.6-flash",
+  "gemini-2.5-flash-lite",
+];
+
+// Statuses worth trying the *next* model for:
+//   429 - rate-limit/quota on this model specifically
+//   404 - model id retired or unavailable to this key ("This model ... is no
+//         longer available. Please update your code to use models/...")
+//   503 - model temporarily overloaded ("experiencing high demand")
+// Everything else (auth, 400 bad request) is a caller bug that a different
+// model won't fix, so it still fails immediately and loudly.
+function isModelFallbackStatus(status: number): boolean {
+  return status === 429 || status === 404 || status === 503;
+}
+
 function geminiGenerateContentUrl(model: string): string {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 }
@@ -100,13 +122,14 @@ export interface GeminiFallbackOptions<T> {
 }
 
 // Iterate the model chain, returning the first model's successful result. On a
-// 429 the next model is tried; only the last model retries under a capped
-// backoff. Any non-429 error fails immediately (auth/400/404 won't be fixed by
-// a different model). Throws the last rate-limit error if every model is
-// exhausted.
+// 429 (quota), 404 (retired/unknown model id) or 503 (overloaded) the next model
+// is tried; only the last model retries a 429 under a capped backoff. Any other
+// error fails immediately (auth/400 won't be fixed by a different model). If
+// every model in the chain fails, throws an error naming each model and status
+// so a chain of typo'd or all-retired ids is still diagnosable.
 export async function callGeminiWithModelFallback<T>(opts: GeminiFallbackOptions<T>): Promise<T> {
   const { apiKey, models, body, onOk, label } = opts;
-  let lastRateLimit: Error | null = null;
+  const failures: string[] = [];
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -132,18 +155,18 @@ export async function callGeminiWithModelFallback<T>(opts: GeminiFallbackOptions
 
       const responseBody = await response.text().catch(() => "");
 
-      // Only 429 (rate-limit/quota) is worth trying another model for. Auth,
-      // bad-request, and 404 (e.g. a misspelled model id) errors won't be fixed
-      // by a different model, so fail loudly and immediately.
-      if (response.status !== 429) {
+      // Auth and bad-request errors won't be fixed by a different model, so fail
+      // loudly and immediately.
+      if (!isModelFallbackStatus(response.status)) {
         throw new Error(
           `Gemini ${label} failed on ${model} (${response.status}): ${responseBody || response.statusText}`,
         );
       }
 
-      lastRateLimit = new Error(
-        `Gemini ${label} rate-limited on ${model} (429): ${responseBody || response.statusText}`,
-      );
+      failures[i] = `${model} (${response.status}): ${responseBody || response.statusText}`;
+
+      // 404/503 are per-model and immediate — never sleep on them, just move on.
+      if (response.status !== 429) break;
 
       // A daily / "limit: 0" quota can't be cleared by waiting, so never sleep
       // on it — fall straight through to the next model.
@@ -161,7 +184,10 @@ export async function callGeminiWithModelFallback<T>(opts: GeminiFallbackOptions
     }
   }
 
-  throw lastRateLimit ?? new Error(`Gemini ${label} failed: no models configured`);
+  if (failures.length === 0) {
+    throw new Error(`Gemini ${label} failed: no models configured`);
+  }
+  throw new Error(`Gemini ${label} failed on every model — ${failures.filter(Boolean).join(" | ")}`);
 }
 
 function geminiStreamUrl(model: string): string {
@@ -186,7 +212,7 @@ export async function* streamGeminiGenerateContent(
 ): AsyncGenerator<Record<string, unknown>> {
   const { apiKey, models, body, label } = opts;
   let response: Response | null = null;
-  let lastError: Error | null = null;
+  const failures: string[] = [];
 
   for (let i = 0; i < models.length; i++) {
     const res = await fetch(geminiStreamUrl(models[i]), {
@@ -199,14 +225,17 @@ export async function* streamGeminiGenerateContent(
       break;
     }
     const errBody = await res.text().catch(() => "");
-    if (res.status !== 429) {
+    if (!isModelFallbackStatus(res.status)) {
       throw new Error(`Gemini ${label} stream failed on ${models[i]} (${res.status}): ${errBody || res.statusText}`);
     }
-    lastError = new Error(`Gemini ${label} stream rate-limited on ${models[i]} (429)`);
+    failures.push(`${models[i]} (${res.status}): ${errBody || res.statusText}`);
   }
 
   if (!response || !response.body) {
-    throw lastError ?? new Error(`Gemini ${label} stream failed: no models configured`);
+    if (failures.length === 0) {
+      throw new Error(`Gemini ${label} stream failed: no models configured`);
+    }
+    throw new Error(`Gemini ${label} stream failed on every model — ${failures.join(" | ")}`);
   }
 
   const reader = response.body.getReader();

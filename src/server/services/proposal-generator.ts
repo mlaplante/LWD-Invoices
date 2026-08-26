@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { env } from "@/lib/env";
-import { callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
+import { GEMINI_DEFAULT_MODELS, callGeminiWithModelFallback, resolveGeminiModels } from "./gemini-fallback";
 import { extractGeminiText } from "./natural-language-invoice";
 import { parseValidatedJson } from "./ai-structured-output";
 
@@ -67,7 +67,7 @@ const GENERATION_SCHEMA = z.object({
   suggestedItems: z.array(z.object({ itemId: z.string(), quantity: z.number(), rate: z.number() })),
 });
 
-const GEMINI_PROPOSAL_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+const GEMINI_PROPOSAL_MODELS = GEMINI_DEFAULT_MODELS;
 
 const SYSTEM_PROMPT =
   "You draft a client proposal. Fill the provided template sections (scope, timeline, milestones, payment schedule) " +
