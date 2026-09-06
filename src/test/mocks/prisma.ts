@@ -13,6 +13,7 @@ export function createMockPrismaClient() {
       findMany: vi.fn(),
       findFirst: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
       groupBy: vi.fn(),
@@ -35,6 +36,7 @@ export function createMockPrismaClient() {
     },
     payment: {
       create: vi.fn(),
+      createMany: vi.fn(),
       findMany: vi.fn(),
       aggregate: vi.fn(),
       groupBy: vi.fn(),
@@ -99,6 +101,7 @@ export function createMockPrismaClient() {
       delete: vi.fn(),
       count: vi.fn(),
       aggregate: vi.fn(),
+      groupBy: vi.fn(),
     },
     task: {
       findMany: vi.fn(),

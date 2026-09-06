@@ -1,19 +1,20 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import { PortalPassphraseLoginForm } from "@/components/portal/PortalPassphraseLoginForm";
 
-export default function PortalLoginPage() {
-  const params = useParams<{ token: string }>();
+export default async function PortalLoginPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
 
   return (
     <PortalPassphraseLoginForm
       title="Protected Invoice"
       description="This invoice is password protected. Enter the passphrase to continue."
-      authUrl={`/api/portal/${params.token}/auth`}
-      successUrl={`/portal/${params.token}`}
+      authUrl={`/api/portal/${token}/auth`}
+      successUrl={`/portal/${token}`}
       submitLabel="View Invoice"
-      portalToken={params.token}
+      portalToken={token}
     />
   );
 }

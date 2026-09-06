@@ -525,42 +525,65 @@ export const reportsRouter = router({
   timeTracking: protectedProcedure
     .input(dateRangeSchema)
     .query(async ({ ctx, input }) => {
-      const entries = await ctx.db.timeEntry.findMany({
-        where: {
-          organizationId: ctx.orgId,
-          ...(input.from || input.to
-            ? { date: { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) } }
-            : {}),
-        },
-        include: {
-          project: { select: { id: true, name: true, rate: true, client: { select: { name: true } } } },
-        },
+      // Previously findMany'd every TimeEntry row (unbounded when from/to are
+      // absent) and summed minutes/billableAmount per project in JS. Sum the
+      // minutes in SQL instead — billableAmount is linear in minutes
+      // (Σ(mins_i/60·rate) = rate/60·Σmins_i for a fixed project rate), so it
+      // can still be computed from the per-project total after a lightweight
+      // project lookup, with the arithmetic and sort staying in JS (and under
+      // unit test) exactly as before.
+      const where = {
+        organizationId: ctx.orgId,
+        projectId: { not: null },
+        ...(input.from || input.to
+          ? { date: { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) } }
+          : {}),
+      };
+
+      const grouped = await ctx.db.timeEntry.groupBy({
+        by: ["projectId"],
+        where,
+        _sum: { minutes: true },
       });
 
-      const byProject = new Map<
-        string,
-        { projectId: string; projectName: string; clientName: string; totalMinutes: number; billableAmount: number }
-      >();
+      if (grouped.length === 0) return [];
 
-      for (const e of entries) {
-        if (!e.projectId || !e.project) continue;
-        const key = e.projectId;
-        if (!byProject.has(key)) {
-          byProject.set(key, {
-            projectId: key,
-            projectName: e.project.name,
-            clientName: e.project.client.name,
-            totalMinutes: 0,
-            billableAmount: 0,
-          });
-        }
-        const row = byProject.get(key)!;
-        const mins = Number(e.minutes);
-        row.totalMinutes += mins;
-        row.billableAmount += (mins / 60) * Number(e.project.rate);
+      const projectIds = grouped
+        .map((g) => g.projectId)
+        .filter((id): id is string => id != null);
+
+      // Org-scoped lookup — a project id with no matching (org-scoped) row
+      // here is dropped, same as the old `if (!e.projectId || !e.project)
+      // continue;` guard.
+      const projects = await ctx.db.project.findMany({
+        where: { id: { in: projectIds }, organizationId: ctx.orgId },
+        select: { id: true, name: true, rate: true, client: { select: { name: true } } },
+      });
+      const projectById = new Map(projects.map((p) => [p.id, p]));
+
+      const rows: Array<{
+        projectId: string;
+        projectName: string;
+        clientName: string;
+        totalMinutes: number;
+        billableAmount: number;
+      }> = [];
+
+      for (const g of grouped) {
+        if (!g.projectId) continue;
+        const project = projectById.get(g.projectId);
+        if (!project) continue;
+        const totalMinutes = Number(g._sum.minutes ?? 0);
+        rows.push({
+          projectId: g.projectId,
+          projectName: project.name,
+          clientName: project.client.name,
+          totalMinutes,
+          billableAmount: (totalMinutes / 60) * Number(project.rate),
+        });
       }
 
-      return Array.from(byProject.values()).sort((a, b) => b.totalMinutes - a.totalMinutes);
+      return rows.sort((a, b) => b.totalMinutes - a.totalMinutes);
     }),
 
   utilization: protectedProcedure
@@ -571,23 +594,70 @@ export const reportsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const entries = await ctx.db.timeEntry.findMany({
-        where: {
-          organizationId: ctx.orgId,
-          ...(input.from || input.to
-            ? { date: { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) } }
-            : {}),
-        },
-        select: {
-          minutes: true, date: true, retainerId: true, userId: true,
-          project: {
-            select: { id: true, name: true, isFlatRate: true, rate: true, client: { select: { id: true, name: true } } },
-          },
-        },
-      });
+      // Previously findMany'd every TimeEntry row (unbounded when from/to are
+      // absent) just to feed summarizeUtilization's bucketing/classification.
+      // Instead of reimplementing that logic in SQL (custom Monday-start week
+      // buckets, the retainer/flat-rate "billable" rule), pre-aggregate the
+      // cardinality-reducing SUM in SQL — grouped by every identity field
+      // summarizeUtilization reads (period bucket via date_trunc, retainer,
+      // project rate/flat-rate, client, user) — and hand the resulting rows
+      // (one per distinct combination, not one per raw entry) to the
+      // *unchanged* summarizeUtilization, which re-derives the bucket key
+      // from whatever date it's given. That keeps the bucketing/billable
+      // math under its existing unit tests and out of raw SQL.
+      // A literal SQL fragment, not a bound parameter: Prisma parameterizes
+      // each `${...}` independently, so using the same JS value twice (once
+      // in SELECT, once in GROUP BY) would still emit two distinct
+      // placeholders ($1, $2) — and Postgres's GROUP BY validation compares
+      // expression parse trees, so two different parameter placeholders
+      // holding the same runtime value are NOT recognized as the same
+      // expression, and the query fails with "column t.date must appear in
+      // the GROUP BY clause". Splicing a Prisma.sql fragment inlines the
+      // text so both occurrences are textually identical. Safe here because
+      // `input.groupBy` is a closed zod enum ("week" | "month"), never
+      // free-text.
+      const unit = input.groupBy === "week" ? Prisma.sql`'week'` : Prisma.sql`'month'`;
+
+      const aggregated = await ctx.db.$queryRaw<
+        Array<{
+          bucketDate: string;
+          retainerId: string | null;
+          userId: string | null;
+          projectId: string | null;
+          projectName: string | null;
+          isFlatRate: boolean | null;
+          rate: number | null;
+          clientId: string | null;
+          clientName: string | null;
+          totalMinutes: number;
+        }>
+      >`
+        SELECT
+          to_char(date_trunc(${unit}, t."date"), 'YYYY-MM-DD') AS "bucketDate",
+          t."retainerId" AS "retainerId",
+          t."userId" AS "userId",
+          pr.id AS "projectId",
+          pr.name AS "projectName",
+          pr."isFlatRate" AS "isFlatRate",
+          pr.rate::float AS "rate",
+          c.id AS "clientId",
+          c.name AS "clientName",
+          SUM(t.minutes)::float AS "totalMinutes"
+        FROM "TimeEntry" t
+        LEFT JOIN "Project" pr ON pr.id = t."projectId"
+        LEFT JOIN "Client" c ON c.id = pr."clientId"
+        WHERE t."organizationId" = ${ctx.orgId}
+          ${input.from ? Prisma.sql`AND t."date" >= ${input.from}` : Prisma.empty}
+          ${input.to ? Prisma.sql`AND t."date" <= ${input.to}` : Prisma.empty}
+        GROUP BY
+          to_char(date_trunc(${unit}, t."date"), 'YYYY-MM-DD'),
+          t."retainerId", t."userId",
+          pr.id, pr.name, pr."isFlatRate", pr.rate,
+          c.id, c.name
+      `;
 
       // Build user display name map
-      const userIds = [...new Set(entries.map((e) => e.userId).filter((id): id is string => id != null))];
+      const userIds = [...new Set(aggregated.map((r) => r.userId).filter((id): id is string => id != null))];
       const users = userIds.length > 0
         ? await ctx.db.user.findMany({
             where: { id: { in: userIds } },
@@ -603,17 +673,22 @@ export const reportsRouter = router({
         ]),
       );
 
-      const mapped: UtilizationEntry[] = entries.map((e) => ({
-        date: e.date,
-        minutes: e.minutes.toNumber(),
-        retainerId: e.retainerId,
-        projectId: e.project?.id ?? null,
-        projectName: e.project?.name ?? null,
-        clientId: e.project?.client?.id ?? null,
-        clientName: e.project?.client?.name ?? null,
-        userId: e.userId,
-        userName: e.userId ? (nameMap.get(e.userId) ?? e.userId) : null,
-        project: e.project ? { isFlatRate: e.project.isFlatRate, rate: e.project.rate.toNumber() } : null,
+      const mapped: UtilizationEntry[] = aggregated.map((r) => ({
+        // `to_char(...)` returns a plain "YYYY-MM-DD" string, not a driver-
+        // parsed Date — parsed explicitly as UTC midnight so monthBucket /
+        // weekBucket's getUTC*() reads aren't at the mercy of how (or
+        // whether) the pg driver would otherwise interpret a `timestamp
+        // without time zone` value.
+        date: new Date(`${r.bucketDate}T00:00:00Z`),
+        minutes: r.totalMinutes,
+        retainerId: r.retainerId,
+        projectId: r.projectId,
+        projectName: r.projectName,
+        clientId: r.clientId,
+        clientName: r.clientName,
+        userId: r.userId,
+        userName: r.userId ? (nameMap.get(r.userId) ?? r.userId) : null,
+        project: r.projectId ? { isFlatRate: !!r.isFlatRate, rate: Number(r.rate ?? 0) } : null,
       }));
 
       return summarizeUtilization(mapped, { groupBy: input.groupBy, dimension: input.dimension });

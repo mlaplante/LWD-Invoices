@@ -35,11 +35,42 @@ const securityHeaders = [
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
 ];
 
+// Org logos live in a PUBLIC Supabase Storage bucket (see
+// src/lib/supabase-storage.ts uploadLogo / getPublicUrl) at a stable URL, so
+// next/image can optimize them once the host is allow-listed. Derive the
+// hostname from the configured project so we don't allow-list more than our
+// own bucket; NEXT_PUBLIC_SUPABASE_URL can be a placeholder in some CI
+// contexts (see .github/workflows/ci.yml) or absent locally, so fall back to
+// the generic *.supabase.co wildcard rather than failing the build.
+function getSupabaseStorageRemotePattern() {
+  const fallback = {
+    protocol: "https" as const,
+    hostname: "*.supabase.co",
+    pathname: "/storage/v1/object/public/**",
+  };
+
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!rawUrl) return fallback;
+
+  try {
+    return {
+      protocol: "https" as const,
+      hostname: new URL(rawUrl).hostname,
+      pathname: "/storage/v1/object/public/**",
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,
+    // Scoped to the public-object path only — signed/private bucket URLs
+    // (receipts, W-9s) never match, so they stay unoptimizable by design.
+    remotePatterns: [getSupabaseStorageRemotePattern()],
   },
   // @sentry/profiling-node ships a native .node addon; it must be externalized
   // (not bundled) so it loads correctly in the Netlify/Lambda server runtime.

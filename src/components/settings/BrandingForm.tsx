@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, useRef } from "react";
 import { trpc } from "@/trpc/client";
+import { isOptimizableLogoUrl } from "@/lib/logo-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -97,7 +98,7 @@ export function BrandingForm({ org }: Props) {
               alt="Organization logo"
               width={160}
               height={64}
-              unoptimized
+              unoptimized={!isOptimizableLogoUrl(logoUrl)}
               className="h-16 w-auto max-w-[160px] rounded border object-contain p-1"
             />
             <div className="flex gap-2">

@@ -1,5 +1,6 @@
 import { api } from "@/trpc/server";
 import Image from "next/image";
+import { isOptimizableLogoUrl } from "@/lib/logo-url";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
@@ -262,7 +263,7 @@ export default async function InvoiceDetailPage({
                 alt={invoice.organization.name}
                 width={160}
                 height={40}
-                unoptimized
+                unoptimized={!isOptimizableLogoUrl(invoice.organization.logoUrl)}
                 className="mb-3 h-10 w-auto max-w-[160px] object-contain"
               />
             )}

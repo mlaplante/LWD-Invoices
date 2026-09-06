@@ -1,17 +1,7 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "@/server/routers/_app";
 import { createTRPCContext } from "@/server/trpc";
-
-// Procedures that read org-stable reference data — safe to cache briefly
-// in the browser. Anything not listed defaults to no-store.
-const SHORT_CACHE_QUERIES = new Set<string>([
-  "currencies.list",
-  "taxes.list",
-  "expenseCategories.list",
-  "expenseSuppliers.list",
-  "gatewaySettings.list",
-  "taskStatuses.list",
-]);
+import { SHORT_CACHE_QUERIES } from "@/lib/short-cache-queries";
 
 const handler = (req: Request) =>
   fetchRequestHandler({

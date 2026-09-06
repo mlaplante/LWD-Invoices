@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
+import { isOptimizableLogoUrl } from "@/lib/logo-url";
 
 type Props = {
   token: string;
@@ -37,7 +38,7 @@ export function InviteAcceptClient({ token, orgName, orgLogoUrl, inviterName, ro
           alt={orgName}
           width={160}
           height={48}
-          unoptimized
+          unoptimized={!isOptimizableLogoUrl(orgLogoUrl)}
           className="mx-auto mb-4 h-12 w-auto"
         />
       )}

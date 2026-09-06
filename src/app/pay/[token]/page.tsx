@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { resolveEarlyPayOffer } from "@/server/services/early-payment-discount";
 import Image from "next/image";
+import { isOptimizableLogoUrl } from "@/lib/logo-url";
 import { notFound } from "next/navigation";
 import { GatewayType, type InvoiceStatus } from "@/generated/prisma";
 import { decryptJson } from "@/server/services/encryption";
@@ -168,7 +169,7 @@ export default async function PayPage({
                 alt={orgName}
                 width={160}
                 height={48}
-                unoptimized
+                unoptimized={!isOptimizableLogoUrl(orgLogo)}
                 className="h-12 w-auto max-w-[160px] rounded-lg object-contain"
               />
             )}

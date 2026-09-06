@@ -13,7 +13,6 @@ import { logAudit } from "../services/audit";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { suggestCategorization } from "@/server/services/expense-categorization";
 import { assertAiRateLimit } from "@/server/lib/ai-rate-limit";
-import { resolveProvider } from "../services/receipt-ocr";
 
 // Per-org throttle on the paid-LLM receipt scan. In-process (per serverless
 // instance), so the effective limit is this × replicas — enough to stop a
@@ -93,6 +92,7 @@ export const expensesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const { resolveProvider } = await import("../services/receipt-ocr");
       if (!resolveProvider()) {
         return {
           unavailable: true as const,

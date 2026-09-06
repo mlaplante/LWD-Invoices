@@ -129,12 +129,27 @@ export const paymentReconciliationRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Allocation exceeds the remaining payment amount." });
         }
 
+        // One findMany instead of one tx.invoice.findFirst per application —
+        // the old loop ran a serialized round trip per row inside the
+        // transaction. Applications are validated against a Map built from
+        // this single fetch, same missing/foreign-invoice errors as before.
+        const invoiceIds = input.applications.map((application) => application.invoiceId);
+        const invoiceRecords = await tx.invoice.findMany({
+          where: { id: { in: invoiceIds }, organizationId: ctx.orgId },
+          include: { payments: true, creditNotesReceived: true },
+        });
+        const invoiceById = new Map(invoiceRecords.map((invoice) => [invoice.id, invoice] as const));
+
+        // If `applications` names the same invoiceId more than once (not
+        // rejected by the input schema), each occurrence's paymentsSum must
+        // still include amounts applied by earlier occurrences in this same
+        // loop — the old per-row findFirst saw its own prior write inside
+        // the tx; this Map snapshot doesn't, so track it explicitly instead.
+        const appliedByInvoice = new Map<string, number>();
+
         const applications = [] as Array<{ invoiceId: string; invoiceNumber: string; amount: number }>;
         for (const application of input.applications) {
-          const invoice = await tx.invoice.findFirst({
-            where: { id: application.invoiceId, organizationId: ctx.orgId },
-            include: { payments: true, creditNotesReceived: true },
-          });
+          const invoice = invoiceById.get(application.invoiceId);
           if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found." });
           if (!openInvoiceStatuses.includes(invoice.status)) {
             throw new TRPCError({ code: "BAD_REQUEST", message: `Invoice ${invoice.number} is not open for payment.` });
@@ -153,7 +168,12 @@ export const paymentReconciliationRouter = router({
             },
           });
 
-          const paymentsSum = invoice.payments.reduce((sum, payment) => sum + numberValue(payment.amount), 0) + application.amount;
+          const priorApplied = appliedByInvoice.get(invoice.id) ?? 0;
+          const paymentsSum =
+            invoice.payments.reduce((sum, payment) => sum + numberValue(payment.amount), 0) +
+            priorApplied +
+            application.amount;
+          appliedByInvoice.set(invoice.id, priorApplied + application.amount);
           const creditApplied = invoice.creditNotesReceived.reduce((sum, credit) => sum + numberValue(credit.amount), 0);
           await tx.invoice.update({
             where: { id: invoice.id, organizationId: ctx.orgId },

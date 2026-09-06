@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { trpc } from "@/trpc/client";
+import { isOptimizableLogoUrl } from "@/lib/logo-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -149,7 +150,7 @@ export function PortalBrandingForm({ org }: Props) {
                 alt={org.name}
                 width={120}
                 height={32}
-                unoptimized
+                unoptimized={!isOptimizableLogoUrl(org.logoUrl)}
                 className="mx-auto mb-2 h-8 w-auto max-w-[120px] object-contain"
               />
             )}

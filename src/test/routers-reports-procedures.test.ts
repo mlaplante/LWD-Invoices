@@ -852,25 +852,13 @@ describe("Reports Router Procedures", () => {
   // ──────────────────────────────────────────────────────────
   describe("timeTracking", () => {
     it("aggregates time entries by project", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        {
-          id: "te_1",
-          projectId: "proj_1",
-          minutes: 60,
-          project: { id: "proj_1", name: "Website", rate: 100, client: { name: "Client A" } },
-        },
-        {
-          id: "te_2",
-          projectId: "proj_1",
-          minutes: 120,
-          project: { id: "proj_1", name: "Website", rate: 100, client: { name: "Client A" } },
-        },
-        {
-          id: "te_3",
-          projectId: "proj_2",
-          minutes: 30,
-          project: { id: "proj_2", name: "Mobile App", rate: 150, client: { name: "Client B" } },
-        },
+      ctx.db.timeEntry.groupBy.mockResolvedValue([
+        { projectId: "proj_1", _sum: { minutes: 180 } },
+        { projectId: "proj_2", _sum: { minutes: 30 } },
+      ]);
+      ctx.db.project.findMany.mockResolvedValue([
+        { id: "proj_1", name: "Website", rate: 100, client: { name: "Client A" } },
+        { id: "proj_2", name: "Mobile App", rate: 150, client: { name: "Client B" } },
       ]);
 
       const result = await caller.timeTracking({});
@@ -886,22 +874,24 @@ describe("Reports Router Procedures", () => {
     });
 
     it("returns empty array when no entries", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([]);
+      ctx.db.timeEntry.groupBy.mockResolvedValue([]);
 
       const result = await caller.timeTracking({});
 
       expect(result).toEqual([]);
+      // Short-circuits before the follow-up project lookup.
+      expect(ctx.db.project.findMany).not.toHaveBeenCalled();
     });
 
     it("filters by date range", async () => {
       const from = new Date("2026-01-01");
       const to = new Date("2026-01-31");
 
-      ctx.db.timeEntry.findMany.mockResolvedValue([]);
+      ctx.db.timeEntry.groupBy.mockResolvedValue([]);
 
       await caller.timeTracking({ from, to });
 
-      expect(ctx.db.timeEntry.findMany).toHaveBeenCalledWith(
+      expect(ctx.db.timeEntry.groupBy).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             date: { gte: from, lte: to },
@@ -910,41 +900,28 @@ describe("Reports Router Procedures", () => {
       );
     });
 
-    it("includes project with client relation", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([]);
+    it("looks up matching projects with rate and client name, org-scoped", async () => {
+      ctx.db.timeEntry.groupBy.mockResolvedValue([{ projectId: "proj_1", _sum: { minutes: 90 } }]);
+      ctx.db.project.findMany.mockResolvedValue([
+        { id: "proj_1", name: "Website", rate: 120, client: { name: "Acme" } },
+      ]);
 
       await caller.timeTracking({});
 
-      expect(ctx.db.timeEntry.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: {
-            project: {
-              select: {
-                id: true,
-                name: true,
-                rate: true,
-                client: { select: { name: true } },
-              },
-            },
-          },
-        })
-      );
+      expect(ctx.db.project.findMany).toHaveBeenCalledWith({
+        where: { id: { in: ["proj_1"] }, organizationId: "test-org-123" },
+        select: { id: true, name: true, rate: true, client: { select: { name: true } } },
+      });
     });
 
     it("sorts results by totalMinutes descending", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        {
-          id: "te_1",
-          projectId: "proj_1",
-          minutes: 30,
-          project: { id: "proj_1", name: "Small", rate: 50, client: { name: "C" } },
-        },
-        {
-          id: "te_2",
-          projectId: "proj_2",
-          minutes: 120,
-          project: { id: "proj_2", name: "Large", rate: 100, client: { name: "C" } },
-        },
+      ctx.db.timeEntry.groupBy.mockResolvedValue([
+        { projectId: "proj_1", _sum: { minutes: 30 } },
+        { projectId: "proj_2", _sum: { minutes: 120 } },
+      ]);
+      ctx.db.project.findMany.mockResolvedValue([
+        { id: "proj_1", name: "Small", rate: 50, client: { name: "C" } },
+        { id: "proj_2", name: "Large", rate: 100, client: { name: "C" } },
       ]);
 
       const result = await caller.timeTracking({});
@@ -954,13 +931,9 @@ describe("Reports Router Procedures", () => {
     });
 
     it("returns correct shape per project", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        {
-          id: "te_1",
-          projectId: "proj_1",
-          minutes: 90,
-          project: { id: "proj_1", name: "Website", rate: 120, client: { name: "Acme" } },
-        },
+      ctx.db.timeEntry.groupBy.mockResolvedValue([{ projectId: "proj_1", _sum: { minutes: 90 } }]);
+      ctx.db.project.findMany.mockResolvedValue([
+        { id: "proj_1", name: "Website", rate: 120, client: { name: "Acme" } },
       ]);
 
       const result = await caller.timeTracking({});
@@ -972,6 +945,18 @@ describe("Reports Router Procedures", () => {
         totalMinutes: 90,
         billableAmount: (90 / 60) * 120,
       });
+    });
+
+    it("drops a project id the org-scoped lookup doesn't return", async () => {
+      // Mirrors the old `if (!e.projectId || !e.project) continue;` guard —
+      // a groupBy row for a project that isn't in this org's findMany result
+      // (foreign org, or deleted) is silently dropped.
+      ctx.db.timeEntry.groupBy.mockResolvedValue([{ projectId: "proj_other_org", _sum: { minutes: 60 } }]);
+      ctx.db.project.findMany.mockResolvedValue([]);
+
+      const result = await caller.timeTracking({});
+
+      expect(result).toEqual([]);
     });
   });
 
@@ -1954,14 +1939,12 @@ describe("Reports Router Procedures", () => {
   });
 
   describe("timeTracking - additional edge cases", () => {
-    it("handles BigInt minutes", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        {
-          id: "te_1",
-          projectId: "proj_1",
-          minutes: BigInt(90),
-          project: { id: "proj_1", name: "Website", rate: 100, client: { name: "Client A" } },
-        },
+    it("handles BigInt totalMinutes returned from groupBy", async () => {
+      ctx.db.timeEntry.groupBy.mockResolvedValue([
+        { projectId: "proj_1", _sum: { minutes: BigInt(90) } },
+      ]);
+      ctx.db.project.findMany.mockResolvedValue([
+        { id: "proj_1", name: "Website", rate: 100, client: { name: "Client A" } },
       ]);
 
       const result = await caller.timeTracking({});
@@ -1971,13 +1954,9 @@ describe("Reports Router Procedures", () => {
     });
 
     it("handles Decimal project rate", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        {
-          id: "te_1",
-          projectId: "proj_1",
-          minutes: 60,
-          project: { id: "proj_1", name: "Website", rate: "150.50", client: { name: "Client A" } },
-        },
+      ctx.db.timeEntry.groupBy.mockResolvedValue([{ projectId: "proj_1", _sum: { minutes: 60 } }]);
+      ctx.db.project.findMany.mockResolvedValue([
+        { id: "proj_1", name: "Website", rate: "150.50", client: { name: "Client A" } },
       ]);
 
       const result = await caller.timeTracking({});
@@ -1987,54 +1966,41 @@ describe("Reports Router Procedures", () => {
     });
 
     it("does not add date filter when no dates provided", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([]);
+      ctx.db.timeEntry.groupBy.mockResolvedValue([]);
 
       await caller.timeTracking({});
 
-      const callArgs = ctx.db.timeEntry.findMany.mock.calls[0][0];
+      const callArgs = ctx.db.timeEntry.groupBy.mock.calls[0][0];
       expect(callArgs.where.date).toBeUndefined();
     });
 
     it("filters with only from date", async () => {
       const from = new Date("2026-01-01");
-      ctx.db.timeEntry.findMany.mockResolvedValue([]);
+      ctx.db.timeEntry.groupBy.mockResolvedValue([]);
 
       await caller.timeTracking({ from });
 
-      const callArgs = ctx.db.timeEntry.findMany.mock.calls[0][0];
+      const callArgs = ctx.db.timeEntry.groupBy.mock.calls[0][0];
       expect(callArgs.where.date).toEqual({ gte: from });
     });
 
     it("filters with only to date", async () => {
       const to = new Date("2026-01-31");
-      ctx.db.timeEntry.findMany.mockResolvedValue([]);
+      ctx.db.timeEntry.groupBy.mockResolvedValue([]);
 
       await caller.timeTracking({ to });
 
-      const callArgs = ctx.db.timeEntry.findMany.mock.calls[0][0];
+      const callArgs = ctx.db.timeEntry.groupBy.mock.calls[0][0];
       expect(callArgs.where.date).toEqual({ lte: to });
     });
 
-    it("accumulates minutes from multiple entries for the same project", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        {
-          id: "te_1",
-          projectId: "proj_1",
-          minutes: 30,
-          project: { id: "proj_1", name: "Website", rate: 100, client: { name: "C" } },
-        },
-        {
-          id: "te_2",
-          projectId: "proj_1",
-          minutes: 45,
-          project: { id: "proj_1", name: "Website", rate: 100, client: { name: "C" } },
-        },
-        {
-          id: "te_3",
-          projectId: "proj_1",
-          minutes: 15,
-          project: { id: "proj_1", name: "Website", rate: 100, client: { name: "C" } },
-        },
+    it("uses the SQL-aggregated sum directly for a project's totalMinutes", async () => {
+      // Accumulation across raw TimeEntry rows for the same project now
+      // happens in the groupBy's SUM, not in JS — this asserts the
+      // aggregated value passes through unchanged.
+      ctx.db.timeEntry.groupBy.mockResolvedValue([{ projectId: "proj_1", _sum: { minutes: 90 } }]);
+      ctx.db.project.findMany.mockResolvedValue([
+        { id: "proj_1", name: "Website", rate: 100, client: { name: "C" } },
       ]);
 
       const result = await caller.timeTracking({});
@@ -2044,16 +2010,19 @@ describe("Reports Router Procedures", () => {
       expect(result[0].billableAmount).toBe((90 / 60) * 100);
     });
 
-    it("filters by organizationId", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([]);
+    it("groups by projectId, excludes null projectId, and stays org-scoped", async () => {
+      ctx.db.timeEntry.groupBy.mockResolvedValue([]);
 
       await caller.timeTracking({});
 
-      expect(ctx.db.timeEntry.findMany).toHaveBeenCalledWith(
+      expect(ctx.db.timeEntry.groupBy).toHaveBeenCalledWith(
         expect.objectContaining({
+          by: ["projectId"],
           where: expect.objectContaining({
             organizationId: "test-org-123",
+            projectId: { not: null },
           }),
+          _sum: { minutes: true },
         })
       );
     });
@@ -2479,11 +2448,21 @@ describe("Reports Router Procedures", () => {
 
   describe("utilization", () => {
     it("returns billable vs non-billable split with utilization %", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        { minutes: { toNumber: () => 120 }, date: new Date("2026-06-01Z"), retainerId: null, userId: "u1",
-          project: { id: "p1", name: "A", isFlatRate: false, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
-        { minutes: { toNumber: () => 60 }, date: new Date("2026-06-02Z"), retainerId: null, userId: "u1",
-          project: { id: "p2", name: "B", isFlatRate: true, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+      // Rows now come pre-aggregated (one per distinct bucket/retainer/
+      // project/client/user combination) instead of one per raw TimeEntry;
+      // the billable/non-billable split and utilizationPct math live
+      // entirely in summarizeUtilization, unchanged.
+      ctx.db.$queryRaw.mockResolvedValue([
+        {
+          bucketDate: "2026-06-01", retainerId: null, userId: "u1",
+          projectId: "p1", projectName: "A", isFlatRate: false, rate: 100,
+          clientId: "c1", clientName: "Acme", totalMinutes: 120,
+        },
+        {
+          bucketDate: "2026-06-02", retainerId: null, userId: "u1",
+          projectId: "p2", projectName: "B", isFlatRate: true, rate: 100,
+          clientId: "c1", clientName: "Acme", totalMinutes: 60,
+        },
       ]);
       ctx.db.user.findMany.mockResolvedValue([]);
       const r = await caller.utilization({ groupBy: "month", dimension: "client" });
@@ -2491,12 +2470,20 @@ describe("Reports Router Procedures", () => {
       expect(r.summary.nonBillableHours).toBeCloseTo(1, 5);
       expect(r.summary.utilizationPct).toBeCloseTo(2 / 3, 5);
       expect(r.rows[0].label).toBe("Acme");
+
+      // The aggregation query stays org-scoped: the interpolated values of
+      // the tagged-template $queryRaw call must include the org id.
+      const interpolatedArgs = ctx.db.$queryRaw.mock.calls[0].slice(1);
+      expect(interpolatedArgs).toContain("test-org-123");
     });
 
     it("resolves user display names from firstName + lastName", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        { minutes: { toNumber: () => 60 }, date: new Date("2026-06-01T12:00:00Z"), retainerId: null, userId: "u1",
-          project: { id: "p1", name: "A", isFlatRate: false, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+      ctx.db.$queryRaw.mockResolvedValue([
+        {
+          bucketDate: "2026-06-01", retainerId: null, userId: "u1",
+          projectId: "p1", projectName: "A", isFlatRate: false, rate: 100,
+          clientId: "c1", clientName: "Acme", totalMinutes: 60,
+        },
       ]);
       ctx.db.user.findMany.mockResolvedValue([
         { id: "u1", firstName: "Sam", lastName: "Lee", email: "s@x.com" },
@@ -2506,9 +2493,12 @@ describe("Reports Router Procedures", () => {
     });
 
     it("falls back to email when no firstName", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        { minutes: { toNumber: () => 60 }, date: new Date("2026-06-01T12:00:00Z"), retainerId: null, userId: "u2",
-          project: { id: "p1", name: "A", isFlatRate: false, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+      ctx.db.$queryRaw.mockResolvedValue([
+        {
+          bucketDate: "2026-06-01", retainerId: null, userId: "u2",
+          projectId: "p1", projectName: "A", isFlatRate: false, rate: 100,
+          clientId: "c1", clientName: "Acme", totalMinutes: 60,
+        },
       ]);
       ctx.db.user.findMany.mockResolvedValue([
         { id: "u2", firstName: null, lastName: null, email: "noname@x.com" },
@@ -2518,9 +2508,12 @@ describe("Reports Router Procedures", () => {
     });
 
     it("skips user lookup when no entries have a userId", async () => {
-      ctx.db.timeEntry.findMany.mockResolvedValue([
-        { minutes: { toNumber: () => 60 }, date: new Date("2026-06-01T12:00:00Z"), retainerId: null, userId: null,
-          project: { id: "p1", name: "A", isFlatRate: false, rate: { toNumber: () => 100 }, client: { id: "c1", name: "Acme" } } },
+      ctx.db.$queryRaw.mockResolvedValue([
+        {
+          bucketDate: "2026-06-01", retainerId: null, userId: null,
+          projectId: "p1", projectName: "A", isFlatRate: false, rate: 100,
+          clientId: "c1", clientName: "Acme", totalMinutes: 60,
+        },
       ]);
       const r = await caller.utilization({ groupBy: "month", dimension: "project" });
       expect(ctx.db.user.findMany).not.toHaveBeenCalled();

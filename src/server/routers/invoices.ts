@@ -1073,48 +1073,90 @@ export const invoicesRouter = router({
         import("@/server/services/invoice-sent-email"),
       ]);
 
+      // Split by the per-row eligibility check first (unnamed lines can only
+      // reach here via a DRAFT autosave snapshot — see draftLineSchema — and
+      // a bulk send must still refuse to expose one, same as the
+      // single-invoice `send` path), then batch the actual writes: one
+      // updateMany per resulting status group instead of one `update` per
+      // invoice (each of which risked serializing through the prod pool's
+      // single connection, same issue as markPaidMany below).
       const errors: string[] = [];
-      const results = await Promise.allSettled(
-        invoices.map(async (invoice) => {
-          // Unnamed lines can only reach here via a DRAFT autosave snapshot
-          // (see draftLineSchema); a bulk send must still refuse to expose
-          // one to a client, same as the single-invoice `send` path.
-          if (!invoiceLinesAllNamed(invoice.lines)) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `Invoice #${invoice.number} has unnamed line items. Name every line before sending.`,
-            });
-          }
-
-          // Update status
-          await ctx.db.invoice.update({
-            where: { id: invoice.id, organizationId: ctx.orgId },
-            data: {
-              status: invoice.type === InvoiceType.ESTIMATE ? invoice.status : InvoiceStatus.SENT,
-              lastSent: new Date(),
-            },
-          });
-
-          // Send email if client has email
-          try {
-            await sendInvoiceSentEmail(invoice, appUrl);
-          } catch (err) {
-            console.error(`[invoices.sendMany] Failed to email invoice ${invoice.number}:`, err);
-          }
-        })
-      );
-
-      const sent = results.filter((r) => r.status === "fulfilled").length;
-      const failed = results.filter((r) => r.status === "rejected").length;
-      results.forEach((r) => {
-        if (r.status === "rejected") {
-          errors.push(r.reason?.message ?? "Unknown error");
+      const eligible: typeof invoices = [];
+      for (const invoice of invoices) {
+        if (!invoiceLinesAllNamed(invoice.lines)) {
+          errors.push(
+            `Invoice #${invoice.number} has unnamed line items. Name every line before sending.`
+          );
+        } else {
+          eligible.push(invoice);
         }
-      });
+      }
+
+      let sent = 0;
+      let failed = invoices.length - eligible.length;
+      let sentInvoices: typeof invoices = [];
+
+      if (eligible.length > 0) {
+        const now = new Date();
+        // ESTIMATE invoices keep their current status (only lastSent moves);
+        // everything else transitions to SENT. Both are plain updateMany
+        // calls, batched into one transaction round trip.
+        const estimateIds = eligible
+          .filter((invoice) => invoice.type === InvoiceType.ESTIMATE)
+          .map((invoice) => invoice.id);
+        const otherIds = eligible
+          .filter((invoice) => invoice.type !== InvoiceType.ESTIMATE)
+          .map((invoice) => invoice.id);
+
+        // Same all-or-nothing failure semantics as markPaidMany: the two
+        // updateMany calls commit as one transaction, so a DB error fails
+        // every eligible invoice in this batch rather than guessing which
+        // subset "would have" committed.
+        try {
+          await ctx.db.$transaction([
+            ...(estimateIds.length > 0
+              ? [
+                  ctx.db.invoice.updateMany({
+                    where: { id: { in: estimateIds }, organizationId: ctx.orgId },
+                    data: { lastSent: now },
+                  }),
+                ]
+              : []),
+            ...(otherIds.length > 0
+              ? [
+                  ctx.db.invoice.updateMany({
+                    where: { id: { in: otherIds }, organizationId: ctx.orgId },
+                    data: { status: InvoiceStatus.SENT, lastSent: now },
+                  }),
+                ]
+              : []),
+          ]);
+          sent = eligible.length;
+          sentInvoices = eligible;
+        } catch (err) {
+          failed += eligible.length;
+          const message = err instanceof Error ? err.message : "Unknown error";
+          errors.push(...eligible.map(() => message));
+        }
+
+        // Send email if client has email — per-invoice, after the status
+        // update commits, same as before. A failed send doesn't roll back
+        // the status change or move the invoice out of `sent`.
+        if (sentInvoices.length > 0) {
+          await Promise.all(
+            sentInvoices.map(async (invoice) => {
+              try {
+                await sendInvoiceSentEmail(invoice, appUrl);
+              } catch (err) {
+                console.error(`[invoices.sendMany] Failed to email invoice ${invoice.number}:`, err);
+              }
+            })
+          );
+        }
+      }
 
       // Audit + notification (non-blocking): one createMany each for the
       // whole batch instead of per-invoice writes and admin lookups.
-      const sentInvoices = invoices.filter((_, i) => results[i]!.status === "fulfilled");
       if (sentInvoices.length > 0) {
         await Promise.all([
           logAuditMany(
@@ -1180,47 +1222,81 @@ export const invoicesRouter = router({
         return { paid: 0, failed: 0, skipped: input.ids.length, errors: [] as string[] };
       }
 
+      // Previously this ran one Promise.allSettled over N per-invoice
+      // $transaction calls. With the prod pool capped at max:1
+      // (src/server/db.ts), each of those transactions has to wait for the
+      // single connection in turn, so N invoices meant N serialized
+      // round trips and real risk of a P2024 pool-timeout under load.
+      // Instead: one payment.createMany + one invoice.updateMany in a single
+      // $transaction — one connection acquisition for the whole batch.
+      // There's no per-row branching in this write (every eligible invoice
+      // gets a payment row + PAID status), so this is a clean batch — unlike
+      // the DEPOSIT credit-balance step below, which targets a different
+      // table (per-client, not per-invoice) and runs after this transaction
+      // commits, exactly as before.
+      //
+      // Trade-off: since the payment+status write is now one atomic
+      // transaction instead of N independent ones, a DB error here fails
+      // the whole batch (paid: 0) rather than partially succeeding. That's
+      // the right behavior for a money system — we never want to guess
+      // which subset of a single failing batch "would have" committed.
       const errors: string[] = [];
-      const results = await Promise.allSettled(
-        invoices.map(async (invoice) => {
-          await ctx.db.$transaction(async (tx) => {
-            await tx.payment.create({
-              data: {
-                amount: invoice.total,
-                method: input.method,
-                paidAt: input.paidAt,
-                invoiceId: invoice.id,
-                organizationId: ctx.orgId,
-              },
-            });
-            await tx.invoice.update({
-              where: { id: invoice.id, organizationId: ctx.orgId },
-              data: { status: InvoiceStatus.PAID },
-            });
-          });
+      let paid = 0;
+      let failed = 0;
+      let successInvoices: typeof invoices = [];
 
-          // Credit client balance for deposit invoices
+      try {
+        await ctx.db.$transaction([
+          ctx.db.payment.createMany({
+            data: invoices.map((invoice) => ({
+              amount: invoice.total,
+              method: input.method,
+              paidAt: input.paidAt,
+              invoiceId: invoice.id,
+              organizationId: ctx.orgId,
+            })),
+          }),
+          ctx.db.invoice.updateMany({
+            where: {
+              id: { in: invoices.map((invoice) => invoice.id) },
+              organizationId: ctx.orgId,
+            },
+            data: { status: InvoiceStatus.PAID },
+          }),
+        ]);
+        paid = invoices.length;
+        successInvoices = invoices;
+      } catch (err) {
+        failed = invoices.length;
+        const message = err instanceof Error ? err.message : "Unknown error";
+        errors.push(...invoices.map(() => message));
+      }
+
+      // Credit client balance for deposit invoices. Per-invoice (grouped by
+      // client, not batched) and intentionally outside the transaction
+      // above and non-fatal: it must not roll back payments that already
+      // committed, and a failure here shouldn't be reported as the invoice
+      // failing to be marked paid (it IS paid — only the credit bump failed).
+      if (successInvoices.length > 0) {
+        for (const invoice of successInvoices) {
           if (invoice.type === "DEPOSIT") {
-            await ctx.db.client.update({
-              where: { id: invoice.clientId },
-              data: { creditBalance: { increment: invoice.total } },
-            });
+            try {
+              await ctx.db.client.update({
+                where: { id: invoice.clientId },
+                data: { creditBalance: { increment: invoice.total } },
+              });
+            } catch (err) {
+              console.error(
+                "[markPaidMany] Failed to credit client balance for deposit invoice:",
+                err
+              );
+            }
           }
-        })
-      );
-
-      const paid = results.filter((r) => r.status === "fulfilled").length;
-      const failed = results.filter((r) => r.status === "rejected").length;
-      results.forEach((r) => {
-        if (r.status === "rejected") {
-          errors.push(r.reason?.message ?? "Unknown error");
         }
-      });
+      }
 
       // Fire automation events and send receipt emails for successful payments
       if (paid > 0) {
-        const successInvoices = invoices.filter((_, i) => results[i]!.status === "fulfilled");
-
         try {
           const { inngest: inngestClient } = await import("@/inngest/client");
           await Promise.all(

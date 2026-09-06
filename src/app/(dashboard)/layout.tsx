@@ -9,7 +9,8 @@ import { SidebarNav } from "@/components/layout/SidebarNav";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 import { Plus } from "lucide-react";
-import { CommandPalette, SearchTriggerButton } from "@/components/layout/CommandPalette";
+import { SearchTriggerButton } from "@/components/layout/SearchTriggerButton";
+import { CommandPaletteLazy } from "@/components/layout/CommandPaletteLazy";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -165,7 +166,7 @@ export default async function DashboardLayout({
       </div>
 
       <Suspense>
-        <CommandPalette />
+        <CommandPaletteLazy />
       </Suspense>
     </div>
   );

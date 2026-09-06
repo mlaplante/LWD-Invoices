@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
 import { createRateLimiter } from "@/lib/rate-limit";
-import { runBooksAssistant, type BooksAssistantMessage } from "@/server/services/books-assistant";
+import type { BooksAssistantMessage } from "@/server/services/books-assistant";
 
 const MAX_HISTORY = 20;
 
@@ -47,6 +47,7 @@ export const assistantRouter = router({
         return { reply: "Ask me a question to get started.", toolCalls: [], unavailable: false };
       }
       const history: BooksAssistantMessage[] = input.messages;
+      const { runBooksAssistant } = await import("@/server/services/books-assistant");
       return runBooksAssistant({ db: ctx.db, orgId: ctx.orgId }, history);
     }),
 });

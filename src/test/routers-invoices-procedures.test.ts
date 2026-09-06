@@ -1043,8 +1043,8 @@ describe("Invoices Router Procedures", () => {
         { id: "inv_2", total: 2000, number: "INV-002" },
       ]);
 
-      ctx.db.payment.create.mockResolvedValue({});
-      ctx.db.invoice.update.mockResolvedValue({});
+      ctx.db.payment.createMany.mockResolvedValue({ count: 2 });
+      ctx.db.invoice.updateMany.mockResolvedValue({ count: 2 });
 
       const result = await caller.markPaidMany({
         ids: ["inv_1", "inv_2"],
@@ -1055,6 +1055,27 @@ describe("Invoices Router Procedures", () => {
       expect(result.paid).toBe(2);
       expect(result.failed).toBe(0);
       expect(result.skipped).toBe(0);
+
+      // Batched into one payment.createMany + one invoice.updateMany (inside
+      // one $transaction) instead of N per-invoice writes, and both stay
+      // scoped to the org.
+      expect(ctx.db.payment.createMany).toHaveBeenCalledTimes(1);
+      expect(ctx.db.payment.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({ invoiceId: "inv_1", organizationId: "test-org-123" }),
+          expect.objectContaining({ invoiceId: "inv_2", organizationId: "test-org-123" }),
+        ],
+      });
+      expect(ctx.db.invoice.updateMany).toHaveBeenCalledTimes(1);
+      expect(ctx.db.invoice.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { in: ["inv_1", "inv_2"] },
+            organizationId: "test-org-123",
+          }),
+          data: { status: InvoiceStatus.PAID },
+        })
+      );
     });
 
     it("skips invoices not in eligible status", async () => {
@@ -1071,31 +1092,28 @@ describe("Invoices Router Procedures", () => {
       expect(result.skipped).toBe(2);
     });
 
-    it("reports partial failures", async () => {
+    it("reports the whole batch as failed when the transaction fails", async () => {
+      // The payment.createMany + invoice.updateMany writes now run inside a
+      // single $transaction, so a DB error fails the batch atomically —
+      // there's no more "row 1 succeeded, row 2 failed" outcome, since
+      // nothing commits until every row in the transaction succeeds.
       ctx.db.invoice.findMany.mockResolvedValue([
         { id: "inv_1", total: 1000, number: "INV-001" },
         { id: "inv_2", total: 2000, number: "INV-002" },
       ]);
 
-      // First call succeeds, second fails
-      let callCount = 0;
-      ctx.db.payment.create.mockImplementation(async () => {
-        callCount++;
-        if (callCount === 2) {
-          throw new Error("DB error");
-        }
-        return {};
-      });
-      ctx.db.invoice.update.mockResolvedValue({});
+      ctx.db.payment.createMany.mockRejectedValue(new Error("DB error"));
+      ctx.db.invoice.updateMany.mockResolvedValue({ count: 0 });
 
       const result = await caller.markPaidMany({
         ids: ["inv_1", "inv_2"],
         method: "manual",
       });
 
-      // One succeeded, one failed
-      expect(result.paid + result.failed).toBe(2);
+      expect(result.paid).toBe(0);
+      expect(result.failed).toBe(2);
       expect(result.errors.length).toBe(result.failed);
+      expect(result.errors.every((e: string) => e === "DB error")).toBe(true);
     });
   });
 });

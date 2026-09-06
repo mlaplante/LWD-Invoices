@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { PortalBranding } from "@/lib/portal-branding";
+import { isOptimizableLogoUrl } from "@/lib/logo-url";
 
 type Props = {
   branding: PortalBranding;
@@ -59,7 +60,7 @@ export function PortalShell({
               alt={branding.orgName}
               width={120}
               height={40}
-              unoptimized
+              unoptimized={!isOptimizableLogoUrl(branding.logoUrl)}
               className="h-10 w-auto max-w-[120px] object-contain"
             />
           ) : (

@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { api } from "@/trpc/server";
 import { getUser } from "@/lib/supabase/server";
-import dynamic from "next/dynamic";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
@@ -17,20 +16,16 @@ import { DashboardLayoutEditor } from "@/components/dashboard/DashboardLayoutEdi
 import { WeeklyBriefing } from "@/components/dashboard/WeeklyBriefing";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { WidgetKey } from "@/lib/dashboard-layout";
-
-// Lazy-load chart components to defer the ~400KB Recharts bundle
-const RevenueChart = dynamic(
-  () => import("@/components/dashboard/RevenueChart").then((m) => m.RevenueChart),
-  { loading: () => <Skeleton className="h-72 rounded-[10px]" /> },
-);
-const InvoiceStatusChart = dynamic(
-  () => import("@/components/dashboard/InvoiceStatusChart").then((m) => m.InvoiceStatusChart),
-  { loading: () => <Skeleton className="h-72 rounded-[10px]" /> },
-);
-const ExpensesVsRevenueChart = dynamic(
-  () => import("@/components/dashboard/ExpensesVsRevenueChart").then((m) => m.ExpensesVsRevenueChart),
-  { loading: () => <Skeleton className="h-72 rounded-[10px]" /> },
-);
+// Chart components are lazy-loaded (dynamic(), ssr: false) in this "use
+// client" wrapper rather than here: page.tsx is a Server Component, and
+// calling next/dynamic from a Server Component does not defer the chunk —
+// it still gets bundled into the route's server-rendered entry JS. See
+// DashboardCharts.tsx for the full explanation.
+import {
+  RevenueChart,
+  InvoiceStatusChart,
+  ExpensesVsRevenueChart,
+} from "@/components/dashboard/DashboardCharts";
 
 /* ── Async sections (one per WIDGET_KEY) ── */
 
