@@ -11,6 +11,7 @@ Thank you for your interest in contributing to LWD Invoices! This document provi
    cd LWD-Invoices
    ```
 3. **Set up the development environment** following the instructions in the [README.md](README.md)
+4. **Install dependencies** with `npm install`. Besides generating the Prisma client, this points git at the repo's `githooks/` directory, so a [gitleaks](https://github.com/gitleaks/gitleaks) secret scan runs before every commit (`brew install gitleaks`; the hook skips with a notice if it isn't installed, and CI scans anyway). Use Node 22 (`.nvmrc`).
 
 ## Development Workflow
 
@@ -36,6 +37,10 @@ git checkout -b fix/your-bug-fix-name
 Before submitting a pull request:
 
 ```bash
+# Type-check and lint — the same gates CI runs
+npm run typecheck
+npm run lint
+
 # Run tests
 npm run test
 

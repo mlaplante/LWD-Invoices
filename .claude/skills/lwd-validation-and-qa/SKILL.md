@@ -52,7 +52,7 @@ Use a sibling skill instead when the task is actually about:
 | `check` → Coverage report | `davelosert/vitest-coverage-report-action@v2` | No — posts a PR comment, does not fail the job |
 | `build` | `npx next build` with placeholder env vars, **no migration run** | Yes |
 | `actionlint` | lints `.github/workflows/*.yml` | Yes |
-| lint | `eslint` | **Disabled** — no lint step in `ci.yml` (ESLint 10 incompatibility, see the Test-step comment); `next.config.ts` only sets `typescript.ignoreBuildErrors: true` (a type-check skip in `next build`, unrelated to lint) |
+| `check` → Lint | `npm run lint:ci` (`eslint --max-warnings <n>`, ESLint 9 pinned via `.ncurc.yml`) | Yes — any error fails, and warnings fail once they exceed the ratchet number in `package.json`. Lower that number as warnings are fixed; never raise it. (`next.config.ts`'s `typescript.ignoreBuildErrors: true` is a type-check skip in `next build`, unrelated to lint.) |
 
 Key nuance: `CONTRIBUTING.md`'s "Aim for >80% code coverage on critical paths" is a stated
 goal, not a CI gate — there is no numeric coverage threshold anywhere in `ci.yml`. Don't cite

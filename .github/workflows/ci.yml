@@ -22,15 +22,19 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # `npm ci` runs the postinstall hook, which already does `prisma generate`.
       - run: npm ci
-      - run: npx prisma generate
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
       # ESLint is pinned to v9: eslint-config-next 16's nested eslint-plugin-react
       # crashes under ESLint 10 (context.getFilename removed). Revisit when
       # eslint-config-next supports ESLint 10.
+      #
+      # lint:ci is `eslint --max-warnings <n>`: errors always fail, and warnings
+      # fail only if they exceed the ratchet number in package.json. Lower the
+      # number as warnings get fixed; never raise it.
       - name: Lint
-        run: npm run lint
+        run: npm run lint:ci
       - name: Test
         run: npm run test:coverage
       - name: Coverage report
@@ -47,7 +51,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx prisma generate
       # Persist Next.js/Turbopack build cache between CI runs. Keyed on lockfile
       # + source hash; restore-keys lets a partial cache hit still warm the build.
       - uses: actions/cache@v6

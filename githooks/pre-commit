@@ -1,2 +1,9 @@
 #!/usr/bin/env bash
-/opt/homebrew/bin/gitleaks git --pre-commit --staged
+# Local secret scan. Wired up by `npm install` (scripts/setup-git-hooks.mjs sets
+# core.hooksPath). Skips with a notice when gitleaks isn't installed so a fresh
+# clone can still commit — .github/workflows/gitleaks.yml scans in CI regardless.
+if command -v gitleaks >/dev/null 2>&1; then
+  exec gitleaks git --pre-commit --staged
+fi
+echo "[pre-commit] gitleaks not found; skipping local secret scan (CI still runs it). Install: brew install gitleaks" >&2
+exit 0

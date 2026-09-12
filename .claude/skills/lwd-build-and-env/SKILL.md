@@ -215,13 +215,14 @@ type-safety signal.
 - **Expecting `npm run db:seed` to populate sample invoices/clients.** It's
   currently a no-op stub; create data through the onboarding flow instead.
 - **Treating `npm run lint` (or a green `next build`) as a type-safety check.**
-  Lint is effectively disabled; `next build` also has `ignoreBuildErrors: true`.
-  Run `npx tsc --noEmit` directly.
+  Lint checks style only, and `next build` has `ignoreBuildErrors: true`.
+  Run `npm run typecheck` (`tsc --noEmit`, the CI gate) directly.
 - **Skipping `postinstall` (e.g. `npm ci --ignore-scripts`) and then chasing a
   phantom "missing module" bug.** Re-run `npx prisma generate` — `src/generated/prisma`
   is gitignored and only exists after generate runs.
-- **Assuming Node 22 is enforced.** It isn't, locally — no `engines` field, no
-  `.nvmrc`. Only CI and Netlify pin it.
+- **Assuming Node 22 is hard-enforced locally.** `.nvmrc` and `engines`
+  (`>=22`) declare it, but npm only warns on a mismatch (no `engine-strict`).
+  CI and Netlify pin 22 exactly.
 
 ## Provenance and maintenance
 

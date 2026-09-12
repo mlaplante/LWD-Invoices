@@ -2,12 +2,18 @@
   "name": "laplante-web-development-invoices",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "prisma migrate deploy && next build",
     "analyze": "ANALYZE=true next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "lint:ci": "eslint --max-warnings 68",
+    "typecheck": "tsc --noEmit",
+    "prepare": "node scripts/setup-git-hooks.mjs",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",

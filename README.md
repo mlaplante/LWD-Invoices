@@ -178,11 +178,8 @@ Open [http://localhost:3000](http://localhost:3000).
 |---|---|
 | `INNGEST_SIGNING_KEY` | Inngest signing key (required for background jobs like recurring invoices) |
 | `INNGEST_EVENT_KEY` | Inngest event key |
-| `STRIPE_SECRET_KEY` | Stripe secret key (if using Stripe payments) |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret |
-| `PAYPAL_CLIENT_ID` | PayPal client ID (if using PayPal payments) |
-| `PAYPAL_CLIENT_SECRET` | PayPal client secret |
+| `DIRECT_DATABASE_URL` | Direct or session-pooler Postgres URL for `prisma migrate deploy` (the transaction pooler can't run DDL); falls back to `DATABASE_URL` |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis for edge rate limiting — disabled when either is unset |
 | `ANTHROPIC_API_KEY` | Anthropic API key (for AI-powered features) |
 
 ### Available Scripts
@@ -190,12 +187,14 @@ Open [http://localhost:3000](http://localhost:3000).
 ```bash
 npm run dev          # Start development server
 npm run build        # Build for production
+npm run typecheck    # tsc --noEmit (the same gate CI runs)
+npm run lint         # ESLint (CI runs lint:ci, which also caps warnings)
 npm run test         # Run tests (watch mode)
 npm run test:run     # Run tests once
 npm run test:coverage # Run tests with coverage report
 npm run test:eval    # Run only the AI golden-set eval/regression suites
 npm run db:migrate   # Run pending database migrations
-npm run db:seed      # Seed the database with sample data
+npm run db:seed      # Currently a no-op (no global seed data) — create data via onboarding
 npm run db:studio    # Open Prisma Studio
 ```
 
@@ -212,7 +211,7 @@ src/
 │   │   ├── portal/      # Token-based client portal API
 │   │   ├── trpc/        # tRPC HTTP handler
 │   │   ├── v1/          # REST API v1 (clients, invoices, projects)
-│   │   └── webhooks/    # Supabase, Stripe, and PayPal webhooks
+│   │   └── webhooks/    # Stripe, Resend, and inbound-email webhooks
 │   ├── onboarding/      # New org setup flow
 │   └── portal/          # Public client portal pages
 ├── server/
@@ -295,9 +294,9 @@ Configure payment gateways to accept online payments:
 **Stripe:**
 1. Create account at https://stripe.com
 2. Get API keys from Dashboard → Developers → API keys
-3. Set `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+3. In the app, open **Settings → Connections** and enter the secret key and publishable key (stored encrypted per organization — these are not environment variables)
 4. Set up webhook endpoint at `https://yourdomain.com/api/webhooks/stripe`
-5. Copy webhook signing secret → set as `STRIPE_WEBHOOK_SECRET`
+5. Copy the webhook signing secret into the **Webhook Secret** field of the same Connections form
 6. Enable the following events on the webhook endpoint (Dashboard → Developers → Webhooks → your endpoint → "Select events"):
 
    | Event | Powers |
@@ -321,8 +320,7 @@ Configure payment gateways to accept online payments:
 **PayPal:**
 1. Create account at https://developer.paypal.com
 2. Create REST API app
-3. Set `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`
-4. Set up webhook endpoint at `https://yourdomain.com/api/webhooks/paypal`
+3. Enter the client ID and secret in **Settings → Connections** (stored encrypted per organization)
 
 ### 6. Background Jobs Setup
 
@@ -373,7 +371,6 @@ After deployment:
    - Stripe: Point to `https://yourdomain.com/api/webhooks/stripe` (and enable the
      events listed in [Payment Gateway Setup](#5-payment-gateway-setup-optional) — including
      the `charge.refunded` and `charge.dispute.*` events that power refunds and disputes)
-   - PayPal: Point to `https://yourdomain.com/api/webhooks/paypal`
    - Inngest: Point to `https://yourdomain.com/api/inngest`
 
 2. **Verify email deliverability**: Send a test invoice to confirm Resend is working

@@ -1,5 +1,5 @@
 import createBundleAnalyzer from "@next/bundle-analyzer";
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
 // CSP: keep 'unsafe-inline' on style-src for Tailwind/Radix runtime styles and

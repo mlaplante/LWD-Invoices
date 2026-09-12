@@ -9,7 +9,7 @@
  *
  * Bump CACHE_VERSION to invalidate old caches on deploy of this file.
  */
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const STATIC_CACHE = `lwd-static-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -30,10 +30,10 @@ self.addEventListener("activate", (event) => {
 });
 
 function isCacheableStatic(url) {
-  // Hashed, immutable build assets and the public icons/logo only.
+  // Hashed, immutable build assets and the public icons only.
   return (
     url.pathname.startsWith("/_next/static/") ||
-    /^\/(icon-\d+\.png|logo.*\.png|favicon\.ico)$/.test(url.pathname)
+    /^\/(icon-\d+\.png|favicon\.ico)$/.test(url.pathname)
   );
 }
 

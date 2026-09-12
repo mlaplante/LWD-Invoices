@@ -205,7 +205,7 @@ Chrome, no external rendering service. Verified files under `src/server/services
 |---|---|
 | `invoice-pdf.tsx` | Invoice PDF (also exports `fullInvoiceInclude`, the Prisma `include` shape the PDF needs) |
 | `invoice-pdf-cache.ts` | Caching wrapper around `invoice-pdf.tsx` — see below |
-| `proposal-pdf.tsx` / `proposal-pdf-helpers.ts` | Proposal/estimate PDF |
+| `proposal-pdf.tsx` | Proposal/estimate PDF |
 | `client-statement-pdf.tsx` | Client statement PDF |
 | `contractor-1099-pdf.tsx` | Per-contractor 1099-NEC + summary PDF |
 | `year-end-pdf.tsx` | P&L / Expense Ledger / Payment Ledger / Tax Liability / AR Aging PDFs for the year-end export pack |

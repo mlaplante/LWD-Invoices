@@ -50,8 +50,10 @@ export async function POST(req: NextRequest) {
 
   let payload: unknown;
   try {
-    const wh = new Webhook(secret);
-    payload = wh.verify(rawBody, headers);
+    // svix 2.x `Webhook.verify` only checks the signature (returns undefined),
+    // so parse the raw body ourselves after it passes.
+    new Webhook(secret).verify(rawBody, headers);
+    payload = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }

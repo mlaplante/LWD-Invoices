@@ -241,10 +241,11 @@ the weaker per-instance fallback with zero visible signal.
   push to `main` and on every PR.
 - CI: `.github/workflows/codeql.yml` runs CodeQL static analysis (`javascript-typescript`) on push/PR
   to `main` plus a Monday 06:00 UTC schedule.
-- Local: `githooks/pre-commit` runs `gitleaks git --pre-commit --staged`. This is **not** auto-wired by
-  `postinstall` — `git config core.hooksPath githooks` (or equivalent) has to be set for it to fire on
-  a given clone. See `lwd-change-control` for the wiring/mechanics; this skill only flags it as a
-  security control that can silently be inactive on a machine that never ran that config command.
+- Local: `githooks/pre-commit` runs `gitleaks git --pre-commit --staged` when gitleaks is on PATH
+  (it prints a notice and exits 0 otherwise, so CI is the backstop). The `prepare` npm lifecycle
+  (`scripts/setup-git-hooks.mjs`) sets `core.hooksPath githooks` on every `npm install`/`npm ci`, so a
+  fresh clone gets the hook without a manual step. It can still be silently inactive on a machine
+  without gitleaks installed — check with `command -v gitleaks`.
 
 ## Common mistakes
 

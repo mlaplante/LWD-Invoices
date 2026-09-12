@@ -49,9 +49,9 @@ const UserMenuFallback = () => <Skeleton className="size-7 rounded-full" />;
 
 /**
  * Brand lockup. The indigo monogram tile is the design's stand-in for the
- * mark — `public/logo.png` is a marketing render with baked-in texture and
- * heavy padding, so it doesn't sit on a 32px tile. Swap it in here once a
- * transparent, tightly-cropped asset exists.
+ * mark. The old `public/logo.png` marketing render (baked-in texture, heavy
+ * padding, ~1 MB) was removed in the 2026-09 perf pass because nothing served
+ * it; swap a transparent, tightly-cropped asset in here once one exists.
  */
 function BrandMark({ compact = false }: { compact?: boolean }) {
   return (

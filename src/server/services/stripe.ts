@@ -2,8 +2,12 @@ import Stripe from "stripe";
 import type { Prisma } from "@/generated/prisma";
 type Decimal = Prisma.Decimal;
 
+// No explicit `apiVersion`: stripe-node defaults to the API version its types
+// were generated for (DEFAULT_API_VERSION in stripe.core.js), which is exactly
+// what a literal would have to equal to type-check. Passing the literal just
+// made every Stripe bump fail `tsc` with a `LatestApiVersion` mismatch.
 export function getStripeClient(secretKey: string): Stripe {
-  return new Stripe(secretKey, { apiVersion: "2026-07-29.dahlia" });
+  return new Stripe(secretKey);
 }
 
 export async function createCheckoutSession(opts: {

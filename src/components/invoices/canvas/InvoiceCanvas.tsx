@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
+import { isOptimizableLogoUrl } from "@/lib/logo-url";
 import { InvoiceType } from "@/generated/prisma";
 import {
   Select,
@@ -100,8 +102,14 @@ export function InvoiceCanvas({
       >
         <div>
           {org.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- org-supplied external logo URL
-            <img src={org.logoUrl} alt={org.name} className="h-10 max-w-[180px] object-contain" />
+            <Image
+              src={org.logoUrl}
+              alt={org.name}
+              width={180}
+              height={40}
+              unoptimized={!isOptimizableLogoUrl(org.logoUrl)}
+              className="h-10 w-auto max-w-[180px] object-contain"
+            />
           ) : (
             <span className="text-lg font-semibold">{org.name}</span>
           )}
