@@ -112,34 +112,37 @@ describe("Dashboard Router", () => {
 
   describe("cashFlowInsights", () => {
     it("returns deterministic metrics and a guarded narrative payload", async () => {
+      // Dates are relative to now: reliable-payer detection only counts
+      // payments inside a rolling 180-day lookback, so fixed dates age out.
+      const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
       ctx.db.payment.findMany.mockResolvedValue([
         {
           amount: 1000,
-          paidAt: new Date("2026-06-01"),
+          paidAt: daysAgo(10),
           invoice: {
             clientId: "c1",
-            date: new Date("2026-05-01"),
-            dueDate: new Date("2026-06-01"),
+            date: daysAgo(40),
+            dueDate: daysAgo(10),
             client: { name: "Reliable Co" },
           },
         },
         {
           amount: 900,
-          paidAt: new Date("2026-05-01"),
+          paidAt: daysAgo(40),
           invoice: {
             clientId: "c1",
-            date: new Date("2026-04-01"),
-            dueDate: new Date("2026-05-01"),
+            date: daysAgo(70),
+            dueDate: daysAgo(40),
             client: { name: "Reliable Co" },
           },
         },
         {
           amount: 1100,
-          paidAt: new Date("2026-04-01"),
+          paidAt: daysAgo(70),
           invoice: {
             clientId: "c1",
-            date: new Date("2026-03-01"),
-            dueDate: new Date("2026-04-01"),
+            date: daysAgo(100),
+            dueDate: daysAgo(70),
             client: { name: "Reliable Co" },
           },
         },
@@ -149,7 +152,7 @@ describe("Dashboard Router", () => {
         {
           id: "i1",
           total: 500,
-          dueDate: new Date("2026-01-01"),
+          dueDate: daysAgo(30),
           status: "OVERDUE",
           payments: [],
           client: { id: "c2", name: "Late Co" },
