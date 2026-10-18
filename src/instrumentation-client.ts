@@ -18,7 +18,6 @@ Sentry.init({
   // Structured logging → Sentry Logs. Forward only warn/error console output;
   // this app logs customer data at lower levels, so log/info/debug are excluded
   // to keep PII out of Sentry.
-  enableLogs: true,
   integrations: [Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] })],
 });
 

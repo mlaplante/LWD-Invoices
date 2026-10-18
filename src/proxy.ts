@@ -30,6 +30,16 @@ function isPublicPath(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  // This app defines no Server Actions ("use server"), so any request carrying
+  // a Next-Action header is forged — typically a scanner probing for
+  // React Server Components exploits. Left alone, Next tries to resolve the
+  // unknown action and throws "InvariantError: Expected RSC response, got
+  // text/plain" (unhandled, reported to Sentry). Reject it before Next's
+  // action handler runs. If Server Actions are ever introduced, remove this.
+  if (request.headers.has("next-action")) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

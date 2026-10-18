@@ -129,7 +129,7 @@ describe("Stripe Service", () => {
         sepaDebitEnabled: true,
       });
       expect(mockStripeInstance.checkout.sessions.create).toHaveBeenLastCalledWith(
-        expect.objectContaining({ payment_method_types: ["card"] }),
+        expect.objectContaining({ allowed_payment_method_types: ["card"] }),
       );
 
       // bank_debit + USD + ACH enabled -> us_bank_account only
@@ -143,7 +143,7 @@ describe("Stripe Service", () => {
         sepaDebitEnabled: true,
       });
       expect(mockStripeInstance.checkout.sessions.create).toHaveBeenLastCalledWith(
-        expect.objectContaining({ payment_method_types: ["us_bank_account"] }),
+        expect.objectContaining({ allowed_payment_method_types: ["us_bank_account"] }),
       );
 
       // bank_debit with no matching method -> throws before hitting Stripe
