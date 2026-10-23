@@ -11,7 +11,12 @@ import { formatDate, formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ResendInvoiceButton } from "@/components/invoices/ResendInvoiceButton";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { INVOICE_STATUS_BADGE as STATUS_BADGE, INVOICE_TYPE_LABELS as TYPE_LABELS } from "@/lib/invoice-ui";
+import {
+  INVOICE_STATUS_BADGE as STATUS_BADGE,
+  INVOICE_TYPE_LABELS as TYPE_LABELS,
+  BANK_PAYMENT_PROCESSING_BADGE,
+  isBankPaymentProcessing,
+} from "@/lib/invoice-ui";
 import { FileText, Archive, Trash2, RefreshCw, Send, CheckCircle } from "lucide-react";
 
 const RESENDABLE_STATUSES: InvoiceStatus[] = ["SENT", "OVERDUE", "PARTIALLY_PAID"];
@@ -20,6 +25,7 @@ type Invoice = {
   id: string;
   number: string;
   status: InvoiceStatus;
+  bankPaymentProcessingAt?: string | null;
   type: InvoiceType;
   date: string | null;
   total: number;
@@ -133,7 +139,7 @@ export function InvoiceMobileListWithBulk({ invoices }: { invoices: Invoice[] })
       {/* Card list */}
       <div className="divide-y divide-divider">
         {invoices.map((inv) => {
-          const badge = STATUS_BADGE[inv.status];
+          const badge = isBankPaymentProcessing(inv) ? BANK_PAYMENT_PROCESSING_BADGE : STATUS_BADGE[inv.status];
           const isSelected = selected.has(inv.id);
           const canResend = !selectMode && inv.type !== "ESTIMATE" && RESENDABLE_STATUSES.includes(inv.status);
 

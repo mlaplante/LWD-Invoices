@@ -3,7 +3,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 vi.mock("@/server/db", () => ({
   db: {
     gatewaySetting: { findUnique: vi.fn() },
-    invoice: { findUnique: vi.fn() },
+    invoice: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     payment: { findFirst: vi.fn() },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     webhookDelivery: {
@@ -17,6 +17,10 @@ vi.mock("@/server/db", () => ({
 
 vi.mock("@/server/services/encryption", () => ({
   decryptJson: vi.fn(() => ({ webhookSecret: "whsec_test" })),
+}));
+
+vi.mock("@/server/services/notifications", () => ({
+  notifyOrgAdmins: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/server/services/stripe", () => ({
@@ -114,6 +118,35 @@ describe("Stripe webhook", () => {
     const res = await POST(makeReq(makeBody()) as any);
     expect(res.status).toBe(200);
     expect(vi.mocked(db.$transaction)).not.toHaveBeenCalled();
+    expect(vi.mocked(db.invoice.update)).toHaveBeenCalledWith({
+      where: { id: "inv1", organizationId: "org1" },
+      data: { bankPaymentProcessingAt: expect.any(Date) },
+    });
+  });
+
+  it("clears the processing marker when the bank debit fails", async () => {
+    vi.mocked(constructStripeEvent).mockReturnValue({
+      id: "evt_async_failed",
+      type: "checkout.session.async_payment_failed",
+      data: {
+        object: {
+          metadata: { orgId: "org1", invoiceId: "inv1" },
+          payment_status: "unpaid",
+          id: "cs_test",
+        },
+      },
+    } as any);
+    vi.mocked(db.invoice.findFirst).mockResolvedValue({
+      number: "2026-0001",
+      client: { name: "Acme" },
+    } as any);
+
+    const res = await POST(makeReq(makeBody()) as any);
+    expect(res.status).toBe(200);
+    expect(vi.mocked(db.invoice.update)).toHaveBeenCalledWith({
+      where: { id: "inv1", organizationId: "org1" },
+      data: { bankPaymentProcessingAt: null },
+    });
   });
 
   it("records the payment when async_payment_succeeded lands", async () => {
@@ -143,6 +176,12 @@ describe("Stripe webhook", () => {
     const res = await POST(makeReq(makeBody()) as any);
     expect(res.status).toBe(200);
     expect(mockTx.payment.create).toHaveBeenCalled();
+    expect(mockTx.invoice.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "inv1", organizationId: "org1" },
+        data: expect.objectContaining({ status: "PAID", bankPaymentProcessingAt: null }),
+      })
+    );
   });
 
   it("calls $transaction to record payment for an unpaid invoice", async () => {

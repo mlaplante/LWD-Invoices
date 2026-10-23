@@ -10,13 +10,19 @@ import { formatDate, formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { InvoiceRowActions } from "@/components/invoices/InvoiceRowActions";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { INVOICE_STATUS_BADGE as STATUS_BADGE, INVOICE_TYPE_LABELS as TYPE_LABELS } from "@/lib/invoice-ui";
+import {
+  INVOICE_STATUS_BADGE as STATUS_BADGE,
+  INVOICE_TYPE_LABELS as TYPE_LABELS,
+  BANK_PAYMENT_PROCESSING_BADGE,
+  isBankPaymentProcessing,
+} from "@/lib/invoice-ui";
 import { Archive, Trash2, RefreshCw, Send, CheckCircle } from "lucide-react";
 
 type Invoice = {
   id: string;
   number: string;
   status: InvoiceStatus;
+  bankPaymentProcessingAt?: string | null;
   type: InvoiceType;
   date: string | null;
   total: number;
@@ -61,7 +67,7 @@ type RowProps = {
 };
 
 const InvoiceRow = React.memo(function InvoiceRow({ inv, isSelected, onToggle, probability }: RowProps) {
-  const badge = STATUS_BADGE[inv.status];
+  const badge = isBankPaymentProcessing(inv) ? BANK_PAYMENT_PROCESSING_BADGE : STATUS_BADGE[inv.status];
   const probBand = probability ? PROBABILITY_BAND[probability.band] : undefined;
   const isDraft = inv.status === "DRAFT";
   return (

@@ -366,6 +366,10 @@ export async function POST(req: NextRequest) {
         select: { number: true, client: { select: { name: true } } },
       });
       if (invoice) {
+        await db.invoice.update({
+          where: { id: invoiceId, organizationId: orgId },
+          data: { bankPaymentProcessingAt: null },
+        });
         await logAudit({
           action: "STATUS_CHANGED",
           entityType: "Invoice",
@@ -413,6 +417,10 @@ export async function POST(req: NextRequest) {
     // Delayed-notification method still processing: don't record a payment
     // yet — async_payment_succeeded will land later and run the paid path.
     if (event.type === "checkout.session.completed" && session.payment_status === "unpaid") {
+      await db.invoice.update({
+        where: { id: invoiceId, organizationId: orgId },
+        data: { bankPaymentProcessingAt: new Date() },
+      });
       await logAudit({
         action: "STATUS_CHANGED",
         entityType: "Invoice",
@@ -485,6 +493,7 @@ export async function POST(req: NextRequest) {
             status: allPaid
               ? InvoiceStatus.PAID
               : InvoiceStatus.PARTIALLY_PAID,
+            bankPaymentProcessingAt: null,
           },
         });
       } else {
@@ -566,6 +575,7 @@ export async function POST(req: NextRequest) {
           where: { id: invoiceId, organizationId: orgId },
           data: {
             status: InvoiceStatus.PAID,
+            bankPaymentProcessingAt: null,
             ...(earlyPayDiscount > 0
               ? {
                   discountTotal: { increment: earlyPayDiscount },

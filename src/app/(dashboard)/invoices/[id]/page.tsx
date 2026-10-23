@@ -35,10 +35,11 @@ import { ClientCreditHoldBanner } from "@/components/clients/ClientCreditHoldBan
 import { CopyPaymentLinkButton } from "@/components/invoices/CopyPaymentLinkButton";
 import { MoreActions, MoreActionsSection } from "@/components/invoices/MoreActions";
 import type { InvoiceStatus, InvoiceType } from "@/generated/prisma";
-import { ArrowLeft, Download, Pencil } from "lucide-react";
+import { ArrowLeft, Clock, Download, Pencil } from "lucide-react";
 import { PortalPreviewButton } from "@/components/portal/PortalPreviewButton";
 import { cn } from "@/lib/utils";
 import { formatDate, formatCurrency } from "@/lib/format";
+import { BANK_PAYMENT_PROCESSING_BADGE, isBankPaymentProcessing } from "@/lib/invoice-ui";
 
 // ── Status badge config ───────────────────────────────────────────────────────
 
@@ -94,7 +95,10 @@ export default async function InvoiceDetailPage({
   const portalLink = `${proto}://${host}/portal/${invoice.portalToken}`;
   const payLink = `${proto}://${host}/pay/${invoice.portalToken}`;
   const isPayable = PAYABLE_STATUSES.includes(invoice.status);
-  const badge = STATUS_BADGE[invoice.status];
+  const bankPaymentProcessing = isBankPaymentProcessing(invoice);
+  const badge = bankPaymentProcessing
+    ? BANK_PAYMENT_PROCESSING_BADGE
+    : STATUS_BADGE[invoice.status];
   const docType = TYPE_LABEL[invoice.type];
 
   return (
@@ -250,6 +254,21 @@ export default async function InvoiceDetailPage({
 
       {/* ── Credit hold / over-limit warning (advisory) ──────────── */}
       <ClientCreditHoldBanner clientId={invoice.client.id} />
+
+      {/* ── Bank debit pending settlement ─────────────────────────── */}
+      {bankPaymentProcessing && invoice.bankPaymentProcessingAt && (
+        <div className="rounded-[10px] border border-primary/30 bg-primary/8 px-5 py-3.5 flex items-start gap-2.5">
+          <Clock className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <div className="text-sm text-primary flex-1">
+            <span className="font-medium">Bank payment processing. </span>
+            <span className="text-primary/80">
+              The client paid by bank debit on {formatDate(invoice.bankPaymentProcessingAt)}. Funds
+              usually settle within 4 business days; the invoice is marked paid and a receipt is sent
+              automatically when they do. Don&apos;t record this payment manually.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── Invoice document card ─────────────────────────────────── */}
       <div className="rounded-[10px] border border-border bg-card overflow-hidden">

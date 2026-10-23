@@ -704,6 +704,12 @@ model Invoice {
   // the dunning cron skips invoices with this set.
   dunningEscalatedAt DateTime?
 
+  // Set when a bank-debit checkout (ACH / SEPA) completes but funds haven't
+  // settled yet; cleared when Stripe reports async_payment_succeeded or
+  // async_payment_failed. Display-only: the UI shows "Processing" while set
+  // on a payable invoice, so a pending debit doesn't look like a lost payment.
+  bankPaymentProcessingAt DateTime?
+
   // Cached totals (recalculated on every save)
   subtotal      Decimal @default(0) @db.Decimal(20, 10)
   discountTotal Decimal @default(0) @db.Decimal(20, 10)
