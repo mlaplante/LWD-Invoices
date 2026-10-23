@@ -11,7 +11,10 @@
   publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "22"
+  # Floating major: every build installs the newest 24.x patch (24.22.1+ fixes
+  # the Oct 2026 Brotli RCE). Functions inherit this major on Lambda. Stay on
+  # an LTS line Lambda supports GA — nodejs26.x was preview-only as of 2026-10.
+  NODE_VERSION = "24"
   NEXT_TELEMETRY_DISABLED = "1"
   # NOTE: .next/cache persistence needs no env flag — @netlify/plugin-nextjs
   # restores/saves it automatically every build (onPreBuild/onBuild). Check the
