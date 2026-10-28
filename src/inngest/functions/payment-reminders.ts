@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
+import { notSettlingBankPayment } from "@/server/lib/bank-payment-processing";
 import { sendEmail } from "@/server/services/email-sender";
 import { getNextInstallmentInfo, getEffectiveDueDate } from "@/server/services/partial-payments";
 import { fullInvoiceInclude } from "@/server/lib/invoice-includes";
@@ -38,6 +39,7 @@ export const processPaymentReminders = inngest.createFunction(
         dueDate: { gte: from, lte: to },
         type: { in: ["SIMPLE", "DETAILED"] },
         isArchived: false,
+        AND: [notSettlingBankPayment(now)],
       },
       include: fullInvoiceInclude,
     });

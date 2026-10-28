@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
+import { notSettlingBankPayment } from "@/server/lib/bank-payment-processing";
 import { sendEmail } from "@/server/services/email-sender";
 import {
   interpolateTemplate,
@@ -92,6 +93,7 @@ export const processReminderSequences = inngest.createFunction(
         status: { in: ["SENT", "PARTIALLY_PAID", "OVERDUE"] },
         dueDate: { not: null },
         type: { in: ["SIMPLE", "DETAILED"] },
+        AND: [notSettlingBankPayment(now)],
       },
       include: {
         client: true,

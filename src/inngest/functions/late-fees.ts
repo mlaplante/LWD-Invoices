@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
+import { notSettlingBankPayment } from "@/server/lib/bank-payment-processing";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 import {
   calculateLateFee,
@@ -50,6 +51,7 @@ export const processLateFees = inngest.createFunction(
           status: "OVERDUE",
           isArchived: false,
           dueDate: { not: null },
+          AND: [notSettlingBankPayment(now)],
         },
         include: {
           lateFeeEntries: {

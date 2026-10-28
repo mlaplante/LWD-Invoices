@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
+import { notSettlingBankPayment } from "@/server/lib/bank-payment-processing";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 import { sendPaymentReceiptEmail } from "@/server/services/payment-receipt-email";
 import { attemptOffSessionCharge } from "@/server/services/recurring-autopay";
@@ -19,6 +20,7 @@ export const processInstallmentAutopay = inngest.createFunction(
           installmentAutoChargeEnabled: true,
           isArchived: false,
           status: { in: [...PAYABLE_STATUSES] },
+          AND: [notSettlingBankPayment(now)],
         },
       },
       include: {

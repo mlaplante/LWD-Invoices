@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/server/db";
+import { notSettlingBankPayment } from "@/server/lib/bank-payment-processing";
 import { sendEmail } from "@/server/services/email-sender";
 import { notifyOrgAdmins } from "@/server/services/notifications";
 import { attemptOffSessionCharge } from "@/server/services/recurring-autopay";
@@ -38,6 +39,7 @@ export const processDunningRetries = inngest.createFunction(
           status: { in: [...PAYABLE_STATUSES] },
           isArchived: false,
           dunningEscalatedAt: null,
+          AND: [notSettlingBankPayment(now)],
           paymentAttempts: { some: { kind: "AUTOPAY", status: "FAILED" } },
         },
         include: {
