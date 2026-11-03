@@ -24,9 +24,16 @@ jobs:
           check-latest: true
           cache: npm
 
+      # --peer holds back a version another package's peer range rejects.
+      # --cooldown 3 skips releases younger than 3 days, so a multi-package
+      # release that is still landing can't be half-picked-up: the 2026-11-02
+      # run took @trpc/server 11.23.0 before @trpc/client 11.23.0 existed,
+      # whose exact peer pin then failed `npm install` with ERESOLVE. It also
+      # limits exposure to compromised releases that get pulled after publish.
+      # Held majors are rejected in .ncurc.yml.
       - name: Update all packages to latest
         run: |
-          npx npm-check-updates -u
+          npx npm-check-updates -u --peer --cooldown 3
           npm install
 
       - name: Create pull request
