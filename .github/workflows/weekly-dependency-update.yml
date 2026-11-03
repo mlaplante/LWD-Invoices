@@ -9,10 +9,12 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write # dispatch CI on the update branch (last step)
 
 jobs:
   update-dependencies:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -28,6 +30,7 @@ jobs:
           npm install
 
       - name: Create pull request
+        id: cpr
         uses: peter-evans/create-pull-request@v8
         with:
           branch: deps/weekly-update
@@ -39,3 +42,13 @@ jobs:
             Please review the CI results and changelogs for any breaking changes before merging.
           labels: dependencies
           delete-branch: true
+
+      # Pushes and PRs made with GITHUB_TOKEN start no workflow runs, so the PR
+      # above would otherwise have no CI results to review. workflow_dispatch is
+      # the exception; the run reports its checks on the branch's head commit.
+      - name: Run CI on the update branch
+        if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.cpr.outputs.pull-request-branch }}
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"

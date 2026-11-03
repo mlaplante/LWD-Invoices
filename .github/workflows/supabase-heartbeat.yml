@@ -9,14 +9,22 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    # node-postgres has no connect or query timeout by default, so an
+    # unreachable or paused database would hold this job open for the full
+    # 6-hour job limit instead of failing.
+    timeout-minutes: 5
     steps:
       - name: Install pg client
-        run: npm install pg
+        run: npm install --no-audit --no-fund pg
       - name: Ping database
         run: |
           node -e "
           const { Client } = require('pg');
-          const client = new Client({ connectionString: process.env.DATABASE_URL });
+          const client = new Client({
+            connectionString: process.env.DATABASE_URL,
+            connectionTimeoutMillis: 30000,
+            query_timeout: 30000,
+          });
           client.connect()
             .then(() => client.query('SELECT 1'))
             .then(() => { console.log('Supabase heartbeat OK'); return client.end(); })
