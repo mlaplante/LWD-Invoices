@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # weekly-dependency-update.yml dispatches CI on its PR branch: pushes and PRs
+  # made with GITHUB_TOKEN start no workflow runs, so it would otherwise get none.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -81,7 +84,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+      # Download a pinned release and verify its checksum rather than piping a
+      # script from actionlint's main branch into bash on every run.
       - name: Run actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
         run: |
-          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          curl -sSLo actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum -c -
+          tar xzf actionlint.tar.gz actionlint
           ./actionlint -color

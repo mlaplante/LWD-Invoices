@@ -9,10 +9,12 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write # dispatch CI on the update branch (last step)
 
 jobs:
   update-dependencies:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -22,12 +24,20 @@ jobs:
           check-latest: true
           cache: npm
 
+      # --peer holds back a version another package's peer range rejects.
+      # --cooldown 3 skips releases younger than 3 days, so a multi-package
+      # release that is still landing can't be half-picked-up: the 2026-11-02
+      # run took @trpc/server 11.23.0 before @trpc/client 11.23.0 existed,
+      # whose exact peer pin then failed `npm install` with ERESOLVE. It also
+      # limits exposure to compromised releases that get pulled after publish.
+      # Held majors are rejected in .ncurc.yml.
       - name: Update all packages to latest
         run: |
-          npx npm-check-updates -u
+          npx npm-check-updates -u --peer --cooldown 3
           npm install
 
       - name: Create pull request
+        id: cpr
         uses: peter-evans/create-pull-request@v8
         with:
           branch: deps/weekly-update
@@ -39,3 +49,13 @@ jobs:
             Please review the CI results and changelogs for any breaking changes before merging.
           labels: dependencies
           delete-branch: true
+
+      # Pushes and PRs made with GITHUB_TOKEN start no workflow runs, so the PR
+      # above would otherwise have no CI results to review. workflow_dispatch is
+      # the exception; the run reports its checks on the branch's head commit.
+      - name: Run CI on the update branch
+        if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.cpr.outputs.pull-request-branch }}
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
