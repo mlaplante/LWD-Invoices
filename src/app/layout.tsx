@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Poppins, Roboto_Mono } from "next/font/google";
 import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "sonner";
@@ -40,11 +41,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Per-request CSP nonce set by src/proxy.ts. Next applies it to its own
+  // scripts automatically; next-themes injects an inline script of its own
+  // (to set the theme class before paint), so it needs the nonce passed in.
+  // Reading headers() renders every route dynamically, which nonces require.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     // suppressHydrationWarning: next-themes sets the theme class on <html>
     // before hydration, which React would otherwise flag as a mismatch.
@@ -61,6 +67,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          nonce={nonce}
         >
           <TRPCReactProvider>{children}</TRPCReactProvider>
           <Toaster richColors position="bottom-right" />

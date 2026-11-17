@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { getRateLimiters, getBucketForPath } from "@/lib/rate-limiter";
+import { buildNonceCsp, generateNonce, getCspMode, sentryCspReportUri } from "@/lib/csp";
 
 const PUBLIC_PATHS = [
   "/sign-in",
@@ -50,7 +51,37 @@ export async function proxy(request: NextRequest) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  // Per-request CSP nonce (see src/lib/csp.ts). Next reads the nonce from the
+  // CSP *request* header and stamps it on every script it emits, so the
+  // header has to ride on the forwarded request as well as the response.
+  const cspMode = getCspMode();
+  const nonce = cspMode === "off" ? null : generateNonce();
+  const cspHeaderName =
+    cspMode === "enforce" ? "Content-Security-Policy" : "Content-Security-Policy-Report-Only";
+  const nonceCsp = nonce
+    ? buildNonceCsp({
+        nonce,
+        isDev: process.env.NODE_ENV === "development",
+        reportUri: sentryCspReportUri(),
+      })
+    : null;
+
+  // Build the pass-through response from the request's *current* headers, so
+  // cookies the Supabase client refreshes (request.cookies.set mutates them)
+  // are forwarded together with the nonce.
+  const forward = () => {
+    if (!nonce || !nonceCsp) return NextResponse.next({ request });
+    const headers = new Headers(request.headers);
+    headers.set("x-nonce", nonce);
+    headers.set(cspHeaderName, nonceCsp);
+    return NextResponse.next({ request: { headers } });
+  };
+  const withCsp = <T extends NextResponse>(res: T): T => {
+    if (nonceCsp) res.headers.set(cspHeaderName, nonceCsp);
+    return res;
+  };
+
+  let supabaseResponse = forward();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,7 +95,7 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = forward();
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           );
@@ -101,7 +132,7 @@ export async function proxy(request: NextRequest) {
 
   // Skip auth check entirely for public paths — saves a Supabase round-trip
   if (isPublicPath(pathname)) {
-    return supabaseResponse;
+    return withCsp(supabaseResponse);
   }
 
   // Refresh session — MUST be called before any redirect logic
@@ -162,7 +193,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(onboardingUrl);
   }
 
-  return supabaseResponse;
+  return withCsp(supabaseResponse);
 }
 
 export const config = {

@@ -2,25 +2,12 @@ import createBundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
-// CSP: keep 'unsafe-inline' on style-src for Tailwind/Radix runtime styles and
-// inline <style> tags emitted by Next; remove if we move to a nonce strategy.
-// connect-src includes Supabase (auth + storage), Stripe, PayPal, and Resend
-// endpoints we hit from the browser.
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "frame-ancestors 'none'",
-  "form-action 'self' https://checkout.stripe.com https://www.paypal.com",
-  "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.paypal.com https://api-m.paypal.com https://api.resend.com",
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://www.paypal.com",
-  "worker-src 'self' blob:",
-  "upgrade-insecure-requests",
-].join("; ");
+import { LEGACY_CSP } from "./src/lib/csp";
+
+// Enforced baseline CSP for every route. The nonce-based script policy that
+// replaces its 'unsafe-inline' is added per request by src/proxy.ts — see
+// src/lib/csp.ts for the rollout modes.
+const contentSecurityPolicy = LEGACY_CSP;
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
