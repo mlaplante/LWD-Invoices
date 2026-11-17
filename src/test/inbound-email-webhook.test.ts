@@ -24,6 +24,19 @@ vi.mock("@/inngest/client", () => ({
   inngest: { send: vi.fn() },
 }));
 
+// The webhook fetches the received message from Resend for its body and the
+// SPF/DKIM/DMARC verdicts. Default: a DKIM-and-DMARC-authenticated message.
+const fetchReceivedEmail = vi.fn();
+vi.mock("@/server/services/resend-received-email", async () => {
+  const actual = await vi.importActual<typeof import("@/server/services/resend-received-email")>(
+    "@/server/services/resend-received-email",
+  );
+  return { ...actual, fetchReceivedEmail: (...args: unknown[]) => fetchReceivedEmail(...args) };
+});
+vi.mock("server-only", () => ({}));
+
+const AUTHENTICATED = { spf: "pass", dkim: "pass", dmarc: "pass" } as const;
+
 import { POST } from "@/app/api/webhooks/inbound-email/route";
 import { db } from "@/server/db";
 import { inngest } from "@/inngest/client";
@@ -42,7 +55,7 @@ function makeReq(from: string, messageId: string) {
       from,
       to: ["reply+inv1@inbound.example.com"],
       subject: "Re: Invoice 2026-0001",
-      text: "hello",
+      email_id: "em_1",
       message_id: messageId,
     },
   });
@@ -68,6 +81,12 @@ describe("Inbound email webhook — sender verification", () => {
     vi.mocked(db.ticket.create).mockResolvedValue({ id: "ticket1" } as any);
     vi.mocked(db.inboundEmail.create).mockResolvedValue({ id: "ibe1" } as any);
     vi.mocked(inngest.send).mockResolvedValue(undefined as any);
+    fetchReceivedEmail.mockResolvedValue({
+      id: "em_1",
+      from: "client@acme.com",
+      bodyText: "hello",
+      authentication: AUTHENTICATED,
+    });
   });
 
   it("drops a forged/mismatched From without threading or notifying", async () => {
@@ -128,5 +147,62 @@ describe("Inbound email webhook — sender verification", () => {
 
     expect(db.ticket.create).not.toHaveBeenCalled();
     expect(inngest.send).not.toHaveBeenCalled();
+  });
+
+  // A matching From address alone is what a spoofer forges. Without an
+  // authenticated From domain the reply must not be attributed to the client.
+  it.each([
+    ["DKIM and DMARC fail", { spf: "fail", dkim: "fail", dmarc: "fail" }],
+    ["SPF-only pass (envelope sender, not From)", { spf: "pass", dkim: "gray", dmarc: "gray" }],
+    ["unsigned, no DMARC policy", { spf: "gray", dkim: "gray", dmarc: "gray" }],
+    ["verdicts unavailable", null],
+  ])("does not thread a spoofed client address when %s", async (_label, authentication) => {
+    fetchReceivedEmail.mockResolvedValue({
+      id: "em_1",
+      from: "client@acme.com",
+      bodyText: "pay to this new account",
+      authentication,
+    });
+
+    const res = await POST(makeReq("client@acme.com", "<spoof>") as any);
+    expect(res.status).toBe(200);
+    expect((await res.json()).threaded).toBe(false);
+    expect(db.ticket.create).not.toHaveBeenCalled();
+    expect(db.ticketMessage.create).not.toHaveBeenCalled();
+    expect(inngest.send).not.toHaveBeenCalled();
+  });
+
+  it("threads when DKIM passes even if the domain has no DMARC policy", async () => {
+    fetchReceivedEmail.mockResolvedValue({
+      id: "em_1",
+      from: "client@acme.com",
+      bodyText: "hello",
+      authentication: { spf: "gray", dkim: "pass", dmarc: "gray" },
+    });
+    const res = await POST(makeReq("client@acme.com", "<dkim-only>") as any);
+    expect((await res.json()).threaded).toBe(true);
+  });
+
+  it("fails closed, still acks 2xx, when the message can't be retrieved", async () => {
+    fetchReceivedEmail.mockResolvedValue(null);
+    const res = await POST(makeReq("client@acme.com", "<no-fetch>") as any);
+    expect(res.status).toBe(200);
+    expect((await res.json()).threaded).toBe(false);
+    expect(db.inboundEmail.create).toHaveBeenCalled();
+    expect(inngest.send).not.toHaveBeenCalled();
+  });
+
+  it("stores the body fetched from Resend (the webhook itself carries none)", async () => {
+    fetchReceivedEmail.mockResolvedValue({
+      id: "em_1",
+      from: "client@acme.com",
+      bodyText: "We'll pay Friday.",
+      authentication: AUTHENTICATED,
+    });
+    await POST(makeReq("client@acme.com", "<body>") as any);
+    expect(fetchReceivedEmail).toHaveBeenCalledWith("em_1");
+    expect(db.inboundEmail.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bodyText: "We'll pay Friday." }) }),
+    );
   });
 });

@@ -6,6 +6,10 @@ import {
   parseInboundPayload,
   extractInvoiceIdFromRecipients,
 } from "@/server/services/inbound-email";
+import {
+  fetchReceivedEmail,
+  isFromDomainAuthenticated,
+} from "@/server/services/resend-received-email";
 
 /**
  * Extract the bare address from a From header value, which may already be a
@@ -29,11 +33,15 @@ function normalizeSenderEmail(raw: string | null | undefined): string | null {
  * existing thread or opening a new one) so the conversation lives in one place.
  *
  * The Svix signature only proves the payload came from Resend — it does not
- * prove the email's From header is genuine (Resend does not authenticate
- * arbitrary inbound mail). Before attributing the message to the client we
- * additionally verify the sender's address matches the invoice's client
- * email; an unverified sender is still recorded as an InboundEmail audit row
- * but is never threaded onto the ticket or used to trigger notifications.
+ * prove the email's From header is genuine. Before attributing the message to
+ * the client we require the sender's address to match the invoice's client
+ * email AND Resend's receiving server to have authenticated the From domain
+ * (aligned DKIM or DMARC pass, fetched from the Received Emails API). An
+ * unverified sender is still recorded as an InboundEmail audit row but is
+ * never threaded onto the ticket or used to trigger notifications.
+ *
+ * A failed retrieve also fails closed (audit row, no threading) and still
+ * returns 2xx, per the webhook error rule in CONTRIBUTING.md.
  */
 export async function POST(req: NextRequest) {
   const secret = process.env.RESEND_INBOUND_WEBHOOK_SECRET;
@@ -89,16 +97,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, threaded: false });
   }
 
+  // The webhook carries metadata only. Fetch the message itself for its body
+  // and for the SPF/DKIM/DMARC verdicts Resend's receiving server computed —
+  // those come from the mail server, not the message, so a sender can't
+  // forge them. A failed fetch leaves `received` null, which fails closed.
+  const emailId = (payload as { data?: { email_id?: unknown } })?.data?.email_id;
+  const received =
+    typeof emailId === "string" ? await fetchReceivedEmail(emailId) : null;
+  const bodyText = received?.bodyText ?? parsed.bodyText;
+
   // The From header is fully attacker-controlled content of an inbound
-  // message; only treat the sender as the invoice's client if it matches the
-  // client's known email (case-insensitive, trimmed). Fail closed if either
-  // side is missing.
+  // message. Treat the sender as the invoice's client only when BOTH:
+  //  - the From address matches the client's known email (case-insensitive,
+  //    trimmed), and
+  //  - Resend authenticated the From domain (aligned DKIM or DMARC pass), so
+  //    the match isn't just a spoofed header.
+  // Fail closed if any piece is missing.
   const senderEmail = normalizeSenderEmail(parsed.fromEmail);
   const clientEmail = invoice.client?.email?.trim().toLowerCase() || null;
-  const senderVerified = !!senderEmail && !!clientEmail && senderEmail === clientEmail;
+  const addressMatches = !!senderEmail && !!clientEmail && senderEmail === clientEmail;
+  const domainAuthenticated = isFromDomainAuthenticated(received?.authentication);
+  const senderVerified = addressMatches && domainAuthenticated;
 
   const messageBody =
-    parsed.bodyText?.trim() ||
+    bodyText?.trim() ||
     parsed.subject?.trim() ||
     "(empty reply)";
 
@@ -158,8 +180,14 @@ export async function POST(req: NextRequest) {
     }
   } else {
     console.warn(
-      "[inbound-email] Sender does not match invoice client; recording audit row without threading",
-      { invoiceId: invoice.id },
+      "[inbound-email] Sender not verified; recording audit row without threading",
+      {
+        invoiceId: invoice.id,
+        addressMatches,
+        // Verdicts only — never the sender address or body.
+        authentication: received?.authentication ?? null,
+        retrieved: received != null,
+      },
     );
   }
 
@@ -171,7 +199,7 @@ export async function POST(req: NextRequest) {
       ticketId,
       fromEmail: parsed.fromEmail || "unknown",
       subject: parsed.subject,
-      bodyText: parsed.bodyText,
+      bodyText,
       messageId: parsed.messageId,
       inReplyTo: parsed.inReplyTo,
     },
