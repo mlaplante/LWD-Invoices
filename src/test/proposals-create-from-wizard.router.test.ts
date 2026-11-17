@@ -19,9 +19,7 @@ import { TRPCError } from "@trpc/server";
 const SECTIONS = [{ key: "scope", title: "Scope", content: "Build it." }];
 
 describe("proposals.createFromWizard", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let ctx: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let caller: any;
 
   beforeEach(() => {

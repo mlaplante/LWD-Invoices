@@ -4,9 +4,7 @@ import { createMockContext } from "./mocks/trpc-context";
 import { TRPCError } from "@trpc/server";
 
 describe("proposals.generateDraft — client-based AI draft", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let ctx: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let caller: any;
 
   beforeEach(() => {

@@ -5,7 +5,6 @@ import { TRPCError } from "@trpc/server";
 
 describe("invoiceReview.review — multi-tenant isolation", () => {
   let ctx: ReturnType<typeof createMockContext>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let caller: any;
 
   beforeEach(() => {
@@ -55,7 +54,6 @@ describe("invoiceReview.review — multi-tenant isolation", () => {
 
 describe("invoiceReview.scanDraft — basic validation", () => {
   let ctx: ReturnType<typeof createMockContext>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let caller: any;
 
   beforeEach(() => {

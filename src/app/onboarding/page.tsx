@@ -38,6 +38,9 @@ export default function OnboardingPage() {
     // JWT cookie before the middleware checks it on the next navigation.
     await supabase.auth.refreshSession();
 
+    // Intentional full-page load (not router.push) so the middleware sees the
+    // refreshed session cookie on a fresh request.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/";
   }
 

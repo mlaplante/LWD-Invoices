@@ -18,7 +18,6 @@ import { createMockContext } from "./mocks/trpc-context";
  * caller's org" — so every call here must be rejected before any write.
  */
 describe("cross-tenant foreign keys are rejected", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let ctx: any;
 
   beforeEach(() => {

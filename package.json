@@ -11,7 +11,7 @@
     "analyze": "ANALYZE=true next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "lint:ci": "eslint --max-warnings 68",
+    "lint:ci": "eslint --max-warnings 52",
     "typecheck": "tsc --noEmit",
     "prepare": "node scripts/setup-git-hooks.mjs",
     "postinstall": "prisma generate",

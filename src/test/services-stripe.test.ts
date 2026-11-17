@@ -356,7 +356,6 @@ describe("Stripe Service", () => {
   describe("constructStripeEvent", () => {
     beforeEach(() => {
       const StripeClass = vi.mocked(Stripe);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (StripeClass as any).webhooks = {
         constructEvent: vi.fn(),
       };
@@ -477,7 +476,6 @@ describe("Stripe Service", () => {
 
       const result = constructStripeEvent(payload, sig, secret);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((result.data.object as any).metadata).toEqual({
         invoiceId: "inv_123",
         orgId: "org_456",
