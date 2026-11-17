@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { db } from "@/server/db";
+import { canLinkExistingUser } from "@/lib/account-link";
 
 /**
  * Migrates an existing Clerk user to Supabase Auth on first login.
@@ -34,6 +35,17 @@ export async function POST() {
 
   if (!existingUser) {
     return NextResponse.json({ error: "no_existing_user" }, { status: 404 });
+  }
+
+  // Linking by email hands this session the existing user's org memberships,
+  // so only do it for a verified email, and never re-point a user that is
+  // already linked to a different Supabase identity.
+  if (!canLinkExistingUser(user, existingUser)) {
+    console.error("[auth/migrate] Refused to link account", {
+      dbUserId: existingUser.id,
+      supabaseId: user.id,
+    });
+    return NextResponse.json({ error: "account_link_conflict" }, { status: 409 });
   }
 
   // Link supabaseId in DB (best-effort — column may not exist if DB migration hasn't run)

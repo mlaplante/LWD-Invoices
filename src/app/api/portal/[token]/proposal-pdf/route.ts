@@ -26,7 +26,7 @@ export async function GET(
   if (storedHash) {
     const cookieStore = await cookies();
     const authCookie = cookieStore.get(`portal_auth_${token}`);
-    if (!authCookie || !verifyPortalSession(authCookie.value, token, getPortalSessionSecret())) {
+    if (!authCookie || !verifyPortalSession(authCookie.value, token, getPortalSessionSecret(), storedHash)) {
       return new Response("Unauthorized", { status: 401 });
     }
   }

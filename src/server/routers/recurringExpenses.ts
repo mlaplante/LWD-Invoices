@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
+import { assertInOrg } from "../lib/get-for-org";
 import { Prisma, RecurringFrequency } from "@/generated/prisma";
 import { computeNextRunAt } from "@/inngest/functions/recurring-invoices";
 
@@ -21,6 +22,24 @@ const recurringExpenseSchema = z.object({
   supplierId: z.string().optional(),
   projectId: z.string().optional(),
 });
+
+// Caller-supplied foreign keys must belong to the caller's org — mirrors the
+// checks in expenses.ts, whose rows this router's generator goes on to create.
+async function assertExpenseRefsInOrg(
+  db: typeof import("../db").db,
+  orgId: string,
+  refs: {
+    projectId?: string | null;
+    taxId?: string | null;
+    categoryId?: string | null;
+    supplierId?: string | null;
+  },
+) {
+  if (refs.projectId) await assertInOrg(db.project, refs.projectId, orgId, { entityName: "Project" });
+  if (refs.taxId) await assertInOrg(db.tax, refs.taxId, orgId, { entityName: "Tax" });
+  if (refs.categoryId) await assertInOrg(db.expenseCategory, refs.categoryId, orgId, { entityName: "Category" });
+  if (refs.supplierId) await assertInOrg(db.expenseSupplier, refs.supplierId, orgId, { entityName: "Supplier" });
+}
 
 export const recurringExpensesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -59,6 +78,7 @@ export const recurringExpensesRouter = router({
   create: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(recurringExpenseSchema)
     .mutation(async ({ ctx, input }) => {
+      await assertExpenseRefsInOrg(ctx.db, ctx.orgId, input);
       return ctx.db.recurringExpense.create({
         data: {
           ...input,
@@ -76,6 +96,7 @@ export const recurringExpensesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertExpenseRefsInOrg(ctx.db, ctx.orgId, data);
 
       const scheduleChanged = data.frequency || data.interval || data.startDate;
       const updateData: Prisma.RecurringExpenseUpdateInput = { ...data };

@@ -21,6 +21,23 @@ export function isRateLimited(token: string): boolean {
   return limiter.isLimited(token);
 }
 
+/**
+ * Read the `aal` claim from an access token. Only call this on a token that
+ * has already been verified (this does not check the signature). Returns
+ * null when the claim is absent or the token is malformed, which callers
+ * treat as "not aal2".
+ */
+export function tokenAal(token: string): string | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return typeof claims?.aal === "string" ? claims.aal : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function withV1Auth(
   req: NextRequest,
   handler: (ctx: V1Context) => Promise<NextResponse>,
@@ -42,6 +59,21 @@ export async function withV1Auth(
 
   if (error || !user) {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  }
+
+  // /api/v1 is a "public path" for the page middleware (src/proxy.ts), so the
+  // MFA step-up it enforces never runs here. Mirror the check in
+  // src/server/trpc.ts: when a second factor is enrolled, a password-only
+  // (aal1) access token must not reach org data. getUser() above already
+  // validated the token's signature, so its `aal` claim can be trusted.
+  const hasVerifiedFactor = (user.factors ?? []).some(
+    (f) => f.status === "verified",
+  );
+  if (hasVerifiedFactor && tokenAal(token) !== "aal2") {
+    return NextResponse.json(
+      { error: "Two-factor authentication required" },
+      { status: 403 },
+    );
   }
 
   // UserOrganization is the sole source of truth for org access — same rule

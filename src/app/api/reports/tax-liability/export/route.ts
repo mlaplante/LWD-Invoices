@@ -4,8 +4,10 @@ import { InvoiceStatus } from "@/generated/prisma";
 
 function csvEscape(value: string | null | undefined): string {
   if (value == null) return "";
-  const str = String(value);
-  if (/^[=+\-@]/.test(str)) return `'${str}`;
+  let str = String(value);
+  // Neutralize spreadsheet formula triggers, then fall through to quoting —
+  // returning early here would emit a value containing commas/quotes unquoted.
+  if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
   if (str.includes(",") || str.includes('"') || str.includes("\n")) {
     return `"${str.replace(/"/g, '""')}"`;
   }

@@ -35,7 +35,14 @@ describe("POST /api/auth/migrate — app_metadata require2FA sync", () => {
     vi.clearAllMocks();
     updateUserByIdMock.mockResolvedValue({ error: null });
     getUserMock.mockResolvedValue({
-      data: { user: { id: "sb-user-1", email: "legacy@example.com", app_metadata: {} } },
+      data: {
+        user: {
+          id: "sb-user-1",
+          email: "legacy@example.com",
+          email_confirmed_at: "2026-01-01T00:00:00Z",
+          app_metadata: {},
+        },
+      },
     });
     userFindFirstMock.mockResolvedValue({ id: "db-user-1", email: "legacy@example.com" });
   });
@@ -75,5 +82,31 @@ describe("POST /api/auth/migrate — app_metadata require2FA sync", () => {
         app_metadata: expect.objectContaining({ require2FA: false }),
       }),
     );
+  });
+
+  it("refuses to link when the session's email is unverified", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "sb-user-1", email: "legacy@example.com", app_metadata: {} } },
+    });
+
+    const { POST } = await import("@/app/api/auth/migrate/route");
+    const res = await POST();
+    expect(res.status).toBe(409);
+    expect(userUpdateMock).not.toHaveBeenCalled();
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to re-point a user already linked to a different Supabase identity", async () => {
+    userFindFirstMock.mockResolvedValue({
+      id: "db-user-1",
+      email: "legacy@example.com",
+      supabaseId: "sb-someone-else",
+    });
+
+    const { POST } = await import("@/app/api/auth/migrate/route");
+    const res = await POST();
+    expect(res.status).toBe(409);
+    expect(userUpdateMock).not.toHaveBeenCalled();
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
   });
 });

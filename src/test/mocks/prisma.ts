@@ -439,3 +439,15 @@ export function createMockContext(
     ...overrides,
   };
 }
+
+/**
+ * Routers verify that caller-supplied foreign keys (clientId, projectId,
+ * taskId, currencyId) belong to the caller's org via assertInOrg → findFirst.
+ * Happy-path tests call this so those lookups resolve as "owned"; tests of
+ * the cross-tenant rejection leave findFirst at its default (null → NOT_FOUND).
+ */
+export function primeOrgOwnership(ctx: MockTRPCContext): void {
+  for (const model of ["client", "project", "projectTask", "currency"] as const) {
+    ctx.db[model].findFirst.mockResolvedValue({ id: "owned-by-test-org" });
+  }
+}

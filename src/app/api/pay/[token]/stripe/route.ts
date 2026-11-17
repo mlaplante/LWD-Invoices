@@ -69,7 +69,7 @@ export async function GET(
   if (storedHash) {
     const cookieStore = await cookies();
     const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
-    if (!cookieVal || !verifyPortalSession(cookieVal, token, getPortalSessionSecret())) {
+    if (!cookieVal || !verifyPortalSession(cookieVal, token, getPortalSessionSecret(), storedHash)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }
@@ -120,11 +120,18 @@ export async function GET(
   let extraMetadata: Record<string, string> | undefined;
   if (partialPaymentId) {
     const pp = invoice.partialPayments.find((p) => p.id === partialPaymentId);
-    if (pp && !pp.isPaid) {
-      payAmount = pp.isPercentage
-        ? invoice.total.toNumber() * Number(pp.amount) / 100
-        : Number(pp.amount);
+    // A stale or already-paid installment id (old bookmark, double click)
+    // must not fall through to charging the full balance: the id would still
+    // be stamped into the Checkout Session metadata, and the webhook's
+    // installment branch returns early for a paid/missing installment — so
+    // the money would be captured with no Payment row recorded. Send the
+    // payer back to the pay page to pick a current option instead.
+    if (!pp || pp.isPaid) {
+      return NextResponse.redirect(new URL(`/pay/${token}`, appUrl), 303);
     }
+    payAmount = pp.isPercentage
+      ? invoice.total.toNumber() * Number(pp.amount) / 100
+      : Number(pp.amount);
   } else {
     // Same early-pay discount the portal checkout applies — both pay
     // surfaces must charge identically inside the window.

@@ -23,6 +23,16 @@ const PUBLIC_PATHS = [
   "/auth/confirm",
   "/mfa-challenge",
   "/mfa-enroll",
+  // Token-gated surfaces for people who have no account by design. Each
+  // authenticates on its own unguessable token (or, for /invite, does its own
+  // sign-in redirect that preserves the token). Without these entries a
+  // logged-out contractor, invitee, or a mailbox provider's one-click
+  // unsubscribe POST was bounced to /sign-in and the feature never ran.
+  "/contractor",
+  "/api/contractor-portal",
+  "/invite",
+  "/unsubscribe",
+  "/api/email-preferences",
 ];
 
 function isPublicPath(pathname: string) {

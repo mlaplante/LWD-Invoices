@@ -86,12 +86,34 @@ describe("GET /api/receipts/view", () => {
       "https://signed.example/receipt?token=abc",
     );
 
-    const res = await GET(makeRequest("org-1/abc.png"));
+    const res = await GET(makeRequest("org-1/3f2b8c1e-9a4d-4e6f-8b1a-0c2d3e4f5a6b.png"));
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe(
       "https://signed.example/receipt?token=abc",
     );
-    expect(createReceiptSignedUrl).toHaveBeenCalledWith("org-1/abc.png");
+    expect(createReceiptSignedUrl).toHaveBeenCalledWith("org-1/3f2b8c1e-9a4d-4e6f-8b1a-0c2d3e4f5a6b.png");
+  });
+
+  // The storage client concatenates the path into a URL and fetch() collapses
+  // dot segments, so a path that merely *starts* with the caller's org id can
+  // resolve into another bucket / another org's folder.
+  it.each([
+    "org-1/../../proposals/org-2/inv-9/proposal.pdf",
+    "org-1/../org-2/3f2b8c1e-9a4d-4e6f-8b1a-0c2d3e4f5a6b.png",
+    "org-1/%2e%2e/%2e%2e/contractor-w9/org-2/c1/w9.pdf",
+    "org-1/sub/3f2b8c1e-9a4d-4e6f-8b1a-0c2d3e4f5a6b.png",
+    "org-1/..\\..\\proposals/x.pdf",
+    "org-1/abc.png",
+  ])("rejects traversal / off-shape path %s", async (path) => {
+    vi.mocked(getAuthenticatedOrg).mockResolvedValue({
+      user: { id: "u1" },
+      orgId: "org-1",
+    });
+    vi.mocked(createReceiptSignedUrl).mockClear();
+
+    const res = await GET(makeRequest(path));
+    expect(res.status).toBe(404);
+    expect(createReceiptSignedUrl).not.toHaveBeenCalled();
   });
 
   it("returns 404 when the file is unavailable", async () => {
@@ -101,7 +123,7 @@ describe("GET /api/receipts/view", () => {
     });
     vi.mocked(createReceiptSignedUrl).mockResolvedValue(null);
 
-    const res = await GET(makeRequest("org-1/gone.png"));
+    const res = await GET(makeRequest("org-1/3f2b8c1e-9a4d-4e6f-8b1a-0c2d3e4f5a6b.png"));
     expect(res.status).toBe(404);
   });
 

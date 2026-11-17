@@ -12,7 +12,7 @@ import { taskStatusesRouter } from "@/server/routers/taskStatuses";
 import { taxesRouter } from "@/server/routers/taxes";
 import { ticketsRouter } from "@/server/routers/tickets";
 import { timersRouter } from "@/server/routers/timers";
-import { createMockContext } from "./mocks/trpc-context";
+import { createMockContext, primeOrgOwnership } from "./mocks/trpc-context";
 import { AttachmentContext, TicketStatus, TicketPriority } from "@/generated/prisma";
 
 // ============================================================================
@@ -25,6 +25,7 @@ describe("Attachments Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = attachmentsRouter.createCaller(ctx);
   });
 
@@ -124,6 +125,7 @@ describe("Comments Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = commentsRouter.createCaller(ctx);
   });
 
@@ -268,6 +270,7 @@ describe("Discussions Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = discussionsRouter.createCaller(ctx);
   });
 
@@ -394,6 +397,7 @@ describe("Expense Categories Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = expenseCategoriesRouter.createCaller(ctx);
   });
 
@@ -517,6 +521,7 @@ describe("Expense Suppliers Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = expenseSuppliersRouter.createCaller(ctx);
   });
 
@@ -640,6 +645,7 @@ describe("Milestones Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = milestonesRouter.createCaller(ctx);
   });
 
@@ -812,6 +818,7 @@ describe("Notifications Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = notificationsRouter.createCaller(ctx);
   });
 
@@ -961,6 +968,7 @@ describe("Portal Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = portalRouter.createCaller(ctx);
   });
 
@@ -1067,6 +1075,7 @@ describe("Project Templates Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = projectTemplatesRouter.createCaller(ctx);
   });
 
@@ -1178,6 +1187,7 @@ describe("Task Statuses Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = taskStatusesRouter.createCaller(ctx);
   });
 
@@ -1329,6 +1339,7 @@ describe("Taxes Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = taxesRouter.createCaller(ctx);
   });
 
@@ -1449,6 +1460,7 @@ describe("Tickets Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = ticketsRouter.createCaller(ctx);
   });
 
@@ -1804,6 +1816,7 @@ describe("Timers Router", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = timersRouter.createCaller(ctx);
   });
 

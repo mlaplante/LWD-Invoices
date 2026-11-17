@@ -30,7 +30,7 @@ export default async function PayLayout({
   if (storedHash) {
     const cookieStore = await cookies();
     const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
-    if (!cookieVal || !verifyPortalSession(cookieVal, token, getPortalSessionSecret())) {
+    if (!cookieVal || !verifyPortalSession(cookieVal, token, getPortalSessionSecret(), storedHash)) {
       redirect(`/portal/portal-login/${token}`);
     }
   }

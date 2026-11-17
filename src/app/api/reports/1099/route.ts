@@ -1,4 +1,4 @@
-import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
+import { getAuthenticatedOrg, isAuthError, requireOrgRole } from "@/lib/api-auth";
 import { db } from "@/server/db";
 import { NextResponse } from "next/server";
 import { get1099Pack } from "@/server/services/contractor-1099";
@@ -35,6 +35,15 @@ export async function GET(request: Request) {
       { error: `format must be one of: ${VALID_FORMATS.join(", ")}` },
       { status: 400 },
     );
+  }
+
+  // The per-recipient forms print the payer's full, unmasked TIN — for a sole
+  // proprietor that is the owner's personal SSN. The CSV and summary PDF only
+  // carry masked recipient TINs, so they stay open to every member; anything
+  // containing the forms needs a finance role (VIEWER is excluded).
+  if (format === "forms-pdf" || format === "zip") {
+    const forbidden = await requireOrgRole(auth, "OWNER", "ADMIN", "ACCOUNTANT");
+    if (forbidden) return forbidden;
   }
 
   const pack = await get1099Pack(db, orgId, year);

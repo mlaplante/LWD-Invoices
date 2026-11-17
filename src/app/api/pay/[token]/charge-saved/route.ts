@@ -64,7 +64,7 @@ export async function POST(
   if (storedHash) {
     const cookieStore = await cookies();
     const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
-    if (!cookieVal || !verifyPortalSession(cookieVal, token, getPortalSessionSecret())) {
+    if (!cookieVal || !verifyPortalSession(cookieVal, token, getPortalSessionSecret(), storedHash)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }

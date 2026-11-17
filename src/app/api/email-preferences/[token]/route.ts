@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/client-ip";
 import {
   ALL_EMAIL_PREFERENCE_KINDS,
   EMAIL_PREFERENCE_KINDS,
@@ -13,7 +14,7 @@ import type { EmailPreferenceKind } from "@/generated/prisma";
 const limiter = createRateLimiter({ limit: 30, windowMs: 15 * 60_000 });
 
 function clientIp(req: NextRequest): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  return getClientIp(req.headers);
 }
 
 async function findClient(token: string) {

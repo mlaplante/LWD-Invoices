@@ -470,6 +470,9 @@ export const invoicesRouter = router({
       if (input.projectId) {
         await assertInOrg(ctx.db.project, input.projectId, ctx.orgId, { entityName: "Project" });
       }
+      if (input.reminderSequenceId) {
+        await assertInOrg(ctx.db.reminderSequence, input.reminderSequenceId, ctx.orgId, { entityName: "Reminder sequence" });
+      }
 
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
 
@@ -745,6 +748,13 @@ export const invoicesRouter = router({
       // client into tax resolution and the persisted row; verify ownership.
       if (input.clientId !== undefined) {
         await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
+      }
+      // Same for the other caller-supplied foreign keys create() validates.
+      if (input.projectId) {
+        await assertInOrg(ctx.db.project, input.projectId, ctx.orgId, { entityName: "Project" });
+      }
+      if (input.reminderSequenceId) {
+        await assertInOrg(ctx.db.reminderSequence, input.reminderSequenceId, ctx.orgId, { entityName: "Reminder sequence" });
       }
 
       const taxMap = await getOrgTaxMap(ctx.db as unknown as PrismaClient, ctx.orgId);
@@ -1731,15 +1741,23 @@ export const invoicesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const invoice = await ctx.db.invoice.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
-        select: { id: true, number: true, portalToken: true },
+        select: {
+          id: true,
+          number: true,
+          portalToken: true,
+          client: { select: { portalPassphraseHash: true } },
+        },
       });
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
       const previewMaxAge = 60 * 60; // 1 hour — long enough to look around
+      // Bound to the client's current passphrase hash, like every portal
+      // session, so the gate's verification accepts it.
       const sessionVal = signPortalSession(
         invoice.portalToken,
         getPortalSessionSecret(),
         previewMaxAge,
+        invoice.client?.portalPassphraseHash,
       );
       const cookieStore = await cookies();
       cookieStore.set(`portal_auth_${invoice.portalToken}`, sessionVal, {

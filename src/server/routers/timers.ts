@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { roundMinutes } from "../services/time-rounding";
+import { assertInOrg } from "../lib/get-for-org";
 
 const pauseEventSchema = z.object({
   at: z.string(),
@@ -55,6 +56,8 @@ export const timersRouter = router({
   start: requireRole("OWNER", "ADMIN", "ACCOUNTANT")
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // taskId is caller-supplied — it must be a task in the caller's org.
+      await assertInOrg(ctx.db.projectTask, input.taskId, ctx.orgId, { entityName: "Task" });
       // Check for existing active timer
       const existing = await ctx.db.timer.findFirst({
         where: {
@@ -169,8 +172,8 @@ export const timersRouter = router({
       });
       const roundedMinutes = roundMinutes(rawMinutes, org?.taskTimeInterval ?? 0);
 
-      const task = await ctx.db.projectTask.findUnique({
-        where: { id: input.taskId },
+      const task = await ctx.db.projectTask.findFirst({
+        where: { id: input.taskId, organizationId: ctx.orgId },
         select: { projectId: true },
       });
       if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });

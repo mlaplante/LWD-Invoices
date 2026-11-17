@@ -8,7 +8,10 @@ import { formatDistanceToNow } from "date-fns";
 import type { Ticket, TicketMessage, Client } from "@/generated/prisma";
 
 interface Props {
-  ticket: Ticket & { messages: TicketMessage[]; client: Client | null };
+  ticket: Ticket & {
+    messages: TicketMessage[];
+    client: Pick<Client, "id" | "name" | "email" | "phone"> | null;
+  };
 }
 
 export function TicketThread({ ticket }: Props) {

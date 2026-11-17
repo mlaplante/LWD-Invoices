@@ -455,9 +455,19 @@ export async function POST(req: NextRequest) {
           return; // idempotency or not found
         }
 
-        const installmentAmount = installment.isPercentage
+        const scheduledAmount = installment.isPercentage
           ? (installment.amount.toNumber() / 100) * invoiceTotal
           : installment.amount.toNumber();
+        // Never book more than Stripe captured. The installment is re-read
+        // from the current row, so an edit made while the Checkout Session
+        // was open (up to 24h) could otherwise record a larger payment than
+        // the money actually collected.
+        const installmentAmount = Math.min(scheduledAmount, chargedAmount);
+        if (installmentAmount < scheduledAmount - 0.005) {
+          console.error(
+            `[stripe-webhook] installment ${partialPaymentId} on invoice ${invoiceId}: captured ${chargedAmount} is less than scheduled ${scheduledAmount}; booked the captured amount — needs reconciliation`,
+          );
+        }
         const surchargeAmount = Math.max(0, chargedAmount - installmentAmount);
 
         await tx.payment.create({
@@ -518,6 +528,7 @@ export async function POST(req: NextRequest) {
 
         let paymentAmount: number;
         let surchargeAmount: number;
+        let underpaid = false;
         if (earlyPayDiscount > 0) {
           const redemption = computeEarlyPayRedemption({
             invoiceTotal,
@@ -544,8 +555,19 @@ export async function POST(req: NextRequest) {
             },
           });
         } else {
-          paymentAmount = invoiceTotal - existingTotal;
-          if (paymentAmount <= 0) paymentAmount = chargedAmount;
+          const balance = invoiceTotal - existingTotal;
+          // Never book more than Stripe captured. The balance is re-read
+          // from the current invoice, so if the total was raised while the
+          // Checkout Session was open, the charge covers only part of it.
+          if (balance > 0 && chargedAmount < balance - 0.005) {
+            underpaid = true;
+            paymentAmount = chargedAmount;
+            console.error(
+              `[stripe-webhook] invoice ${invoiceId}: captured ${chargedAmount} is less than balance ${balance}; booked as a partial payment`,
+            );
+          } else {
+            paymentAmount = balance > 0 ? balance : chargedAmount;
+          }
           surchargeAmount = Math.max(0, chargedAmount - paymentAmount);
         }
 
@@ -560,21 +582,26 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // Mark all unpaid partial payments as paid
-        await tx.partialPayment.updateMany({
-          where: { invoiceId, isPaid: false },
-          data: {
-            isPaid: true,
-            paidAt: new Date(),
-            paymentMethod: "stripe",
-            transactionId,
-          },
-        });
+        // Mark all unpaid partial payments as paid — unless the charge fell
+        // short of the balance, in which case the invoice stays open.
+        if (!underpaid) {
+          await tx.partialPayment.updateMany({
+            where: { invoiceId, isPaid: false },
+            data: {
+              isPaid: true,
+              paidAt: new Date(),
+              paymentMethod: "stripe",
+              transactionId,
+            },
+          });
+        }
 
         await tx.invoice.update({
           where: { id: invoiceId, organizationId: orgId },
           data: {
-            status: InvoiceStatus.PAID,
+            status: underpaid
+              ? InvoiceStatus.PARTIALLY_PAID
+              : InvoiceStatus.PAID,
             bankPaymentProcessingAt: null,
             ...(earlyPayDiscount > 0
               ? {

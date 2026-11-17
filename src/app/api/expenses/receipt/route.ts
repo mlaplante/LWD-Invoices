@@ -1,4 +1,4 @@
-import { getAuthenticatedOrg, isAuthError } from "@/lib/api-auth";
+import { getAuthenticatedOrg, isAuthError, requireOrgRole } from "@/lib/api-auth";
 import { uploadReceipt } from "@/lib/supabase-storage";
 import { getAppUrl } from "@/lib/app-url";
 import { NextResponse } from "next/server";
@@ -8,6 +8,11 @@ export async function POST(req: Request) {
     const auth = await getAuthenticatedOrg();
     if (isAuthError(auth)) return auth;
     const { orgId } = auth;
+
+    // Mirrors requireRole("OWNER", "ADMIN", "ACCOUNTANT") on expenses.create,
+    // the only mutation that can attach the uploaded receipt to an expense.
+    const forbidden = await requireOrgRole(auth, "OWNER", "ADMIN", "ACCOUNTANT");
+    if (forbidden) return forbidden;
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

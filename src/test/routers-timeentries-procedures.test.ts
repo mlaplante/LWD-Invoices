@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { timeEntriesRouter } from "@/server/routers/timeEntries";
-import { createMockContext } from "./mocks/trpc-context";
+import { createMockContext, primeOrgOwnership } from "./mocks/trpc-context";
 import { Decimal } from "@prisma/client-runtime-utils";
 
 describe("TimeEntries Router Procedures", () => {
@@ -9,6 +9,7 @@ describe("TimeEntries Router Procedures", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = timeEntriesRouter.createCaller(ctx);
   });
 
@@ -879,6 +880,7 @@ describe("timeEntries.create with retainer", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = timeEntriesRouter.createCaller(ctx);
     ctx.db.organization.findFirst.mockResolvedValue({ taskTimeInterval: 0 });
     ctx.db.timeEntry.create.mockImplementation(async ({ data }: any) => ({ id: "te_new", ...data }));

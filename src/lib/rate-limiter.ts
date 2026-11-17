@@ -26,6 +26,15 @@ function createRateLimiter(): Limiters | null {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
+    // Fail open (a missing limiter must not take the site down), but never
+    // silently: in production this means every public endpoint is running on
+    // the weaker per-instance limiters only. console.error is forwarded to
+    // Sentry by the console integration.
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[rate-limiter] UPSTASH_REDIS_REST_URL/TOKEN unset — edge rate limiting is DISABLED in production",
+      );
+    }
     return null;
   }
 
@@ -89,7 +98,18 @@ export function getBucketForPath(pathname: string): RateLimitBucket | null {
   // brute-forceable endpoints are API routes (/api/portal/[token]/auth for
   // passphrase guessing, /api/pay/[token]/charge-saved for card charging),
   // which the bare /portal and /pay prefixes do not match.
-  if (pathname.startsWith("/portal") || pathname.startsWith("/api/portal")) {
+  if (
+    pathname.startsWith("/portal") ||
+    pathname.startsWith("/api/portal") ||
+    // Other token-gated, no-account surfaces share the portal budget.
+    pathname.startsWith("/contractor/") || // not the dashboard's /contractors
+    pathname.startsWith("/api/contractor-portal") ||
+    pathname.startsWith("/unsubscribe/") ||
+    pathname.startsWith("/api/email-preferences") ||
+    // Public portal procedures served over tRPC (comments, checkout,
+    // signatures). Dashboard tRPC traffic is authenticated and not limited here.
+    pathname.startsWith("/api/trpc/portal.")
+  ) {
     return "portal";
   }
   if (pathname.startsWith("/pay") || pathname.startsWith("/api/pay")) {

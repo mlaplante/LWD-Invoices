@@ -14,6 +14,10 @@ export const retainersRouter = router({
   getForClient: requireRole("OWNER", "ADMIN", "ACCOUNTANT", "VIEWER")
     .input(z.object({ clientId: z.string() }))
     .query(async ({ ctx, input }) => {
+      // Same guard as deposit: Retainer.clientId is globally unique, so an
+      // upsert keyed on a foreign clientId would create a row that "claims"
+      // another org's client and blocks that org from ever creating its own.
+      await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
       // Upsert the retainer (create if not exists)
       const retainer = await ctx.db.retainer.upsert({
         where: {

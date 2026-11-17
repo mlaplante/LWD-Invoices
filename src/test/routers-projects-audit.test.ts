@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { logAudit } from "@/server/services/audit";
 import { projectsRouter } from "@/server/routers/projects";
-import { createMockContext } from "./mocks/trpc-context";
+import { createMockContext, primeOrgOwnership } from "./mocks/trpc-context";
 
 vi.mock("@/server/services/audit", () => ({ logAudit: vi.fn().mockResolvedValue(undefined) }));
 
@@ -11,6 +11,7 @@ describe("projects audit logging", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = projectsRouter.createCaller(ctx);
   });
 

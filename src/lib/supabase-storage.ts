@@ -119,6 +119,11 @@ export async function createReceiptSignedUrl(
   path: string,
   expiresInSeconds = 60,
 ): Promise<string | null> {
+  // Defense in depth: never hand the storage client a path that could
+  // normalize out of the receipts bucket, whatever the caller checked.
+  if (path.includes("..") || path.includes("\\") || path.includes("%") || path.startsWith("/")) {
+    return null;
+  }
   const supabase = getClient();
   const { data, error } = await supabase.storage
     .from(RECEIPTS_BUCKET)

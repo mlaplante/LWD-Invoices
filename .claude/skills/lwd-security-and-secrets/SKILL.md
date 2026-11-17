@@ -162,13 +162,19 @@ const signedUrl = await createAttachmentSignedUrl(attachment.storageUrl);
 ```
 
 ```ts
-// Pattern B — path-prefix check, no DB round trip needed
+// Pattern B — exact path-shape check, no DB round trip needed
 // (src/app/api/receipts/view/route.ts) — receipt paths are "${orgId}/${uuid}.${ext}"
-if (!path.startsWith(`${orgId}/`)) {
+if (!isReceiptPathForOrg(path, orgId)) {          // src/lib/receipt-path.ts
   return NextResponse.json({ error: "Not found" }, { status: 404 });
 }
 const signedUrl = await createReceiptSignedUrl(path);
 ```
+
+**A bare `path.startsWith(`${orgId}/`)` is NOT sufficient** (this was the shipped check until
+2026-11-17). The storage client concatenates the path into a URL and `fetch()` collapses dot segments,
+so `${orgId}/../../proposals/<otherOrg>/<invoiceId>/proposal.pdf` passes a prefix test and resolves to
+a different bucket and another org's file. For any caller-supplied storage path, match the full
+expected shape (and reject `..`, `%`, `\`, extra segments) — or use Pattern A.
 
 If you add a new signed-URL-serving route: pick whichever pattern fits (DB row exists → Pattern A; bare
 storage path with a caller-supplied `path` param → Pattern B), but **never** call

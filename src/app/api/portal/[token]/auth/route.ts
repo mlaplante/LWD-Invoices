@@ -66,7 +66,7 @@ export async function POST(
 
   // Set HttpOnly cookie with a signed session token (not the hash itself)
   const maxAge = 60 * 60 * 24 * 30; // 30 days
-  const sessionVal = signPortalSession(token, getPortalSessionSecret(), maxAge);
+  const sessionVal = signPortalSession(token, getPortalSessionSecret(), maxAge, storedHash);
   const cookieStore = await cookies();
   cookieStore.set(`portal_auth_${token}`, sessionVal, {
     httpOnly: true,

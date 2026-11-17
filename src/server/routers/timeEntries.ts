@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { assertInOrg } from "../lib/get-for-org";
 import { idInput } from "../lib/schemas";
 import { PrismaClient, LineType } from "@/generated/prisma";
 import { calculateLineTotals, calculateInvoiceTotals } from "../services/tax-calculator";
@@ -95,6 +96,9 @@ export const timeEntriesRouter = router({
         });
         if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
       }
+      if (input.taskId) {
+        await assertInOrg(ctx.db.projectTask, input.taskId, ctx.orgId, { entityName: "Task" });
+      }
 
       return ctx.db.timeEntry.create({
         data: {
@@ -131,6 +135,9 @@ export const timeEntriesRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (data.taskId) {
+        await assertInOrg(ctx.db.projectTask, data.taskId, ctx.orgId, { entityName: "Task" });
+      }
       return ctx.db.timeEntry.update({ where: { id, organizationId: ctx.orgId }, data });
     }),
 

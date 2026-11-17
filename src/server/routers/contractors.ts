@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
-import { getForOrg } from "../lib/get-for-org";
+import { assertInOrg, getForOrg } from "../lib/get-for-org";
 import { logAudit } from "../services/audit";
 import { encryptString, decryptString } from "../services/encryption";
 import { generatePortalToken } from "@/lib/portal-session";
@@ -306,6 +306,9 @@ export const contractorsRouter = router({
       await getForOrg(ctx.db.contractor, input.contractorId, ctx.orgId, {
         entityName: "Contractor",
       });
+      if (input.expenseId) {
+        await assertInOrg(ctx.db.expense, input.expenseId, ctx.orgId, { entityName: "Expense" });
+      }
       const method = input.method as ContractorPaymentMethod;
       const reportable = input.reportable ?? !NON_REPORTABLE_METHODS.has(method);
 

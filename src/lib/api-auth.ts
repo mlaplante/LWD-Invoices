@@ -1,6 +1,7 @@
 import { getUser } from "@/lib/supabase/server";
 import { db } from "@/server/db";
 import { cookies } from "next/headers";
+import type { UserRole } from "@/generated/prisma";
 
 export type AuthResult =
   | { user: { id: string }; orgId: string }
@@ -68,6 +69,27 @@ export async function getAuthenticatedOrg(): Promise<AuthResult> {
   }
 
   return { user: { id: user.id }, orgId };
+}
+
+/**
+ * Role gate for REST routes — the route-handler equivalent of tRPC's
+ * requireRole(). getAuthenticatedOrg() only proves org *membership*; any
+ * route that writes data, spends money, or returns sensitive documents must
+ * also call this. Returns a 403 Response when the caller's role in the
+ * resolved org isn't one of `allowed`, otherwise null.
+ */
+export async function requireOrgRole(
+  auth: { user: { id: string }; orgId: string },
+  ...allowed: UserRole[]
+): Promise<Response | null> {
+  const membership = await db.userOrganization.findFirst({
+    where: { organizationId: auth.orgId, user: { supabaseId: auth.user.id } },
+    select: { role: true },
+  });
+  if (!membership || !allowed.includes(membership.role)) {
+    return Response.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
+  return null;
 }
 
 /** Type guard: true if the result is an auth failure Response */

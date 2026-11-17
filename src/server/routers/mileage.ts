@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
+import { assertInOrg } from "../lib/get-for-org";
 import { idInput } from "../lib/schemas";
 import { logAudit } from "../services/audit";
 
@@ -102,6 +103,11 @@ export const mileageRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { ratePerMile, ...rest } = input;
+      // mileageInclude returns the project and its client, so an unchecked
+      // projectId would hand back another org's names in this response.
+      if (input.projectId) {
+        await assertInOrg(ctx.db.project, input.projectId, ctx.orgId, { entityName: "Project" });
+      }
       let rate = ratePerMile;
       if (rate === undefined) {
         const org = await ctx.db.organization.findUnique({
@@ -146,6 +152,9 @@ export const mileageRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (data.projectId) {
+        await assertInOrg(ctx.db.project, data.projectId, ctx.orgId, { entityName: "Project" });
+      }
       const updated = await ctx.db.mileageEntry.update({
         where: { id, organizationId: ctx.orgId },
         data,

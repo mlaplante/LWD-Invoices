@@ -12,7 +12,23 @@ export async function GET(
     const invoice = await db.invoice.findFirst({
       where: { id, organizationId: orgId },
       include: {
-        client: true,
+        // Explicit select: the full Client row carries portalToken,
+        // portalPassphraseHash, the reset-token hash, emailPreferencesToken
+        // and stripeCustomerId — credentials that must never leave the server.
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            address: true,
+            city: true,
+            state: true,
+            zip: true,
+            country: true,
+            taxId: true,
+          },
+        },
         currency: true,
         lines: { include: { taxes: { include: { tax: true } } } },
         payments: true,

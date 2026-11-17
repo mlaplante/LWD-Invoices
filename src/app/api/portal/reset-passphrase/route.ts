@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { logAudit } from "@/server/services/audit";
 import { hashToken } from "@/lib/secure-token";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/client-ip";
 
 // Per-IP guard; the 256-bit token is unguessable, this just keeps the
 // endpoint from being hammered.
@@ -17,7 +18,7 @@ const INVALID_LINK = { error: "This reset link is invalid or has expired." };
  * dashboard session for the client.
  */
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = getClientIp(req.headers);
   if (resetLimiter.isLimited(ip)) {
     return NextResponse.json(
       { error: "Too many attempts. Please try again later." },

@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { db } from "@/server/db";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+// Creating an org seeds a batch of default rows; cap it so one account can't
+// script unbounded org creation. 5 per user per hour is far above real use.
+const createOrgLimiter = createRateLimiter({ limit: 5, windowMs: 60 * 60_000 });
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -11,6 +16,12 @@ export async function POST(req: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (createOrgLimiter.isLimited(user.id)) {
+    return NextResponse.json(
+      { error: "Too many organizations created. Please try again later." },
+      { status: 429 },
+    );
   }
 
   const body = await req.json().catch(() => ({}));

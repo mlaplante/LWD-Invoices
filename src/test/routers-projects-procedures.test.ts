@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { projectsRouter } from "@/server/routers/projects";
-import { createMockContext } from "./mocks/trpc-context";
+import { createMockContext, primeOrgOwnership } from "./mocks/trpc-context";
 import { ProjectStatus } from "@/generated/prisma";
 import { Decimal } from "@prisma/client-runtime-utils";
 
@@ -10,6 +10,7 @@ describe("Projects Router Procedures", () => {
 
   beforeEach(() => {
     ctx = createMockContext();
+    primeOrgOwnership(ctx);
     caller = projectsRouter.createCaller(ctx);
   });
 

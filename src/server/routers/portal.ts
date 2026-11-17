@@ -20,6 +20,11 @@ import {
   encryptSignature,
 } from "../services/signature";
 import { getPortalSessionSecret, verifyPortalSession } from "@/lib/portal-session";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+// Each comment emails every org admin, so an unthrottled token holder could
+// flood their inboxes. 10 comments per portal token per 15 minutes.
+const commentLimiter = createRateLimiter({ limit: 10, windowMs: 15 * 60_000 });
 
 const PAYABLE_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.SENT,
@@ -153,11 +158,59 @@ async function requireInvoicePortalSession(
   const cookieVal = cookieStore.get(`portal_auth_${token}`)?.value;
   if (
     !cookieVal ||
-    !verifyPortalSession(cookieVal, token, getPortalSessionSecret())
+    !verifyPortalSession(cookieVal, token, getPortalSessionSecret(), storedHash)
   ) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 }
+
+/**
+ * getInvoiceByToken loads the invoice with a bare `include`, so every scalar
+ * column comes back. The caller here may hold nothing stronger than the
+ * emailed link, so drop the fields that are internal bookkeeping: staff
+ * payment notes, gateway transaction ids and fees, the signer's IP, internal
+ * CC lists, dunning state, Stripe Tax ids, and the time-entry/expense/task
+ * ids a line was billed from.
+ */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+function redactInvoiceForPortal<
+  T extends {
+    payments: Array<Record<string, unknown>>;
+    lines: Array<Record<string, unknown>>;
+  },
+>(invoice: T) {
+  const {
+    signedByIp,
+    scheduledSendCc,
+    dunningEscalatedAt,
+    reminderSequenceId,
+    stripeTaxCalculationId,
+    stripeTaxTransactionId,
+    ...safe
+  } = invoice as T & Record<string, unknown>;
+  return {
+    ...(safe as Omit<
+      T,
+      | "signedByIp"
+      | "scheduledSendCc"
+      | "dunningEscalatedAt"
+      | "reminderSequenceId"
+      | "stripeTaxCalculationId"
+      | "stripeTaxTransactionId"
+      | "payments"
+      | "lines"
+    >),
+    payments: invoice.payments.map(
+      ({ notes, transactionId, gatewayFee, ...payment }) =>
+        payment as Omit<T["payments"][number], "notes" | "transactionId" | "gatewayFee">,
+    ),
+    lines: invoice.lines.map(
+      ({ sourceTable, sourceId, ...line }) =>
+        line as Omit<T["lines"][number], "sourceTable" | "sourceId">,
+    ),
+  };
+}
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 export const portalRouter = router({
   getInvoice: publicProcedure
@@ -179,7 +232,7 @@ export const portalRouter = router({
         select: { id: true, body: true, authorName: true, createdAt: true },
       });
 
-      return { invoice, gateways, comments };
+      return { invoice: redactInvoiceForPortal(invoice), gateways, comments };
     }),
 
   listInvoices: publicProcedure
@@ -194,7 +247,13 @@ export const portalRouter = router({
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
 
       const invoices = await ctx.db.invoice.findMany({
-        where: { clientId: invoice.clientId, organizationId: invoice.organizationId, isArchived: false },
+        where: {
+          clientId: invoice.clientId,
+          organizationId: invoice.organizationId,
+          isArchived: false,
+          // Drafts are unsent work in progress — never show them to the client.
+          status: { not: InvoiceStatus.DRAFT },
+        },
         select: {
           id: true,
           number: true,
@@ -344,6 +403,12 @@ export const portalRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       await requireInvoicePortalSession(ctx.db, input.token);
+      if (commentLimiter.isLimited(input.token)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many comments. Please try again later.",
+        });
+      }
       const invoice = await ctx.db.invoice.findUnique({
         where: { portalToken: input.token },
         select: {
@@ -537,7 +602,7 @@ export const portalRouter = router({
         const authCookie = cookieStore.get(`portal_auth_${input.token}`);
         if (
           !authCookie ||
-          !verifyPortalSession(authCookie.value, input.token, getPortalSessionSecret())
+          !verifyPortalSession(authCookie.value, input.token, getPortalSessionSecret(), storedPassphraseHash)
         ) {
           throw new TRPCError({ code: "UNAUTHORIZED" });
         }

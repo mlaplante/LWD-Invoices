@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createMockContext } from "./mocks/prisma";
+import { createMockContext, primeOrgOwnership } from "./mocks/prisma";
 import { milestonesRouter } from "@/server/routers/milestones";
 import { tasksRouter } from "@/server/routers/tasks";
 import { timeEntriesRouter } from "@/server/routers/timeEntries";
@@ -50,6 +50,7 @@ describe("VIEWER role gating (read-only enforcement)", () => {
 
   it("allows a non-VIEWER role past the gate (ACCOUNTANT can create)", async () => {
     const ctx = createMockContext({ userRole: "ACCOUNTANT" });
+    primeOrgOwnership(ctx);
     ctx.db.milestone.create.mockResolvedValue({ id: "m1" });
     await expect(
       milestonesRouter.createCaller(ctx).create({ projectId: "p1", name: "M" }),

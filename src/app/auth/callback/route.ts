@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { canLinkExistingUser } from "@/lib/account-link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { db } from "@/server/db";
@@ -56,6 +57,18 @@ export async function GET(request: NextRequest) {
       const existingUser = await db.user.findFirst({
         where: { email: user.email },
       });
+
+      if (existingUser && !canLinkExistingUser(user, existingUser)) {
+        // Linking by email hands this session the existing user's org
+        // memberships — refuse for an unverified email or when the user is
+        // already linked to a different Supabase identity.
+        console.error("[auth/callback] Refused to link account", {
+          dbUserId: existingUser.id,
+          supabaseId: user.id,
+        });
+        await supabase.auth.signOut();
+        return NextResponse.redirect(`${origin}/sign-in?error=account_link_conflict`);
+      }
 
       if (existingUser) {
         // Link supabaseId (best-effort — column may not exist yet)

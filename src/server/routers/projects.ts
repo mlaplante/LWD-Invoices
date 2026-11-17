@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { Prisma, ProjectStatus } from "@/generated/prisma";
 import { idInput, paginationInput } from "../lib/schemas";
+import { assertInOrg } from "../lib/get-for-org";
 import { generateProjectCloseCheckIn } from "../services/check-in-generator";
 import { logAudit } from "../services/audit";
 import { calculateProjectHealthScore, calculateProjectHealthScores } from "../services/project-health-score";
@@ -138,6 +139,9 @@ export const projectsRouter = router({
     .input(projectWriteSchema.extend({ templateId: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       const { templateId, ...projectData } = input;
+      // Caller-supplied foreign keys must belong to the caller's org.
+      await assertInOrg(ctx.db.client, input.clientId, ctx.orgId, { entityName: "Client" });
+      await assertInOrg(ctx.db.currency, input.currencyId, ctx.orgId, { entityName: "Currency" });
 
       const project = await ctx.db.$transaction(async (tx) => {
         const created = await tx.project.create({
@@ -201,6 +205,12 @@ export const projectsRouter = router({
         where: { id, organizationId: ctx.orgId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (data.clientId) {
+        await assertInOrg(ctx.db.client, data.clientId, ctx.orgId, { entityName: "Client" });
+      }
+      if (data.currencyId) {
+        await assertInOrg(ctx.db.currency, data.currencyId, ctx.orgId, { entityName: "Currency" });
+      }
       const updated = await ctx.db.project.update({
         where: { id, organizationId: ctx.orgId },
         data,

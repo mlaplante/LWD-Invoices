@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requireRole } from "../trpc";
 import { idInput } from "../lib/schemas";
+import { assertInOrg } from "../lib/get-for-org";
 import { generateInvoiceNumber } from "../services/invoice-numbering";
 import { generatePortalToken } from "@/lib/portal-session";
 
@@ -30,6 +31,10 @@ export const milestonesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // The milestone row is stamped with the caller's org, but projectId is
+      // caller-supplied: without this check a milestone could be attached to
+      // another org's project (and then invoiced against that org's client).
+      await assertInOrg(ctx.db.project, input.projectId, ctx.orgId, { entityName: "Project" });
       return ctx.db.milestone.create({
         data: { ...input, organizationId: ctx.orgId },
       });

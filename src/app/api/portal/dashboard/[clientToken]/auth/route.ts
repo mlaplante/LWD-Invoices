@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp } from "@/lib/client-ip";
 import { db } from "@/server/db";
 import {
   createDashboardSession,
@@ -69,8 +70,7 @@ export async function POST(
   const { sessionToken } = await createDashboardSession(db, {
     clientId: client.id,
     userAgent: req.headers.get("user-agent") ?? undefined,
-    ipAddress:
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined,
+    ipAddress: getClientIp(req.headers),
   });
 
   const cookieStore = await cookies();

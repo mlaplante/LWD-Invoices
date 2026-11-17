@@ -54,7 +54,13 @@ export const ticketsRouter = router({
     .query(async ({ ctx, input }) => {
       const ticket = await ctx.db.ticket.findFirst({
         where: { id: input.id, organizationId: ctx.orgId },
-        include: { client: true, messages: { orderBy: { createdAt: "asc" } } },
+        include: {
+          // Narrow select: the full Client row carries the portal token,
+          // passphrase/reset hashes and email-preferences token, which must
+          // not be returned to every member who can read a ticket.
+          client: { select: { id: true, name: true, email: true, phone: true } },
+          messages: { orderBy: { createdAt: "asc" } },
+        },
       });
       if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
       return ticket;

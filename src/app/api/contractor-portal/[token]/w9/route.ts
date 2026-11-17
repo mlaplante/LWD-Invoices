@@ -2,6 +2,10 @@ import { db } from "@/server/db";
 import { uploadW9 } from "@/lib/supabase-storage";
 import { NextResponse } from "next/server";
 import { safeErrorResponse } from "@/lib/api-errors";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+// Unauthenticated (token-only) upload into private storage — cap it per token.
+const uploadLimiter = createRateLimiter({ limit: 10, windowMs: 15 * 60_000 });
 
 /**
  * Self-service W-9 upload from the contractor portal. Token-authenticated (no
@@ -15,6 +19,9 @@ export async function POST(
 ) {
   try {
     const { token } = await params;
+    if (uploadLimiter.isLimited(token)) {
+      return NextResponse.json({ error: "Too many uploads. Please try again later." }, { status: 429 });
+    }
     const contractor = await db.contractor.findUnique({
       where: { portalToken: token },
       select: { id: true, organizationId: true, portalEnabled: true, isArchived: true },
