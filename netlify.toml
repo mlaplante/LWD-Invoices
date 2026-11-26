@@ -17,12 +17,14 @@
   ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude).github' ':(exclude).claude' ':(exclude)docs' ':(exclude)tasks' ':(exclude)githooks' ':(exclude)*.md'"
 
 [build.environment]
-  # Exact pin: 24.22.1 fixes the Oct 2026 Brotli RCE. Bump with each Node
-  # security release. This sets the BUILD Node; Lambda's patch level is
-  # AWS-managed, and a function whose code is unchanged keeps the runtime it
-  # was first deployed with (db-heartbeat stayed nodejs22.x after the 24 bump).
-  # Stay on an LTS line Lambda supports GA — nodejs26.x was preview-only in 2026-10.
-  NODE_VERSION = "24.22.1"
+  # Exact pin: 26.13.1 is the Nov 2026 Node 26 LTS security release. Bump with
+  # each Node security release. This sets the BUILD Node, and Netlify derives
+  # the functions runtime (nodejs26.x) from it. Lambda's patch level is
+  # AWS-managed. A function whose code is unchanged keeps the runtime it was
+  # first deployed with (db-heartbeat stayed nodejs22.x after the 24 bump), so
+  # after a major bump, change each function's code to force a redeploy.
+  # Stay on an LTS line Lambda supports GA (nodejs26.x went GA 2026-11-20).
+  NODE_VERSION = "26.13.1"
   NEXT_TELEMETRY_DISABLED = "1"
   # NOTE: .next/cache persistence needs no env flag — @netlify/plugin-nextjs
   # restores/saves it automatically every build (onPreBuild/onBuild). Check the
