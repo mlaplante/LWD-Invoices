@@ -18,12 +18,15 @@
 
 [build.environment]
   # Exact pin: 26.13.1 is the Nov 2026 Node 26 LTS security release. Bump with
-  # each Node security release. This sets the BUILD Node, and Netlify derives
-  # the functions runtime (nodejs26.x) from it. Lambda's patch level is
-  # AWS-managed. A function whose code is unchanged keeps the runtime it was
-  # first deployed with (db-heartbeat stayed nodejs22.x after the 24 bump), so
-  # after a major bump, change each function's code to force a redeploy.
-  # Stay on an LTS line Lambda supports GA (nodejs26.x went GA 2026-11-20).
+  # each Node security release. This sets the BUILD Node only. Netlify runs
+  # functions on the build's major only if it treats that major as a valid
+  # Lambda runtime; otherwise it silently falls back to Node 24. That is what
+  # happened with 26 on 2026-11-26, so the functions runtime is forced with the
+  # site env var AWS_LAMBDA_JS_RUNTIME=nodejs26.x. Set that var in the Netlify
+  # UI/CLI/API: Netlify ignores it in this file. A function whose code is
+  # unchanged keeps the runtime it was first deployed with, so after any
+  # runtime change, touch each function's code to force a redeploy.
+  # db-heartbeat logs process.version so its logs show the real runtime.
   NODE_VERSION = "26.13.1"
   NEXT_TELEMETRY_DISABLED = "1"
   # NOTE: .next/cache persistence needs no env flag — @netlify/plugin-nextjs

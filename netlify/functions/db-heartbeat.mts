@@ -18,7 +18,7 @@ const handler = async () => {
       if (!warmup.ok) {
         console.warn("[db-heartbeat] App warmup returned", warmup.status);
       } else {
-        console.log("[db-heartbeat] App warmup OK", process.version);
+        console.log("[db-heartbeat] App warmup OK", { node: process.version });
       }
       return;
     } catch (err) {
@@ -34,7 +34,7 @@ const handler = async () => {
   try {
     await client.connect();
     await client.query("SELECT 1");
-    console.log("[db-heartbeat] OK", process.version);
+    console.log("[db-heartbeat] OK", { node: process.version });
   } catch (err) {
     console.error("[db-heartbeat] Failed:", err);
   } finally {
